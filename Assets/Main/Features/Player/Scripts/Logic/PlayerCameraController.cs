@@ -1,0 +1,194 @@
+using UnityEngine;
+
+namespace Neighbor.Main.Features.Player
+{
+    [RequireComponent(typeof(Camera))]
+    public sealed class PlayerCameraController : MonoBehaviour
+    {
+        [Header("References")]
+        [SerializeField] private PlayerController playerController;
+        [SerializeField] private Transform yawRoot;
+
+        [Header("Look")]
+        [SerializeField, Min(0f)] private float mouseSensitivity = 0.08f;
+        [SerializeField] private bool invertLookY;
+        [SerializeField] private Vector2 pitchLimits = new Vector2(-82f, 82f);
+        [SerializeField, Min(0f)] private float lookSmoothing = 18f;
+        [SerializeField] private bool lockCursorOnStart = true;
+
+        [Header("Zoom")]
+        [SerializeField, Min(1f)] private float defaultFieldOfView = 60f;
+        [SerializeField, Min(1f)] private float minimumFieldOfView = 33f;
+        [SerializeField, Min(1f)] private float maximumFieldOfView = 72f;
+        [SerializeField, Min(0f)] private float zoomScrollSpeed = 3.5f;
+        [SerializeField, Min(0f)] private float holdZoomAmount = 10f;
+        [SerializeField, Min(0f)] private float zoomSmoothing = 12f;
+        [SerializeField, Range(0f, 1f)] private float zoomWobbleBoost = 0.55f;
+
+        [Header("Lean")]
+        [SerializeField, Min(0f)] private float leanDistance = 0.32f;
+        [SerializeField, Min(0f)] private float leanAngle = 9f;
+        [SerializeField, Min(0f)] private float leanSmoothing = 12f;
+
+        [Header("Handheld Feel")]
+        [SerializeField, Min(0f)] private float idleWobbleAmount = 0.08f;
+        [SerializeField, Min(0f)] private float moveWobbleAmount = 0.16f;
+        [SerializeField, Min(0f)] private float runWobbleAmount = 0.28f;
+        [SerializeField, Min(0f)] private float wobbleFrequency = 1.7f;
+        [SerializeField, Min(0f)] private float bobPositionAmount = 0.055f;
+        [SerializeField, Min(0f)] private float bobRollAmount = 1.4f;
+
+        private Camera playerCamera;
+        private Vector3 baseLocalPosition;
+        private float yaw;
+        private float pitch;
+        private float smoothedPitch;
+        private float smoothedLean;
+        private float scrolledFieldOfView;
+        private float currentFieldOfView;
+        private float bobTime;
+        private float noiseSeed;
+
+        private void Awake()
+        {
+            playerCamera = GetComponent<Camera>();
+            baseLocalPosition = transform.localPosition;
+            noiseSeed = Random.Range(0f, 1000f);
+
+            if (playerController == null)
+            {
+                playerController = GetComponentInParent<PlayerController>();
+            }
+
+            if (yawRoot == null)
+            {
+                yawRoot = playerController != null ? playerController.transform : transform.root;
+            }
+
+            Vector3 yawEuler = yawRoot.rotation.eulerAngles;
+            yaw = yawEuler.y;
+            pitch = NormalizeAngle(transform.localEulerAngles.x);
+            smoothedPitch = pitch;
+
+            defaultFieldOfView = playerCamera.fieldOfView > 1f ? playerCamera.fieldOfView : defaultFieldOfView;
+            currentFieldOfView = defaultFieldOfView;
+            scrolledFieldOfView = defaultFieldOfView;
+            playerCamera.fieldOfView = defaultFieldOfView;
+        }
+
+        private void Start()
+        {
+            if (lockCursorOnStart)
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+            }
+        }
+
+        private void LateUpdate()
+        {
+            PlayerFrameInput input = PlayerInputReader.ReadFrameInput(mouseSensitivity, invertLookY);
+
+            if (input.CursorUnlockPressed)
+            {
+                bool shouldLock = Cursor.lockState != CursorLockMode.Locked;
+                Cursor.lockState = shouldLock ? CursorLockMode.Locked : CursorLockMode.None;
+                Cursor.visible = !shouldLock;
+            }
+
+            if (Cursor.lockState == CursorLockMode.Locked)
+            {
+                yaw += input.Look.x;
+                pitch = Mathf.Clamp(pitch + input.Look.y, pitchLimits.x, pitchLimits.y);
+            }
+
+            UpdateZoom(input);
+            UpdateCameraPose(input);
+        }
+
+        private void UpdateZoom(PlayerFrameInput input)
+        {
+            if (Mathf.Abs(input.ZoomScroll) > 0.01f)
+            {
+                scrolledFieldOfView = Mathf.Clamp(
+                    scrolledFieldOfView - input.ZoomScroll * zoomScrollSpeed * Time.deltaTime,
+                    minimumFieldOfView,
+                    maximumFieldOfView);
+            }
+
+            float holdZoom = input.ZoomHeld ? holdZoomAmount : 0f;
+            float targetFieldOfView = Mathf.Clamp(
+                scrolledFieldOfView - holdZoom,
+                minimumFieldOfView,
+                maximumFieldOfView);
+
+            currentFieldOfView = Damp(currentFieldOfView, targetFieldOfView, zoomSmoothing);
+            playerCamera.fieldOfView = currentFieldOfView;
+        }
+
+        private void UpdateCameraPose(PlayerFrameInput input)
+        {
+            yawRoot.rotation = Quaternion.Euler(0f, yaw, 0f);
+            smoothedPitch = Damp(smoothedPitch, pitch, lookSmoothing);
+
+            float leanInput = 0f;
+            leanInput -= input.LeanLeftHeld ? 1f : 0f;
+            leanInput += input.LeanRightHeld ? 1f : 0f;
+            smoothedLean = Damp(smoothedLean, leanInput, leanSmoothing);
+
+            float moveAmount = playerController != null ? playerController.MoveAmount : input.Move.magnitude;
+            bool running = playerController != null && playerController.IsRunning;
+            float wobbleStrength = idleWobbleAmount;
+            wobbleStrength += Mathf.Lerp(0f, moveWobbleAmount, moveAmount);
+            wobbleStrength += running ? runWobbleAmount : 0f;
+            wobbleStrength *= 1f + Zoom01 * zoomWobbleBoost;
+
+            bobTime += Time.deltaTime * Mathf.Lerp(4.5f, running ? 10.5f : 7.5f, moveAmount);
+            float bobStep = moveAmount > 0.01f ? Mathf.Sin(bobTime) : 0f;
+            Vector3 bobOffset = new Vector3(
+                Mathf.Sin(bobTime * 0.5f) * bobPositionAmount * moveAmount,
+                Mathf.Abs(bobStep) * bobPositionAmount * moveAmount,
+                0f);
+
+            float time = Time.time * wobbleFrequency;
+            float wobbleX = Noise(time, 0.13f) * wobbleStrength;
+            float wobbleY = Noise(time, 3.71f) * wobbleStrength;
+            float wobbleRoll = Noise(time, 8.19f) * wobbleStrength * 5f;
+
+            Vector3 leanOffset = Vector3.right * (smoothedLean * leanDistance);
+            transform.localPosition = baseLocalPosition + leanOffset + bobOffset + new Vector3(wobbleX, wobbleY, 0f) * 0.01f;
+
+            float roll = -smoothedLean * leanAngle + wobbleRoll + bobStep * bobRollAmount * moveAmount;
+            transform.localRotation = Quaternion.Euler(smoothedPitch + wobbleY, wobbleX, roll);
+        }
+
+        private float Zoom01 => Mathf.InverseLerp(maximumFieldOfView, minimumFieldOfView, currentFieldOfView);
+
+        private float Noise(float time, float offset)
+        {
+            return (Mathf.PerlinNoise(noiseSeed + offset, time) - 0.5f) * 2f;
+        }
+
+        private static float Damp(float current, float target, float sharpness)
+        {
+            if (sharpness <= 0f)
+            {
+                return target;
+            }
+
+            return Mathf.Lerp(current, target, 1f - Mathf.Exp(-sharpness * Time.deltaTime));
+        }
+
+        private static float NormalizeAngle(float angle)
+        {
+            angle %= 360f;
+            return angle > 180f ? angle - 360f : angle;
+        }
+
+        private void Reset()
+        {
+            playerController = GetComponentInParent<PlayerController>();
+            yawRoot = playerController != null ? playerController.transform : transform.root;
+        }
+    }
+}
