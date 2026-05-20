@@ -35,7 +35,9 @@ MonoBehaviour:
       type: 3}
   m_RendererFeatures:
   - {fileID: 7833122117494664109}
-  m_RendererFeatureMap: ad6b866f10d7b46c
+  - {fileID: 6123456789012345680}
+  - {fileID: 6123456789012345678}
+  m_RendererFeatureMap: ad6b866f10d7b46c50f3889281e3fa544ef3889281e3fa54
   m_UseNativeRenderPass: 1
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   m_AssetVersion: 2
@@ -93,3 +95,51 @@ MonoBehaviour:
   - {fileID: 2800000, guid: 3302065f671a8450b82c9ddf07426f3a, type: 3}
   - {fileID: 2800000, guid: 56a77a3e8d64f47b6afe9e3c95cb57d5, type: 3}
   m_Shader: {fileID: 4800000, guid: 0849e84e3d62649e8882e9d6f056a017, type: 3}
+--- !u!114 &6123456789012345680
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c6e3dc1bce9f49848b45eb39c8368b3a, type: 3}
+  m_Name: Retro Pixelation
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  settings:
+    renderPassEvent: 600
+    intensity: 1
+    pixelSize: 5
+    colorLevels: 10
+    paletteStrength: 0.35
+    ditherStrength: 0.18
+    gridStrength: 0.12
+  shader: {fileID: 4800000, guid: 2a46d2bba09d49e4a8a5fb3b89cff75f, type: 3}
+--- !u!114 &6123456789012345678
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72f55374d1734e44a8a33438f56fdc48, type: 3}
+  m_Name: VHS Recording
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  settings:
+    renderPassEvent: 600
+    intensity: 0.85
+    scanlineIntensity: 0.35
+    noiseIntensity: 0.18
+    trackingNoise: 0.28
+    chromaticAberration: 0.45
+    horizontalJitter: 0.22
+    verticalRoll: 0.08
+    tapeBleed: 0.22
+    desaturation: 0.25
+    vignette: 0.2
+  shader: {fileID: 4800000, guid: 15fc42db5c204cf0b210174567acac02, type: 3}

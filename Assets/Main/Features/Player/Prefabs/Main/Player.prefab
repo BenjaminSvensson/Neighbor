@@ -46,7 +46,7 @@ GameObject:
   - component: {fileID: 144846750235035850}
   m_Layer: 0
   m_Name: Player
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -160,6 +160,7 @@ GameObject:
   - component: {fileID: 1456945344575672241}
   - component: {fileID: 6036600553356544174}
   - component: {fileID: 6230172472076133448}
+  - component: {fileID: 7301234288172884471}
   m_Layer: 0
   m_Name: Camera
   m_TagString: Untagged
@@ -308,30 +309,55 @@ MonoBehaviour:
   minimumFieldOfView: 33
   maximumFieldOfView: 72
   zoomScrollSpeed: 3.5
-  holdZoomAmount: 10
   zoomSmoothing: 12
   zoomWobbleBoost: 0.55
-  leanDistance: 0.32
-  leanAngle: 9
-  leanSmoothing: 12
+  leanDistance: 0.4
+  leanAngle: 12
+  leanSmoothing: 20
   idleWobbleAmount: 0.08
   moveWobbleAmount: 0.16
   runWobbleAmount: 0.28
   wobbleFrequency: 1.7
   bobPositionAmount: 0.055
   bobRollAmount: 1.4
-  jumpTakeoffKick: 0.1
-  jumpTakeoffPitch: 2.8
-  fallStretchAmount: 0.035
-  landingKick: 0.22
-  landingPitchKick: 5.5
-  landingShake: 0.32
-  landingFovKick: 2.4
+  jumpTakeoffKick: 0.09
+  jumpTakeoffPitch: 1.7
+  fallStretchAmount: 0.022
+  landingKick: 0.13
+  landingPitchKick: 3.3
+  landingShake: 0.18
+  landingFovKick: 1.2
   stairStepKick: 0.11
   stairPitchKick: 2.2
   stairRollKick: 2.8
-  stairShake: 0.18
-  impactReturnSpeed: 18
+  stairShake: 0.24
+  impactReturnSpeed: 10
+--- !u!114 &7301234288172884471
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7687572321528905896}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8d27f80761f4371a050d0b1e88f9547, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  viewCamera: {fileID: 8448582708253746554}
+  interactRange: 3
+  interactMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  triggerInteraction: 1
+  holdPoint: {fileID: 0}
+  holdDistance: 1.65
+  holdFollowStrength: 24
+  holdRotationStrength: 9
+  holdMaxVelocity: 12
+  throwHoldThreshold: 0.22
+  throwForce: 8.5
+  throwUpwardAssist: 0.8
 --- !u!1001 &7993722895531745334
 PrefabInstance:
   m_ObjectHideFlags: 0

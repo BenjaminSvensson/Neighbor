@@ -37,7 +37,7 @@ namespace Neighbor.Main.Features.Player
                 CrouchHeld = keyboard != null && (IsPressed(keyboard.leftCtrlKey) || IsPressed(keyboard.cKey)),
                 LeanLeftHeld = keyboard != null && IsPressed(keyboard.qKey),
                 LeanRightHeld = keyboard != null && IsPressed(keyboard.eKey),
-                ZoomHeld = mouse != null && IsPressed(mouse.rightButton),
+                ZoomHeld = mouse != null && IsPressed(mouse.middleButton),
                 ZoomScroll = mouse != null ? mouse.scroll.ReadValue().y : 0f,
                 CursorUnlockPressed = keyboard != null && keyboard.escapeKey.wasPressedThisFrame
             };

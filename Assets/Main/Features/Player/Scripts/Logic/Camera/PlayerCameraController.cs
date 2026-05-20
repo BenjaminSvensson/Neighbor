@@ -21,7 +21,6 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(1f)] private float minimumFieldOfView = 33f;
         [SerializeField, Min(1f)] private float maximumFieldOfView = 72f;
         [SerializeField, Min(0f)] private float zoomScrollSpeed = 3.5f;
-        [SerializeField, Min(0f)] private float holdZoomAmount = 10f;
         [SerializeField, Min(0f)] private float zoomSmoothing = 12f;
         [SerializeField, Range(0f, 1f)] private float zoomWobbleBoost = 0.55f;
 
@@ -69,6 +68,11 @@ namespace Neighbor.Main.Features.Player
         private float impactRollOffset;
         private float impactFovOffset;
         private float impactShake;
+        private float targetImpactVerticalOffset;
+        private float targetImpactPitchOffset;
+        private float targetImpactRollOffset;
+        private float targetImpactFovOffset;
+        private float targetImpactShake;
         private float stairStepSide = 1f;
 
         private void Awake()
@@ -93,6 +97,8 @@ namespace Neighbor.Main.Features.Player
             smoothedPitch = pitch;
 
             defaultFieldOfView = playerCamera.fieldOfView > 1f ? playerCamera.fieldOfView : defaultFieldOfView;
+            minimumFieldOfView = Mathf.Min(minimumFieldOfView, defaultFieldOfView);
+            maximumFieldOfView = Mathf.Max(maximumFieldOfView, defaultFieldOfView);
             currentFieldOfView = defaultFieldOfView;
             scrolledFieldOfView = defaultFieldOfView;
             playerCamera.fieldOfView = defaultFieldOfView;
@@ -133,16 +139,12 @@ namespace Neighbor.Main.Features.Player
             if (Mathf.Abs(input.ZoomScroll) > 0.01f)
             {
                 scrolledFieldOfView = Mathf.Clamp(
-                    scrolledFieldOfView - input.ZoomScroll * zoomScrollSpeed * Time.deltaTime,
+                    scrolledFieldOfView - input.ZoomScroll * zoomScrollSpeed * 0.01f,
                     minimumFieldOfView,
                     maximumFieldOfView);
             }
 
-            float holdZoom = input.ZoomHeld ? holdZoomAmount : 0f;
-            float targetFieldOfView = Mathf.Clamp(
-                scrolledFieldOfView - holdZoom,
-                minimumFieldOfView,
-                maximumFieldOfView);
+            float targetFieldOfView = Mathf.Clamp(scrolledFieldOfView, minimumFieldOfView, maximumFieldOfView);
 
             currentFieldOfView = Damp(currentFieldOfView, targetFieldOfView, zoomSmoothing);
             playerCamera.fieldOfView = Mathf.Clamp(currentFieldOfView + impactFovOffset, minimumFieldOfView, maximumFieldOfView);
@@ -195,41 +197,48 @@ namespace Neighbor.Main.Features.Player
             {
                 if (playerController.JumpStartedThisFrame)
                 {
-                    impactVerticalOffset -= jumpTakeoffKick;
-                    impactPitchOffset -= jumpTakeoffPitch;
-                    impactShake += jumpTakeoffKick;
+                    targetImpactVerticalOffset -= jumpTakeoffKick;
+                    targetImpactPitchOffset -= jumpTakeoffPitch;
+                    targetImpactShake += jumpTakeoffKick * 0.6f;
                 }
 
                 if (!playerController.IsGrounded && playerController.VerticalSpeed < 0f)
                 {
-                    impactVerticalOffset += Mathf.Clamp01(-playerController.VerticalSpeed / 14f) * fallStretchAmount * Time.deltaTime;
+                    targetImpactVerticalOffset += Mathf.Clamp01(-playerController.VerticalSpeed / 14f) * fallStretchAmount * Time.deltaTime;
                 }
 
                 if (playerController.LandedThisFrame)
                 {
                     float impact = Mathf.Max(0.35f, playerController.LandingImpact);
-                    impactVerticalOffset -= landingKick * impact;
-                    impactPitchOffset += landingPitchKick * impact;
-                    impactFovOffset += landingFovKick * impact;
-                    impactShake += landingShake * impact;
+                    targetImpactVerticalOffset -= landingKick * impact;
+                    targetImpactPitchOffset += landingPitchKick * impact;
+                    targetImpactFovOffset += landingFovKick * impact;
+                    targetImpactShake += landingShake * impact;
                 }
 
                 if (playerController.StepImpactThisFrame)
                 {
                     float impact = Mathf.Lerp(0.55f, 1f, playerController.StepImpact);
                     stairStepSide *= -1f;
-                    impactVerticalOffset -= stairStepKick * impact;
-                    impactPitchOffset += stairPitchKick * impact;
-                    impactRollOffset += stairStepSide * stairRollKick * impact;
-                    impactShake += stairShake * impact;
+                    targetImpactVerticalOffset -= stairStepKick * impact;
+                    targetImpactPitchOffset += stairPitchKick * impact;
+                    targetImpactRollOffset += stairStepSide * stairRollKick * impact;
+                    targetImpactShake += stairShake * impact;
                 }
             }
 
-            impactVerticalOffset = Damp(impactVerticalOffset, 0f, impactReturnSpeed);
-            impactPitchOffset = Damp(impactPitchOffset, 0f, impactReturnSpeed);
-            impactRollOffset = Damp(impactRollOffset, 0f, impactReturnSpeed);
-            impactFovOffset = Damp(impactFovOffset, 0f, impactReturnSpeed);
-            impactShake = Damp(impactShake, 0f, impactReturnSpeed);
+            float settleSpeed = impactReturnSpeed * 0.45f;
+            impactVerticalOffset = Damp(impactVerticalOffset, targetImpactVerticalOffset, impactReturnSpeed);
+            impactPitchOffset = Damp(impactPitchOffset, targetImpactPitchOffset, impactReturnSpeed);
+            impactRollOffset = Damp(impactRollOffset, targetImpactRollOffset, impactReturnSpeed);
+            impactFovOffset = Damp(impactFovOffset, targetImpactFovOffset, impactReturnSpeed);
+            impactShake = Damp(impactShake, targetImpactShake, impactReturnSpeed);
+
+            targetImpactVerticalOffset = Damp(targetImpactVerticalOffset, 0f, settleSpeed);
+            targetImpactPitchOffset = Damp(targetImpactPitchOffset, 0f, settleSpeed);
+            targetImpactRollOffset = Damp(targetImpactRollOffset, 0f, settleSpeed);
+            targetImpactFovOffset = Damp(targetImpactFovOffset, 0f, settleSpeed);
+            targetImpactShake = Damp(targetImpactShake, 0f, settleSpeed);
         }
 
         private float Zoom01 => Mathf.InverseLerp(maximumFieldOfView, minimumFieldOfView, currentFieldOfView);
