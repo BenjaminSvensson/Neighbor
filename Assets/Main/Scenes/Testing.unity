@@ -5594,10 +5594,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 2801324474213207061, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
-      propertyPath: crouchObstructionMask.m_Bits
-      value: 1
-      objectReference: {fileID: 0}
     - target: {fileID: 4793360982295166136, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: m_Name
       value: Player

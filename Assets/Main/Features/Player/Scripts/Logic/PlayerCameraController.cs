@@ -38,6 +38,22 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float bobPositionAmount = 0.055f;
         [SerializeField, Min(0f)] private float bobRollAmount = 1.4f;
 
+        [Header("Jump Camera")]
+        [SerializeField, Min(0f)] private float jumpTakeoffKick = 0.1f;
+        [SerializeField, Min(0f)] private float jumpTakeoffPitch = 2.8f;
+        [SerializeField, Min(0f)] private float fallStretchAmount = 0.035f;
+        [SerializeField, Min(0f)] private float landingKick = 0.22f;
+        [SerializeField, Min(0f)] private float landingPitchKick = 5.5f;
+        [SerializeField, Min(0f)] private float landingShake = 0.32f;
+        [SerializeField, Min(0f)] private float landingFovKick = 2.4f;
+
+        [Header("Stair Camera")]
+        [SerializeField, Min(0f)] private float stairStepKick = 0.11f;
+        [SerializeField, Min(0f)] private float stairPitchKick = 2.2f;
+        [SerializeField, Min(0f)] private float stairRollKick = 2.8f;
+        [SerializeField, Min(0f)] private float stairShake = 0.18f;
+        [SerializeField, Min(0f)] private float impactReturnSpeed = 18f;
+
         private Camera playerCamera;
         private Vector3 baseLocalPosition;
         private float yaw;
@@ -48,6 +64,12 @@ namespace Neighbor.Main.Features.Player
         private float currentFieldOfView;
         private float bobTime;
         private float noiseSeed;
+        private float impactVerticalOffset;
+        private float impactPitchOffset;
+        private float impactRollOffset;
+        private float impactFovOffset;
+        private float impactShake;
+        private float stairStepSide = 1f;
 
         private void Awake()
         {
@@ -123,13 +145,14 @@ namespace Neighbor.Main.Features.Player
                 maximumFieldOfView);
 
             currentFieldOfView = Damp(currentFieldOfView, targetFieldOfView, zoomSmoothing);
-            playerCamera.fieldOfView = currentFieldOfView;
+            playerCamera.fieldOfView = Mathf.Clamp(currentFieldOfView + impactFovOffset, minimumFieldOfView, maximumFieldOfView);
         }
 
         private void UpdateCameraPose(PlayerFrameInput input)
         {
             yawRoot.rotation = Quaternion.Euler(0f, yaw, 0f);
             smoothedPitch = Damp(smoothedPitch, pitch, lookSmoothing);
+            UpdateImpactFeedback();
 
             float leanInput = 0f;
             leanInput -= input.LeanLeftHeld ? 1f : 0f;
@@ -154,12 +177,59 @@ namespace Neighbor.Main.Features.Player
             float wobbleX = Noise(time, 0.13f) * wobbleStrength;
             float wobbleY = Noise(time, 3.71f) * wobbleStrength;
             float wobbleRoll = Noise(time, 8.19f) * wobbleStrength * 5f;
+            float shakeX = Noise(time * 2.4f, 14.23f) * impactShake;
+            float shakeY = Noise(time * 2.1f, 18.67f) * impactShake;
+            float shakeRoll = Noise(time * 2.7f, 22.41f) * impactShake * 12f;
 
             Vector3 leanOffset = Vector3.right * (smoothedLean * leanDistance);
-            transform.localPosition = baseLocalPosition + leanOffset + bobOffset + new Vector3(wobbleX, wobbleY, 0f) * 0.01f;
+            Vector3 impactOffset = new Vector3(shakeX * 0.01f, impactVerticalOffset + shakeY * 0.01f, 0f);
+            transform.localPosition = baseLocalPosition + leanOffset + bobOffset + impactOffset + new Vector3(wobbleX, wobbleY, 0f) * 0.01f;
 
-            float roll = -smoothedLean * leanAngle + wobbleRoll + bobStep * bobRollAmount * moveAmount;
-            transform.localRotation = Quaternion.Euler(smoothedPitch + wobbleY, wobbleX, roll);
+            float roll = -smoothedLean * leanAngle + wobbleRoll + shakeRoll + impactRollOffset + bobStep * bobRollAmount * moveAmount;
+            transform.localRotation = Quaternion.Euler(smoothedPitch + wobbleY + impactPitchOffset, wobbleX, roll);
+        }
+
+        private void UpdateImpactFeedback()
+        {
+            if (playerController != null)
+            {
+                if (playerController.JumpStartedThisFrame)
+                {
+                    impactVerticalOffset -= jumpTakeoffKick;
+                    impactPitchOffset -= jumpTakeoffPitch;
+                    impactShake += jumpTakeoffKick;
+                }
+
+                if (!playerController.IsGrounded && playerController.VerticalSpeed < 0f)
+                {
+                    impactVerticalOffset += Mathf.Clamp01(-playerController.VerticalSpeed / 14f) * fallStretchAmount * Time.deltaTime;
+                }
+
+                if (playerController.LandedThisFrame)
+                {
+                    float impact = Mathf.Max(0.35f, playerController.LandingImpact);
+                    impactVerticalOffset -= landingKick * impact;
+                    impactPitchOffset += landingPitchKick * impact;
+                    impactFovOffset += landingFovKick * impact;
+                    impactShake += landingShake * impact;
+                }
+
+                if (playerController.StepImpactThisFrame)
+                {
+                    float impact = Mathf.Lerp(0.55f, 1f, playerController.StepImpact);
+                    stairStepSide *= -1f;
+                    impactVerticalOffset -= stairStepKick * impact;
+                    impactPitchOffset += stairPitchKick * impact;
+                    impactRollOffset += stairStepSide * stairRollKick * impact;
+                    impactShake += stairShake * impact;
+                }
+            }
+
+            impactVerticalOffset = Damp(impactVerticalOffset, 0f, impactReturnSpeed);
+            impactPitchOffset = Damp(impactPitchOffset, 0f, impactReturnSpeed);
+            impactRollOffset = Damp(impactRollOffset, 0f, impactReturnSpeed);
+            impactFovOffset = Damp(impactFovOffset, 0f, impactReturnSpeed);
+            impactShake = Damp(impactShake, 0f, impactReturnSpeed);
         }
 
         private float Zoom01 => Mathf.InverseLerp(maximumFieldOfView, minimumFieldOfView, currentFieldOfView);

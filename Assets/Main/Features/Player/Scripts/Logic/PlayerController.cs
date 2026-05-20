@@ -27,6 +27,10 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float stanceSmoothTime = 0.08f;
         [SerializeField] private LayerMask crouchObstructionMask = ~0;
 
+        [Header("Step Feedback")]
+        [SerializeField, Min(0f)] private float minimumStepImpactHeight = 0.08f;
+        [SerializeField, Min(0f)] private float stepImpactCooldown = 0.13f;
+
         [Header("Input")]
         [SerializeField, Min(0f)] private float mouseSensitivity = 0.08f;
 
@@ -38,11 +42,18 @@ namespace Neighbor.Main.Features.Player
         private float headHeightVelocity;
         private float controllerHeightVelocity;
         private float currentControllerHeight;
+        private float lastStepImpactTime;
         private readonly Collider[] standCheckHits = new Collider[12];
 
         public Vector2 MoveInput { get; private set; }
         public float MoveAmount { get; private set; }
         public float Speed01 { get; private set; }
+        public float VerticalSpeed => verticalVelocity;
+        public bool JumpStartedThisFrame { get; private set; }
+        public bool LandedThisFrame { get; private set; }
+        public float LandingImpact { get; private set; }
+        public bool StepImpactThisFrame { get; private set; }
+        public float StepImpact { get; private set; }
         public bool IsGrounded { get; private set; }
         public bool IsRunning { get; private set; }
         public bool IsCrouching { get; private set; }
@@ -122,6 +133,12 @@ namespace Neighbor.Main.Features.Player
 
         private void UpdateMovement()
         {
+            JumpStartedThisFrame = false;
+            LandedThisFrame = false;
+            LandingImpact = 0f;
+            StepImpactThisFrame = false;
+            StepImpact = 0f;
+
             bool hasMoveInput = MoveInput.sqrMagnitude > 0.001f;
             IsRunning = LastInput.RunHeld && hasMoveInput && !IsCrouching && MoveInput.y > 0.1f;
 
@@ -140,19 +157,52 @@ namespace Neighbor.Main.Features.Player
             {
                 verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
                 lastGroundedTime = -999f;
+                JumpStartedThisFrame = true;
             }
 
             verticalVelocity += gravity * Time.deltaTime;
 
+            bool wasGrounded = IsGrounded;
+            float previousY = transform.position.y;
+            float previousVerticalVelocity = verticalVelocity;
             Vector3 velocity = horizontalVelocity;
             velocity.y = verticalVelocity;
             characterController.Move(velocity * Time.deltaTime);
+            IsGrounded = characterController.isGrounded;
+
+            if (!wasGrounded && IsGrounded)
+            {
+                LandedThisFrame = true;
+                LandingImpact = Mathf.InverseLerp(groundedStickForce, -18f, previousVerticalVelocity);
+            }
+
+            DetectStepImpact(previousY, wasGrounded);
 
             Vector3 flatVelocity = characterController.velocity;
             flatVelocity.y = 0f;
 
             MoveAmount = Mathf.InverseLerp(0f, runSpeed, flatVelocity.magnitude);
             Speed01 = targetSpeed <= 0f ? 0f : Mathf.Clamp01(flatVelocity.magnitude / runSpeed);
+        }
+
+        private void DetectStepImpact(float previousY, bool wasGrounded)
+        {
+            if (!wasGrounded || !IsGrounded || MoveInput.sqrMagnitude < 0.1f)
+            {
+                return;
+            }
+
+            float climbAmount = transform.position.y - previousY;
+            float maximumStepHeight = characterController.stepOffset + characterController.skinWidth + 0.03f;
+            bool climbedStep = climbAmount >= minimumStepImpactHeight && climbAmount <= maximumStepHeight;
+            if (!climbedStep || Time.time - lastStepImpactTime < stepImpactCooldown)
+            {
+                return;
+            }
+
+            lastStepImpactTime = Time.time;
+            StepImpactThisFrame = true;
+            StepImpact = Mathf.InverseLerp(minimumStepImpactHeight, maximumStepHeight, climbAmount);
         }
 
         private bool CanStandUp()

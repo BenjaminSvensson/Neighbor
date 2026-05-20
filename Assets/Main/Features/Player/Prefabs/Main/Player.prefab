@@ -43,6 +43,7 @@ GameObject:
   - component: {fileID: 1327355640084703705}
   - component: {fileID: 6967929167352787066}
   - component: {fileID: 2801324474213207061}
+  - component: {fileID: 144846750235035850}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -58,7 +59,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4793360982295166136}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -106,7 +107,7 @@ MonoBehaviour:
   walkSpeed: 4.2
   runSpeed: 6.8
   crouchSpeed: 2.3
-  groundAcceleration: 18
+  groundAcceleration: 22
   airAcceleration: 6
   jumpHeight: 1.15
   coyoteTime: 0.12
@@ -117,8 +118,35 @@ MonoBehaviour:
   stanceSmoothTime: 0.08
   crouchObstructionMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 1
+  minimumStepImpactHeight: 0.08
+  stepImpactCooldown: 0.13
   mouseSensitivity: 0.08
+--- !u!143 &144846750235035850
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4793360982295166136}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 2
+  m_Radius: 0.5
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 1, z: 0}
 --- !u!1 &7687572321528905896
 GameObject:
   m_ObjectHideFlags: 0
@@ -292,6 +320,18 @@ MonoBehaviour:
   wobbleFrequency: 1.7
   bobPositionAmount: 0.055
   bobRollAmount: 1.4
+  jumpTakeoffKick: 0.1
+  jumpTakeoffPitch: 2.8
+  fallStretchAmount: 0.035
+  landingKick: 0.22
+  landingPitchKick: 5.5
+  landingShake: 0.32
+  landingFovKick: 2.4
+  stairStepKick: 0.11
+  stairPitchKick: 2.2
+  stairRollKick: 2.8
+  stairShake: 0.18
+  impactReturnSpeed: 18
 --- !u!1001 &7993722895531745334
 PrefabInstance:
   m_ObjectHideFlags: 0
