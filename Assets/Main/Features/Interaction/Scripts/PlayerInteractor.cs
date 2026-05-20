@@ -8,6 +8,9 @@ namespace Neighbor.Main.Features.Interaction
     {
         [Header("Raycast")]
         [SerializeField] private Camera viewCamera;
+        [SerializeField] private InputActionAsset inputActions;
+        [SerializeField] private string interactActionMap = "Player";
+        [SerializeField] private string interactActionName = "Interact";
         [SerializeField, Min(0.1f)] private float interactRange = 3f;
         [SerializeField] private LayerMask interactMask = ~0;
         [SerializeField] private QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.Ignore;
@@ -25,6 +28,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float throwUpwardAssist = 0.8f;
 
         private Pickupable heldPickup;
+        private InputAction interactAction;
         private float releaseButtonDownTime;
         private bool releaseButtonWasHeld;
 
@@ -38,6 +42,19 @@ namespace Neighbor.Main.Features.Interaction
             {
                 viewCamera = GetComponent<Camera>() ?? GetComponentInChildren<Camera>() ?? GetComponentInParent<Camera>();
             }
+
+            ResolveInteractAction();
+        }
+
+        private void OnEnable()
+        {
+            ResolveInteractAction();
+            interactAction?.Enable();
+        }
+
+        private void OnDisable()
+        {
+            interactAction?.Disable();
         }
 
         private void Update()
@@ -45,7 +62,7 @@ namespace Neighbor.Main.Features.Interaction
             Keyboard keyboard = Keyboard.current;
             Mouse mouse = Mouse.current;
 
-            if (keyboard != null && keyboard.eKey.wasPressedThisFrame)
+            if (InteractWasPressedThisFrame(keyboard))
             {
                 TryInteract();
             }
@@ -151,6 +168,30 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             return ViewTransform.position + ViewTransform.forward * holdDistance;
+        }
+
+        private bool InteractWasPressedThisFrame(Keyboard keyboard)
+        {
+            if (interactAction != null)
+            {
+                return interactAction.WasPressedThisFrame();
+            }
+
+            return keyboard != null && keyboard.fKey.wasPressedThisFrame;
+        }
+
+        private void ResolveInteractAction()
+        {
+            if (inputActions == null)
+            {
+                interactAction = null;
+                return;
+            }
+
+            InputActionMap actionMap = inputActions.FindActionMap(interactActionMap, false);
+            interactAction = actionMap != null
+                ? actionMap.FindAction(interactActionName, false)
+                : inputActions.FindAction(interactActionName, false);
         }
 
         private void Reset()

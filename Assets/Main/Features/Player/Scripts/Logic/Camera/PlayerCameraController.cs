@@ -21,6 +21,7 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(1f)] private float minimumFieldOfView = 33f;
         [SerializeField, Min(1f)] private float maximumFieldOfView = 72f;
         [SerializeField, Min(0f)] private float zoomScrollSpeed = 3.5f;
+        [SerializeField, Min(0f)] private float zoomDragSpeed = 0.18f;
         [SerializeField, Min(0f)] private float zoomSmoothing = 12f;
         [SerializeField, Range(0f, 1f)] private float zoomWobbleBoost = 0.55f;
 
@@ -127,7 +128,10 @@ namespace Neighbor.Main.Features.Player
             if (Cursor.lockState == CursorLockMode.Locked)
             {
                 yaw += input.Look.x;
-                pitch = Mathf.Clamp(pitch + input.Look.y, pitchLimits.x, pitchLimits.y);
+                if (!input.ZoomHeld)
+                {
+                    pitch = Mathf.Clamp(pitch + input.Look.y, pitchLimits.x, pitchLimits.y);
+                }
             }
 
             UpdateZoom(input);
@@ -140,6 +144,14 @@ namespace Neighbor.Main.Features.Player
             {
                 scrolledFieldOfView = Mathf.Clamp(
                     scrolledFieldOfView - input.ZoomScroll * zoomScrollSpeed * 0.01f,
+                    minimumFieldOfView,
+                    maximumFieldOfView);
+            }
+
+            if (input.ZoomHeld && Mathf.Abs(input.ZoomDrag) > 0.01f)
+            {
+                scrolledFieldOfView = Mathf.Clamp(
+                    scrolledFieldOfView - input.ZoomDrag * zoomDragSpeed,
                     minimumFieldOfView,
                     maximumFieldOfView);
             }

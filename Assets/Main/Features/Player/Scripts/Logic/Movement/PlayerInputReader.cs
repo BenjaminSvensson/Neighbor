@@ -23,6 +23,7 @@ namespace Neighbor.Main.Features.Player
             move = Vector2.ClampMagnitude(move, 1f);
 
             Vector2 look = mouse != null ? mouse.delta.ReadValue() * mouseSensitivity : Vector2.zero;
+            float zoomDrag = mouse != null ? mouse.delta.ReadValue().y : 0f;
             if (!invertLookY)
             {
                 look.y = -look.y;
@@ -38,6 +39,7 @@ namespace Neighbor.Main.Features.Player
                 LeanLeftHeld = keyboard != null && IsPressed(keyboard.qKey),
                 LeanRightHeld = keyboard != null && IsPressed(keyboard.eKey),
                 ZoomHeld = mouse != null && IsPressed(mouse.middleButton),
+                ZoomDrag = zoomDrag,
                 ZoomScroll = mouse != null ? mouse.scroll.ReadValue().y : 0f,
                 CursorUnlockPressed = keyboard != null && keyboard.escapeKey.wasPressedThisFrame
             };
@@ -59,6 +61,7 @@ namespace Neighbor.Main.Features.Player
         public bool LeanLeftHeld;
         public bool LeanRightHeld;
         public bool ZoomHeld;
+        public float ZoomDrag;
         public float ZoomScroll;
         public bool CursorUnlockPressed;
     }

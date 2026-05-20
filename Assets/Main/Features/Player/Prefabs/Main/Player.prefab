@@ -309,6 +309,7 @@ MonoBehaviour:
   minimumFieldOfView: 33
   maximumFieldOfView: 72
   zoomScrollSpeed: 3.5
+  zoomDragSpeed: 0.18
   zoomSmoothing: 12
   zoomWobbleBoost: 0.55
   leanDistance: 0.4
@@ -345,6 +346,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   viewCamera: {fileID: 8448582708253746554}
+  inputActions: {fileID: 0}
+  interactActionMap: Player
+  interactActionName: Interact
   interactRange: 3
   interactMask:
     serializedVersion: 2
