@@ -21,6 +21,15 @@ namespace Neighbor.Main.Features.Player
         [SerializeField] private float gravity = -24f;
         [SerializeField] private float groundedStickForce = -2f;
 
+        [Header("Ledge Climb")]
+        [SerializeField] private bool enableLedgeClimb = true;
+        [SerializeField, Min(0.1f)] private float ledgeCheckDistance = 0.75f;
+        [SerializeField, Min(0f)] private float ledgeMinimumHeight = 0.45f;
+        [SerializeField, Min(0f)] private float ledgeMaximumHeight = 1.25f;
+        [SerializeField, Min(0f)] private float ledgeTopProbeForwardOffset = 0.35f;
+        [SerializeField, Min(0.01f)] private float ledgeClimbDuration = 0.24f;
+        [SerializeField] private LayerMask ledgeClimbMask = ~0;
+
         [Header("Crouch")]
         [SerializeField, Min(0.1f)] private float standingHeight = 2f;
         [SerializeField, Min(0.1f)] private float crouchingHeight = 1.2f;
@@ -61,6 +70,9 @@ namespace Neighbor.Main.Features.Player
         private Vector3 slideDirection;
         private float currentSlideSpeed;
         private float slideBonusSpeed;
+        private Vector3 ledgeClimbStart;
+        private Vector3 ledgeClimbTarget;
+        private float ledgeClimbTimer;
         private readonly Collider[] standCheckHits = new Collider[12];
 
         public Vector2 MoveInput { get; private set; }
@@ -76,6 +88,7 @@ namespace Neighbor.Main.Features.Player
         public bool IsRunning { get; private set; }
         public bool IsCrouching { get; private set; }
         public bool IsSliding { get; private set; }
+        public bool IsLedgeClimbing { get; private set; }
         public PlayerFrameInput LastInput { get; private set; }
 
         private void Awake()
@@ -105,10 +118,26 @@ namespace Neighbor.Main.Features.Player
         {
             LastInput = PlayerInputReader.ReadFrameInput(mouseSensitivity);
             MoveInput = LastInput.Move;
+            ResetTransientFeedback();
+
+            if (IsLedgeClimbing)
+            {
+                UpdateLedgeClimb();
+                return;
+            }
 
             UpdateGrounding();
             UpdateStance();
             UpdateMovement();
+        }
+
+        private void ResetTransientFeedback()
+        {
+            JumpStartedThisFrame = false;
+            LandedThisFrame = false;
+            LandingImpact = 0f;
+            StepImpactThisFrame = false;
+            StepImpact = 0f;
         }
 
         private void UpdateGrounding()
@@ -152,12 +181,6 @@ namespace Neighbor.Main.Features.Player
 
         private void UpdateMovement()
         {
-            JumpStartedThisFrame = false;
-            LandedThisFrame = false;
-            LandingImpact = 0f;
-            StepImpactThisFrame = false;
-            StepImpact = 0f;
-
             bool hasMoveInput = MoveInput.sqrMagnitude > 0.001f;
             bool wasRunning = IsRunning;
             float currentFlatSpeed = new Vector3(horizontalVelocity.x, 0f, horizontalVelocity.z).magnitude;
@@ -220,6 +243,11 @@ namespace Neighbor.Main.Features.Player
             }
 
             DetectStepImpact(previousY, wasGrounded);
+
+            if (!IsGrounded)
+            {
+                TryStartLedgeClimb();
+            }
 
             Vector3 flatVelocity = characterController.velocity;
             flatVelocity.y = 0f;
@@ -379,6 +407,112 @@ namespace Neighbor.Main.Features.Player
             impulse += Vector3.up * (slideObjectUpwardImpulse * speed01);
 
             hit.rigidbody.AddForceAtPosition(impulse, hit.point, ForceMode.Impulse);
+        }
+
+        private bool TryStartLedgeClimb()
+        {
+            if (!enableLedgeClimb || IsLedgeClimbing || IsCrouching || IsSliding || MoveInput.y < 0.1f)
+            {
+                return false;
+            }
+
+            if (verticalVelocity > 4f)
+            {
+                return false;
+            }
+
+            Vector3 forward = transform.forward;
+            Vector3 wallRayOrigin = transform.position + Vector3.up * (ledgeMinimumHeight + 0.1f);
+            if (!Physics.Raycast(wallRayOrigin, forward, out RaycastHit wallHit, ledgeCheckDistance, ledgeClimbMask, QueryTriggerInteraction.Ignore))
+            {
+                return false;
+            }
+
+            if (wallHit.normal.y > 0.25f)
+            {
+                return false;
+            }
+
+            float topProbeHeight = ledgeMaximumHeight + 0.35f;
+            Vector3 topRayOrigin = wallHit.point + forward * ledgeTopProbeForwardOffset + Vector3.up * topProbeHeight;
+            if (!Physics.Raycast(topRayOrigin, Vector3.down, out RaycastHit topHit, topProbeHeight + 0.5f, ledgeClimbMask, QueryTriggerInteraction.Ignore))
+            {
+                return false;
+            }
+
+            float ledgeHeight = topHit.point.y - transform.position.y;
+            if (ledgeHeight < ledgeMinimumHeight || ledgeHeight > ledgeMaximumHeight)
+            {
+                return false;
+            }
+
+            Vector3 targetPosition = new Vector3(topHit.point.x, topHit.point.y + 0.03f, topHit.point.z);
+            if (!HasStandingClearance(targetPosition))
+            {
+                return false;
+            }
+
+            StartLedgeClimb(targetPosition);
+            return true;
+        }
+
+        private void StartLedgeClimb(Vector3 targetPosition)
+        {
+            IsLedgeClimbing = true;
+            IsSliding = false;
+            IsRunning = false;
+            IsCrouching = false;
+            ledgeClimbTimer = 0f;
+            ledgeClimbStart = transform.position;
+            ledgeClimbTarget = targetPosition;
+            horizontalVelocity = Vector3.zero;
+            verticalVelocity = 0f;
+            characterController.enabled = false;
+        }
+
+        private void UpdateLedgeClimb()
+        {
+            ledgeClimbTimer += Time.deltaTime;
+            float climb01 = Mathf.Clamp01(ledgeClimbTimer / ledgeClimbDuration);
+            float easedClimb = Mathf.SmoothStep(0f, 1f, climb01);
+
+            transform.position = Vector3.Lerp(ledgeClimbStart, ledgeClimbTarget, easedClimb);
+
+            if (climb01 < 1f)
+            {
+                return;
+            }
+
+            characterController.enabled = true;
+            IsLedgeClimbing = false;
+            IsGrounded = true;
+            lastGroundedTime = Time.time;
+            verticalVelocity = groundedStickForce;
+        }
+
+        private bool HasStandingClearance(Vector3 feetPosition)
+        {
+            float radius = Mathf.Max(0.05f, characterController.radius * 0.95f);
+            Vector3 bottom = feetPosition + Vector3.up * (radius + characterController.skinWidth);
+            Vector3 top = feetPosition + Vector3.up * (standingHeight - radius);
+            int hitCount = Physics.OverlapCapsuleNonAlloc(
+                bottom,
+                top,
+                radius,
+                standCheckHits,
+                ledgeClimbMask,
+                QueryTriggerInteraction.Ignore);
+
+            for (int i = 0; i < hitCount; i++)
+            {
+                Collider hit = standCheckHits[i];
+                if (hit != null && !hit.transform.IsChildOf(transform))
+                {
+                    return false;
+                }
+            }
+
+            return hitCount < standCheckHits.Length;
         }
 
         private bool CanStandUp()

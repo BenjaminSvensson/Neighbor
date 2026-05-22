@@ -113,6 +113,15 @@ MonoBehaviour:
   coyoteTime: 0.12
   gravity: -24
   groundedStickForce: -2
+  enableLedgeClimb: 1
+  ledgeCheckDistance: 0.75
+  ledgeMinimumHeight: 0.45
+  ledgeMaximumHeight: 1.25
+  ledgeTopProbeForwardOffset: 0.35
+  ledgeClimbDuration: 0.24
+  ledgeClimbMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
   standingHeight: 2
   crouchingHeight: 1.2
   stanceSmoothTime: 0.08
