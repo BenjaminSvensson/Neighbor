@@ -89,14 +89,14 @@ MonoBehaviour:
   m_Active: 1
   settings:
     renderPassEvent: 600
-    intensity: 0.85
-    scanlineIntensity: 0.35
-    noiseIntensity: 0.18
-    trackingNoise: 0.28
-    chromaticAberration: 0.45
-    horizontalJitter: 0.22
-    verticalRoll: 0.08
-    tapeBleed: 0.22
-    desaturation: 0.25
-    vignette: 0.2
+    intensity: 0.6
+    scanlineIntensity: 0.22
+    noiseIntensity: 0.1
+    trackingNoise: 0.14
+    chromaticAberration: 0.25
+    horizontalJitter: 0.12
+    verticalRoll: 0.04
+    tapeBleed: 0.12
+    desaturation: 0.18
+    vignette: 0.12
   shader: {fileID: 4800000, guid: 15fc42db5c204cf0b210174567acac02, type: 3}

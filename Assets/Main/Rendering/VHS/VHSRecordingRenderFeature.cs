@@ -13,16 +13,16 @@ namespace Neighbor.Rendering
         {
             public RenderPassEvent renderPassEvent = RenderPassEvent.AfterRenderingPostProcessing;
 
-            [Range(0f, 1f)] public float intensity = 0.85f;
-            [Range(0f, 1f)] public float scanlineIntensity = 0.35f;
-            [Range(0f, 1f)] public float noiseIntensity = 0.18f;
-            [Range(0f, 1f)] public float trackingNoise = 0.28f;
-            [Range(0f, 1f)] public float chromaticAberration = 0.45f;
-            [Range(0f, 1f)] public float horizontalJitter = 0.22f;
-            [Range(0f, 1f)] public float verticalRoll = 0.08f;
-            [Range(0f, 1f)] public float tapeBleed = 0.22f;
-            [Range(0f, 1f)] public float desaturation = 0.25f;
-            [Range(0f, 1f)] public float vignette = 0.2f;
+            [Range(0f, 1f)] public float intensity = 0.6f;
+            [Range(0f, 1f)] public float scanlineIntensity = 0.22f;
+            [Range(0f, 1f)] public float noiseIntensity = 0.1f;
+            [Range(0f, 1f)] public float trackingNoise = 0.14f;
+            [Range(0f, 1f)] public float chromaticAberration = 0.25f;
+            [Range(0f, 1f)] public float horizontalJitter = 0.12f;
+            [Range(0f, 1f)] public float verticalRoll = 0.04f;
+            [Range(0f, 1f)] public float tapeBleed = 0.12f;
+            [Range(0f, 1f)] public float desaturation = 0.18f;
+            [Range(0f, 1f)] public float vignette = 0.12f;
         }
 
         [SerializeField] Settings settings = new();

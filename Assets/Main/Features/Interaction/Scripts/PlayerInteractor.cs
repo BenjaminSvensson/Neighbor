@@ -24,6 +24,7 @@ namespace Neighbor.Main.Features.Interaction
 
         [Header("Throwing")]
         [SerializeField, Min(0f)] private float throwHoldThreshold = 0.22f;
+        [SerializeField, Min(0f)] private float throwChargePullDistance = 0.35f;
         [SerializeField, Min(0f)] private float throwForce = 8.5f;
         [SerializeField, Min(0f)] private float throwUpwardAssist = 0.8f;
 
@@ -164,10 +165,27 @@ namespace Neighbor.Main.Features.Interaction
         {
             if (holdPoint != null)
             {
-                return holdPoint.position;
+                return holdPoint.position - ViewTransform.forward * ThrowChargePullAmount;
             }
 
-            return ViewTransform.position + ViewTransform.forward * holdDistance;
+            return ViewTransform.position + ViewTransform.forward * (holdDistance - ThrowChargePullAmount);
+        }
+
+        private float ThrowChargePullAmount
+        {
+            get
+            {
+                if (!releaseButtonWasHeld)
+                {
+                    return 0f;
+                }
+
+                float charge01 = throwHoldThreshold <= 0f
+                    ? 1f
+                    : Mathf.Clamp01((Time.time - releaseButtonDownTime) / throwHoldThreshold);
+
+                return Mathf.SmoothStep(0f, throwChargePullDistance, charge01);
+            }
         }
 
         private bool InteractWasPressedThisFrame(Keyboard keyboard)
