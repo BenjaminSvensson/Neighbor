@@ -147,3 +147,4 @@ MonoBehaviour:
   heldDrag: 8
   heldAngularDrag: 10
   alignToCameraWhileHeld: 1
+  disableCollidersWhileHeld: 1

@@ -177,7 +177,7 @@ namespace Neighbor.Main.Features.Interaction
                 return interactAction.WasPressedThisFrame();
             }
 
-            return keyboard != null && keyboard.fKey.wasPressedThisFrame;
+            return keyboard != null && keyboard.eKey.wasPressedThisFrame;
         }
 
         private void ResolveInteractAction()

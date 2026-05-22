@@ -11,9 +11,13 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float heldDrag = 8f;
         [SerializeField, Min(0f)] private float heldAngularDrag = 10f;
         [SerializeField] private bool alignToCameraWhileHeld = true;
+        [SerializeField] private bool disableCollidersWhileHeld = true;
 
         private Rigidbody body;
+        private Collider[] ownColliders;
+        private bool[] originalColliderEnabled;
         private bool wasUsingGravity;
+        private bool wasKinematic;
         private float originalDrag;
         private float originalAngularDrag;
         private CollisionDetectionMode originalCollisionDetection;
@@ -24,6 +28,16 @@ namespace Neighbor.Main.Features.Interaction
         private void Awake()
         {
             body = GetComponent<Rigidbody>();
+            ownColliders = GetComponentsInChildren<Collider>();
+            originalColliderEnabled = new bool[ownColliders.Length];
+        }
+
+        private void OnDisable()
+        {
+            if (IsHeld)
+            {
+                RestorePhysics();
+            }
         }
 
         public bool CanInteract(PlayerInteractor interactor)
@@ -45,16 +59,22 @@ namespace Neighbor.Main.Features.Interaction
 
             IsHeld = true;
             wasUsingGravity = body.useGravity;
+            wasKinematic = body.isKinematic;
             originalDrag = body.linearDamping;
             originalAngularDrag = body.angularDamping;
             originalCollisionDetection = body.collisionDetectionMode;
             originalInterpolation = body.interpolation;
 
             body.useGravity = false;
+            body.isKinematic = true;
+            body.linearVelocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
             body.linearDamping = heldDrag;
             body.angularDamping = heldAngularDrag;
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             body.interpolation = RigidbodyInterpolation.Interpolate;
+
+            SetHeldColliderState(false);
         }
 
         public void MoveHeld(
@@ -69,28 +89,17 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            Vector3 toTarget = targetPosition - body.position;
-            Vector3 targetVelocity = Vector3.ClampMagnitude(toTarget * followStrength, maxVelocity);
-            body.linearVelocity = targetVelocity;
+            float followStep = Mathf.Clamp01(followStrength * Time.fixedDeltaTime);
+            Vector3 nextPosition = Vector3.Lerp(body.position, targetPosition, followStep);
+            body.MovePosition(nextPosition);
 
             if (!alignToCameraWhileHeld)
             {
                 return;
             }
 
-            Quaternion rotationDelta = targetRotation * Quaternion.Inverse(body.rotation);
-            rotationDelta.ToAngleAxis(out float angle, out Vector3 axis);
-            if (angle > 180f)
-            {
-                angle -= 360f;
-            }
-
-            if (axis.sqrMagnitude < 0.001f)
-            {
-                return;
-            }
-
-            body.angularVelocity = axis.normalized * (angle * Mathf.Deg2Rad * rotationStrength);
+            float rotationStep = Mathf.Clamp01(rotationStrength * Time.fixedDeltaTime);
+            body.MoveRotation(Quaternion.Slerp(body.rotation, targetRotation, rotationStep));
         }
 
         public void Drop()
@@ -112,11 +121,39 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             IsHeld = false;
+            SetHeldColliderState(true);
             body.useGravity = wasUsingGravity;
+            body.isKinematic = wasKinematic;
             body.linearDamping = originalDrag;
             body.angularDamping = originalAngularDrag;
             body.collisionDetectionMode = originalCollisionDetection;
             body.interpolation = originalInterpolation;
+        }
+
+        private void SetHeldColliderState(bool restore)
+        {
+            if (!disableCollidersWhileHeld || ownColliders == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < ownColliders.Length; i++)
+            {
+                Collider ownCollider = ownColliders[i];
+                if (ownCollider == null)
+                {
+                    continue;
+                }
+
+                if (restore)
+                {
+                    ownCollider.enabled = originalColliderEnabled[i];
+                    continue;
+                }
+
+                originalColliderEnabled[i] = ownCollider.enabled;
+                ownCollider.enabled = false;
+            }
         }
 
         private void Reset()
