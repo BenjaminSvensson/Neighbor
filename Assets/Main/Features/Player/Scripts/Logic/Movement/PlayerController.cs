@@ -33,6 +33,12 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float slideEndSpeed = 2.4f;
         [SerializeField, Min(0.01f)] private float slideDuration = 0.55f;
         [SerializeField, Min(0f)] private float slideSteerStrength = 3f;
+        [SerializeField, Min(0f)] private float sprintSlideGraceTime = 0.18f;
+        [SerializeField, Min(0f)] private float slideDownhillAcceleration = 10f;
+        [SerializeField, Min(0f)] private float slideUphillDeceleration = 8f;
+        [SerializeField, Min(0f)] private float slideMaximumSlopeSpeed = 12f;
+        [SerializeField, Min(0f)] private float slideObjectImpulse = 8f;
+        [SerializeField, Min(0f)] private float slideObjectUpwardImpulse = 1.5f;
 
         [Header("Step Feedback")]
         [SerializeField, Min(0f)] private float minimumStepImpactHeight = 0.08f;
@@ -50,8 +56,11 @@ namespace Neighbor.Main.Features.Player
         private float controllerHeightVelocity;
         private float currentControllerHeight;
         private float lastStepImpactTime;
+        private float lastSprintIntentTime;
         private float slideTimer;
         private Vector3 slideDirection;
+        private float currentSlideSpeed;
+        private float slideBonusSpeed;
         private readonly Collider[] standCheckHits = new Collider[12];
 
         public Vector2 MoveInput { get; private set; }
@@ -152,19 +161,32 @@ namespace Neighbor.Main.Features.Player
             bool hasMoveInput = MoveInput.sqrMagnitude > 0.001f;
             bool wasRunning = IsRunning;
             float currentFlatSpeed = new Vector3(horizontalVelocity.x, 0f, horizontalVelocity.z).magnitude;
+            bool hasSprintIntent = LastInput.RunHeld && hasMoveInput && MoveInput.y > 0.1f;
 
-            if (LastInput.CrouchPressed && wasRunning && IsGrounded && currentFlatSpeed >= minimumSlideStartSpeed)
+            if (hasSprintIntent)
+            {
+                lastSprintIntentTime = Time.time;
+            }
+
+            bool canGraceSlide = Time.time - lastSprintIntentTime <= sprintSlideGraceTime;
+            if (LastInput.CrouchPressed && (wasRunning || canGraceSlide) && IsGrounded && currentFlatSpeed >= minimumSlideStartSpeed)
             {
                 StartSlide();
             }
 
             UpdateSlideState(hasMoveInput);
-            IsRunning = LastInput.RunHeld && hasMoveInput && !IsCrouching && !IsSliding && MoveInput.y > 0.1f;
+            IsRunning = hasSprintIntent && !IsCrouching && !IsSliding;
 
             float targetSpeed = IsCrouching ? crouchSpeed : IsRunning ? runSpeed : walkSpeed;
             Vector3 inputDirection = transform.right * MoveInput.x + transform.forward * MoveInput.y;
+            currentSlideSpeed = IsSliding ? CurrentSlideSpeed : 0f;
+            if (IsSliding)
+            {
+                ApplySlideSlopeAcceleration();
+            }
+
             Vector3 targetHorizontalVelocity = IsSliding
-                ? slideDirection * CurrentSlideSpeed
+                ? slideDirection * currentSlideSpeed
                 : inputDirection * targetSpeed;
             float acceleration = IsGrounded ? groundAcceleration : airAcceleration;
 
@@ -210,6 +232,7 @@ namespace Neighbor.Main.Features.Player
         {
             IsSliding = true;
             slideTimer = slideDuration;
+            slideBonusSpeed = 0f;
 
             Vector3 flatVelocity = horizontalVelocity;
             flatVelocity.y = 0f;
@@ -232,6 +255,7 @@ namespace Neighbor.Main.Features.Player
             if (!LastInput.CrouchHeld || !IsGrounded || slideTimer <= 0f)
             {
                 IsSliding = false;
+                slideBonusSpeed = 0f;
                 return;
             }
 
@@ -255,8 +279,58 @@ namespace Neighbor.Main.Features.Player
             get
             {
                 float slide01 = Mathf.Clamp01(1f - slideTimer / slideDuration);
-                return Mathf.Lerp(slideStartSpeed, slideEndSpeed, slide01);
+                return Mathf.Min(Mathf.Lerp(slideStartSpeed, slideEndSpeed, slide01) + slideBonusSpeed, slideMaximumSlopeSpeed);
             }
+        }
+
+        private void ApplySlideSlopeAcceleration()
+        {
+            if (!TryGetGroundNormal(out Vector3 groundNormal))
+            {
+                return;
+            }
+
+            Vector3 downhillDirection = Vector3.ProjectOnPlane(Vector3.down, groundNormal);
+            if (downhillDirection.sqrMagnitude < 0.001f)
+            {
+                slideBonusSpeed = Mathf.MoveTowards(slideBonusSpeed, 0f, slideUphillDeceleration * Time.deltaTime);
+                return;
+            }
+
+            float downhillAlignment = Vector3.Dot(slideDirection.normalized, downhillDirection.normalized);
+            if (downhillAlignment > 0f)
+            {
+                slideBonusSpeed += slideDownhillAcceleration * downhillAlignment * Time.deltaTime;
+                slideBonusSpeed = Mathf.Min(slideBonusSpeed, Mathf.Max(0f, slideMaximumSlopeSpeed - slideEndSpeed));
+                return;
+            }
+
+            slideBonusSpeed = Mathf.MoveTowards(
+                slideBonusSpeed,
+                0f,
+                slideUphillDeceleration * -downhillAlignment * Time.deltaTime);
+        }
+
+        private bool TryGetGroundNormal(out Vector3 groundNormal)
+        {
+            Vector3 origin = transform.position + Vector3.up * 0.2f;
+            float castDistance = currentControllerHeight * 0.5f + 0.35f;
+
+            if (Physics.SphereCast(
+                origin,
+                Mathf.Max(0.05f, characterController.radius * 0.9f),
+                Vector3.down,
+                out RaycastHit hit,
+                castDistance,
+                ~0,
+                QueryTriggerInteraction.Ignore))
+            {
+                groundNormal = hit.normal;
+                return true;
+            }
+
+            groundNormal = Vector3.up;
+            return false;
         }
 
         private void DetectStepImpact(float previousY, bool wasGrounded)
@@ -277,6 +351,34 @@ namespace Neighbor.Main.Features.Player
             lastStepImpactTime = Time.time;
             StepImpactThisFrame = true;
             StepImpact = Mathf.InverseLerp(minimumStepImpactHeight, maximumStepHeight, climbAmount);
+        }
+
+        private void OnControllerColliderHit(ControllerColliderHit hit)
+        {
+            if (!IsSliding || hit.rigidbody == null || hit.rigidbody.isKinematic)
+            {
+                return;
+            }
+
+            if (hit.moveDirection.y < -0.25f)
+            {
+                return;
+            }
+
+            Vector3 impulseDirection = slideDirection.sqrMagnitude > 0.001f
+                ? slideDirection
+                : new Vector3(hit.moveDirection.x, 0f, hit.moveDirection.z).normalized;
+
+            if (impulseDirection.sqrMagnitude < 0.001f)
+            {
+                impulseDirection = transform.forward;
+            }
+
+            float speed01 = Mathf.InverseLerp(slideEndSpeed, slideStartSpeed, currentSlideSpeed);
+            Vector3 impulse = impulseDirection.normalized * (slideObjectImpulse * speed01);
+            impulse += Vector3.up * (slideObjectUpwardImpulse * speed01);
+
+            hit.rigidbody.AddForceAtPosition(impulse, hit.point, ForceMode.Impulse);
         }
 
         private bool CanStandUp()

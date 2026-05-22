@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace Neighbor.Main.Features.Player
 {
@@ -109,8 +110,7 @@ namespace Neighbor.Main.Features.Player
         {
             if (lockCursorOnStart)
             {
-                Cursor.lockState = CursorLockMode.Locked;
-                Cursor.visible = false;
+                SetCursorLocked(true);
             }
         }
 
@@ -120,9 +120,11 @@ namespace Neighbor.Main.Features.Player
 
             if (input.CursorUnlockPressed)
             {
-                bool shouldLock = Cursor.lockState != CursorLockMode.Locked;
-                Cursor.lockState = shouldLock ? CursorLockMode.Locked : CursorLockMode.None;
-                Cursor.visible = !shouldLock;
+                SetCursorLocked(false);
+            }
+            else if (Cursor.lockState != CursorLockMode.Locked && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+            {
+                SetCursorLocked(true);
             }
 
             if (Cursor.lockState == CursorLockMode.Locked)
@@ -278,6 +280,12 @@ namespace Neighbor.Main.Features.Player
         {
             angle %= 360f;
             return angle > 180f ? angle - 360f : angle;
+        }
+
+        private static void SetCursorLocked(bool locked)
+        {
+            Cursor.lockState = locked ? CursorLockMode.Locked : CursorLockMode.None;
+            Cursor.visible = !locked;
         }
 
         private void Reset()

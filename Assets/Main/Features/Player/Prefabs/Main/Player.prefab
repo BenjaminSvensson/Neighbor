@@ -104,8 +104,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerHead: {fileID: 1357196244085932726}
-  walkSpeed: 4.2
-  runSpeed: 6.8
+  walkSpeed: 5.4
+  runSpeed: 7.4
   crouchSpeed: 2.3
   groundAcceleration: 22
   airAcceleration: 6
@@ -120,10 +120,16 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 1
   minimumSlideStartSpeed: 5.2
-  slideStartSpeed: 8.2
+  slideStartSpeed: 9.2
   slideEndSpeed: 2.4
-  slideDuration: 0.55
+  slideDuration: 0.7
   slideSteerStrength: 3
+  sprintSlideGraceTime: 0.6
+  slideDownhillAcceleration: 10
+  slideUphillDeceleration: 8
+  slideMaximumSlopeSpeed: 12
+  slideObjectImpulse: 8
+  slideObjectUpwardImpulse: 1.5
   minimumStepImpactHeight: 0.08
   stepImpactCooldown: 0.13
   mouseSensitivity: 0.08

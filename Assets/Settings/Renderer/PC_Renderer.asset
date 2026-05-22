@@ -37,8 +37,9 @@ MonoBehaviour:
   - {fileID: 7833122117494664109}
   - {fileID: 6123456789012345680}
   - {fileID: 6123456789012345682}
+  - {fileID: 6123456789012345684}
   - {fileID: 6123456789012345678}
-  m_RendererFeatureMap: ad6b866f10d7b46c50f3889281e3fa5452f3889281e3fa544ef3889281e3fa54
+  m_RendererFeatureMap: ad6b866f10d7b46c50f3889281e3fa5452f3889281e3fa5454f3889281e3fa544ef3889281e3fa54
   m_UseNativeRenderPass: 1
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   m_AssetVersion: 2
@@ -140,6 +141,28 @@ MonoBehaviour:
     grain: 0.12
     colorBleed: 0.18
   shader: {fileID: 4800000, guid: bbda92f9d7d64047ad9218f55a9c4916, type: 3}
+--- !u!114 &6123456789012345684
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 42ee0cd8b989475ab9de984354d83124, type: 3}
+  m_Name: Dream Leakage
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  settings:
+    renderPassEvent: 600
+    intensity: 0.55
+    lightLeak: 0.45
+    spectralHalo: 0.38
+    lensBreathing: 0.2
+    dreamTint: 0.3
+    pulse: 0.25
+  shader: {fileID: 4800000, guid: a0c9ac30c1b0443b929536b9c33aab1f, type: 3}
 --- !u!114 &6123456789012345678
 MonoBehaviour:
   m_ObjectHideFlags: 0
