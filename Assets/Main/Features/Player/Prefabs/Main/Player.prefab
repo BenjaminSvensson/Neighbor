@@ -309,7 +309,7 @@ MonoBehaviour:
   defaultFieldOfView: 60
   minimumFieldOfView: 33
   maximumFieldOfView: 72
-  zoomScrollSpeed: 3.5
+  zoomScrollSpeed: 5
   zoomDragSpeed: 0.18
   zoomSmoothing: 12
   zoomWobbleBoost: 0.55
@@ -351,9 +351,10 @@ MonoBehaviour:
   interactActionMap: Player
   interactActionName: Interact
   interactRange: 3
+  interactRadius: 0.18
   interactMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 64
   triggerInteraction: 1
   holdPoint: {fileID: 7098320009907703960}
   holdDistance: 1.65
@@ -389,7 +390,7 @@ Transform:
   m_GameObject: {fileID: 8887157694786461502}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.8, z: 1}
+  m_LocalPosition: {x: 0, y: -0.5, z: 1.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -447,7 +448,9 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 3600286444276436676, guid: ccc415abeb3e3734ea058bf3e7a9b01f, type: 3}
+    - {fileID: 5008554305159189935, guid: ccc415abeb3e3734ea058bf3e7a9b01f, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []

@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 100004}
   - component: {fileID: 100005}
   - component: {fileID: 100006}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: PickupableBox
   m_TagString: Untagged
   m_Icon: {fileID: 0}

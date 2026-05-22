@@ -28,8 +28,9 @@ MonoBehaviour:
     probeVolumeBlendStatesCS: {fileID: 0}
   m_RendererFeatures:
   - {fileID: 6123456789012345681}
+  - {fileID: 6123456789012345683}
   - {fileID: 6123456789012345679}
-  m_RendererFeatureMap: 51f3889281e3fa544ff3889281e3fa54
+  m_RendererFeatureMap: 51f3889281e3fa5453f3889281e3fa544ff3889281e3fa54
   m_UseNativeRenderPass: 1
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   m_AssetVersion: 2
@@ -74,6 +75,28 @@ MonoBehaviour:
     ditherStrength: 0.18
     gridStrength: 0.12
   shader: {fileID: 4800000, guid: 2a46d2bba09d49e4a8a5fb3b89cff75f, type: 3}
+--- !u!114 &6123456789012345683
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec010e10df48431ca2cfbf2810d0a1d4, type: 3}
+  m_Name: Seventies Film
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  settings:
+    renderPassEvent: 600
+    intensity: 0.75
+    warmth: 0.45
+    fadedContrast: 0.35
+    greenShift: 0.16
+    grain: 0.12
+    colorBleed: 0.18
+  shader: {fileID: 4800000, guid: bbda92f9d7d64047ad9218f55a9c4916, type: 3}
 --- !u!114 &6123456789012345679
 MonoBehaviour:
   m_ObjectHideFlags: 0

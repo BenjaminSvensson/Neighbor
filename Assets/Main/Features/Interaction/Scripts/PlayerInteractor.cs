@@ -12,6 +12,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private string interactActionMap = "Player";
         [SerializeField] private string interactActionName = "Interact";
         [SerializeField, Min(0.1f)] private float interactRange = 3f;
+        [SerializeField, Min(0f)] private float interactRadius = 0.18f;
         [SerializeField] private LayerMask interactMask = ~0;
         [SerializeField] private QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.Ignore;
 
@@ -30,6 +31,8 @@ namespace Neighbor.Main.Features.Interaction
 
         private Pickupable heldPickup;
         private InputAction interactAction;
+        private Collider[] playerColliders;
+        private readonly RaycastHit[] interactHits = new RaycastHit[12];
         private float releaseButtonDownTime;
         private bool releaseButtonWasHeld;
 
@@ -44,6 +47,7 @@ namespace Neighbor.Main.Features.Interaction
                 viewCamera = GetComponent<Camera>() ?? GetComponentInChildren<Camera>() ?? GetComponentInParent<Camera>();
             }
 
+            playerColliders = GetComponentsInParent<Collider>();
             ResolveInteractAction();
         }
 
@@ -128,12 +132,8 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             Ray ray = new Ray(ViewTransform.position, ViewTransform.forward);
-            if (!Physics.Raycast(ray, out RaycastHit hit, interactRange, interactMask, triggerInteraction))
-            {
-                return;
-            }
+            IInteractable interactable = FindBestInteractable(ray);
 
-            IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
             if (interactable != null && interactable.CanInteract(this))
             {
                 interactable.Interact(this);
@@ -190,12 +190,61 @@ namespace Neighbor.Main.Features.Interaction
 
         private bool InteractWasPressedThisFrame(Keyboard keyboard)
         {
-            if (interactAction != null)
+            bool actionPressed = interactAction != null && interactAction.WasPressedThisFrame();
+            bool fallbackPressed = keyboard != null && keyboard.eKey.wasPressedThisFrame;
+
+            return actionPressed || fallbackPressed;
+        }
+
+        private IInteractable FindBestInteractable(Ray ray)
+        {
+            int hitCount = interactRadius > 0f
+                ? Physics.SphereCastNonAlloc(ray, interactRadius, interactHits, interactRange, interactMask, triggerInteraction)
+                : Physics.RaycastNonAlloc(ray, interactHits, interactRange, interactMask, triggerInteraction);
+
+            IInteractable bestInteractable = null;
+            float bestDistance = float.PositiveInfinity;
+
+            for (int i = 0; i < hitCount; i++)
             {
-                return interactAction.WasPressedThisFrame();
+                RaycastHit hit = interactHits[i];
+                if (hit.collider == null || IsPlayerCollider(hit.collider))
+                {
+                    continue;
+                }
+
+                IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
+                if (interactable == null || !interactable.CanInteract(this))
+                {
+                    continue;
+                }
+
+                if (hit.distance < bestDistance)
+                {
+                    bestDistance = hit.distance;
+                    bestInteractable = interactable;
+                }
             }
 
-            return keyboard != null && keyboard.eKey.wasPressedThisFrame;
+            return bestInteractable;
+        }
+
+        private bool IsPlayerCollider(Collider collider)
+        {
+            if (playerColliders == null)
+            {
+                return false;
+            }
+
+            foreach (Collider playerCollider in playerColliders)
+            {
+                if (playerCollider == collider)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void ResolveInteractAction()

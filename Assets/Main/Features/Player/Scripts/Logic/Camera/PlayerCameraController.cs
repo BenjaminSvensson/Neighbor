@@ -142,8 +142,12 @@ namespace Neighbor.Main.Features.Player
         {
             if (Mathf.Abs(input.ZoomScroll) > 0.01f)
             {
+                float scrollSteps = Mathf.Abs(input.ZoomScroll) > 10f
+                    ? input.ZoomScroll / 120f
+                    : input.ZoomScroll;
+
                 scrolledFieldOfView = Mathf.Clamp(
-                    scrolledFieldOfView - input.ZoomScroll * zoomScrollSpeed * 0.01f,
+                    scrolledFieldOfView - scrollSteps * zoomScrollSpeed,
                     minimumFieldOfView,
                     maximumFieldOfView);
             }
