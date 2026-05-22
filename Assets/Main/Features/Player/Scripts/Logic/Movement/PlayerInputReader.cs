@@ -36,6 +36,7 @@ namespace Neighbor.Main.Features.Player
                 JumpPressed = keyboard != null && keyboard.spaceKey.wasPressedThisFrame,
                 RunHeld = keyboard != null && IsPressed(keyboard.leftShiftKey),
                 CrouchHeld = keyboard != null && IsPressed(keyboard.leftCtrlKey),
+                CrouchPressed = keyboard != null && keyboard.leftCtrlKey.wasPressedThisFrame,
                 LeanLeftHeld = keyboard != null && IsPressed(keyboard.zKey),
                 LeanRightHeld = keyboard != null && IsPressed(keyboard.cKey),
                 ZoomHeld = mouse != null && IsPressed(mouse.middleButton),
@@ -58,6 +59,7 @@ namespace Neighbor.Main.Features.Player
         public bool JumpPressed;
         public bool RunHeld;
         public bool CrouchHeld;
+        public bool CrouchPressed;
         public bool LeanLeftHeld;
         public bool LeanRightHeld;
         public bool ZoomHeld;

@@ -27,6 +27,13 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float stanceSmoothTime = 0.08f;
         [SerializeField] private LayerMask crouchObstructionMask = ~0;
 
+        [Header("Slide")]
+        [SerializeField, Min(0f)] private float minimumSlideStartSpeed = 5.2f;
+        [SerializeField, Min(0f)] private float slideStartSpeed = 8.2f;
+        [SerializeField, Min(0f)] private float slideEndSpeed = 2.4f;
+        [SerializeField, Min(0.01f)] private float slideDuration = 0.55f;
+        [SerializeField, Min(0f)] private float slideSteerStrength = 3f;
+
         [Header("Step Feedback")]
         [SerializeField, Min(0f)] private float minimumStepImpactHeight = 0.08f;
         [SerializeField, Min(0f)] private float stepImpactCooldown = 0.13f;
@@ -43,6 +50,8 @@ namespace Neighbor.Main.Features.Player
         private float controllerHeightVelocity;
         private float currentControllerHeight;
         private float lastStepImpactTime;
+        private float slideTimer;
+        private Vector3 slideDirection;
         private readonly Collider[] standCheckHits = new Collider[12];
 
         public Vector2 MoveInput { get; private set; }
@@ -57,6 +66,7 @@ namespace Neighbor.Main.Features.Player
         public bool IsGrounded { get; private set; }
         public bool IsRunning { get; private set; }
         public bool IsCrouching { get; private set; }
+        public bool IsSliding { get; private set; }
         public PlayerFrameInput LastInput { get; private set; }
 
         private void Awake()
@@ -140,11 +150,22 @@ namespace Neighbor.Main.Features.Player
             StepImpact = 0f;
 
             bool hasMoveInput = MoveInput.sqrMagnitude > 0.001f;
-            IsRunning = LastInput.RunHeld && hasMoveInput && !IsCrouching && MoveInput.y > 0.1f;
+            bool wasRunning = IsRunning;
+            float currentFlatSpeed = new Vector3(horizontalVelocity.x, 0f, horizontalVelocity.z).magnitude;
+
+            if (LastInput.CrouchPressed && wasRunning && IsGrounded && currentFlatSpeed >= minimumSlideStartSpeed)
+            {
+                StartSlide();
+            }
+
+            UpdateSlideState(hasMoveInput);
+            IsRunning = LastInput.RunHeld && hasMoveInput && !IsCrouching && !IsSliding && MoveInput.y > 0.1f;
 
             float targetSpeed = IsCrouching ? crouchSpeed : IsRunning ? runSpeed : walkSpeed;
             Vector3 inputDirection = transform.right * MoveInput.x + transform.forward * MoveInput.y;
-            Vector3 targetHorizontalVelocity = inputDirection * targetSpeed;
+            Vector3 targetHorizontalVelocity = IsSliding
+                ? slideDirection * CurrentSlideSpeed
+                : inputDirection * targetSpeed;
             float acceleration = IsGrounded ? groundAcceleration : airAcceleration;
 
             horizontalVelocity = Vector3.MoveTowards(
@@ -183,6 +204,59 @@ namespace Neighbor.Main.Features.Player
 
             MoveAmount = Mathf.InverseLerp(0f, runSpeed, flatVelocity.magnitude);
             Speed01 = targetSpeed <= 0f ? 0f : Mathf.Clamp01(flatVelocity.magnitude / runSpeed);
+        }
+
+        private void StartSlide()
+        {
+            IsSliding = true;
+            slideTimer = slideDuration;
+
+            Vector3 flatVelocity = horizontalVelocity;
+            flatVelocity.y = 0f;
+            slideDirection = flatVelocity.sqrMagnitude > 0.01f
+                ? flatVelocity.normalized
+                : transform.forward;
+
+            horizontalVelocity = slideDirection * Mathf.Max(slideStartSpeed, flatVelocity.magnitude);
+        }
+
+        private void UpdateSlideState(bool hasMoveInput)
+        {
+            if (!IsSliding)
+            {
+                return;
+            }
+
+            slideTimer -= Time.deltaTime;
+
+            if (!LastInput.CrouchHeld || !IsGrounded || slideTimer <= 0f)
+            {
+                IsSliding = false;
+                return;
+            }
+
+            if (!hasMoveInput || slideSteerStrength <= 0f)
+            {
+                return;
+            }
+
+            Vector3 inputDirection = transform.right * MoveInput.x + transform.forward * MoveInput.y;
+            if (inputDirection.sqrMagnitude > 0.001f)
+            {
+                slideDirection = Vector3.Slerp(
+                    slideDirection,
+                    inputDirection.normalized,
+                    slideSteerStrength * Time.deltaTime).normalized;
+            }
+        }
+
+        private float CurrentSlideSpeed
+        {
+            get
+            {
+                float slide01 = Mathf.Clamp01(1f - slideTimer / slideDuration);
+                return Mathf.Lerp(slideStartSpeed, slideEndSpeed, slide01);
+            }
         }
 
         private void DetectStepImpact(float previousY, bool wasGrounded)

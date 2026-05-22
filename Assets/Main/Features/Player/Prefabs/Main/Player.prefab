@@ -119,6 +119,11 @@ MonoBehaviour:
   crouchObstructionMask:
     serializedVersion: 2
     m_Bits: 1
+  minimumSlideStartSpeed: 5.2
+  slideStartSpeed: 8.2
+  slideEndSpeed: 2.4
+  slideDuration: 0.55
+  slideSteerStrength: 3
   minimumStepImpactHeight: 0.08
   stepImpactCooldown: 0.13
   mouseSensitivity: 0.08
