@@ -1,4 +1,6 @@
+using Neighbor.Main.Features.Neighbor;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Neighbor.Main.Features.Player
 {
@@ -78,6 +80,7 @@ namespace Neighbor.Main.Features.Player
         private float airborneTimer;
         private float heavyLandingSlowTimer;
         private float heavyLandingSlowImpact;
+        private bool isResettingScene;
         private Vector3 slideDirection;
         private float currentSlideSpeed;
         private float slideBonusSpeed;
@@ -441,6 +444,12 @@ namespace Neighbor.Main.Features.Player
 
         private void OnControllerColliderHit(ControllerColliderHit hit)
         {
+            if (hit.collider != null && hit.collider.GetComponentInParent<NeighborBrain>() != null)
+            {
+                ResetCurrentScene();
+                return;
+            }
+
             if (!IsSliding || hit.rigidbody == null || hit.rigidbody.isKinematic)
             {
                 return;
@@ -465,6 +474,17 @@ namespace Neighbor.Main.Features.Player
             impulse += Vector3.up * (slideObjectUpwardImpulse * speed01);
 
             hit.rigidbody.AddForceAtPosition(impulse, hit.point, ForceMode.Impulse);
+        }
+
+        private void ResetCurrentScene()
+        {
+            if (isResettingScene)
+            {
+                return;
+            }
+
+            isResettingScene = true;
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
 
         private bool TryStartLedgeClimb()

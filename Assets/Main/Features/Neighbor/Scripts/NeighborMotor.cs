@@ -43,6 +43,13 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0.01f)] private float chaseClimbDuration = 0.24f;
         [SerializeField, Min(0f)] private float chaseClimbArcHeight = 0.45f;
 
+        [Header("Height Route Search")]
+        [SerializeField, Min(0f)] private float heightAssistSearchRadius = 8f;
+        [SerializeField, Min(0f)] private float heightAssistMinimumGain = 0.35f;
+        [SerializeField, Min(0f)] private float heightAssistTargetHeightPadding = 0.4f;
+        [SerializeField, Range(4, 32)] private int heightAssistRadialSamples = 16;
+        [SerializeField, Range(1, 6)] private int heightAssistRings = 3;
+
         [Header("Chase Drop Assist")]
         [SerializeField] private bool enableTargetDropAssist = true;
         [SerializeField, Min(0f)] private float targetDropHorizontalReach = 3.2f;
@@ -54,6 +61,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         private NavMeshAgent agent;
         private Coroutine traversalRoutine;
+        private Coroutine knockbackRoutine;
         private Vector3 requestedDestination;
         private bool hasRequestedDestination;
         private float offMeshChaseUntilTime;
@@ -137,6 +145,31 @@ namespace Neighbor.Main.Features.Neighbor
             return agent.SetDestination(hit.position);
         }
 
+        public bool CanReach(Vector3 destination, out float pathDistance, out Vector3 sampledPosition)
+        {
+            pathDistance = float.PositiveInfinity;
+            sampledPosition = destination;
+            if (agent == null || !agent.enabled || !agent.isOnNavMesh)
+            {
+                return false;
+            }
+
+            if (!NavMesh.SamplePosition(destination, out NavMeshHit hit, destinationSampleRadius, agent.areaMask))
+            {
+                return false;
+            }
+
+            NavMeshPath path = new NavMeshPath();
+            if (!agent.CalculatePath(hit.position, path) || path.status != NavMeshPathStatus.PathComplete)
+            {
+                return false;
+            }
+
+            sampledPosition = hit.position;
+            pathDistance = GetPathDistance(path);
+            return true;
+        }
+
         public bool TryClimbToward(Transform target)
         {
             if (!enableTargetClimbAssist || target == null || traversalRoutine != null)
@@ -193,6 +226,42 @@ namespace Neighbor.Main.Features.Neighbor
             return true;
         }
 
+        public bool TryUseClimbLink(NeighborClimbLink climbLink)
+        {
+            if (climbLink == null || traversalRoutine != null)
+            {
+                return false;
+            }
+
+            traversalRoutine = StartCoroutine(ClimbLedge(
+                climbLink.TopPosition,
+                true,
+                climbLink.ClimbDuration,
+                climbLink.JumpArcHeight));
+            return true;
+        }
+
+        public void ApplyKnockback(Vector3 direction, float distance, float duration)
+        {
+            if (direction.sqrMagnitude <= 0.001f || distance <= 0f)
+            {
+                return;
+            }
+
+            if (knockbackRoutine != null)
+            {
+                StopCoroutine(knockbackRoutine);
+            }
+
+            if (traversalRoutine != null)
+            {
+                StopCoroutine(traversalRoutine);
+                traversalRoutine = null;
+            }
+
+            knockbackRoutine = StartCoroutine(Knockback(direction.normalized, distance, duration));
+        }
+
         public void MoveDirectlyToward(Vector3 target, float speed, float turnSharpness)
         {
             FaceTowards(target, turnSharpness);
@@ -245,6 +314,99 @@ namespace Neighbor.Main.Features.Neighbor
 
             point = origin;
             return false;
+        }
+
+        public bool TryFindHeightAssistPoint(Vector3 targetPosition, out Vector3 point)
+        {
+            point = transform.position;
+            if (agent == null || !agent.enabled || !agent.isOnNavMesh)
+            {
+                return false;
+            }
+
+            float currentHeight = transform.position.y;
+            float targetHeight = targetPosition.y;
+            if (targetHeight - currentHeight < heightAssistMinimumGain)
+            {
+                return false;
+            }
+
+            bool found = false;
+            float bestScore = float.NegativeInfinity;
+            Vector3 bestPoint = transform.position;
+            EvaluateHeightAssistCandidate(targetPosition, targetPosition, currentHeight, targetHeight, ref bestScore, ref bestPoint, ref found);
+
+            for (int ring = 1; ring <= heightAssistRings; ring++)
+            {
+                float radius = heightAssistSearchRadius * ring / heightAssistRings;
+                for (int i = 0; i < heightAssistRadialSamples; i++)
+                {
+                    float angle = (Mathf.PI * 2f * i) / heightAssistRadialSamples;
+                    Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
+                    EvaluateHeightAssistCandidate(targetPosition + offset, targetPosition, currentHeight, targetHeight, ref bestScore, ref bestPoint, ref found);
+                    EvaluateHeightAssistCandidate(transform.position + offset, targetPosition, currentHeight, targetHeight, ref bestScore, ref bestPoint, ref found);
+                }
+            }
+
+            point = bestPoint;
+            return found;
+        }
+
+        private void EvaluateHeightAssistCandidate(
+            Vector3 candidate,
+            Vector3 targetPosition,
+            float currentHeight,
+            float targetHeight,
+            ref float bestScore,
+            ref Vector3 bestPoint,
+            ref bool found)
+        {
+            if (!NavMesh.SamplePosition(candidate, out NavMeshHit hit, destinationSampleRadius, agent.areaMask))
+            {
+                return;
+            }
+
+            float heightGain = hit.position.y - currentHeight;
+            if (heightGain < heightAssistMinimumGain || hit.position.y > targetHeight + heightAssistTargetHeightPadding)
+            {
+                return;
+            }
+
+            NavMeshPath path = new NavMeshPath();
+            if (!agent.CalculatePath(hit.position, path) || path.status != NavMeshPathStatus.PathComplete)
+            {
+                return;
+            }
+
+            float remainingHeight = Mathf.Max(0f, targetHeight - hit.position.y);
+            float distanceToTarget = Vector3.Distance(hit.position, targetPosition);
+            float pathDistance = GetPathDistance(path);
+            float score = heightGain * 8f - remainingHeight * 3f - distanceToTarget * 0.35f - pathDistance * 0.12f;
+
+            if (score <= bestScore)
+            {
+                return;
+            }
+
+            bestScore = score;
+            bestPoint = hit.position;
+            found = true;
+        }
+
+        private static float GetPathDistance(NavMeshPath path)
+        {
+            if (path == null || path.corners == null || path.corners.Length < 2)
+            {
+                return 0f;
+            }
+
+            float distance = 0f;
+            for (int i = 1; i < path.corners.Length; i++)
+            {
+                distance += Vector3.Distance(path.corners[i - 1], path.corners[i]);
+            }
+
+            return distance;
         }
 
         private void ConfigureAgent()
@@ -492,6 +654,52 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             traversalRoutine = null;
+        }
+
+        private IEnumerator Knockback(Vector3 direction, float distance, float duration)
+        {
+            if (agent.enabled && agent.isOnNavMesh)
+            {
+                agent.ResetPath();
+            }
+
+            agent.updatePosition = false;
+            agent.updateRotation = false;
+
+            Vector3 start = transform.position;
+            Vector3 desiredEnd = start + direction * distance;
+            Vector3 end = desiredEnd;
+            if (NavMesh.SamplePosition(desiredEnd, out NavMeshHit hit, Mathf.Max(0.5f, distance), agent.areaMask))
+            {
+                end = hit.position;
+            }
+
+            float timer = 0f;
+            float moveDuration = Mathf.Max(0.01f, duration);
+            while (timer < moveDuration)
+            {
+                timer += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(timer / moveDuration));
+                transform.position = Vector3.Lerp(start, end, t);
+                yield return null;
+            }
+
+            transform.position = end;
+            if (NavMesh.SamplePosition(end, out NavMeshHit finalHit, startNavMeshSnapRadius, agent.areaMask))
+            {
+                agent.Warp(finalHit.position);
+                agent.updatePosition = true;
+                agent.updateRotation = true;
+            }
+            else
+            {
+                agent.nextPosition = transform.position;
+                agent.updatePosition = false;
+                agent.updateRotation = false;
+                offMeshChaseUntilTime = Time.time + postClimbOffMeshChaseTime;
+            }
+
+            knockbackRoutine = null;
         }
     }
 }

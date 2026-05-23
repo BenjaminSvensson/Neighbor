@@ -105,6 +105,8 @@ GameObject:
   - component: {fileID: 1396788348566312222}
   - component: {fileID: 4166624945201646064}
   - component: {fileID: 6627152104098474557}
+  - component: {fileID: 2581463567810445751}
+  - component: {fileID: 7659305663438818443}
   m_Layer: 7
   m_Name: Neighbor
   m_TagString: Untagged
@@ -204,6 +206,13 @@ MonoBehaviour:
   offMeshDirectChaseSpeed: 4.5
   climbCommitVerticalDifference: 0.45
   dropCommitVerticalDifference: 0.55
+  heightAssistRepathInterval: 0.55
+  heightAssistArrivalDistance: 0.8
+  climbLinkSearchInterval: 0.35
+  climbLinkArrivalDistance: 0.75
+  unreachableGiveUpTime: 8
+  chaseProgressDistance: 0.45
+  giveUpSightIgnoreTime: 3
 --- !u!114 &1396788348566312222
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -225,7 +234,7 @@ MonoBehaviour:
   startNavMeshSnapRadius: 3
   traverseOffMeshLinks: 1
   offMeshTraverseDuration: 0.34
-  offMeshJumpHeight: 0.75
+  offMeshJumpHeight: 1.1
   enableLedgeClimb: 1
   ledgeCheckDistance: 0.75
   ledgeMinimumHeight: 0.45
@@ -240,8 +249,13 @@ MonoBehaviour:
   targetClimbVerticalPadding: 0.25
   targetClimbForwardOffset: 0.25
   postClimbOffMeshChaseTime: 1.25
-  chaseClimbDuration: 0.24
-  chaseClimbArcHeight: 0.45
+  chaseClimbDuration: 0.32
+  chaseClimbArcHeight: 0.9
+  heightAssistSearchRadius: 8
+  heightAssistMinimumGain: 0.35
+  heightAssistTargetHeightPadding: 0.4
+  heightAssistRadialSamples: 16
+  heightAssistRings: 3
   enableTargetDropAssist: 1
   targetDropHorizontalReach: 3.2
   targetDropMinimumHeight: 0.55
@@ -284,6 +298,45 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   minimumLoudness: 0.05
   hearingCooldown: 0.2
+--- !u!114 &2581463567810445751
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5206360911464809966}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c61a3165302f4e58b57d18876072a5b7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  brain: {fileID: 3418586483215124470}
+  motor: {fileID: 1396788348566312222}
+  minimumStunLoudness: 0.18
+  minimumStunDuration: 0.35
+  maximumStunDuration: 1.4
+  minimumKnockbackDistance: 0.25
+  maximumKnockbackDistance: 1.25
+  knockbackDuration: 0.18
+  impactCooldown: 0.35
+--- !u!114 &7659305663438818443
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5206360911464809966}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7e69c65a0861457fb4df370f8fdcb4a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  checkRadius: 0.55
+  checkDistance: 1.2
+  doorMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  interactionCooldown: 0.35
 --- !u!1 &5918387904681610444
 GameObject:
   m_ObjectHideFlags: 0

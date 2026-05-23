@@ -57,6 +57,7 @@ namespace Neighbor.Main.Features.Interaction
         private bool releaseButtonWasHeld;
 
         public bool IsHoldingPickup => heldPickup != null;
+        public Pickupable HeldPickup => heldPickup;
         public bool HasFocusedInteractable { get; private set; }
         public IInteractable FocusedInteractable { get; private set; }
         public Vector3 ViewForward => ViewTransform.forward;
@@ -158,6 +159,11 @@ namespace Neighbor.Main.Features.Interaction
         {
             if (heldPickup != null)
             {
+                if (TryUseHeldPickupOnFocusedInteractable())
+                {
+                    return;
+                }
+
                 ReleaseHeldPickup(false);
                 return;
             }
@@ -169,6 +175,25 @@ namespace Neighbor.Main.Features.Interaction
             {
                 interactable.Interact(this);
             }
+        }
+
+        private bool TryUseHeldPickupOnFocusedInteractable()
+        {
+            DoorKey heldKey = heldPickup != null ? heldPickup.GetComponentInChildren<DoorKey>() : null;
+            if (heldKey == null)
+            {
+                return false;
+            }
+
+            Ray ray = new Ray(ViewTransform.position, ViewTransform.forward);
+            IInteractable interactable = FindBestInteractable(ray);
+            if (interactable is not Door door || !door.CanInteract(this))
+            {
+                return false;
+            }
+
+            door.Interact(this);
+            return true;
         }
 
         private void ReleaseHeldPickup(bool throwPickup)
