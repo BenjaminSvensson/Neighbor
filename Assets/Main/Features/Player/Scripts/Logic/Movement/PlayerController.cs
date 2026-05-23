@@ -444,7 +444,8 @@ namespace Neighbor.Main.Features.Player
 
         private void OnControllerColliderHit(ControllerColliderHit hit)
         {
-            if (hit.collider != null && hit.collider.GetComponentInParent<NeighborBrain>() != null)
+            NeighborBrain neighborBrain = hit.collider != null ? hit.collider.GetComponentInParent<NeighborBrain>() : null;
+            if (neighborBrain != null && neighborBrain.CurrentState == NeighborBrain.BehaviorState.Chase)
             {
                 ResetCurrentScene();
                 return;

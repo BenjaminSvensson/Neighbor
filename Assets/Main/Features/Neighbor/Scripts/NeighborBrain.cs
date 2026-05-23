@@ -38,12 +38,10 @@ namespace Neighbor.Main.Features.Neighbor
         [Header("Chase")]
         [SerializeField, Min(0f)] private float chaseMemoryTime = 3.5f;
         [SerializeField, Min(0f)] private float chaseRepathInterval = 0.12f;
-        [SerializeField, Min(0f)] private float catchDistance = 1.15f;
+        [SerializeField, Min(0f)] private float catchDistance = 0.72f;
         [SerializeField, Min(0f)] private float offMeshDirectChaseSpeed = 4.5f;
         [SerializeField, Min(0f)] private float climbCommitVerticalDifference = 0.45f;
         [SerializeField, Min(0f)] private float dropCommitVerticalDifference = 0.55f;
-        [SerializeField, Min(0f)] private float heightAssistRepathInterval = 0.55f;
-        [SerializeField, Min(0f)] private float heightAssistArrivalDistance = 0.8f;
         [SerializeField, Min(0f)] private float climbLinkSearchInterval = 0.35f;
         [SerializeField, Min(0f)] private float climbLinkArrivalDistance = 0.75f;
         [SerializeField, Min(0f)] private float unreachableGiveUpTime = 8f;
@@ -59,16 +57,13 @@ namespace Neighbor.Main.Features.Neighbor
         private float goalWaitDuration;
         private float lastPlayerSeenTime;
         private float nextChaseRepathTime;
-        private float nextHeightAssistSearchTime;
         private float nextClimbLinkSearchTime;
-        private Vector3 heightAssistGoal;
         private float stunnedUntilTime;
         private float bestChaseDistance;
         private float lastChaseProgressTime;
         private float ignorePlayerSightUntilTime;
         private bool isResettingScene;
         private bool waitingAtGoal;
-        private bool hasHeightAssistGoal;
 
         public BehaviorState CurrentState => currentState;
         public Vector3 LastKnownPlayerPosition => lastKnownPlayerPosition;
@@ -122,7 +117,6 @@ namespace Neighbor.Main.Features.Neighbor
         public void Stun(float duration)
         {
             stunnedUntilTime = Mathf.Max(stunnedUntilTime, Time.time + duration);
-            hasHeightAssistGoal = false;
             currentClimbLink = null;
             motor?.Stop();
             SetState(BehaviorState.Stunned);
@@ -262,7 +256,6 @@ namespace Neighbor.Main.Features.Neighbor
             currentGoal = chasePosition;
             goalWaitDuration = searchDuration;
             waitingAtGoal = false;
-            hasHeightAssistGoal = false;
             currentClimbLink = null;
             ignorePlayerSightUntilTime = Time.time + giveUpSightIgnoreTime;
 
@@ -282,7 +275,6 @@ namespace Neighbor.Main.Features.Neighbor
                 motor.FaceTowards(chasePosition, 18f);
                 if (motor.TryClimbToward(player))
                 {
-                    hasHeightAssistGoal = false;
                     currentClimbLink = null;
                     return true;
                 }
@@ -292,7 +284,7 @@ namespace Neighbor.Main.Features.Neighbor
                     return true;
                 }
 
-                return TryUseHeightAssist(chasePosition);
+                return false;
             }
 
             if (verticalDelta <= -dropCommitVerticalDifference || motor.IsDetachedFromNavMesh)
@@ -300,13 +292,11 @@ namespace Neighbor.Main.Features.Neighbor
                 motor.FaceTowards(chasePosition, 18f);
                 if (motor.TryJumpDownToward(player))
                 {
-                    hasHeightAssistGoal = false;
                     currentClimbLink = null;
                     return true;
                 }
             }
 
-            hasHeightAssistGoal = false;
             currentClimbLink = null;
             return false;
         }
@@ -335,7 +325,6 @@ namespace Neighbor.Main.Features.Neighbor
                 motor.FaceTowards(currentClimbLink.TopPosition, 18f);
                 if (motor.TryUseClimbLink(currentClimbLink))
                 {
-                    hasHeightAssistGoal = false;
                     return true;
                 }
             }
@@ -377,35 +366,6 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             return bestLink;
-        }
-
-        private bool TryUseHeightAssist(Vector3 chasePosition)
-        {
-            if (hasHeightAssistGoal && Vector3.Distance(transform.position, heightAssistGoal) <= heightAssistArrivalDistance)
-            {
-                hasHeightAssistGoal = false;
-                return false;
-            }
-
-            if (!hasHeightAssistGoal || Time.time >= nextHeightAssistSearchTime)
-            {
-                nextHeightAssistSearchTime = Time.time + heightAssistRepathInterval;
-                if (motor.TryFindHeightAssistPoint(chasePosition, out Vector3 assistPoint))
-                {
-                    heightAssistGoal = assistPoint;
-                    hasHeightAssistGoal = true;
-                    motor.SetDestination(heightAssistGoal);
-                }
-            }
-
-            if (!hasHeightAssistGoal)
-            {
-                return false;
-            }
-
-            motor.SetDestination(heightAssistGoal);
-            motor.FaceTowards(heightAssistGoal, 12f);
-            return true;
         }
 
         private void UpdateInvestigate()

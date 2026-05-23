@@ -29,7 +29,7 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 2600997364233460654}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -149,7 +149,7 @@ CharacterController:
   m_Enabled: 1
   serializedVersion: 3
   m_Height: 2
-  m_Radius: 0.5
+  m_Radius: 0.4
   m_SlopeLimit: 45
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
@@ -202,12 +202,10 @@ MonoBehaviour:
   searchDuration: 4
   chaseMemoryTime: 3.5
   chaseRepathInterval: 0.12
-  catchDistance: 1.15
+  catchDistance: 0.72
   offMeshDirectChaseSpeed: 4.5
   climbCommitVerticalDifference: 0.45
   dropCommitVerticalDifference: 0.55
-  heightAssistRepathInterval: 0.55
-  heightAssistArrivalDistance: 0.8
   climbLinkSearchInterval: 0.35
   climbLinkArrivalDistance: 0.75
   unreachableGiveUpTime: 8
@@ -251,11 +249,6 @@ MonoBehaviour:
   postClimbOffMeshChaseTime: 1.25
   chaseClimbDuration: 0.32
   chaseClimbArcHeight: 0.9
-  heightAssistSearchRadius: 8
-  heightAssistMinimumGain: 0.35
-  heightAssistTargetHeightPadding: 0.4
-  heightAssistRadialSamples: 16
-  heightAssistRings: 3
   enableTargetDropAssist: 1
   targetDropHorizontalReach: 3.2
   targetDropMinimumHeight: 0.55

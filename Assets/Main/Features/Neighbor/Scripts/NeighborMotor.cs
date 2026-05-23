@@ -43,13 +43,6 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0.01f)] private float chaseClimbDuration = 0.24f;
         [SerializeField, Min(0f)] private float chaseClimbArcHeight = 0.45f;
 
-        [Header("Height Route Search")]
-        [SerializeField, Min(0f)] private float heightAssistSearchRadius = 8f;
-        [SerializeField, Min(0f)] private float heightAssistMinimumGain = 0.35f;
-        [SerializeField, Min(0f)] private float heightAssistTargetHeightPadding = 0.4f;
-        [SerializeField, Range(4, 32)] private int heightAssistRadialSamples = 16;
-        [SerializeField, Range(1, 6)] private int heightAssistRings = 3;
-
         [Header("Chase Drop Assist")]
         [SerializeField] private bool enableTargetDropAssist = true;
         [SerializeField, Min(0f)] private float targetDropHorizontalReach = 3.2f;
@@ -314,83 +307,6 @@ namespace Neighbor.Main.Features.Neighbor
 
             point = origin;
             return false;
-        }
-
-        public bool TryFindHeightAssistPoint(Vector3 targetPosition, out Vector3 point)
-        {
-            point = transform.position;
-            if (agent == null || !agent.enabled || !agent.isOnNavMesh)
-            {
-                return false;
-            }
-
-            float currentHeight = transform.position.y;
-            float targetHeight = targetPosition.y;
-            if (targetHeight - currentHeight < heightAssistMinimumGain)
-            {
-                return false;
-            }
-
-            bool found = false;
-            float bestScore = float.NegativeInfinity;
-            Vector3 bestPoint = transform.position;
-            EvaluateHeightAssistCandidate(targetPosition, targetPosition, currentHeight, targetHeight, ref bestScore, ref bestPoint, ref found);
-
-            for (int ring = 1; ring <= heightAssistRings; ring++)
-            {
-                float radius = heightAssistSearchRadius * ring / heightAssistRings;
-                for (int i = 0; i < heightAssistRadialSamples; i++)
-                {
-                    float angle = (Mathf.PI * 2f * i) / heightAssistRadialSamples;
-                    Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
-                    EvaluateHeightAssistCandidate(targetPosition + offset, targetPosition, currentHeight, targetHeight, ref bestScore, ref bestPoint, ref found);
-                    EvaluateHeightAssistCandidate(transform.position + offset, targetPosition, currentHeight, targetHeight, ref bestScore, ref bestPoint, ref found);
-                }
-            }
-
-            point = bestPoint;
-            return found;
-        }
-
-        private void EvaluateHeightAssistCandidate(
-            Vector3 candidate,
-            Vector3 targetPosition,
-            float currentHeight,
-            float targetHeight,
-            ref float bestScore,
-            ref Vector3 bestPoint,
-            ref bool found)
-        {
-            if (!NavMesh.SamplePosition(candidate, out NavMeshHit hit, destinationSampleRadius, agent.areaMask))
-            {
-                return;
-            }
-
-            float heightGain = hit.position.y - currentHeight;
-            if (heightGain < heightAssistMinimumGain || hit.position.y > targetHeight + heightAssistTargetHeightPadding)
-            {
-                return;
-            }
-
-            NavMeshPath path = new NavMeshPath();
-            if (!agent.CalculatePath(hit.position, path) || path.status != NavMeshPathStatus.PathComplete)
-            {
-                return;
-            }
-
-            float remainingHeight = Mathf.Max(0f, targetHeight - hit.position.y);
-            float distanceToTarget = Vector3.Distance(hit.position, targetPosition);
-            float pathDistance = GetPathDistance(path);
-            float score = heightGain * 8f - remainingHeight * 3f - distanceToTarget * 0.35f - pathDistance * 0.12f;
-
-            if (score <= bestScore)
-            {
-                return;
-            }
-
-            bestScore = score;
-            bestPoint = hit.position;
-            found = true;
         }
 
         private static float GetPathDistance(NavMeshPath path)
