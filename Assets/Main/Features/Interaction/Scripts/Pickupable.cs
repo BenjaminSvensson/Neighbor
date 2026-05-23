@@ -12,6 +12,14 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float heldAngularDrag = 10f;
         [SerializeField] private bool alignToCameraWhileHeld = true;
         [SerializeField] private bool disableCollidersWhileHeld = true;
+        [SerializeField, Min(0f)] private float postThrowPlayerCollisionIgnoreTime = 0.35f;
+
+        [Header("Pickup Audio")]
+        [SerializeField] private AudioClip[] pickupClips;
+        [SerializeField, Range(0f, 1f)] private float pickupVolume = 0.65f;
+        [SerializeField, Min(0f)] private float pickupPitchRandomness = 0.05f;
+        [SerializeField, Min(0f)] private float pickupAudioMinDistance = 0.4f;
+        [SerializeField, Min(0.1f)] private float pickupAudioMaxDistance = 8f;
 
         private Rigidbody body;
         private Collider[] ownColliders;
@@ -22,6 +30,8 @@ namespace Neighbor.Main.Features.Interaction
         private float originalAngularDrag;
         private CollisionDetectionMode originalCollisionDetection;
         private RigidbodyInterpolation originalInterpolation;
+        private Collider[] ignoredPlayerColliders;
+        private float restorePlayerCollisionTime;
 
         public bool IsHeld { get; private set; }
         public Vector3 ThrowOrigin => body != null ? body.worldCenterOfMass : transform.position;
@@ -38,6 +48,16 @@ namespace Neighbor.Main.Features.Interaction
             if (IsHeld)
             {
                 RestorePhysics();
+            }
+
+            RestoreIgnoredPlayerCollisions();
+        }
+
+        private void Update()
+        {
+            if (ignoredPlayerColliders != null && Time.time >= restorePlayerCollisionTime)
+            {
+                RestoreIgnoredPlayerCollisions();
             }
         }
 
@@ -76,6 +96,7 @@ namespace Neighbor.Main.Features.Interaction
             body.interpolation = RigidbodyInterpolation.Interpolate;
 
             SetHeldColliderState(false);
+            PlayPickupSound();
         }
 
         public void MoveHeld(
@@ -111,6 +132,13 @@ namespace Neighbor.Main.Features.Interaction
         public void Throw(Vector3 velocity)
         {
             RestorePhysics();
+            body.linearVelocity = velocity;
+        }
+
+        public void Throw(Vector3 velocity, Collider[] playerColliders)
+        {
+            RestorePhysics();
+            IgnorePlayerCollisionsTemporarily(playerColliders);
             body.linearVelocity = velocity;
         }
 
@@ -154,6 +182,87 @@ namespace Neighbor.Main.Features.Interaction
 
                 originalColliderEnabled[i] = ownCollider.enabled;
                 ownCollider.enabled = false;
+            }
+        }
+
+        private void PlayPickupSound()
+        {
+            if (pickupClips == null || pickupClips.Length == 0)
+            {
+                return;
+            }
+
+            AudioClip clip = pickupClips[Random.Range(0, pickupClips.Length)];
+            if (clip == null)
+            {
+                return;
+            }
+
+            GameObject audioObject = new GameObject("Pickup3DAudio");
+            audioObject.transform.position = ThrowOrigin;
+
+            AudioSource audioSource = audioObject.AddComponent<AudioSource>();
+            audioSource.clip = clip;
+            audioSource.volume = pickupVolume;
+            audioSource.pitch = Random.Range(1f - pickupPitchRandomness, 1f + pickupPitchRandomness);
+            audioSource.playOnAwake = false;
+            audioSource.spatialBlend = 1f;
+            audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+            audioSource.minDistance = pickupAudioMinDistance;
+            audioSource.maxDistance = pickupAudioMaxDistance;
+            audioSource.dopplerLevel = 0.1f;
+            audioSource.Play();
+
+            Destroy(audioObject, clip.length / Mathf.Max(0.01f, audioSource.pitch) + 0.05f);
+        }
+
+        private void IgnorePlayerCollisionsTemporarily(Collider[] playerColliders)
+        {
+            if (postThrowPlayerCollisionIgnoreTime <= 0f || ownColliders == null || playerColliders == null)
+            {
+                return;
+            }
+
+            RestoreIgnoredPlayerCollisions();
+            ignoredPlayerColliders = playerColliders;
+            restorePlayerCollisionTime = Time.time + postThrowPlayerCollisionIgnoreTime;
+            SetPlayerCollisionIgnored(true);
+        }
+
+        private void RestoreIgnoredPlayerCollisions()
+        {
+            if (ignoredPlayerColliders == null)
+            {
+                return;
+            }
+
+            SetPlayerCollisionIgnored(false);
+            ignoredPlayerColliders = null;
+        }
+
+        private void SetPlayerCollisionIgnored(bool ignore)
+        {
+            if (ownColliders == null || ignoredPlayerColliders == null)
+            {
+                return;
+            }
+
+            foreach (Collider ownCollider in ownColliders)
+            {
+                if (ownCollider == null)
+                {
+                    continue;
+                }
+
+                foreach (Collider playerCollider in ignoredPlayerColliders)
+                {
+                    if (playerCollider == null || ownCollider == playerCollider)
+                    {
+                        continue;
+                    }
+
+                    Physics.IgnoreCollision(ownCollider, playerCollider, ignore);
+                }
             }
         }
 
