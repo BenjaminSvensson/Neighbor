@@ -21,6 +21,14 @@ namespace Neighbor.Main.Features.Player
         [SerializeField] private float gravity = -24f;
         [SerializeField] private float groundedStickForce = -2f;
 
+        [Header("Heavy Landing")]
+        [SerializeField, Min(0f)] private float heavyLandingMinimumFallTime = 0.65f;
+        [SerializeField, Min(0f)] private float heavyLandingMinimumFallSpeed = 13f;
+        [SerializeField, Min(0f)] private float heavyLandingFullFallSpeed = 24f;
+        [SerializeField, Range(0f, 1f)] private float heavyLandingSpeedMultiplier = 0.45f;
+        [SerializeField, Min(0f)] private float heavyLandingSlowDuration = 0.45f;
+        [SerializeField, Range(0f, 1f)] private float heavyLandingHorizontalDamping = 0.32f;
+
         [Header("Ledge Climb")]
         [SerializeField] private bool enableLedgeClimb = true;
         [SerializeField, Min(0.1f)] private float ledgeCheckDistance = 0.75f;
@@ -67,6 +75,9 @@ namespace Neighbor.Main.Features.Player
         private float lastStepImpactTime;
         private float lastSprintIntentTime;
         private float slideTimer;
+        private float airborneTimer;
+        private float heavyLandingSlowTimer;
+        private float heavyLandingSlowImpact;
         private Vector3 slideDirection;
         private float currentSlideSpeed;
         private float slideBonusSpeed;
@@ -82,6 +93,8 @@ namespace Neighbor.Main.Features.Player
         public bool JumpStartedThisFrame { get; private set; }
         public bool LandedThisFrame { get; private set; }
         public float LandingImpact { get; private set; }
+        public bool HeavyLandingThisFrame { get; private set; }
+        public float HeavyLandingImpact { get; private set; }
         public bool StepImpactThisFrame { get; private set; }
         public float StepImpact { get; private set; }
         public bool IsGrounded { get; private set; }
@@ -136,6 +149,8 @@ namespace Neighbor.Main.Features.Player
             JumpStartedThisFrame = false;
             LandedThisFrame = false;
             LandingImpact = 0f;
+            HeavyLandingThisFrame = false;
+            HeavyLandingImpact = 0f;
             StepImpactThisFrame = false;
             StepImpact = 0f;
         }
@@ -146,6 +161,7 @@ namespace Neighbor.Main.Features.Player
             if (IsGrounded)
             {
                 lastGroundedTime = Time.time;
+                airborneTimer = 0f;
                 if (verticalVelocity < 0f)
                 {
                     verticalVelocity = groundedStickForce;
@@ -200,7 +216,7 @@ namespace Neighbor.Main.Features.Player
             UpdateSlideState(hasMoveInput);
             IsRunning = hasSprintIntent && !IsCrouching && !IsSliding;
 
-            float targetSpeed = IsCrouching ? crouchSpeed : IsRunning ? runSpeed : walkSpeed;
+            float targetSpeed = (IsCrouching ? crouchSpeed : IsRunning ? runSpeed : walkSpeed) * HeavyLandingSpeedScale;
             Vector3 inputDirection = transform.right * MoveInput.x + transform.forward * MoveInput.y;
             currentSlideSpeed = IsSliding ? CurrentSlideSpeed : 0f;
             if (IsSliding)
@@ -238,8 +254,11 @@ namespace Neighbor.Main.Features.Player
 
             if (!wasGrounded && IsGrounded)
             {
-                LandedThisFrame = true;
-                LandingImpact = Mathf.InverseLerp(groundedStickForce, -18f, previousVerticalVelocity);
+                HandleLanding(previousVerticalVelocity);
+            }
+            else if (!IsGrounded)
+            {
+                airborneTimer += Time.deltaTime;
             }
 
             DetectStepImpact(previousY, wasGrounded);
@@ -254,6 +273,45 @@ namespace Neighbor.Main.Features.Player
 
             MoveAmount = Mathf.InverseLerp(0f, runSpeed, flatVelocity.magnitude);
             Speed01 = targetSpeed <= 0f ? 0f : Mathf.Clamp01(flatVelocity.magnitude / runSpeed);
+        }
+
+        private float HeavyLandingSpeedScale
+        {
+            get
+            {
+                if (heavyLandingSlowTimer <= 0f)
+                {
+                    return 1f;
+                }
+
+                heavyLandingSlowTimer = Mathf.Max(0f, heavyLandingSlowTimer - Time.deltaTime);
+                float recovery01 = heavyLandingSlowDuration <= 0f ? 1f : 1f - heavyLandingSlowTimer / heavyLandingSlowDuration;
+                float slowedMultiplier = Mathf.Lerp(1f, heavyLandingSpeedMultiplier, heavyLandingSlowImpact);
+                return Mathf.Lerp(slowedMultiplier, 1f, Mathf.SmoothStep(0f, 1f, recovery01));
+            }
+        }
+
+        private void HandleLanding(float previousVerticalVelocity)
+        {
+            LandedThisFrame = true;
+            float fallSpeed = Mathf.Max(0f, -previousVerticalVelocity);
+            LandingImpact = Mathf.InverseLerp(-groundedStickForce, 18f, fallSpeed);
+
+            bool fellLongEnough = airborneTimer >= heavyLandingMinimumFallTime;
+            bool fellFastEnough = fallSpeed >= heavyLandingMinimumFallSpeed;
+            if (fellLongEnough || fellFastEnough)
+            {
+                HeavyLandingThisFrame = true;
+                HeavyLandingImpact = Mathf.Max(
+                    Mathf.InverseLerp(heavyLandingMinimumFallTime, heavyLandingMinimumFallTime * 1.9f, airborneTimer),
+                    Mathf.InverseLerp(heavyLandingMinimumFallSpeed, heavyLandingFullFallSpeed, fallSpeed));
+
+                heavyLandingSlowImpact = HeavyLandingImpact;
+                heavyLandingSlowTimer = heavyLandingSlowDuration;
+                horizontalVelocity *= Mathf.Lerp(1f, heavyLandingHorizontalDamping, HeavyLandingImpact);
+            }
+
+            airborneTimer = 0f;
         }
 
         private void StartSlide()

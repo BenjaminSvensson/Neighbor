@@ -47,6 +47,11 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float landingPitchKick = 5.5f;
         [SerializeField, Min(0f)] private float landingShake = 0.32f;
         [SerializeField, Min(0f)] private float landingFovKick = 2.4f;
+        [SerializeField, Min(0f)] private float heavyLandingKick = 0.42f;
+        [SerializeField, Min(0f)] private float heavyLandingPitchKick = 11f;
+        [SerializeField, Min(0f)] private float heavyLandingRollKick = 7f;
+        [SerializeField, Min(0f)] private float heavyLandingShake = 0.7f;
+        [SerializeField, Min(0f)] private float heavyLandingFovKick = 4.5f;
 
         [Header("Stair Camera")]
         [SerializeField, Min(0f)] private float stairStepKick = 0.11f;
@@ -232,6 +237,17 @@ namespace Neighbor.Main.Features.Player
                     targetImpactPitchOffset += landingPitchKick * impact;
                     targetImpactFovOffset += landingFovKick * impact;
                     targetImpactShake += landingShake * impact;
+                }
+
+                if (playerController.HeavyLandingThisFrame)
+                {
+                    float impact = Mathf.Max(0.25f, playerController.HeavyLandingImpact);
+                    stairStepSide *= -1f;
+                    targetImpactVerticalOffset -= heavyLandingKick * impact;
+                    targetImpactPitchOffset += heavyLandingPitchKick * impact;
+                    targetImpactRollOffset += stairStepSide * heavyLandingRollKick * impact;
+                    targetImpactFovOffset += heavyLandingFovKick * impact;
+                    targetImpactShake += heavyLandingShake * impact;
                 }
 
                 if (playerController.StepImpactThisFrame)

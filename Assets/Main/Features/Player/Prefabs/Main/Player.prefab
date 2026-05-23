@@ -379,6 +379,12 @@ MonoBehaviour:
   coyoteTime: 0.12
   gravity: -24
   groundedStickForce: -2
+  heavyLandingMinimumFallTime: 0.65
+  heavyLandingMinimumFallSpeed: 13
+  heavyLandingFullFallSpeed: 24
+  heavyLandingSpeedMultiplier: 0.45
+  heavyLandingSlowDuration: 0.45
+  heavyLandingHorizontalDamping: 0.32
   enableLedgeClimb: 1
   ledgeCheckDistance: 0.75
   ledgeMinimumHeight: 0.45
@@ -910,6 +916,11 @@ MonoBehaviour:
   landingPitchKick: 3.3
   landingShake: 0.18
   landingFovKick: 1.2
+  heavyLandingKick: 0.42
+  heavyLandingPitchKick: 11
+  heavyLandingRollKick: 7
+  heavyLandingShake: 0.7
+  heavyLandingFovKick: 4.5
   stairStepKick: 0.11
   stairPitchKick: 2.2
   stairRollKick: 2.8
