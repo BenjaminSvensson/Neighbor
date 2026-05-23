@@ -6,8 +6,16 @@ namespace Neighbor.Main.Features.Interaction
     [RequireComponent(typeof(Collider))]
     public sealed class Pickupable : MonoBehaviour, IInteractable
     {
+        public enum HoldPointSize
+        {
+            Small,
+            Medium,
+            Large
+        }
+
         [Header("Pickup")]
         [SerializeField, Min(0f)] private float maximumPickupMass = 20f;
+        [SerializeField] private HoldPointSize holdPointSize = HoldPointSize.Medium;
         [SerializeField, Min(0f)] private float heldDrag = 8f;
         [SerializeField, Min(0f)] private float heldAngularDrag = 10f;
         [SerializeField] private bool alignToCameraWhileHeld = true;
@@ -34,6 +42,7 @@ namespace Neighbor.Main.Features.Interaction
         private float restorePlayerCollisionTime;
 
         public bool IsHeld { get; private set; }
+        public HoldPointSize AssignedHoldPointSize => holdPointSize;
         public Vector3 ThrowOrigin => body != null ? body.worldCenterOfMass : transform.position;
 
         private void Awake()

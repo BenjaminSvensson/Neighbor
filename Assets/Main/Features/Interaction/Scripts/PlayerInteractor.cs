@@ -13,11 +13,15 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private string interactActionName = "Interact";
         [SerializeField, Min(0.1f)] private float interactRange = 3f;
         [SerializeField, Min(0f)] private float interactRadius = 0.18f;
+        [SerializeField, Min(0f)] private float interactAlignmentTieTolerance = 0.002f;
         [SerializeField] private LayerMask interactMask = ~0;
         [SerializeField] private QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.Ignore;
 
         [Header("Held Item")]
-        [SerializeField] private Transform holdPoint;
+        [SerializeField] private Transform smallHoldPoint;
+        [SerializeField] private Transform mediumHoldPoint;
+        [SerializeField] private Transform largeHoldPoint;
+        [SerializeField, HideInInspector] private Transform holdPoint;
         [SerializeField, Min(0.2f)] private float holdDistance = 1.65f;
         [SerializeField, Min(0f)] private float holdFollowStrength = 24f;
         [SerializeField, Min(0f)] private float holdRotationStrength = 9f;
@@ -192,15 +196,33 @@ namespace Neighbor.Main.Features.Interaction
 
         private Vector3 GetHoldPosition()
         {
+            Transform activeHoldPoint = GetHoldPointFor(heldPickup);
             Vector3 desiredPosition;
-            if (holdPoint != null)
+            if (activeHoldPoint != null)
             {
-                desiredPosition = holdPoint.position - ViewTransform.forward * ThrowChargePullAmount - Vector3.up * ThrowChargeLowerAmount;
+                desiredPosition = activeHoldPoint.position - ViewTransform.forward * ThrowChargePullAmount - Vector3.up * ThrowChargeLowerAmount;
                 return ResolveObstructedHoldPosition(desiredPosition);
             }
 
             desiredPosition = ViewTransform.position + ViewTransform.forward * (holdDistance - ThrowChargePullAmount) - Vector3.up * ThrowChargeLowerAmount;
             return ResolveObstructedHoldPosition(desiredPosition);
+        }
+
+        private Transform GetHoldPointFor(Pickupable pickupable)
+        {
+            if (pickupable == null)
+            {
+                return mediumHoldPoint != null ? mediumHoldPoint : holdPoint;
+            }
+
+            Transform sizedHoldPoint = pickupable.AssignedHoldPointSize switch
+            {
+                Pickupable.HoldPointSize.Small => smallHoldPoint,
+                Pickupable.HoldPointSize.Large => largeHoldPoint,
+                _ => mediumHoldPoint
+            };
+
+            return sizedHoldPoint != null ? sizedHoldPoint : mediumHoldPoint != null ? mediumHoldPoint : holdPoint;
         }
 
         private Vector3 ResolveObstructedHoldPosition(Vector3 desiredPosition)
@@ -336,6 +358,7 @@ namespace Neighbor.Main.Features.Interaction
                 : Physics.RaycastNonAlloc(ray, interactHits, interactRange, interactMask, triggerInteraction);
 
             IInteractable bestInteractable = null;
+            float bestAlignment = -1f;
             float bestDistance = float.PositiveInfinity;
 
             for (int i = 0; i < hitCount; i++)
@@ -352,14 +375,30 @@ namespace Neighbor.Main.Features.Interaction
                     continue;
                 }
 
-                if (hit.distance < bestDistance)
+                float alignment = GetViewAlignment(ray, hit);
+                bool isMoreCentered = alignment > bestAlignment + interactAlignmentTieTolerance;
+                bool isTiedAndCloser = Mathf.Abs(alignment - bestAlignment) <= interactAlignmentTieTolerance && hit.distance < bestDistance;
+
+                if (isMoreCentered || isTiedAndCloser)
                 {
+                    bestAlignment = alignment;
                     bestDistance = hit.distance;
                     bestInteractable = interactable;
                 }
             }
 
             return bestInteractable;
+        }
+
+        private static float GetViewAlignment(Ray ray, RaycastHit hit)
+        {
+            Vector3 directionToHit = hit.point - ray.origin;
+            if (directionToHit.sqrMagnitude <= 0.0001f)
+            {
+                return 1f;
+            }
+
+            return Vector3.Dot(ray.direction, directionToHit.normalized);
         }
 
         private bool IsPlayerCollider(Collider collider)
