@@ -385,6 +385,16 @@ MonoBehaviour:
   throwChargePullDistance: 0.35
   throwForce: 8.5
   throwUpwardAssist: 0.8
+  showThrowArc: 1
+  throwArcRenderer: {fileID: 0}
+  throwArcSegments: 28
+  throwArcTimeStep: 0.07
+  throwArcLineWidth: 0.025
+  throwArcCollisionMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  throwArcStartColor: {r: 1, g: 0.92, b: 0.45, a: 0.9}
+  throwArcEndColor: {r: 1, g: 0.45, b: 0.2, a: 0.15}
 --- !u!1 &8887157694786461502
 GameObject:
   m_ObjectHideFlags: 0

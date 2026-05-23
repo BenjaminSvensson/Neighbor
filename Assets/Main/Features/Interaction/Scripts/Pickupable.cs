@@ -24,6 +24,7 @@ namespace Neighbor.Main.Features.Interaction
         private RigidbodyInterpolation originalInterpolation;
 
         public bool IsHeld { get; private set; }
+        public Vector3 ThrowOrigin => body != null ? body.worldCenterOfMass : transform.position;
 
         private void Awake()
         {

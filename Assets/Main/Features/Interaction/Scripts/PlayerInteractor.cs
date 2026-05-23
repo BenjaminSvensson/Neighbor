@@ -29,6 +29,16 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float throwForce = 8.5f;
         [SerializeField, Min(0f)] private float throwUpwardAssist = 0.8f;
 
+        [Header("Throw Arc")]
+        [SerializeField] private bool showThrowArc = true;
+        [SerializeField] private LineRenderer throwArcRenderer;
+        [SerializeField, Range(4, 64)] private int throwArcSegments = 28;
+        [SerializeField, Min(0.02f)] private float throwArcTimeStep = 0.07f;
+        [SerializeField, Min(0.001f)] private float throwArcLineWidth = 0.025f;
+        [SerializeField] private LayerMask throwArcCollisionMask = ~0;
+        [SerializeField] private Color throwArcStartColor = new Color(1f, 0.92f, 0.45f, 0.9f);
+        [SerializeField] private Color throwArcEndColor = new Color(1f, 0.45f, 0.2f, 0.15f);
+
         private Pickupable heldPickup;
         private InputAction interactAction;
         private Collider[] playerColliders;
@@ -49,6 +59,7 @@ namespace Neighbor.Main.Features.Interaction
 
             playerColliders = GetComponentsInParent<Collider>();
             ResolveInteractAction();
+            EnsureThrowArcRenderer();
         }
 
         private void OnEnable()
@@ -60,6 +71,7 @@ namespace Neighbor.Main.Features.Interaction
         private void OnDisable()
         {
             interactAction?.Disable();
+            HideThrowArc();
         }
 
         private void Update()
@@ -90,6 +102,11 @@ namespace Neighbor.Main.Features.Interaction
                 bool shouldThrow = heldDuration >= throwHoldThreshold;
                 ReleaseHeldPickup(shouldThrow);
             }
+        }
+
+        private void LateUpdate()
+        {
+            UpdateThrowArc();
         }
 
         private void FixedUpdate()
@@ -153,12 +170,14 @@ namespace Neighbor.Main.Features.Interaction
 
             if (throwPickup)
             {
-                Vector3 throwVelocity = ViewTransform.forward * throwForce + Vector3.up * throwUpwardAssist;
+                Vector3 throwVelocity = CalculateThrowVelocity(1f);
                 releasedPickup.Throw(throwVelocity);
+                HideThrowArc();
                 return;
             }
 
             releasedPickup.Drop();
+            HideThrowArc();
         }
 
         private Vector3 GetHoldPosition()
@@ -186,6 +205,27 @@ namespace Neighbor.Main.Features.Interaction
 
                 return Mathf.SmoothStep(0f, throwChargePullDistance, charge01);
             }
+        }
+
+        private float ThrowCharge01
+        {
+            get
+            {
+                if (!releaseButtonWasHeld)
+                {
+                    return 0f;
+                }
+
+                return throwHoldThreshold <= 0f
+                    ? 1f
+                    : Mathf.Clamp01((Time.time - releaseButtonDownTime) / throwHoldThreshold);
+            }
+        }
+
+        private Vector3 CalculateThrowVelocity(float charge01)
+        {
+            float chargedForce = Mathf.Lerp(throwForce * 0.35f, throwForce, Mathf.Clamp01(charge01));
+            return ViewTransform.forward * chargedForce + Vector3.up * throwUpwardAssist;
         }
 
         private bool InteractWasPressedThisFrame(Keyboard keyboard)
@@ -259,6 +299,87 @@ namespace Neighbor.Main.Features.Interaction
             interactAction = actionMap != null
                 ? actionMap.FindAction(interactActionName, false)
                 : inputActions.FindAction(interactActionName, false);
+        }
+
+        private void UpdateThrowArc()
+        {
+            if (!showThrowArc || heldPickup == null || !releaseButtonWasHeld)
+            {
+                HideThrowArc();
+                return;
+            }
+
+            EnsureThrowArcRenderer();
+            if (throwArcRenderer == null)
+            {
+                return;
+            }
+
+            throwArcRenderer.enabled = true;
+
+            Vector3 origin = heldPickup.ThrowOrigin;
+            Vector3 velocity = CalculateThrowVelocity(ThrowCharge01);
+            Vector3 previousPoint = origin;
+            int pointCount = 1;
+
+            throwArcRenderer.positionCount = throwArcSegments;
+            throwArcRenderer.SetPosition(0, origin);
+
+            for (int i = 1; i < throwArcSegments; i++)
+            {
+                float time = i * throwArcTimeStep;
+                Vector3 nextPoint = origin + velocity * time + Physics.gravity * (0.5f * time * time);
+                Vector3 segment = nextPoint - previousPoint;
+
+                if (Physics.Raycast(previousPoint, segment.normalized, out RaycastHit hit, segment.magnitude, throwArcCollisionMask, QueryTriggerInteraction.Ignore))
+                {
+                    throwArcRenderer.SetPosition(i, hit.point);
+                    pointCount = i + 1;
+                    break;
+                }
+
+                throwArcRenderer.SetPosition(i, nextPoint);
+                previousPoint = nextPoint;
+                pointCount = i + 1;
+            }
+
+            throwArcRenderer.positionCount = pointCount;
+        }
+
+        private void EnsureThrowArcRenderer()
+        {
+            if (throwArcRenderer != null)
+            {
+                return;
+            }
+
+            GameObject arcObject = new GameObject("ThrowArcPreview");
+            arcObject.transform.SetParent(transform, false);
+            throwArcRenderer = arcObject.AddComponent<LineRenderer>();
+            throwArcRenderer.enabled = false;
+            throwArcRenderer.useWorldSpace = true;
+            throwArcRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            throwArcRenderer.receiveShadows = false;
+            throwArcRenderer.textureMode = LineTextureMode.Stretch;
+            throwArcRenderer.alignment = LineAlignment.View;
+            throwArcRenderer.widthMultiplier = throwArcLineWidth;
+            throwArcRenderer.startColor = throwArcStartColor;
+            throwArcRenderer.endColor = throwArcEndColor;
+
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader != null)
+            {
+                throwArcRenderer.material = new Material(shader);
+            }
+        }
+
+        private void HideThrowArc()
+        {
+            if (throwArcRenderer != null)
+            {
+                throwArcRenderer.enabled = false;
+                throwArcRenderer.positionCount = 0;
+            }
         }
 
         private void Reset()
