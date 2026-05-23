@@ -106,9 +106,9 @@ namespace Neighbor.Main.Features.Player
             defaultFieldOfView = playerCamera.fieldOfView > 1f ? playerCamera.fieldOfView : defaultFieldOfView;
             minimumFieldOfView = Mathf.Min(minimumFieldOfView, defaultFieldOfView);
             maximumFieldOfView = Mathf.Max(maximumFieldOfView, defaultFieldOfView);
-            currentFieldOfView = defaultFieldOfView;
-            scrolledFieldOfView = defaultFieldOfView;
-            playerCamera.fieldOfView = defaultFieldOfView;
+            currentFieldOfView = maximumFieldOfView;
+            scrolledFieldOfView = maximumFieldOfView;
+            playerCamera.fieldOfView = maximumFieldOfView;
         }
 
         private void Start()
