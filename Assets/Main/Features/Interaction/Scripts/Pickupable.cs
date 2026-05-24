@@ -144,7 +144,6 @@ namespace Neighbor.Main.Features.Interaction
 
         public void Place(Vector3 position, Quaternion rotation)
         {
-            RestorePhysics();
             transform.SetPositionAndRotation(position, rotation);
 
             if (body == null)
@@ -152,10 +151,22 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
+            if (IsHeld)
+            {
+                IsHeld = false;
+                body.useGravity = wasUsingGravity;
+                body.isKinematic = wasKinematic;
+                body.linearDamping = originalDrag;
+                body.angularDamping = originalAngularDrag;
+                body.collisionDetectionMode = originalCollisionDetection;
+                body.interpolation = originalInterpolation;
+            }
+
             body.position = position;
             body.rotation = rotation;
             body.linearVelocity = Vector3.zero;
             body.angularVelocity = Vector3.zero;
+            SetHeldColliderState(true);
             body.Sleep();
         }
 

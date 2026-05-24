@@ -245,7 +245,7 @@ namespace Neighbor.Main.Features.Interaction
                 return false;
             }
 
-            if (!TryGetPlacementHit(out RaycastHit hit))
+            if (!TryGetPlacementHit(pickupable, out RaycastHit hit))
             {
                 return false;
             }
@@ -268,7 +268,7 @@ namespace Neighbor.Main.Features.Interaction
             return true;
         }
 
-        private bool TryGetPlacementHit(out RaycastHit bestHit)
+        private bool TryGetPlacementHit(Pickupable ignoredPickup, out RaycastHit bestHit)
         {
             bestHit = default;
             Ray ray = new Ray(ViewTransform.position, ViewTransform.forward);
@@ -287,7 +287,7 @@ namespace Neighbor.Main.Features.Interaction
                     placementMask,
                     QueryTriggerInteraction.Ignore);
 
-            if (TryChoosePlacementHit(hitCount, out bestHit))
+            if (TryChoosePlacementHit(hitCount, ignoredPickup, out bestHit))
             {
                 return true;
             }
@@ -306,10 +306,10 @@ namespace Neighbor.Main.Features.Interaction
                 placementMask,
                 QueryTriggerInteraction.Ignore);
 
-            return TryChoosePlacementHit(hitCount, out bestHit);
+            return TryChoosePlacementHit(hitCount, ignoredPickup, out bestHit);
         }
 
-        private bool TryChoosePlacementHit(int hitCount, out RaycastHit bestHit)
+        private bool TryChoosePlacementHit(int hitCount, Pickupable ignoredPickup, out RaycastHit bestHit)
         {
             bestHit = default;
             float bestDistance = float.PositiveInfinity;
@@ -317,7 +317,7 @@ namespace Neighbor.Main.Features.Interaction
             for (int i = 0; i < hitCount; i++)
             {
                 RaycastHit hit = placementHits[i];
-                if (hit.collider == null || hit.normal.y < placementMinimumUpDot || ShouldIgnorePlacementSurface(hit.collider))
+                if (hit.collider == null || hit.normal.y < placementMinimumUpDot || ShouldIgnorePlacementSurface(hit.collider, ignoredPickup))
                 {
                     continue;
                 }
@@ -333,9 +333,9 @@ namespace Neighbor.Main.Features.Interaction
             return foundHit;
         }
 
-        private bool ShouldIgnorePlacementSurface(Collider collider)
+        private bool ShouldIgnorePlacementSurface(Collider collider, Pickupable ignoredPickup)
         {
-            return IsPlayerCollider(collider) || collider.GetComponentInParent<Pickupable>() == heldPickup;
+            return IsPlayerCollider(collider) || collider.GetComponentInParent<Pickupable>() == ignoredPickup;
         }
 
         private Vector3 GetHoldPosition()
