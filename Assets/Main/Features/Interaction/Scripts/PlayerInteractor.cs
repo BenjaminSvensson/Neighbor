@@ -36,6 +36,8 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Range(0f, 1f)] private float placementMinimumUpDot = 0.45f;
         [SerializeField, Min(0f)] private float placementSurfacePadding = 0.025f;
         [SerializeField, Min(0f)] private float placementClearanceShrink = 0.015f;
+        [SerializeField, Range(0, 6)] private int placementSearchRings = 3;
+        [SerializeField, Min(0.05f)] private float placementSearchStep = 0.38f;
         [SerializeField, Min(0f)] private float placementFallbackDownDistance = 3f;
         [SerializeField] private LayerMask placementMask = ~0;
 
@@ -274,7 +276,84 @@ namespace Neighbor.Main.Features.Interaction
             Vector3 transformToBoundsCenter = pickupable.transform.position - bounds.center;
             position = hit.point + normal * (normalExtent + placementSurfacePadding) + transformToBoundsCenter;
             Vector3 placedBoundsCenter = position - transformToBoundsCenter;
-            return HasPlacementClearance(pickupable, placedBoundsCenter, bounds.extents, hit.collider);
+            if (HasPlacementClearance(pickupable, placedBoundsCenter, bounds.extents, hit.collider))
+            {
+                return true;
+            }
+
+            return TryFindNearbyPlacementPose(
+                pickupable,
+                hit,
+                normal,
+                normalExtent,
+                bounds.extents,
+                transformToBoundsCenter,
+                out position);
+        }
+
+        private bool TryFindNearbyPlacementPose(
+            Pickupable pickupable,
+            RaycastHit originalHit,
+            Vector3 normal,
+            float normalExtent,
+            Vector3 extents,
+            Vector3 transformToBoundsCenter,
+            out Vector3 position)
+        {
+            position = default;
+            if (placementSearchRings <= 0)
+            {
+                return false;
+            }
+
+            Vector3 tangent = Vector3.ProjectOnPlane(ViewTransform.right, normal);
+            if (tangent.sqrMagnitude <= 0.001f)
+            {
+                tangent = Vector3.Cross(normal, ViewTransform.forward);
+            }
+
+            tangent.Normalize();
+            Vector3 bitangent = Vector3.Cross(normal, tangent).normalized;
+
+            for (int ring = 1; ring <= placementSearchRings; ring++)
+            {
+                float radius = placementSearchStep * ring;
+                int samples = ring * 8;
+                for (int i = 0; i < samples; i++)
+                {
+                    float angle = (Mathf.PI * 2f * i) / samples;
+                    Vector3 offset = (Mathf.Cos(angle) * tangent + Mathf.Sin(angle) * bitangent) * radius;
+                    Vector3 probeOrigin = originalHit.point + offset + normal * (normalExtent + 0.25f);
+
+                    if (!Physics.Raycast(
+                        probeOrigin,
+                        -normal,
+                        out RaycastHit surfaceHit,
+                        normalExtent + 0.6f,
+                        placementMask,
+                        QueryTriggerInteraction.Ignore))
+                    {
+                        continue;
+                    }
+
+                    if (surfaceHit.normal.y < placementMinimumUpDot || ShouldIgnorePlacementSurface(surfaceHit.collider, pickupable))
+                    {
+                        continue;
+                    }
+
+                    Vector3 candidatePosition = surfaceHit.point + surfaceHit.normal.normalized * (normalExtent + placementSurfacePadding) + transformToBoundsCenter;
+                    Vector3 candidateBoundsCenter = candidatePosition - transformToBoundsCenter;
+                    if (!HasPlacementClearance(pickupable, candidateBoundsCenter, extents, surfaceHit.collider))
+                    {
+                        continue;
+                    }
+
+                    position = candidatePosition;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private bool HasPlacementClearance(Pickupable pickupable, Vector3 center, Vector3 extents, Collider supportCollider)
