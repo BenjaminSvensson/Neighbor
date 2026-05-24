@@ -965,6 +965,7 @@ MonoBehaviour:
   placementProbeRadius: 0.14
   placementMinimumUpDot: 0.25
   placementSurfacePadding: 0.025
+  placementClearanceShrink: 0.015
   placementFallbackDownDistance: 5
   placementMask:
     serializedVersion: 2

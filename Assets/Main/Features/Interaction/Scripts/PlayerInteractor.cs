@@ -35,6 +35,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float placementProbeRadius = 0.08f;
         [SerializeField, Range(0f, 1f)] private float placementMinimumUpDot = 0.45f;
         [SerializeField, Min(0f)] private float placementSurfacePadding = 0.025f;
+        [SerializeField, Min(0f)] private float placementClearanceShrink = 0.015f;
         [SerializeField, Min(0f)] private float placementFallbackDownDistance = 3f;
         [SerializeField] private LayerMask placementMask = ~0;
 
@@ -62,6 +63,7 @@ namespace Neighbor.Main.Features.Interaction
         private readonly RaycastHit[] throwArcHits = new RaycastHit[8];
         private readonly RaycastHit[] holdObstructionHits = new RaycastHit[12];
         private readonly RaycastHit[] placementHits = new RaycastHit[12];
+        private readonly Collider[] placementBlockHits = new Collider[24];
         private float releaseButtonDownTime;
         private bool releaseButtonWasHeld;
 
@@ -224,9 +226,13 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            if (TryGetPlacementPose(releasedPickup, out Vector3 placementPosition, out Quaternion placementRotation))
+            if (TryGetPlacementPose(releasedPickup, out Vector3 placementPosition, out Quaternion placementRotation, out bool foundPlacementSurface))
             {
                 releasedPickup.Place(placementPosition, placementRotation);
+            }
+            else if (foundPlacementSurface)
+            {
+                heldPickup = releasedPickup;
             }
             else
             {
@@ -236,10 +242,11 @@ namespace Neighbor.Main.Features.Interaction
             HideThrowArc();
         }
 
-        private bool TryGetPlacementPose(Pickupable pickupable, out Vector3 position, out Quaternion rotation)
+        private bool TryGetPlacementPose(Pickupable pickupable, out Vector3 position, out Quaternion rotation, out bool foundSurface)
         {
             position = default;
             rotation = default;
+            foundSurface = false;
             if (pickupable == null)
             {
                 return false;
@@ -250,6 +257,7 @@ namespace Neighbor.Main.Features.Interaction
                 return false;
             }
 
+            foundSurface = true;
             rotation = Quaternion.Euler(0f, pickupable.transform.eulerAngles.y, 0f);
             Quaternion originalRotation = pickupable.transform.rotation;
             pickupable.transform.rotation = rotation;
@@ -265,6 +273,36 @@ namespace Neighbor.Main.Features.Interaction
 
             Vector3 transformToBoundsCenter = pickupable.transform.position - bounds.center;
             position = hit.point + normal * (normalExtent + placementSurfacePadding) + transformToBoundsCenter;
+            Vector3 placedBoundsCenter = position - transformToBoundsCenter;
+            return HasPlacementClearance(pickupable, placedBoundsCenter, bounds.extents, hit.collider);
+        }
+
+        private bool HasPlacementClearance(Pickupable pickupable, Vector3 center, Vector3 extents, Collider supportCollider)
+        {
+            Vector3 clearanceExtents = new Vector3(
+                Mathf.Max(0.001f, extents.x - placementClearanceShrink),
+                Mathf.Max(0.001f, extents.y - placementClearanceShrink),
+                Mathf.Max(0.001f, extents.z - placementClearanceShrink));
+
+            int hitCount = Physics.OverlapBoxNonAlloc(
+                center,
+                clearanceExtents,
+                placementBlockHits,
+                Quaternion.identity,
+                placementMask,
+                QueryTriggerInteraction.Ignore);
+
+            for (int i = 0; i < hitCount; i++)
+            {
+                Collider hit = placementBlockHits[i];
+                if (hit == null || hit == supportCollider || ShouldIgnorePlacementSurface(hit, pickupable))
+                {
+                    continue;
+                }
+
+                return false;
+            }
+
             return true;
         }
 
