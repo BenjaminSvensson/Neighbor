@@ -20,6 +20,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float heldAngularDrag = 10f;
         [SerializeField] private bool alignToCameraWhileHeld = true;
         [SerializeField] private bool disableCollidersWhileHeld = true;
+        [SerializeField, Min(0f)] private float supportWakePadding = 0.12f;
         [SerializeField, Min(0f)] private float postThrowPlayerCollisionIgnoreTime = 0.35f;
 
         [Header("Pickup Audio")]
@@ -31,7 +32,9 @@ namespace Neighbor.Main.Features.Interaction
 
         private Rigidbody body;
         private Collider[] ownColliders;
+        private Renderer[] ownRenderers;
         private bool[] originalColliderEnabled;
+        private readonly Collider[] supportWakeHits = new Collider[24];
         private bool wasUsingGravity;
         private bool wasKinematic;
         private float originalDrag;
@@ -49,6 +52,7 @@ namespace Neighbor.Main.Features.Interaction
         {
             body = GetComponent<Rigidbody>();
             ownColliders = GetComponentsInChildren<Collider>();
+            ownRenderers = GetComponentsInChildren<Renderer>();
             originalColliderEnabled = new bool[ownColliders.Length];
         }
 
@@ -104,7 +108,7 @@ namespace Neighbor.Main.Features.Interaction
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             body.interpolation = RigidbodyInterpolation.Interpolate;
 
-            SetHeldColliderState(false);
+            WakeSupportedBodiesAfterColliderStateChange(false);
             PlayPickupSound();
         }
 
@@ -138,6 +142,23 @@ namespace Neighbor.Main.Features.Interaction
             RestorePhysics();
         }
 
+        public void Place(Vector3 position, Quaternion rotation)
+        {
+            RestorePhysics();
+            transform.SetPositionAndRotation(position, rotation);
+
+            if (body == null)
+            {
+                return;
+            }
+
+            body.position = position;
+            body.rotation = rotation;
+            body.linearVelocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+            body.Sleep();
+        }
+
         public void Throw(Vector3 velocity)
         {
             RestorePhysics();
@@ -149,6 +170,79 @@ namespace Neighbor.Main.Features.Interaction
             RestorePhysics();
             IgnorePlayerCollisionsTemporarily(playerColliders);
             body.linearVelocity = velocity;
+        }
+
+        public Bounds GetPlacementBounds()
+        {
+            if (TryGetRendererBounds(out Bounds rendererBounds))
+            {
+                return rendererBounds;
+            }
+
+            if (TryGetColliderBounds(out Bounds colliderBounds))
+            {
+                return colliderBounds;
+            }
+
+            return new Bounds(transform.position, Vector3.one * 0.25f);
+        }
+
+        private bool TryGetRendererBounds(out Bounds bounds)
+        {
+            bounds = default;
+            bool hasBounds = false;
+            if (ownRenderers == null)
+            {
+                return false;
+            }
+
+            foreach (Renderer ownRenderer in ownRenderers)
+            {
+                if (ownRenderer == null || !ownRenderer.enabled)
+                {
+                    continue;
+                }
+
+                if (!hasBounds)
+                {
+                    bounds = ownRenderer.bounds;
+                    hasBounds = true;
+                    continue;
+                }
+
+                bounds.Encapsulate(ownRenderer.bounds);
+            }
+
+            return hasBounds;
+        }
+
+        private bool TryGetColliderBounds(out Bounds bounds)
+        {
+            bounds = default;
+            bool hasBounds = false;
+            if (ownColliders == null)
+            {
+                return false;
+            }
+
+            foreach (Collider ownCollider in ownColliders)
+            {
+                if (ownCollider == null || !ownCollider.enabled)
+                {
+                    continue;
+                }
+
+                if (!hasBounds)
+                {
+                    bounds = ownCollider.bounds;
+                    hasBounds = true;
+                    continue;
+                }
+
+                bounds.Encapsulate(ownCollider.bounds);
+            }
+
+            return hasBounds;
         }
 
         private void RestorePhysics()
@@ -272,6 +366,38 @@ namespace Neighbor.Main.Features.Interaction
 
                     Physics.IgnoreCollision(ownCollider, playerCollider, ignore);
                 }
+            }
+        }
+
+        private void WakeSupportedBodiesAfterColliderStateChange(bool restore)
+        {
+            if (restore || !TryGetColliderBounds(out Bounds bounds))
+            {
+                SetHeldColliderState(restore);
+                return;
+            }
+
+            Vector3 halfExtents = bounds.extents + Vector3.one * supportWakePadding;
+            int hitCount = Physics.OverlapBoxNonAlloc(
+                bounds.center,
+                halfExtents,
+                supportWakeHits,
+                Quaternion.identity,
+                ~0,
+                QueryTriggerInteraction.Ignore);
+
+            SetHeldColliderState(false);
+
+            for (int i = 0; i < hitCount; i++)
+            {
+                Collider hit = supportWakeHits[i];
+                Rigidbody hitBody = hit != null ? hit.attachedRigidbody : null;
+                if (hitBody == null || hitBody == body)
+                {
+                    continue;
+                }
+
+                hitBody.WakeUp();
             }
         }
 

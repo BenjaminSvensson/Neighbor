@@ -30,6 +30,14 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float holdObstructionPadding = 0.18f;
         [SerializeField] private LayerMask holdObstructionMask = ~0;
 
+        [Header("Placement")]
+        [SerializeField, Min(0.2f)] private float placementRange = 3.25f;
+        [SerializeField, Min(0f)] private float placementProbeRadius = 0.08f;
+        [SerializeField, Range(0f, 1f)] private float placementMinimumUpDot = 0.45f;
+        [SerializeField, Min(0f)] private float placementSurfacePadding = 0.025f;
+        [SerializeField, Min(0f)] private float placementFallbackDownDistance = 3f;
+        [SerializeField] private LayerMask placementMask = ~0;
+
         [Header("Throwing")]
         [SerializeField, Min(0f)] private float throwHoldThreshold = 0.22f;
         [SerializeField, Min(0f)] private float throwChargePullDistance = 0.35f;
@@ -53,6 +61,7 @@ namespace Neighbor.Main.Features.Interaction
         private readonly RaycastHit[] interactHits = new RaycastHit[12];
         private readonly RaycastHit[] throwArcHits = new RaycastHit[8];
         private readonly RaycastHit[] holdObstructionHits = new RaycastHit[12];
+        private readonly RaycastHit[] placementHits = new RaycastHit[12];
         private float releaseButtonDownTime;
         private bool releaseButtonWasHeld;
 
@@ -215,8 +224,118 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            releasedPickup.Drop();
+            if (TryGetPlacementPose(releasedPickup, out Vector3 placementPosition, out Quaternion placementRotation))
+            {
+                releasedPickup.Place(placementPosition, placementRotation);
+            }
+            else
+            {
+                releasedPickup.Drop();
+            }
+
             HideThrowArc();
+        }
+
+        private bool TryGetPlacementPose(Pickupable pickupable, out Vector3 position, out Quaternion rotation)
+        {
+            position = default;
+            rotation = default;
+            if (pickupable == null)
+            {
+                return false;
+            }
+
+            if (!TryGetPlacementHit(out RaycastHit hit))
+            {
+                return false;
+            }
+
+            rotation = Quaternion.Euler(0f, pickupable.transform.eulerAngles.y, 0f);
+            Quaternion originalRotation = pickupable.transform.rotation;
+            pickupable.transform.rotation = rotation;
+            Bounds bounds = pickupable.GetPlacementBounds();
+            pickupable.transform.rotation = originalRotation;
+
+            Vector3 extents = bounds.extents;
+            Vector3 normal = hit.normal.normalized;
+            float normalExtent =
+                Mathf.Abs(normal.x) * extents.x +
+                Mathf.Abs(normal.y) * extents.y +
+                Mathf.Abs(normal.z) * extents.z;
+
+            Vector3 transformToBoundsCenter = pickupable.transform.position - bounds.center;
+            position = hit.point + normal * (normalExtent + placementSurfacePadding) + transformToBoundsCenter;
+            return true;
+        }
+
+        private bool TryGetPlacementHit(out RaycastHit bestHit)
+        {
+            bestHit = default;
+            Ray ray = new Ray(ViewTransform.position, ViewTransform.forward);
+            int hitCount = placementProbeRadius > 0f
+                ? Physics.SphereCastNonAlloc(
+                    ray,
+                    placementProbeRadius,
+                    placementHits,
+                    placementRange,
+                    placementMask,
+                    QueryTriggerInteraction.Ignore)
+                : Physics.RaycastNonAlloc(
+                    ray,
+                    placementHits,
+                    placementRange,
+                    placementMask,
+                    QueryTriggerInteraction.Ignore);
+
+            if (TryChoosePlacementHit(hitCount, out bestHit))
+            {
+                return true;
+            }
+
+            if (placementFallbackDownDistance <= 0f)
+            {
+                return false;
+            }
+
+            Vector3 fallbackOrigin = GetHoldPosition() + Vector3.up * 0.35f;
+            hitCount = Physics.RaycastNonAlloc(
+                fallbackOrigin,
+                Vector3.down,
+                placementHits,
+                placementFallbackDownDistance,
+                placementMask,
+                QueryTriggerInteraction.Ignore);
+
+            return TryChoosePlacementHit(hitCount, out bestHit);
+        }
+
+        private bool TryChoosePlacementHit(int hitCount, out RaycastHit bestHit)
+        {
+            bestHit = default;
+            float bestDistance = float.PositiveInfinity;
+            bool foundHit = false;
+            for (int i = 0; i < hitCount; i++)
+            {
+                RaycastHit hit = placementHits[i];
+                if (hit.collider == null || hit.normal.y < placementMinimumUpDot || ShouldIgnorePlacementSurface(hit.collider))
+                {
+                    continue;
+                }
+
+                if (hit.distance < bestDistance)
+                {
+                    bestDistance = hit.distance;
+                    bestHit = hit;
+                    foundHit = true;
+                }
+            }
+
+            return foundHit;
+        }
+
+        private bool ShouldIgnorePlacementSurface(Collider collider)
+        {
+            return IsPlayerCollider(collider) || collider.GetComponentInParent<Pickupable>() == heldPickup;
         }
 
         private Vector3 GetHoldPosition()

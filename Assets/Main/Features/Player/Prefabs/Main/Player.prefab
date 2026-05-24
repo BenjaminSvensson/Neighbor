@@ -961,6 +961,14 @@ MonoBehaviour:
   holdObstructionMask:
     serializedVersion: 2
     m_Bits: 1
+  placementRange: 3.6
+  placementProbeRadius: 0.12
+  placementMinimumUpDot: 0.35
+  placementSurfacePadding: 0.025
+  placementFallbackDownDistance: 3
+  placementMask:
+    serializedVersion: 2
+    m_Bits: 65
   throwHoldThreshold: 0.22
   throwChargePullDistance: 0.35
   throwChargeLowerDistance: 0.8
