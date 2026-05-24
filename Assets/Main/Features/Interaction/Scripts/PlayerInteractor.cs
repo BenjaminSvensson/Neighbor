@@ -36,6 +36,10 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Range(0f, 1f)] private float placementMinimumUpDot = 0.45f;
         [SerializeField, Min(0f)] private float placementSurfacePadding = 0.025f;
         [SerializeField, Min(0f)] private float placementClearanceShrink = 0.015f;
+        [SerializeField, Min(0f)] private float placementSupportInset = 0.08f;
+        [SerializeField, Min(0f)] private float placementSupportProbeLift = 0.08f;
+        [SerializeField, Min(0.01f)] private float placementSupportProbeDistance = 0.18f;
+        [SerializeField, Range(0f, 1f)] private float placementPickupableCenterPull = 0.22f;
         [SerializeField, Range(0, 6)] private int placementSearchRings = 3;
         [SerializeField, Min(0.05f)] private float placementSearchStep = 0.38f;
         [SerializeField, Min(0f)] private float placementFallbackDownDistance = 3f;
@@ -228,9 +232,9 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            if (TryGetPlacementPose(releasedPickup, out Vector3 placementPosition, out Quaternion placementRotation, out bool foundPlacementSurface))
+            if (TryGetPlacementPose(releasedPickup, out Vector3 placementPosition, out Quaternion placementRotation, out bool foundPlacementSurface, out bool shouldSleepAfterPlacement))
             {
-                releasedPickup.Place(placementPosition, placementRotation);
+                releasedPickup.Place(placementPosition, placementRotation, shouldSleepAfterPlacement);
             }
             else if (foundPlacementSurface)
             {
@@ -244,11 +248,12 @@ namespace Neighbor.Main.Features.Interaction
             HideThrowArc();
         }
 
-        private bool TryGetPlacementPose(Pickupable pickupable, out Vector3 position, out Quaternion rotation, out bool foundSurface)
+        private bool TryGetPlacementPose(Pickupable pickupable, out Vector3 position, out Quaternion rotation, out bool foundSurface, out bool shouldSleepAfterPlacement)
         {
             position = default;
             rotation = default;
             foundSurface = false;
+            shouldSleepAfterPlacement = false;
             if (pickupable == null)
             {
                 return false;
@@ -260,6 +265,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             foundSurface = true;
+            Vector3 placementPoint = PullPlacementPointTowardSurfaceCenter(hit.point, hit.normal, hit.collider);
             rotation = Quaternion.Euler(0f, pickupable.transform.eulerAngles.y, 0f);
             Quaternion originalRotation = pickupable.transform.rotation;
             pickupable.transform.rotation = rotation;
@@ -274,10 +280,11 @@ namespace Neighbor.Main.Features.Interaction
                 Mathf.Abs(normal.z) * extents.z;
 
             Vector3 transformToBoundsCenter = pickupable.transform.position - bounds.center;
-            position = hit.point + normal * (normalExtent + placementSurfacePadding) + transformToBoundsCenter;
+            position = placementPoint + normal * (normalExtent + placementSurfacePadding) + transformToBoundsCenter;
             Vector3 placedBoundsCenter = position - transformToBoundsCenter;
             if (HasPlacementClearance(pickupable, placedBoundsCenter, bounds.extents, hit.collider))
             {
+                shouldSleepAfterPlacement = HasPlacementSupport(pickupable, placedBoundsCenter, bounds.extents, normal, hit.collider);
                 return true;
             }
 
@@ -288,7 +295,20 @@ namespace Neighbor.Main.Features.Interaction
                 normalExtent,
                 bounds.extents,
                 transformToBoundsCenter,
-                out position);
+                out position,
+                out shouldSleepAfterPlacement);
+        }
+
+        private Vector3 PullPlacementPointTowardSurfaceCenter(Vector3 point, Vector3 normal, Collider surfaceCollider)
+        {
+            if (placementPickupableCenterPull <= 0f || surfaceCollider == null || surfaceCollider.GetComponentInParent<Pickupable>() == null)
+            {
+                return point;
+            }
+
+            Vector3 surfaceCenter = surfaceCollider.bounds.center;
+            Vector3 planarCenter = point + Vector3.ProjectOnPlane(surfaceCenter - point, normal);
+            return Vector3.Lerp(point, planarCenter, placementPickupableCenterPull);
         }
 
         private bool TryFindNearbyPlacementPose(
@@ -298,9 +318,11 @@ namespace Neighbor.Main.Features.Interaction
             float normalExtent,
             Vector3 extents,
             Vector3 transformToBoundsCenter,
-            out Vector3 position)
+            out Vector3 position,
+            out bool shouldSleepAfterPlacement)
         {
             position = default;
+            shouldSleepAfterPlacement = false;
             if (placementSearchRings <= 0)
             {
                 return false;
@@ -341,7 +363,8 @@ namespace Neighbor.Main.Features.Interaction
                         continue;
                     }
 
-                    Vector3 candidatePosition = surfaceHit.point + surfaceHit.normal.normalized * (normalExtent + placementSurfacePadding) + transformToBoundsCenter;
+                    Vector3 candidatePoint = PullPlacementPointTowardSurfaceCenter(surfaceHit.point, surfaceHit.normal, surfaceHit.collider);
+                    Vector3 candidatePosition = candidatePoint + surfaceHit.normal.normalized * (normalExtent + placementSurfacePadding) + transformToBoundsCenter;
                     Vector3 candidateBoundsCenter = candidatePosition - transformToBoundsCenter;
                     if (!HasPlacementClearance(pickupable, candidateBoundsCenter, extents, surfaceHit.collider))
                     {
@@ -349,11 +372,54 @@ namespace Neighbor.Main.Features.Interaction
                     }
 
                     position = candidatePosition;
+                    shouldSleepAfterPlacement = HasPlacementSupport(pickupable, candidateBoundsCenter, extents, surfaceHit.normal.normalized, surfaceHit.collider);
                     return true;
                 }
             }
 
             return false;
+        }
+
+        private bool HasPlacementSupport(Pickupable pickupable, Vector3 center, Vector3 extents, Vector3 normal, Collider supportCollider)
+        {
+            Vector3 tangent = Vector3.ProjectOnPlane(ViewTransform.right, normal);
+            if (tangent.sqrMagnitude <= 0.001f)
+            {
+                tangent = Vector3.Cross(normal, ViewTransform.forward);
+            }
+
+            tangent.Normalize();
+            Vector3 bitangent = Vector3.Cross(normal, tangent).normalized;
+
+            float normalExtent =
+                Mathf.Abs(normal.x) * extents.x +
+                Mathf.Abs(normal.y) * extents.y +
+                Mathf.Abs(normal.z) * extents.z;
+            float tangentExtent = Mathf.Max(0.01f,
+                Mathf.Abs(tangent.x) * extents.x +
+                Mathf.Abs(tangent.y) * extents.y +
+                Mathf.Abs(tangent.z) * extents.z - placementSupportInset);
+            float bitangentExtent = Mathf.Max(0.01f,
+                Mathf.Abs(bitangent.x) * extents.x +
+                Mathf.Abs(bitangent.y) * extents.y +
+                Mathf.Abs(bitangent.z) * extents.z - placementSupportInset);
+
+            Vector3 bottomCenter = center - normal * normalExtent;
+            return HasSupportProbe(bottomCenter + tangent * tangentExtent + bitangent * bitangentExtent, normal, pickupable, supportCollider)
+                && HasSupportProbe(bottomCenter + tangent * tangentExtent - bitangent * bitangentExtent, normal, pickupable, supportCollider)
+                && HasSupportProbe(bottomCenter - tangent * tangentExtent + bitangent * bitangentExtent, normal, pickupable, supportCollider)
+                && HasSupportProbe(bottomCenter - tangent * tangentExtent - bitangent * bitangentExtent, normal, pickupable, supportCollider);
+        }
+
+        private bool HasSupportProbe(Vector3 point, Vector3 normal, Pickupable pickupable, Collider supportCollider)
+        {
+            Vector3 origin = point + normal * placementSupportProbeLift;
+            if (!Physics.Raycast(origin, -normal, out RaycastHit hit, placementSupportProbeDistance, placementMask, QueryTriggerInteraction.Ignore))
+            {
+                return false;
+            }
+
+            return hit.collider == supportCollider || !ShouldIgnorePlacementSurface(hit.collider, pickupable);
         }
 
         private bool HasPlacementClearance(Pickupable pickupable, Vector3 center, Vector3 extents, Collider supportCollider)

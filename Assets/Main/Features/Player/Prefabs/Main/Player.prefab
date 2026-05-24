@@ -966,6 +966,10 @@ MonoBehaviour:
   placementMinimumUpDot: 0.25
   placementSurfacePadding: 0.025
   placementClearanceShrink: 0.015
+  placementSupportInset: 0.08
+  placementSupportProbeLift: 0.08
+  placementSupportProbeDistance: 0.18
+  placementPickupableCenterPull: 0.22
   placementSearchRings: 3
   placementSearchStep: 0.38
   placementFallbackDownDistance: 5

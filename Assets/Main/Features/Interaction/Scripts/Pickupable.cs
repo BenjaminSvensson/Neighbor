@@ -142,7 +142,7 @@ namespace Neighbor.Main.Features.Interaction
             RestorePhysics();
         }
 
-        public void Place(Vector3 position, Quaternion rotation)
+        public void Place(Vector3 position, Quaternion rotation, bool sleepAfterPlacing = true)
         {
             transform.SetPositionAndRotation(position, rotation);
 
@@ -167,7 +167,14 @@ namespace Neighbor.Main.Features.Interaction
             body.linearVelocity = Vector3.zero;
             body.angularVelocity = Vector3.zero;
             SetHeldColliderState(true);
-            body.Sleep();
+
+            if (sleepAfterPlacing)
+            {
+                body.Sleep();
+                return;
+            }
+
+            body.WakeUp();
         }
 
         public void Throw(Vector3 velocity)
