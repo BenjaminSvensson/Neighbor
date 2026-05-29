@@ -251,10 +251,12 @@ namespace Neighbor.Main.Features.Interaction
 
         private IEnumerator Nudge()
         {
-            float startAngle = currentAngle;
-            float targetAngle = startAngle + lockedNudgeAngle;
-            yield return AnimateNudgeStep(startAngle, targetAngle, lockedNudgeDuration);
-            yield return AnimateNudgeStep(targetAngle, startAngle, lockedNudgeDuration);
+            const float closedAngle = 0f;
+            float targetAngle = closedAngle + lockedNudgeAngle;
+            isOpen = false;
+            yield return AnimateNudgeStep(currentAngle, targetAngle, lockedNudgeDuration);
+            yield return AnimateNudgeStep(targetAngle, closedAngle, lockedNudgeDuration);
+            SetAngle(closedAngle);
             animationRoutine = null;
         }
 
