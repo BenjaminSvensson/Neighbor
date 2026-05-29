@@ -19,6 +19,8 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0.01f)] private float lockedNudgeDuration = 0.12f;
 
         private Coroutine animationRoutine;
+        private Collider[] ownColliders;
+        private Collider[] ignoredPlayerColliders;
         private Vector3 closedPosition;
         private Quaternion closedRotation;
         private bool isOpen;
@@ -40,9 +42,15 @@ namespace Neighbor.Main.Features.Interaction
                 hinge = transform;
             }
 
+            ownColliders = GetComponentsInChildren<Collider>();
             closedPosition = hinge.localPosition;
             closedRotation = hinge.localRotation;
             isLocked = startsLocked;
+        }
+
+        private void OnDisable()
+        {
+            RestoreIgnoredPlayerCollisions();
         }
 
         private void Update()
@@ -77,15 +85,15 @@ namespace Neighbor.Main.Features.Interaction
                 }
                 else
                 {
-                    PlayLockedNudge(interactor != null ? interactor.transform : null);
+                    PlayLockedNudge();
                     return;
                 }
             }
 
-            Toggle(interactor != null ? interactor.transform : null);
+            Toggle(interactor);
         }
 
-        public bool TryOpenFor(Transform opener)
+        public bool TryOpenFor(Transform _)
         {
             if (IsBlocked)
             {
@@ -94,11 +102,11 @@ namespace Neighbor.Main.Features.Interaction
 
             if (isLocked)
             {
-                PlayLockedNudge(opener);
+                PlayLockedNudge();
                 return false;
             }
 
-            OpenAwayFrom(opener);
+            Open();
             return true;
         }
 
@@ -127,7 +135,7 @@ namespace Neighbor.Main.Features.Interaction
 
             if (!IsOnDefaultOpeningSide(playerPosition))
             {
-                PlayLockedNudge(null);
+                PlayLockedNudge();
                 return false;
             }
 
@@ -144,7 +152,7 @@ namespace Neighbor.Main.Features.Interaction
             }
         }
 
-        public void Toggle(Transform opener)
+        public void Toggle(PlayerInteractor interactor = null)
         {
             if (isOpen)
             {
@@ -152,15 +160,14 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            OpenAwayFrom(opener);
+            Open(interactor);
         }
 
-        public void OpenAwayFrom(Transform opener)
+        public void Open(PlayerInteractor interactor = null)
         {
-            float direction = GetOpenDirectionAwayFrom(opener);
             isOpen = true;
             closeAtTime = Time.time + autoCloseDelay;
-            AnimateTo(openAngle * direction, openCloseDuration);
+            AnimateTo(openAngle, openCloseDuration, interactor != null ? interactor.GetComponentsInParent<Collider>() : null);
         }
 
         public void Close()
@@ -169,41 +176,32 @@ namespace Neighbor.Main.Features.Interaction
             AnimateTo(0f, openCloseDuration);
         }
 
-        private float GetOpenDirectionAwayFrom(Transform opener)
-        {
-            if (opener == null)
-            {
-                return 1f;
-            }
-
-            Vector3 toOpener = opener.position - transform.position;
-            float side = Vector3.Dot(transform.right, toOpener);
-            return side >= 0f ? -1f : 1f;
-        }
-
-        private void PlayLockedNudge(Transform opener)
-        {
-            float direction = GetOpenDirectionAwayFrom(opener);
-            if (animationRoutine != null)
-            {
-                StopCoroutine(animationRoutine);
-            }
-
-            animationRoutine = StartCoroutine(Nudge(direction));
-        }
-
-        private void AnimateTo(float targetAngle, float duration)
+        private void PlayLockedNudge()
         {
             if (animationRoutine != null)
             {
                 StopCoroutine(animationRoutine);
+                RestoreIgnoredPlayerCollisions();
             }
 
-            animationRoutine = StartCoroutine(Animate(currentAngle, targetAngle, duration));
+            animationRoutine = StartCoroutine(Nudge());
         }
 
-        private IEnumerator Animate(float fromAngle, float toAngle, float duration)
+        private void AnimateTo(float targetAngle, float duration, Collider[] playerColliders = null)
         {
+            if (animationRoutine != null)
+            {
+                StopCoroutine(animationRoutine);
+                RestoreIgnoredPlayerCollisions();
+            }
+
+            animationRoutine = StartCoroutine(Animate(currentAngle, targetAngle, duration, playerColliders));
+        }
+
+        private IEnumerator Animate(float fromAngle, float toAngle, float duration, Collider[] playerColliders)
+        {
+            IgnorePlayerCollisions(playerColliders);
+
             float timer = 0f;
             float moveDuration = Mathf.Max(0.01f, duration);
             while (timer < moveDuration)
@@ -215,13 +213,14 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             SetAngle(toAngle);
+            RestoreIgnoredPlayerCollisions();
             animationRoutine = null;
         }
 
-        private IEnumerator Nudge(float direction)
+        private IEnumerator Nudge()
         {
             float startAngle = currentAngle;
-            float targetAngle = startAngle + lockedNudgeAngle * direction;
+            float targetAngle = startAngle + lockedNudgeAngle;
             yield return AnimateNudgeStep(startAngle, targetAngle, lockedNudgeDuration);
             yield return AnimateNudgeStep(targetAngle, startAngle, lockedNudgeDuration);
             animationRoutine = null;
@@ -248,6 +247,54 @@ namespace Neighbor.Main.Features.Interaction
             Quaternion angleRotation = Quaternion.Euler(0f, currentAngle, 0f);
             hinge.localPosition = closedPosition + closedRotation * (pivotOffset - angleRotation * pivotOffset);
             hinge.localRotation = closedRotation * angleRotation;
+        }
+
+        private void IgnorePlayerCollisions(Collider[] playerColliders)
+        {
+            if (ownColliders == null || playerColliders == null || playerColliders.Length == 0)
+            {
+                return;
+            }
+
+            ignoredPlayerColliders = playerColliders;
+            SetPlayerCollisionIgnored(true);
+        }
+
+        private void RestoreIgnoredPlayerCollisions()
+        {
+            if (ignoredPlayerColliders == null)
+            {
+                return;
+            }
+
+            SetPlayerCollisionIgnored(false);
+            ignoredPlayerColliders = null;
+        }
+
+        private void SetPlayerCollisionIgnored(bool ignore)
+        {
+            if (ownColliders == null || ignoredPlayerColliders == null)
+            {
+                return;
+            }
+
+            foreach (Collider ownCollider in ownColliders)
+            {
+                if (ownCollider == null)
+                {
+                    continue;
+                }
+
+                foreach (Collider playerCollider in ignoredPlayerColliders)
+                {
+                    if (playerCollider == null || ownCollider == playerCollider)
+                    {
+                        continue;
+                    }
+
+                    Physics.IgnoreCollision(ownCollider, playerCollider, ignore);
+                }
+            }
         }
     }
 }
