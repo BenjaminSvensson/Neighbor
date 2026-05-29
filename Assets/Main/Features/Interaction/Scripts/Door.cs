@@ -7,6 +7,7 @@ namespace Neighbor.Main.Features.Interaction
     {
         [Header("Door")]
         [SerializeField] private Transform hinge;
+        [SerializeField] private Vector3 pivotOffset = new Vector3(-0.6f, 0f, 0f);
         [SerializeField, Min(0f)] private float openAngle = 95f;
         [SerializeField, Min(0.01f)] private float openCloseDuration = 0.28f;
         [SerializeField, Min(0f)] private float autoCloseDelay = 0f;
@@ -18,6 +19,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0.01f)] private float lockedNudgeDuration = 0.12f;
 
         private Coroutine animationRoutine;
+        private Vector3 closedPosition;
         private Quaternion closedRotation;
         private bool isOpen;
         private bool isLocked;
@@ -35,6 +37,7 @@ namespace Neighbor.Main.Features.Interaction
                 hinge = transform;
             }
 
+            closedPosition = hinge.localPosition;
             closedRotation = hinge.localRotation;
             isLocked = startsLocked;
         }
@@ -198,7 +201,9 @@ namespace Neighbor.Main.Features.Interaction
         private void SetAngle(float angle)
         {
             currentAngle = angle;
-            hinge.localRotation = closedRotation * Quaternion.Euler(0f, currentAngle, 0f);
+            Quaternion angleRotation = Quaternion.Euler(0f, currentAngle, 0f);
+            hinge.localPosition = closedPosition + closedRotation * (pivotOffset - angleRotation * pivotOffset);
+            hinge.localRotation = closedRotation * angleRotation;
         }
     }
 }
