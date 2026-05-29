@@ -176,12 +176,7 @@ namespace Neighbor.Main.Features.Interaction
         {
             if (heldPickup != null)
             {
-                if (TryUseHeldPickupOnFocusedInteractable())
-                {
-                    return;
-                }
-
-                ReleaseHeldPickup(false);
+                TryUseHeldPickupOnFocusedInteractable();
                 return;
             }
 
