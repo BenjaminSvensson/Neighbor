@@ -30,6 +30,13 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float pickupAudioMinDistance = 0.4f;
         [SerializeField, Min(0.1f)] private float pickupAudioMaxDistance = 8f;
 
+        [Header("Placement Audio")]
+        [SerializeField] private AudioClip[] placementClips;
+        [SerializeField, Range(0f, 1f)] private float placementVolume = 0.55f;
+        [SerializeField, Min(0f)] private float placementPitchRandomness = 0.04f;
+        [SerializeField, Min(0f)] private float placementAudioMinDistance = 0.4f;
+        [SerializeField, Min(0.1f)] private float placementAudioMaxDistance = 8f;
+
         private Rigidbody body;
         private Collider[] ownColliders;
         private Renderer[] ownRenderers;
@@ -171,10 +178,13 @@ namespace Neighbor.Main.Features.Interaction
             if (sleepAfterPlacing)
             {
                 body.Sleep();
-                return;
+            }
+            else
+            {
+                body.WakeUp();
             }
 
-            body.WakeUp();
+            PlayPlacementSound();
         }
 
         public void Throw(Vector3 velocity)
@@ -308,29 +318,45 @@ namespace Neighbor.Main.Features.Interaction
 
         private void PlayPickupSound()
         {
-            if (pickupClips == null || pickupClips.Length == 0)
+            PlayOneShot3D(pickupClips, pickupVolume, pickupPitchRandomness, pickupAudioMinDistance, pickupAudioMaxDistance, "Pickup3DAudio");
+        }
+
+        private void PlayPlacementSound()
+        {
+            PlayOneShot3D(placementClips, placementVolume, placementPitchRandomness, placementAudioMinDistance, placementAudioMaxDistance, "Placement3DAudio");
+        }
+
+        private void PlayOneShot3D(
+            AudioClip[] clips,
+            float volume,
+            float pitchRandomness,
+            float minDistance,
+            float maxDistance,
+            string objectName)
+        {
+            if (clips == null || clips.Length == 0)
             {
                 return;
             }
 
-            AudioClip clip = pickupClips[Random.Range(0, pickupClips.Length)];
+            AudioClip clip = clips[Random.Range(0, clips.Length)];
             if (clip == null)
             {
                 return;
             }
 
-            GameObject audioObject = new GameObject("Pickup3DAudio");
+            GameObject audioObject = new GameObject(objectName);
             audioObject.transform.position = ThrowOrigin;
 
             AudioSource audioSource = audioObject.AddComponent<AudioSource>();
             audioSource.clip = clip;
-            audioSource.volume = pickupVolume;
-            audioSource.pitch = Random.Range(1f - pickupPitchRandomness, 1f + pickupPitchRandomness);
+            audioSource.volume = volume;
+            audioSource.pitch = Random.Range(1f - pitchRandomness, 1f + pitchRandomness);
             audioSource.playOnAwake = false;
             audioSource.spatialBlend = 1f;
             audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
-            audioSource.minDistance = pickupAudioMinDistance;
-            audioSource.maxDistance = pickupAudioMaxDistance;
+            audioSource.minDistance = minDistance;
+            audioSource.maxDistance = maxDistance;
             audioSource.dopplerLevel = 0.1f;
             audioSource.Play();
 

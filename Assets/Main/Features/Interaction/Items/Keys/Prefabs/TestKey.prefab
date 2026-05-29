@@ -179,3 +179,8 @@ MonoBehaviour:
   pickupPitchRandomness: 0.05
   pickupAudioMinDistance: 0.4
   pickupAudioMaxDistance: 8
+  placementClips: []
+  placementVolume: 0.55
+  placementPitchRandomness: 0.04
+  placementAudioMinDistance: 0.4
+  placementAudioMaxDistance: 8

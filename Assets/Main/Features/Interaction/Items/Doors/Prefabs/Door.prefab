@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 100001}
   - component: {fileID: 100002}
   m_Layer: 6
-  m_Name: LockedDoor
+  m_Name: Door
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -49,7 +49,7 @@ MonoBehaviour:
   openAngle: 95
   openCloseDuration: 0.28
   autoCloseDelay: 0
-  startsLocked: 1
+  startsLocked: 0
   requiredKeyId: test_key
   lockedNudgeAngle: 6
   lockedNudgeDuration: 0.12

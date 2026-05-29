@@ -160,6 +160,7 @@ MonoBehaviour:
   heldAngularDrag: 10
   alignToCameraWhileHeld: 1
   disableCollidersWhileHeld: 1
+  supportWakePadding: 0.12
   postThrowPlayerCollisionIgnoreTime: 0.35
   pickupClips:
   - {fileID: 8300000, guid: 9b8661bb34317ab42973aa7e3f59a57b, type: 3}
@@ -167,6 +168,12 @@ MonoBehaviour:
   pickupPitchRandomness: 0.05
   pickupAudioMinDistance: 0.4
   pickupAudioMaxDistance: 8
+  placementClips:
+  - {fileID: 8300000, guid: 4353bccfc087e0c4098b4b8e329d1530, type: 3}
+  placementVolume: 0.55
+  placementPitchRandomness: 0.04
+  placementAudioMinDistance: 0.4
+  placementAudioMaxDistance: 8
 --- !u!114 &100007
 MonoBehaviour:
   m_ObjectHideFlags: 0
