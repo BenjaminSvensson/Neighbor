@@ -18,6 +18,17 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float lockedNudgeAngle = 6f;
         [SerializeField, Min(0.01f)] private float lockedNudgeDuration = 0.12f;
 
+        [Header("Door Audio")]
+        [SerializeField] private AudioSource audioSource;
+        [SerializeField] private AudioClip[] openClips;
+        [SerializeField] private AudioClip[] closeClips;
+        [SerializeField] private AudioClip[] lockedClips;
+        [SerializeField] private AudioClip[] unlockClips;
+        [SerializeField, Range(0f, 1f)] private float audioVolume = 0.65f;
+        [SerializeField, Min(0f)] private float pitchRandomness = 0.04f;
+        [SerializeField, Min(0f)] private float audioMinDistance = 0.5f;
+        [SerializeField, Min(0.1f)] private float audioMaxDistance = 10f;
+
         private Coroutine animationRoutine;
         private Vector3 closedPosition;
         private Quaternion closedRotation;
@@ -40,6 +51,7 @@ namespace Neighbor.Main.Features.Interaction
             closedPosition = hinge.localPosition;
             closedRotation = hinge.localRotation;
             isLocked = startsLocked;
+            ResolveAudioSource();
         }
 
         private void Update()
@@ -91,7 +103,13 @@ namespace Neighbor.Main.Features.Interaction
 
         public void Unlock()
         {
+            if (!isLocked)
+            {
+                return;
+            }
+
             isLocked = false;
+            PlayRandomSound(unlockClips);
         }
 
         public void Lock()
@@ -116,12 +134,19 @@ namespace Neighbor.Main.Features.Interaction
             float direction = GetOpenDirectionAwayFrom(opener);
             isOpen = true;
             closeAtTime = Time.time + autoCloseDelay;
+            PlayRandomSound(openClips);
             AnimateTo(openAngle * direction, openCloseDuration);
         }
 
         public void Close()
         {
+            bool shouldPlayCloseSound = isOpen || !Mathf.Approximately(currentAngle, 0f);
             isOpen = false;
+            if (shouldPlayCloseSound)
+            {
+                PlayRandomSound(closeClips);
+            }
+
             AnimateTo(0f, openCloseDuration);
         }
 
@@ -145,6 +170,7 @@ namespace Neighbor.Main.Features.Interaction
                 StopCoroutine(animationRoutine);
             }
 
+            PlayRandomSound(lockedClips);
             animationRoutine = StartCoroutine(Nudge(direction));
         }
 
@@ -204,6 +230,48 @@ namespace Neighbor.Main.Features.Interaction
             Quaternion angleRotation = Quaternion.Euler(0f, currentAngle, 0f);
             hinge.localPosition = closedPosition + closedRotation * (pivotOffset - angleRotation * pivotOffset);
             hinge.localRotation = closedRotation * angleRotation;
+        }
+
+        private void ResolveAudioSource()
+        {
+            if (audioSource == null)
+            {
+                audioSource = GetComponent<AudioSource>();
+            }
+
+            if (audioSource == null)
+            {
+                audioSource = gameObject.AddComponent<AudioSource>();
+            }
+
+            ConfigureAudioSource();
+        }
+
+        private void PlayRandomSound(AudioClip[] clips)
+        {
+            if (clips == null || clips.Length == 0 || audioSource == null)
+            {
+                return;
+            }
+
+            AudioClip clip = clips[Random.Range(0, clips.Length)];
+            if (clip == null)
+            {
+                return;
+            }
+
+            audioSource.pitch = Random.Range(1f - pitchRandomness, 1f + pitchRandomness);
+            audioSource.PlayOneShot(clip, audioVolume);
+        }
+
+        private void ConfigureAudioSource()
+        {
+            audioSource.playOnAwake = false;
+            audioSource.spatialBlend = 1f;
+            audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+            audioSource.minDistance = audioMinDistance;
+            audioSource.maxDistance = audioMaxDistance;
+            audioSource.dopplerLevel = 0.1f;
         }
     }
 }
