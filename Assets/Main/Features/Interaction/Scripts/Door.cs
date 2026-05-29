@@ -82,6 +82,7 @@ namespace Neighbor.Main.Features.Interaction
         {
             if (IsBlocked)
             {
+                PlayLockedNudge();
                 return;
             }
 
@@ -109,6 +110,7 @@ namespace Neighbor.Main.Features.Interaction
         {
             if (IsBlocked)
             {
+                PlayLockedNudge();
                 return false;
             }
 
@@ -144,16 +146,20 @@ namespace Neighbor.Main.Features.Interaction
             return Vector3.Dot(DefaultOpeningSideNormal, worldPosition - transform.position) > 0f;
         }
 
-        public bool TryAddBlocker(DoorBlockerChair blocker, Vector3 playerPosition)
+        public bool TryAddBlocker(DoorBlockerChair blocker, Vector3 blockerPosition, bool playFailureFeedback = true)
         {
             if (blocker == null || activeBlocker != null && activeBlocker != blocker)
             {
                 return false;
             }
 
-            if (!IsOnDefaultOpeningSide(playerPosition))
+            if (!IsOnDefaultOpeningSide(blockerPosition))
             {
-                PlayLockedNudge();
+                if (playFailureFeedback)
+                {
+                    PlayLockedNudge();
+                }
+
                 return false;
             }
 

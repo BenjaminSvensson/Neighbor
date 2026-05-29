@@ -10,11 +10,15 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float groundProbeHeight = 1.5f;
         [SerializeField, Min(0f)] private float groundProbeDistance = 3f;
         [SerializeField, Min(0f)] private float removalDistance = 0.65f;
+        [SerializeField, Min(0f)] private float autoBlockRadius = 1.1f;
+        [SerializeField, Range(0f, 45f)] private float leanAngle = 12f;
         [SerializeField] private LayerMask groundMask = ~0;
+        [SerializeField] private LayerMask doorMask = ~0;
 
         private Pickupable pickupable;
         private Door blockedDoor;
         private Vector3 blockedPosition;
+        private readonly Collider[] nearbyDoorHits = new Collider[8];
 
         private void Awake()
         {
@@ -30,6 +34,7 @@ namespace Neighbor.Main.Features.Interaction
         {
             if (blockedDoor == null)
             {
+                TryAutoBlockNearbyDoor();
                 return;
             }
 
@@ -51,14 +56,46 @@ namespace Neighbor.Main.Features.Interaction
                 return false;
             }
 
+            ApplyBlockedPose(door);
+            return true;
+        }
+
+        private void TryAutoBlockNearbyDoor()
+        {
+            if (pickupable == null || pickupable.IsHeld || autoBlockRadius <= 0f)
+            {
+                return;
+            }
+
+            int hitCount = Physics.OverlapSphereNonAlloc(transform.position, autoBlockRadius, nearbyDoorHits, doorMask, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < hitCount; i++)
+            {
+                Door door = nearbyDoorHits[i] != null ? nearbyDoorHits[i].GetComponentInParent<Door>() : null;
+                if (door == null || !door.TryAddBlocker(this, transform.position, false))
+                {
+                    continue;
+                }
+
+                ApplyBlockedPose(door);
+                return;
+            }
+        }
+
+        private void ApplyBlockedPose(Door door)
+        {
             Vector3 openingNormal = door.DefaultOpeningSideNormal.normalized;
-            Quaternion rotation = Quaternion.LookRotation(-openingNormal, Vector3.up);
+            Quaternion rotation = GetBlockedRotation(openingNormal);
             Vector3 position = GetPlacementPosition(door.transform.position + openingNormal * doorOffset, rotation);
 
             pickupable.Place(position, rotation);
             blockedDoor = door;
             blockedPosition = position;
-            return true;
+        }
+
+        private Quaternion GetBlockedRotation(Vector3 openingNormal)
+        {
+            Quaternion facingDoor = Quaternion.LookRotation(-openingNormal, Vector3.up);
+            return facingDoor * Quaternion.AngleAxis(leanAngle, Vector3.right);
         }
 
         private Vector3 GetPlacementPosition(Vector3 desiredCenter, Quaternion rotation)
