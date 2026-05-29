@@ -124,15 +124,10 @@ namespace Neighbor.Main.Features.Interaction
             return true;
         }
 
-        public bool TryPlayLockedImpact()
+        public void PlayImpactNudge()
         {
-            if (!IsLocked && !IsBlocked)
-            {
-                return false;
-            }
-
-            PlayLockedNudge();
-            return true;
+            float returnAngle = IsLocked || IsBlocked ? 0f : currentAngle;
+            PlayNudge(returnAngle);
         }
 
         public void Unlock()
@@ -220,6 +215,11 @@ namespace Neighbor.Main.Features.Interaction
 
         private void PlayLockedNudge()
         {
+            PlayNudge(0f);
+        }
+
+        private void PlayNudge(float returnAngle)
+        {
             if (animationRoutine != null)
             {
                 StopCoroutine(animationRoutine);
@@ -227,7 +227,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             PlayRandomSound(lockedClips);
-            animationRoutine = StartCoroutine(Nudge());
+            animationRoutine = StartCoroutine(Nudge(returnAngle));
         }
 
         private void AnimateTo(float targetAngle, float duration, Collider[] playerColliders = null)
@@ -260,14 +260,13 @@ namespace Neighbor.Main.Features.Interaction
             animationRoutine = null;
         }
 
-        private IEnumerator Nudge()
+        private IEnumerator Nudge(float returnAngle)
         {
-            const float closedAngle = 0f;
-            float targetAngle = closedAngle + lockedNudgeAngle;
-            isOpen = false;
+            float targetAngle = returnAngle + lockedNudgeAngle;
+            isOpen = !Mathf.Approximately(returnAngle, 0f);
             yield return AnimateNudgeStep(currentAngle, targetAngle, lockedNudgeDuration);
-            yield return AnimateNudgeStep(targetAngle, closedAngle, lockedNudgeDuration);
-            SetAngle(closedAngle);
+            yield return AnimateNudgeStep(targetAngle, returnAngle, lockedNudgeDuration);
+            SetAngle(returnAngle);
             animationRoutine = null;
         }
 

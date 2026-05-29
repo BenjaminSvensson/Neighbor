@@ -89,7 +89,7 @@ namespace Neighbor.Main.Features.Interaction
         private void NotifyDoorImpact(Collision collision)
         {
             Door door = collision.collider.GetComponentInParent<Door>();
-            door?.TryPlayLockedImpact();
+            door?.PlayImpactNudge();
         }
 
         private void PlayImpactAudio(Vector3 origin, float loudness01)
