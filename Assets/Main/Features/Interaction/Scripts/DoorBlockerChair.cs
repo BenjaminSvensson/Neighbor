@@ -9,20 +9,23 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float placementSurfacePadding = 0.02f;
         [SerializeField, Min(0f)] private float groundProbeHeight = 1.5f;
         [SerializeField, Min(0f)] private float groundProbeDistance = 3f;
-        [SerializeField, Min(0f)] private float removalDistance = 0.65f;
         [SerializeField, Min(0f)] private float autoBlockRadius = 1.1f;
         [SerializeField, Range(0f, 45f)] private float leanAngle = 12f;
         [SerializeField] private LayerMask groundMask = ~0;
         [SerializeField] private LayerMask doorMask = ~0;
 
         private Pickupable pickupable;
+        private Rigidbody body;
         private Door blockedDoor;
-        private Vector3 blockedPosition;
+        private RigidbodyConstraints originalConstraints;
+        private bool hasFrozenBlockedBody;
         private readonly Collider[] nearbyDoorHits = new Collider[8];
+        private readonly RaycastHit[] groundHits = new RaycastHit[12];
 
         private void Awake()
         {
             pickupable = GetComponent<Pickupable>();
+            body = GetComponent<Rigidbody>();
         }
 
         private void OnDisable()
@@ -38,7 +41,7 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            if ((pickupable != null && pickupable.IsHeld) || Vector3.Distance(transform.position, blockedPosition) > removalDistance)
+            if (pickupable != null && pickupable.IsHeld)
             {
                 ClearBlockedDoor();
             }
@@ -58,6 +61,11 @@ namespace Neighbor.Main.Features.Interaction
 
             ApplyBlockedPose(door);
             return true;
+        }
+
+        public void HandlePickupStarted()
+        {
+            ClearBlockedDoor();
         }
 
         private void TryAutoBlockNearbyDoor()
@@ -85,11 +93,11 @@ namespace Neighbor.Main.Features.Interaction
         {
             Vector3 openingNormal = door.DefaultOpeningSideNormal.normalized;
             Quaternion rotation = GetBlockedRotation(openingNormal);
-            Vector3 position = GetPlacementPosition(door.transform.position + openingNormal * doorOffset, rotation);
+            Vector3 position = GetPlacementPosition(door, door.transform.position + openingNormal * doorOffset, rotation);
 
             pickupable.Place(position, rotation);
             blockedDoor = door;
-            blockedPosition = position;
+            FreezeBlockedBody();
         }
 
         private Quaternion GetBlockedRotation(Vector3 openingNormal)
@@ -98,7 +106,7 @@ namespace Neighbor.Main.Features.Interaction
             return facingDoor * Quaternion.AngleAxis(leanAngle, Vector3.right);
         }
 
-        private Vector3 GetPlacementPosition(Vector3 desiredCenter, Quaternion rotation)
+        private Vector3 GetPlacementPosition(Door door, Vector3 desiredCenter, Quaternion rotation)
         {
             Quaternion originalRotation = transform.rotation;
             transform.rotation = rotation;
@@ -107,7 +115,7 @@ namespace Neighbor.Main.Features.Interaction
 
             float bottomOffset = transform.position.y - bounds.min.y;
             Vector3 probeOrigin = desiredCenter + Vector3.up * groundProbeHeight;
-            if (Physics.Raycast(probeOrigin, Vector3.down, out RaycastHit hit, groundProbeHeight + groundProbeDistance, groundMask, QueryTriggerInteraction.Ignore))
+            if (TryGetGroundHit(probeOrigin, door, out RaycastHit hit))
             {
                 desiredCenter.y = hit.point.y + bottomOffset + placementSurfacePadding;
             }
@@ -115,8 +123,71 @@ namespace Neighbor.Main.Features.Interaction
             return desiredCenter;
         }
 
+        private bool TryGetGroundHit(Vector3 probeOrigin, Door door, out RaycastHit bestHit)
+        {
+            bestHit = default;
+            int hitCount = Physics.RaycastNonAlloc(
+                probeOrigin,
+                Vector3.down,
+                groundHits,
+                groundProbeHeight + groundProbeDistance,
+                groundMask,
+                QueryTriggerInteraction.Ignore);
+
+            float bestDistance = float.PositiveInfinity;
+            bool foundHit = false;
+            for (int i = 0; i < hitCount; i++)
+            {
+                RaycastHit hit = groundHits[i];
+                if (hit.collider == null
+                    || hit.collider.GetComponentInParent<Door>() == door
+                    || hit.collider.GetComponentInParent<Pickupable>() == pickupable)
+                {
+                    continue;
+                }
+
+                if (hit.distance < bestDistance)
+                {
+                    bestDistance = hit.distance;
+                    bestHit = hit;
+                    foundHit = true;
+                }
+            }
+
+            return foundHit;
+        }
+
+        private void FreezeBlockedBody()
+        {
+            if (body == null || hasFrozenBlockedBody)
+            {
+                return;
+            }
+
+            originalConstraints = body.constraints;
+            body.linearVelocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+            body.constraints = RigidbodyConstraints.FreezeAll;
+            body.Sleep();
+            hasFrozenBlockedBody = true;
+        }
+
+        private void RestoreBlockedBody()
+        {
+            if (body == null || !hasFrozenBlockedBody)
+            {
+                return;
+            }
+
+            body.constraints = originalConstraints;
+            body.WakeUp();
+            hasFrozenBlockedBody = false;
+        }
+
         private void ClearBlockedDoor()
         {
+            RestoreBlockedBody();
+
             if (blockedDoor != null)
             {
                 blockedDoor.RemoveBlocker(this);

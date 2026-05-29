@@ -98,6 +98,9 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
+            DoorBlockerChair doorBlocker = GetComponent<DoorBlockerChair>();
+            doorBlocker?.HandlePickupStarted();
+
             IsHeld = true;
             wasUsingGravity = body.useGravity;
             wasKinematic = body.isKinematic;
