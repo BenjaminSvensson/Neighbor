@@ -44,7 +44,7 @@ namespace Neighbor.Main.Features.Interaction
         public bool IsBlocked => activeBlocker != null;
         public bool IsOpen => isOpen;
         public string RequiredKeyId => requiredKeyId;
-        public Vector3 DefaultOpeningSideNormal => transform.right * Mathf.Sign(openAngle == 0f ? 1f : openAngle);
+        public Vector3 DefaultOpeningSideNormal => -transform.forward * Mathf.Sign(openAngle == 0f ? 1f : openAngle);
 
         private void Awake()
         {
