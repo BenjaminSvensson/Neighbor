@@ -81,6 +81,7 @@ namespace Neighbor.Main.Features.Player
         private float heavyLandingSlowTimer;
         private float heavyLandingSlowImpact;
         private bool isResettingScene;
+        private bool isBeartrapLocked;
         private Vector3 slideDirection;
         private float currentSlideSpeed;
         private float slideBonusSpeed;
@@ -105,6 +106,7 @@ namespace Neighbor.Main.Features.Player
         public bool IsCrouching { get; private set; }
         public bool IsSliding { get; private set; }
         public bool IsLedgeClimbing { get; private set; }
+        public bool IsBeartrapLocked => isBeartrapLocked;
         public PlayerFrameInput LastInput { get; private set; }
 
         private void Awake()
@@ -144,7 +146,22 @@ namespace Neighbor.Main.Features.Player
 
             UpdateGrounding();
             UpdateStance();
+            if (isBeartrapLocked)
+            {
+                StopForBeartrap();
+                return;
+            }
+
             UpdateMovement();
+        }
+
+        public void SetBeartrapLocked(bool locked)
+        {
+            isBeartrapLocked = locked;
+            if (locked)
+            {
+                StopForBeartrap();
+            }
         }
 
         private void ResetTransientFeedback()
@@ -276,6 +293,18 @@ namespace Neighbor.Main.Features.Player
 
             MoveAmount = Mathf.InverseLerp(0f, runSpeed, flatVelocity.magnitude);
             Speed01 = targetSpeed <= 0f ? 0f : Mathf.Clamp01(flatVelocity.magnitude / runSpeed);
+        }
+
+        private void StopForBeartrap()
+        {
+            horizontalVelocity = Vector3.zero;
+            verticalVelocity = IsGrounded ? groundedStickForce : 0f;
+            slideTimer = 0f;
+            slideBonusSpeed = 0f;
+            IsSliding = false;
+            IsRunning = false;
+            MoveAmount = 0f;
+            Speed01 = 0f;
         }
 
         private float HeavyLandingSpeedScale

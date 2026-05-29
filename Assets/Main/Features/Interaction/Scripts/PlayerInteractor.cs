@@ -64,6 +64,7 @@ namespace Neighbor.Main.Features.Interaction
 
         private Pickupable heldPickup;
         private InputAction interactAction;
+        private IHoldInteractable activeHoldInteractable;
         private Collider[] playerColliders;
         private readonly RaycastHit[] interactHits = new RaycastHit[12];
         private readonly RaycastHit[] throwArcHits = new RaycastHit[8];
@@ -110,6 +111,7 @@ namespace Neighbor.Main.Features.Interaction
             Mouse mouse = Mouse.current;
 
             bool interactPressed = InteractWasPressedThisFrame(keyboard);
+            bool interactHeld = InteractIsPressed(keyboard);
             if (interactPressed)
             {
                 TryInteract();
@@ -119,9 +121,25 @@ namespace Neighbor.Main.Features.Interaction
 
             if (heldPickup == null || mouse == null)
             {
+                if (heldPickup == null)
+                {
+                    if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+                    {
+                        TryPrimaryUseFocusedInteractable();
+                    }
+
+                    UpdateHoldInteraction(interactHeld);
+                }
+                else
+                {
+                    EndActiveHoldInteraction(false);
+                }
+
                 releaseButtonWasHeld = false;
                 return;
             }
+
+            EndActiveHoldInteraction(false);
 
             if (!interactPressed && mouse.leftButton.wasPressedThisFrame && TryUseHeldPickupOnDoorBlocker())
             {
@@ -219,9 +237,27 @@ namespace Neighbor.Main.Features.Interaction
             return true;
         }
 
+        private bool TryPrimaryUseFocusedInteractable()
+        {
+            Ray ray = new Ray(ViewTransform.position, ViewTransform.forward);
+            IPrimaryUseInteractable primaryUseInteractable = FindBestPrimaryUseInteractable(ray);
+            if (primaryUseInteractable == null || !primaryUseInteractable.CanPrimaryUse(this))
+            {
+                return false;
+            }
+
+            primaryUseInteractable.PrimaryUse(this);
+            return true;
+        }
+
         private bool TryUseHeldPickupOnDoorBlocker()
         {
-            DoorBlockerChair blocker = heldPickup != null ? heldPickup.GetComponentInChildren<DoorBlockerChair>() : null;
+            return TryBlockHeldPickupOnFocusedDoor(heldPickup);
+        }
+
+        private bool TryBlockHeldPickupOnFocusedDoor(Pickupable pickup)
+        {
+            DoorBlockerChair blocker = pickup != null ? pickup.GetComponentInChildren<DoorBlockerChair>() : null;
             if (blocker == null)
             {
                 return false;
@@ -239,7 +275,11 @@ namespace Neighbor.Main.Features.Interaction
                 return false;
             }
 
-            heldPickup = null;
+            if (heldPickup == pickup)
+            {
+                heldPickup = null;
+            }
+
             releaseButtonWasHeld = false;
             HideThrowArc();
             return true;
@@ -248,6 +288,11 @@ namespace Neighbor.Main.Features.Interaction
         private void ReleaseHeldPickup(bool throwPickup)
         {
             if (heldPickup == null)
+            {
+                return;
+            }
+
+            if (!throwPickup && TryBlockHeldPickupOnFocusedDoor(heldPickup))
             {
                 return;
             }
@@ -696,6 +741,52 @@ namespace Neighbor.Main.Features.Interaction
             return actionPressed || fallbackPressed;
         }
 
+        private bool InteractIsPressed(Keyboard keyboard)
+        {
+            bool actionHeld = interactAction != null && interactAction.IsPressed();
+            bool fallbackHeld = keyboard != null && keyboard.eKey.isPressed;
+
+            return actionHeld || fallbackHeld;
+        }
+
+        private void UpdateHoldInteraction(bool interactHeld)
+        {
+            if (!interactHeld)
+            {
+                EndActiveHoldInteraction(false);
+                return;
+            }
+
+            Ray ray = new Ray(ViewTransform.position, ViewTransform.forward);
+            IHoldInteractable holdInteractable = FindBestHoldInteractable(ray);
+            if (holdInteractable == null || !holdInteractable.CanHoldInteract(this))
+            {
+                EndActiveHoldInteraction(false);
+                return;
+            }
+
+            if (activeHoldInteractable != holdInteractable)
+            {
+                EndActiveHoldInteraction(false);
+                activeHoldInteractable = holdInteractable;
+                activeHoldInteractable.BeginHoldInteract(this);
+            }
+
+            activeHoldInteractable.HoldInteract(this, Time.deltaTime);
+        }
+
+        private void EndActiveHoldInteraction(bool completed)
+        {
+            if (activeHoldInteractable == null)
+            {
+                return;
+            }
+
+            IHoldInteractable endedInteractable = activeHoldInteractable;
+            activeHoldInteractable = null;
+            endedInteractable.EndHoldInteract(this, completed);
+        }
+
         private void UpdateFocusedInteractable()
         {
             if (heldPickup != null)
@@ -730,6 +821,84 @@ namespace Neighbor.Main.Features.Interaction
 
                 IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
                 if (interactable == null || !interactable.CanInteract(this))
+                {
+                    continue;
+                }
+
+                float alignment = GetViewAlignment(ray, hit);
+                bool isMoreCentered = alignment > bestAlignment + interactAlignmentTieTolerance;
+                bool isTiedAndCloser = Mathf.Abs(alignment - bestAlignment) <= interactAlignmentTieTolerance && hit.distance < bestDistance;
+
+                if (isMoreCentered || isTiedAndCloser)
+                {
+                    bestAlignment = alignment;
+                    bestDistance = hit.distance;
+                    bestInteractable = interactable;
+                }
+            }
+
+            return bestInteractable;
+        }
+
+        private IPrimaryUseInteractable FindBestPrimaryUseInteractable(Ray ray)
+        {
+            int hitCount = interactRadius > 0f
+                ? Physics.SphereCastNonAlloc(ray, interactRadius, interactHits, interactRange, interactMask, triggerInteraction)
+                : Physics.RaycastNonAlloc(ray, interactHits, interactRange, interactMask, triggerInteraction);
+
+            IPrimaryUseInteractable bestInteractable = null;
+            float bestAlignment = -1f;
+            float bestDistance = float.PositiveInfinity;
+
+            for (int i = 0; i < hitCount; i++)
+            {
+                RaycastHit hit = interactHits[i];
+                if (hit.collider == null || IsPlayerCollider(hit.collider))
+                {
+                    continue;
+                }
+
+                IPrimaryUseInteractable interactable = hit.collider.GetComponentInParent<IPrimaryUseInteractable>();
+                if (interactable == null || !interactable.CanPrimaryUse(this))
+                {
+                    continue;
+                }
+
+                float alignment = GetViewAlignment(ray, hit);
+                bool isMoreCentered = alignment > bestAlignment + interactAlignmentTieTolerance;
+                bool isTiedAndCloser = Mathf.Abs(alignment - bestAlignment) <= interactAlignmentTieTolerance && hit.distance < bestDistance;
+
+                if (isMoreCentered || isTiedAndCloser)
+                {
+                    bestAlignment = alignment;
+                    bestDistance = hit.distance;
+                    bestInteractable = interactable;
+                }
+            }
+
+            return bestInteractable;
+        }
+
+        private IHoldInteractable FindBestHoldInteractable(Ray ray)
+        {
+            int hitCount = interactRadius > 0f
+                ? Physics.SphereCastNonAlloc(ray, interactRadius, interactHits, interactRange, interactMask, triggerInteraction)
+                : Physics.RaycastNonAlloc(ray, interactHits, interactRange, interactMask, triggerInteraction);
+
+            IHoldInteractable bestInteractable = null;
+            float bestAlignment = -1f;
+            float bestDistance = float.PositiveInfinity;
+
+            for (int i = 0; i < hitCount; i++)
+            {
+                RaycastHit hit = interactHits[i];
+                if (hit.collider == null || IsPlayerCollider(hit.collider))
+                {
+                    continue;
+                }
+
+                IHoldInteractable interactable = hit.collider.GetComponentInParent<IHoldInteractable>();
+                if (interactable == null || !interactable.CanHoldInteract(this))
                 {
                     continue;
                 }

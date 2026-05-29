@@ -40,6 +40,8 @@ namespace Neighbor.Main.Features.Interaction
         private Rigidbody body;
         private Collider[] ownColliders;
         private Renderer[] ownRenderers;
+        private IPickupInteractionOverride[] pickupInteractionOverrides;
+        private IPickupLifecycleReceiver[] lifecycleReceivers;
         private bool[] originalColliderEnabled;
         private readonly Collider[] supportWakeHits = new Collider[24];
         private bool wasUsingGravity;
@@ -60,6 +62,8 @@ namespace Neighbor.Main.Features.Interaction
             body = GetComponent<Rigidbody>();
             ownColliders = GetComponentsInChildren<Collider>();
             ownRenderers = GetComponentsInChildren<Renderer>();
+            pickupInteractionOverrides = GetComponentsInChildren<IPickupInteractionOverride>();
+            lifecycleReceivers = GetComponentsInChildren<IPickupLifecycleReceiver>();
             originalColliderEnabled = new bool[ownColliders.Length];
         }
 
@@ -83,7 +87,25 @@ namespace Neighbor.Main.Features.Interaction
 
         public bool CanInteract(PlayerInteractor interactor)
         {
-            return !IsHeld && body != null && body.mass <= maximumPickupMass;
+            if (IsHeld || body == null || body.mass > maximumPickupMass)
+            {
+                return false;
+            }
+
+            if (pickupInteractionOverrides == null)
+            {
+                return true;
+            }
+
+            foreach (IPickupInteractionOverride pickupInteractionOverride in pickupInteractionOverrides)
+            {
+                if (pickupInteractionOverride != null && !pickupInteractionOverride.CanPickup(interactor))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         public void Interact(PlayerInteractor interactor)
@@ -100,6 +122,7 @@ namespace Neighbor.Main.Features.Interaction
 
             DoorBlockerChair doorBlocker = GetComponent<DoorBlockerChair>();
             doorBlocker?.HandlePickupStarted();
+            NotifyPickupStarted(interactor);
 
             IsHeld = true;
             wasUsingGravity = body.useGravity;
@@ -188,6 +211,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             PlayPlacementSound();
+            NotifyPickupPlaced();
         }
 
         public void Throw(Vector3 velocity)
@@ -322,6 +346,32 @@ namespace Neighbor.Main.Features.Interaction
         private void PlayPickupSound()
         {
             PlayOneShot3D(pickupClips, pickupVolume, pickupPitchRandomness, pickupAudioMinDistance, pickupAudioMaxDistance, "Pickup3DAudio");
+        }
+
+        private void NotifyPickupStarted(PlayerInteractor interactor)
+        {
+            if (lifecycleReceivers == null)
+            {
+                return;
+            }
+
+            foreach (IPickupLifecycleReceiver lifecycleReceiver in lifecycleReceivers)
+            {
+                lifecycleReceiver?.OnPickupStarted(this, interactor);
+            }
+        }
+
+        private void NotifyPickupPlaced()
+        {
+            if (lifecycleReceivers == null)
+            {
+                return;
+            }
+
+            foreach (IPickupLifecycleReceiver lifecycleReceiver in lifecycleReceivers)
+            {
+                lifecycleReceiver?.OnPickupPlaced(this);
+            }
         }
 
         private void PlayPlacementSound()
