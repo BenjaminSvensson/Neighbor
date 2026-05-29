@@ -109,7 +109,8 @@ namespace Neighbor.Main.Features.Interaction
             Keyboard keyboard = Keyboard.current;
             Mouse mouse = Mouse.current;
 
-            if (InteractWasPressedThisFrame(keyboard))
+            bool interactPressed = InteractWasPressedThisFrame(keyboard);
+            if (interactPressed)
             {
                 TryInteract();
             }
@@ -120,6 +121,11 @@ namespace Neighbor.Main.Features.Interaction
             {
                 releaseButtonWasHeld = false;
                 return;
+            }
+
+            if (!interactPressed && mouse.leftButton.wasPressedThisFrame)
+            {
+                TryUseHeldPickupOnFocusedInteractable();
             }
 
             if (mouse.rightButton.wasPressedThisFrame)
