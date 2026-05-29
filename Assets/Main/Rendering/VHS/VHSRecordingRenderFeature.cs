@@ -6,6 +6,9 @@ using UnityEngine.Rendering.Universal;
 
 namespace Neighbor.Rendering
 {
+    /// <summary>
+    /// URP render feature that applies the VHS recording post-process shader to game cameras.
+    /// </summary>
     public sealed class VHSRecordingRenderFeature : ScriptableRendererFeature
     {
         [System.Serializable]
@@ -108,6 +111,8 @@ namespace Neighbor.Rendering
                     return;
 
                 TextureHandle source = resourceData.activeColorTexture;
+                // RenderGraph post-processing writes into a new color texture, then promotes
+                // it to cameraColor for any later passes in the renderer.
                 TextureDesc destinationDesc = renderGraph.GetTextureDesc(source);
                 destinationDesc.name = "CameraColor-VHSRecording";
                 destinationDesc.clearBuffer = false;

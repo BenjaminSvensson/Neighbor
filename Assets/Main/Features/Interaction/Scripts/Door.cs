@@ -3,6 +3,10 @@ using UnityEngine;
 
 namespace Neighbor.Main.Features.Interaction
 {
+    /// <summary>
+    /// Hinged interactable door with optional key lock, opener-aware swing direction,
+    /// auto-close support, and locked-door feedback animation.
+    /// </summary>
     public sealed class Door : MonoBehaviour, IInteractable
     {
         [Header("Door")]
@@ -56,6 +60,8 @@ namespace Neighbor.Main.Features.Interaction
         {
             if (isLocked)
             {
+                // Keys are carried as Pickupable children, so search the held object rather
+                // than requiring the interactor itself to know about lock IDs.
                 DoorKey heldKey = interactor != null && interactor.HeldPickup != null
                     ? interactor.HeldPickup.GetComponentInChildren<DoorKey>()
                     : null;
@@ -131,6 +137,7 @@ namespace Neighbor.Main.Features.Interaction
 
             Vector3 toOpener = opener.position - transform.position;
             float side = Vector3.Dot(transform.right, toOpener);
+            // Swing away from whoever opened the door so it does not immediately block them.
             return side >= 0f ? -1f : 1f;
         }
 

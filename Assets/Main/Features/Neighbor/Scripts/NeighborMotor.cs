@@ -4,6 +4,10 @@ using UnityEngine.AI;
 
 namespace Neighbor.Main.Features.Neighbor
 {
+    /// <summary>
+    /// Wraps NavMeshAgent movement and the short scripted moves that NavMesh cannot
+    /// express well, such as ledge climbs, chase drops, and knockback.
+    /// </summary>
     [RequireComponent(typeof(NavMeshAgent))]
     public sealed class NeighborMotor : MonoBehaviour
     {
@@ -133,6 +137,8 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
+            // Store the sampled destination so movement can resume after a scripted
+            // climb/drop temporarily disables NavMesh position updates.
             requestedDestination = hit.position;
             hasRequestedDestination = true;
             return agent.SetDestination(hit.position);
@@ -190,6 +196,8 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
+            // This is a direct chase assist, not a generic traversal link: it aims at the
+            // surface under/near the player when the player has climbed somewhere close.
             traversalRoutine = StartCoroutine(ClimbLedge(climbTarget, true, chaseClimbDuration, chaseClimbArcHeight));
             return true;
         }
@@ -344,6 +352,8 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (NavMesh.SamplePosition(transform.position, out NavMeshHit hit, startNavMeshSnapRadius, agent.areaMask))
             {
+                // Warping at startup/recovery avoids agents becoming permanently detached
+                // after scene edits or scripted motion that ended just off the mesh.
                 agent.Warp(hit.position);
                 agent.updatePosition = true;
                 agent.updateRotation = true;
@@ -352,6 +362,8 @@ namespace Neighbor.Main.Features.Neighbor
 
         private bool TryFindTopBelowTarget(Transform target, Vector3 approachDirection, out Vector3 climbTarget)
         {
+            // Probe down near the target and choose the highest valid surface so the chase
+            // climb ends on the platform the target is likely standing on.
             Vector3 probeOrigin = target.position - approachDirection * targetClimbForwardOffset + Vector3.up * 0.75f;
             float probeDistance = ledgeMaximumHeight + 1.5f;
             int hitCount = Physics.RaycastNonAlloc(
@@ -402,6 +414,8 @@ namespace Neighbor.Main.Features.Neighbor
             agent.updatePosition = false;
             agent.updateRotation = false;
 
+            // Manual off-mesh traversal gives the neighbor a visible hop instead of the
+            // instant link snapping produced by the default agent behavior.
             while (timer < offMeshTraverseDuration)
             {
                 timer += Time.deltaTime;
@@ -429,6 +443,8 @@ namespace Neighbor.Main.Features.Neighbor
 
             Vector3 forward = transform.forward;
             Vector3 wallRayOrigin = transform.position + Vector3.up * (ledgeMinimumHeight + 0.1f);
+            // When a valid path stalls against a small ledge, try a local climb before
+            // giving up on the destination.
             if (!Physics.Raycast(wallRayOrigin, forward, out RaycastHit wallHit, ledgeCheckDistance, climbMask, QueryTriggerInteraction.Ignore))
             {
                 return false;
@@ -510,6 +526,8 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (!warpedToNavMesh)
             {
+                // Chase assists may finish off the NavMesh; leave the agent detached for a
+                // short direct-chase window so the brain can keep pursuing the player.
                 agent.nextPosition = transform.position;
                 agent.updatePosition = !allowOffMeshFinish;
                 agent.updateRotation = !allowOffMeshFinish;

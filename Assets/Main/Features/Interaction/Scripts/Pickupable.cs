@@ -2,6 +2,10 @@ using UnityEngine;
 
 namespace Neighbor.Main.Features.Interaction
 {
+    /// <summary>
+    /// Runtime state for objects the player can pick up, carry, place, and throw while
+    /// preserving their original rigidbody/collider settings.
+    /// </summary>
     [RequireComponent(typeof(Rigidbody))]
     [RequireComponent(typeof(Collider))]
     public sealed class Pickupable : MonoBehaviour, IInteractable
@@ -106,6 +110,8 @@ namespace Neighbor.Main.Features.Interaction
             originalCollisionDetection = body.collisionDetectionMode;
             originalInterpolation = body.interpolation;
 
+            // Held objects are moved explicitly from FixedUpdate, so gravity and normal
+            // simulation are paused until the item is dropped, placed, or thrown.
             body.useGravity = false;
             body.isKinematic = true;
             body.linearVelocity = Vector3.zero;
@@ -202,6 +208,8 @@ namespace Neighbor.Main.Features.Interaction
 
         public Bounds GetPlacementBounds()
         {
+            // Renderer bounds usually match what the player sees; collider bounds are the
+            // fallback for invisible or gameplay-only objects.
             if (TryGetRendererBounds(out Bounds rendererBounds))
             {
                 return rendererBounds;
@@ -305,6 +313,8 @@ namespace Neighbor.Main.Features.Interaction
                     continue;
                 }
 
+                // Store collider enabled states individually because child colliders may
+                // be intentionally disabled in the prefab.
                 if (restore)
                 {
                     ownCollider.enabled = originalColliderEnabled[i];
@@ -370,6 +380,8 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
+            // Prevent freshly-thrown objects from instantly colliding with the player who
+            // released them, then restore collisions after a short grace window.
             RestoreIgnoredPlayerCollisions();
             ignoredPlayerColliders = playerColliders;
             restorePlayerCollisionTime = Time.time + postThrowPlayerCollisionIgnoreTime;
@@ -421,6 +433,8 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
+            // Removing held colliders can leave nearby stacks asleep with unsupported
+            // objects. Wake them after the collider state changes so physics settles.
             Vector3 halfExtents = bounds.extents + Vector3.one * supportWakePadding;
             int hitCount = Physics.OverlapBoxNonAlloc(
                 bounds.center,

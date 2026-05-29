@@ -5,6 +5,10 @@ using UnityEngine.SceneManagement;
 
 namespace Neighbor.Main.Features.Neighbor
 {
+    /// <summary>
+    /// Coordinates the neighbor's high-level behavior: routine patrols, noise investigation,
+    /// vision-driven chases, short searches, and temporary stun recovery.
+    /// </summary>
     public sealed class NeighborBrain : MonoBehaviour
     {
         public enum BehaviorState
@@ -133,6 +137,8 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (Time.time < ignorePlayerSightUntilTime)
             {
+                // After giving up on an unreachable chase, briefly ignore sight so the AI
+                // can transition into a search instead of immediately re-entering chase.
                 return;
             }
 
@@ -177,12 +183,16 @@ namespace Neighbor.Main.Features.Neighbor
             bool canStillChase = player != null && Time.time - lastPlayerSeenTime <= chaseMemoryTime;
             Vector3 chasePosition = player != null && canStillChase ? player.position : lastKnownPlayerPosition;
 
+            // Chases keep a "best distance so far" so unreachable targets eventually
+            // become searches instead of causing the neighbor to run in place forever.
             if (player != null && canStillChase && ShouldGiveUpChase(chasePosition))
             {
                 GiveUpChase(chasePosition);
                 return;
             }
 
+            // Vertical pursuit is handled before normal NavMesh repathing because ledges,
+            // drops, and helper climb links require short scripted movement.
             if (player != null && canStillChase && TryHandleVerticalChase(chasePosition))
             {
                 return;
@@ -310,6 +320,8 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (currentClimbLink == null || Time.time >= nextClimbLinkSearchTime)
             {
+                // Link searches can be moderately expensive because each candidate checks
+                // reachability; cache the chosen link for a short interval.
                 nextClimbLinkSearchTime = Time.time + climbLinkSearchInterval;
                 currentClimbLink = FindBestClimbLink(chasePosition);
             }
@@ -440,6 +452,8 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            // Hearing does not directly expose the player; it creates an investigation goal.
+            // Vision can still upgrade the behavior to Chase on any later frame.
             currentGoal = stimulus.Position;
             goalWaitDuration = investigationWaitTime;
             waitingAtGoal = false;
@@ -481,6 +495,8 @@ namespace Neighbor.Main.Features.Neighbor
                 }
             }
 
+            // Tasks are authored scene markers. Avoid picking the same one twice when
+            // possible so the routine feels less mechanical.
             NeighborTaskLocation taskLocation = GetRandomTaskLocation();
             if (taskLocation == null)
             {
@@ -507,6 +523,7 @@ namespace Neighbor.Main.Features.Neighbor
         {
             if (!waitingAtGoal)
             {
+                // The wait timer starts on arrival, not when the destination is assigned.
                 waitingAtGoal = true;
                 waitUntilTime = Time.time + goalWaitDuration;
             }

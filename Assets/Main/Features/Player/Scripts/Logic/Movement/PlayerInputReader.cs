@@ -4,6 +4,10 @@ using UnityEngine.InputSystem.Controls;
 
 namespace Neighbor.Main.Features.Player
 {
+    /// <summary>
+    /// Central keyboard/mouse input reader used by movement and camera code so bindings
+    /// stay consistent even without generated Input System wrappers.
+    /// </summary>
     public static class PlayerInputReader
     {
         public static PlayerFrameInput ReadFrameInput(float mouseSensitivity = 0.08f, bool invertLookY = false)
@@ -52,6 +56,9 @@ namespace Neighbor.Main.Features.Player
         }
     }
 
+    /// <summary>
+    /// Snapshot of player input for a single frame.
+    /// </summary>
     public struct PlayerFrameInput
     {
         public Vector2 Move;

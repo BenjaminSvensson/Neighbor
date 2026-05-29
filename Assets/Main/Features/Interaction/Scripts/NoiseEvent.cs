@@ -2,6 +2,10 @@ using UnityEngine;
 
 namespace Neighbor.Main.Features.Interaction
 {
+    /// <summary>
+    /// Temporary trigger volume spawned by noisy physics impacts so listeners can detect
+    /// the sound through normal trigger callbacks.
+    /// </summary>
     [RequireComponent(typeof(SphereCollider))]
     public sealed class NoiseEvent : MonoBehaviour
     {

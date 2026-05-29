@@ -3,6 +3,9 @@ using UnityEngine;
 
 namespace Neighbor.Main.Features.Interaction
 {
+    /// <summary>
+    /// Simple inventory-style key registry for systems that need persistent key ownership.
+    /// </summary>
     public sealed class PlayerKeyRing : MonoBehaviour
     {
         [SerializeField] private string[] startingKeys;

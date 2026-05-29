@@ -4,6 +4,10 @@ using UnityEngine.InputSystem;
 
 namespace Neighbor.Main.Features.Interaction
 {
+    /// <summary>
+    /// Owns player-facing interaction: selecting interactables, holding physics props,
+    /// placing them on valid surfaces, and previewing charged throws.
+    /// </summary>
     public sealed class PlayerInteractor : MonoBehaviour
     {
         [Header("Raycast")]
@@ -176,6 +180,8 @@ namespace Neighbor.Main.Features.Interaction
         {
             if (heldPickup != null)
             {
+                // A held key gets first chance to operate a focused door. Other held props
+                // use interact as a gentle placement/drop command.
                 if (TryUseHeldPickupOnFocusedInteractable())
                 {
                     return;
@@ -268,12 +274,16 @@ namespace Neighbor.Main.Features.Interaction
             Vector3 placementPoint = PullPlacementPointTowardSurfaceCenter(hit.point, hit.normal, hit.collider);
             rotation = Quaternion.Euler(0f, pickupable.transform.eulerAngles.y, 0f);
             Quaternion originalRotation = pickupable.transform.rotation;
+            // Bounds are rotation-dependent, so sample them in the rotation the item will
+            // actually have after placement, then restore the live transform immediately.
             pickupable.transform.rotation = rotation;
             Bounds bounds = pickupable.GetPlacementBounds();
             pickupable.transform.rotation = originalRotation;
 
             Vector3 extents = bounds.extents;
             Vector3 normal = hit.normal.normalized;
+            // Project the box extents onto the surface normal to find how far the item's
+            // bounds center must sit away from the surface.
             float normalExtent =
                 Mathf.Abs(normal.x) * extents.x +
                 Mathf.Abs(normal.y) * extents.y +
@@ -337,6 +347,8 @@ namespace Neighbor.Main.Features.Interaction
             tangent.Normalize();
             Vector3 bitangent = Vector3.Cross(normal, tangent).normalized;
 
+            // Search concentric rings on the placement plane so a nearby clear spot can
+            // be used when the exact aim point is blocked.
             for (int ring = 1; ring <= placementSearchRings; ring++)
             {
                 float radius = placementSearchStep * ring;
@@ -404,6 +416,8 @@ namespace Neighbor.Main.Features.Interaction
                 Mathf.Abs(bitangent.y) * extents.y +
                 Mathf.Abs(bitangent.z) * extents.z - placementSupportInset);
 
+            // Four corner probes prevent an object from being placed with most of its
+            // footprint hanging over empty space.
             Vector3 bottomCenter = center - normal * normalExtent;
             return HasSupportProbe(bottomCenter + tangent * tangentExtent + bitangent * bitangentExtent, normal, pickupable, supportCollider)
                 && HasSupportProbe(bottomCenter + tangent * tangentExtent - bitangent * bitangentExtent, normal, pickupable, supportCollider)
@@ -567,6 +581,8 @@ namespace Neighbor.Main.Features.Interaction
                 return desiredPosition;
             }
 
+            // Pull the hold point back toward the camera when a wall is between the player
+            // and the desired carry position, which reduces clipping through doors/walls.
             int hitCount = Physics.SphereCastNonAlloc(
                 origin,
                 holdObstructionRadius,
@@ -668,6 +684,8 @@ namespace Neighbor.Main.Features.Interaction
         {
             if (heldPickup != null)
             {
+                // While carrying an item, focus is reserved for item-use checks at the
+                // moment of interaction; the crosshair should not advertise normal pickup.
                 FocusedInteractable = null;
                 HasFocusedInteractable = false;
                 return;
@@ -688,6 +706,8 @@ namespace Neighbor.Main.Features.Interaction
             float bestAlignment = -1f;
             float bestDistance = float.PositiveInfinity;
 
+            // Prefer the most centered target. Distance only breaks ties so wide sphere
+            // casts do not make side objects steal focus from what the player is aiming at.
             for (int i = 0; i < hitCount; i++)
             {
                 RaycastHit hit = interactHits[i];
@@ -781,6 +801,7 @@ namespace Neighbor.Main.Features.Interaction
             Vector3 previousPoint = origin;
             int pointCount = 1;
 
+            // Draw a segmented ballistic path and stop it at the first predicted collision.
             throwArcRenderer.positionCount = throwArcSegments;
             throwArcRenderer.SetPosition(0, origin);
             throwArcRenderer.widthMultiplier = throwArcLineWidth;

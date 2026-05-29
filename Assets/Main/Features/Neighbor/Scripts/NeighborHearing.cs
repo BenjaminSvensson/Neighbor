@@ -4,6 +4,9 @@ using UnityEngine;
 
 namespace Neighbor.Main.Features.Neighbor
 {
+    /// <summary>
+    /// Immutable payload describing a noise the neighbor heard.
+    /// </summary>
     public readonly struct NeighborNoiseStimulus
     {
         public NeighborNoiseStimulus(Vector3 position, float loudness01, float radius, GameObject sourceObject)
@@ -20,6 +23,10 @@ namespace Neighbor.Main.Features.Neighbor
         public GameObject SourceObject { get; }
     }
 
+    /// <summary>
+    /// Trigger-based hearing sensor that converts NoiseEvent overlaps into throttled
+    /// notifications for the neighbor brain.
+    /// </summary>
     public sealed class NeighborHearing : MonoBehaviour
     {
         [SerializeField, Range(0f, 1f)] private float minimumLoudness = 0.05f;
@@ -52,6 +59,8 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            // Cooldown is global for this sensor, preventing one lingering trigger from
+            // firing repeated investigation requests every physics step.
             lastHeardTime = Time.time;
             NoiseHeard?.Invoke(new NeighborNoiseStimulus(
                 noiseEvent.Origin,

@@ -4,6 +4,10 @@ using UnityEngine.SceneManagement;
 
 namespace Neighbor.Main.Features.Player
 {
+    /// <summary>
+    /// First-person character controller with movement, stance, sliding, ledge climbing,
+    /// and one-frame feedback flags consumed by camera/audio systems.
+    /// </summary>
     [RequireComponent(typeof(CharacterController))]
     public sealed class PlayerController : MonoBehaviour
     {
@@ -149,6 +153,8 @@ namespace Neighbor.Main.Features.Player
 
         private void ResetTransientFeedback()
         {
+            // These flags are pulses for systems that run after movement, so clear them
+            // at the start of each frame before movement decides what happened.
             JumpStartedThisFrame = false;
             LandedThisFrame = false;
             LandingImpact = 0f;
@@ -240,6 +246,7 @@ namespace Neighbor.Main.Features.Player
             bool canUseCoyoteJump = Time.time - lastGroundedTime <= coyoteTime;
             if (LastInput.JumpPressed && canUseCoyoteJump && !IsCrouching)
             {
+                // Coyote time keeps jumps responsive when the player has just left a ledge.
                 verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
                 lastGroundedTime = -999f;
                 JumpStartedThisFrame = true;
@@ -287,6 +294,7 @@ namespace Neighbor.Main.Features.Player
                     return 1f;
                 }
 
+                // Heavy landings temporarily damp movement, then ease back to full speed.
                 heavyLandingSlowTimer = Mathf.Max(0f, heavyLandingSlowTimer - Time.deltaTime);
                 float recovery01 = heavyLandingSlowDuration <= 0f ? 1f : 1f - heavyLandingSlowTimer / heavyLandingSlowDuration;
                 float slowedMultiplier = Mathf.Lerp(1f, heavyLandingSpeedMultiplier, heavyLandingSlowImpact);
@@ -386,6 +394,8 @@ namespace Neighbor.Main.Features.Player
                 return;
             }
 
+            // Sliding gains speed when pointed downhill and bleeds the bonus away when
+            // steering uphill or across the slope.
             float downhillAlignment = Vector3.Dot(slideDirection.normalized, downhillDirection.normalized);
             if (downhillAlignment > 0f)
             {
@@ -431,6 +441,8 @@ namespace Neighbor.Main.Features.Player
 
             float climbAmount = transform.position.y - previousY;
             float maximumStepHeight = characterController.stepOffset + characterController.skinWidth + 0.03f;
+            // CharacterController silently steps up small ledges; this detects that height
+            // change so audio/camera feedback can still react to stair impacts.
             bool climbedStep = climbAmount >= minimumStepImpactHeight && climbAmount <= maximumStepHeight;
             if (!climbedStep || Time.time - lastStepImpactTime < stepImpactCooldown)
             {
@@ -502,6 +514,8 @@ namespace Neighbor.Main.Features.Player
 
             Vector3 forward = transform.forward;
             Vector3 wallRayOrigin = transform.position + Vector3.up * (ledgeMinimumHeight + 0.1f);
+            // Two-probe ledge check: first find a wall in front, then search downward
+            // from above it to confirm there is a usable top surface.
             if (!Physics.Raycast(wallRayOrigin, forward, out RaycastHit wallHit, ledgeCheckDistance, ledgeClimbMask, QueryTriggerInteraction.Ignore))
             {
                 return false;
@@ -571,6 +585,8 @@ namespace Neighbor.Main.Features.Player
 
         private bool HasStandingClearance(Vector3 feetPosition)
         {
+            // Use a capsule matching the standing controller so the climb never finishes
+            // inside ceilings, railings, or other blocking geometry.
             float radius = Mathf.Max(0.05f, characterController.radius * 0.95f);
             Vector3 bottom = feetPosition + Vector3.up * (radius + characterController.skinWidth);
             Vector3 top = feetPosition + Vector3.up * (standingHeight - radius);

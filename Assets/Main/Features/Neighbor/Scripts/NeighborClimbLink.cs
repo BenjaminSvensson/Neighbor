@@ -3,6 +3,10 @@ using UnityEngine;
 
 namespace Neighbor.Main.Features.Neighbor
 {
+    /// <summary>
+    /// Scene-authored shortcut the neighbor can use when chasing a player who reached
+    /// a higher platform faster than the NavMesh path can express.
+    /// </summary>
     public sealed class NeighborClimbLink : MonoBehaviour
     {
         private static readonly List<NeighborClimbLink> ActiveLinks = new();
@@ -46,6 +50,8 @@ namespace Neighbor.Main.Features.Neighbor
 
         public float Score(Vector3 neighborPosition, Vector3 targetPosition, float pathDistanceToBottom)
         {
+            // Favor links that gain height and end near the player, while still accounting
+            // for how much pathing work is required to reach the bottom point.
             float heightGain = TopPosition.y - neighborPosition.y;
             float topDistanceToTarget = Vector3.Distance(TopPosition, targetPosition);
             float bottomDistanceToNeighbor = Vector3.Distance(BottomPosition, neighborPosition);

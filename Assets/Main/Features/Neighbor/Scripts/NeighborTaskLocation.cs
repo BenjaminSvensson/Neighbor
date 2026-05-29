@@ -3,6 +3,9 @@ using UnityEngine;
 
 namespace Neighbor.Main.Features.Neighbor
 {
+    /// <summary>
+    /// Scene marker that registers itself as a possible routine destination for the neighbor.
+    /// </summary>
     public sealed class NeighborTaskLocation : MonoBehaviour
     {
         private static readonly List<NeighborTaskLocation> ActiveLocations = new();

@@ -3,6 +3,9 @@ using UnityEngine;
 
 namespace Neighbor.Main.Features.Player
 {
+    /// <summary>
+    /// Scales the crosshair when the player is looking at an interactable object.
+    /// </summary>
     public sealed class PlayerCrosshairFeedback : MonoBehaviour
     {
         [SerializeField] private PlayerInteractor interactor;

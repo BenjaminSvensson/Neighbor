@@ -3,6 +3,10 @@ using UnityEngine;
 
 namespace Neighbor.Main.Features.Interaction
 {
+    /// <summary>
+    /// Converts meaningful rigidbody impacts into 3D audio, temporary noise triggers,
+    /// and optional neighbor stun/knockback notifications.
+    /// </summary>
     [RequireComponent(typeof(Rigidbody))]
     public sealed class PhysicsImpactNoiseEmitter : MonoBehaviour
     {
@@ -67,6 +71,8 @@ namespace Neighbor.Main.Features.Interaction
             ContactPoint contact = collision.GetContact(0);
             Vector3 origin = contact.point;
 
+            // A single impact drives three feedback channels: audible sound, AI hearing,
+            // and direct hit reactions on neighbors.
             lastImpactTime = Time.time;
             PlayImpactAudio(origin, loudness01);
             SpawnNoiseTrigger(origin, loudness01);
@@ -124,6 +130,8 @@ namespace Neighbor.Main.Features.Interaction
 
         private AudioClip CreateGeneratedImpactClip()
         {
+            // Fallback impact sound so physics noise remains testable even before authored
+            // audio clips have been assigned in the inspector.
             const int sampleRate = 22050;
             int sampleCount = Mathf.Max(1, Mathf.RoundToInt(sampleRate * generatedClipDuration));
             float[] samples = new float[sampleCount];
@@ -144,6 +152,8 @@ namespace Neighbor.Main.Features.Interaction
 
         private void SpawnNoiseTrigger(Vector3 origin, float loudness01)
         {
+            // The trigger lives briefly at the impact point, letting NeighborHearing use
+            // Unity's trigger overlap rules instead of polling every noise source.
             float radius = Mathf.Lerp(minimumNoiseRadius, maximumNoiseRadius, loudness01);
             GameObject noiseObject = new GameObject("NoiseEvent");
             noiseObject.transform.position = origin;

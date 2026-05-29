@@ -6,6 +6,9 @@ using UnityEngine.Rendering.Universal;
 
 namespace Neighbor.Rendering
 {
+    /// <summary>
+    /// URP render feature that applies a configurable low-resolution retro pixelation pass.
+    /// </summary>
     public sealed class RetroPixelationRenderFeature : ScriptableRendererFeature
     {
         [System.Serializable]
@@ -94,6 +97,8 @@ namespace Neighbor.Rendering
                     return;
 
                 TextureHandle source = resourceData.activeColorTexture;
+                // Blit into an intermediate texture so the pass works with URP RenderGraph
+                // instead of reading and writing the camera color target in place.
                 TextureDesc destinationDesc = renderGraph.GetTextureDesc(source);
                 destinationDesc.name = "CameraColor-RetroPixelation";
                 destinationDesc.clearBuffer = false;

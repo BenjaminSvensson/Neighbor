@@ -3,6 +3,10 @@ using UnityEngine.InputSystem;
 
 namespace Neighbor.Main.Features.Player
 {
+    /// <summary>
+    /// Handles first-person look, zoom, leaning, handheld wobble, and camera impact
+    /// feedback driven by PlayerController movement events.
+    /// </summary>
     [RequireComponent(typeof(Camera))]
     public sealed class PlayerCameraController : MonoBehaviour
     {
@@ -218,6 +222,8 @@ namespace Neighbor.Main.Features.Player
         {
             if (playerController != null)
             {
+                // Impact values are accumulated as targets, then damped back toward zero
+                // below so multiple movement events can layer naturally in one frame.
                 if (playerController.JumpStartedThisFrame)
                 {
                     targetImpactVerticalOffset -= jumpTakeoffKick;

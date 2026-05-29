@@ -6,6 +6,9 @@ using UnityEngine.Rendering.Universal;
 
 namespace Neighbor.Rendering
 {
+    /// <summary>
+    /// URP render feature that applies the dream leakage post-process shader to game cameras.
+    /// </summary>
     public sealed class DreamLeakageRenderFeature : ScriptableRendererFeature
     {
         [System.Serializable]
@@ -96,6 +99,8 @@ namespace Neighbor.Rendering
                     return;
 
                 TextureHandle source = resourceData.activeColorTexture;
+                // Blit through an intermediate texture so later RenderGraph passes receive
+                // the processed camera color.
                 TextureDesc destinationDesc = renderGraph.GetTextureDesc(source);
                 destinationDesc.name = "CameraColor-DreamLeakage";
                 destinationDesc.clearBuffer = false;

@@ -2,6 +2,10 @@ using UnityEngine;
 
 namespace Neighbor.Main.Features.Player
 {
+    /// <summary>
+    /// Turns PlayerController movement events into one-shot movement sounds and a managed
+    /// slide loop source.
+    /// </summary>
     public sealed class PlayerAudioController : MonoBehaviour
     {
         [Header("References")]
@@ -97,6 +101,8 @@ namespace Neighbor.Main.Features.Player
 
         private void UpdateOneShotMovementSounds()
         {
+            // PlayerController exposes short-lived frame flags; this component translates
+            // those gameplay events into audio without duplicating movement logic.
             if (playerController.JumpStartedThisFrame)
             {
                 PlayRandom(jumpClips, jumpVolume);

@@ -2,6 +2,9 @@ using UnityEngine;
 
 namespace Neighbor.Main.Features.Interaction
 {
+    /// <summary>
+    /// Lets AI characters open unlocked doors in front of them without using player input.
+    /// </summary>
     public sealed class NeighborDoorInteractor : MonoBehaviour
     {
         [SerializeField, Min(0f)] private float checkRadius = 0.55f;
@@ -20,6 +23,8 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             Vector3 center = transform.position + Vector3.up + transform.forward * checkDistance;
+            // A small overlap is more forgiving than a ray because the neighbor may turn
+            // slightly while pathing through a doorway.
             int hitCount = Physics.OverlapSphereNonAlloc(center, checkRadius, hits, doorMask, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < hitCount; i++)
             {

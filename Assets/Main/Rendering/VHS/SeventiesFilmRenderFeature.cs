@@ -6,6 +6,9 @@ using UnityEngine.Rendering.Universal;
 
 namespace Neighbor.Rendering
 {
+    /// <summary>
+    /// URP render feature that applies a seventies-film color and grain post-process pass.
+    /// </summary>
     public sealed class SeventiesFilmRenderFeature : ScriptableRendererFeature
     {
         [System.Serializable]
@@ -96,6 +99,8 @@ namespace Neighbor.Rendering
                     return;
 
                 TextureHandle source = resourceData.activeColorTexture;
+                // Keep the camera target immutable by writing the effect into a new
+                // RenderGraph texture and publishing that as cameraColor.
                 TextureDesc destinationDesc = renderGraph.GetTextureDesc(source);
                 destinationDesc.name = "CameraColor-SeventiesFilm";
                 destinationDesc.clearBuffer = false;

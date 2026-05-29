@@ -2,6 +2,10 @@ using UnityEngine;
 
 namespace Neighbor.Main.Features.Neighbor
 {
+    /// <summary>
+    /// Receives impact notifications from thrown/physical objects and converts strong
+    /// hits into neighbor stun plus knockback.
+    /// </summary>
     public sealed class NeighborImpactReceiver : MonoBehaviour
     {
         [SerializeField] private NeighborBrain brain;
@@ -32,6 +36,8 @@ namespace Neighbor.Main.Features.Neighbor
             lastImpactTime = Time.time;
             float impact01 = Mathf.InverseLerp(minimumStunLoudness, 1f, loudness01);
             Vector3 knockbackDirection = GetKnockbackDirection(hitPoint, incomingVelocity);
+            // Loudness scales both the stun duration and movement displacement so light
+            // bumps feel different from strong throws.
             float stunDuration = Mathf.Lerp(minimumStunDuration, maximumStunDuration, impact01);
             float knockbackDistance = Mathf.Lerp(minimumKnockbackDistance, maximumKnockbackDistance, impact01);
 
