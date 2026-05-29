@@ -124,6 +124,17 @@ namespace Neighbor.Main.Features.Interaction
             return true;
         }
 
+        public bool TryPlayLockedImpact()
+        {
+            if (!IsLocked && !IsBlocked)
+            {
+                return false;
+            }
+
+            PlayLockedNudge();
+            return true;
+        }
+
         public void Unlock()
         {
             if (!isLocked)

@@ -71,6 +71,7 @@ namespace Neighbor.Main.Features.Interaction
             PlayImpactAudio(origin, loudness01);
             SpawnNoiseTrigger(origin, loudness01);
             NotifyImpactReceiver(collision, origin, loudness01);
+            NotifyDoorImpact(collision);
         }
 
         private void NotifyImpactReceiver(Collision collision, Vector3 origin, float loudness01)
@@ -83,6 +84,12 @@ namespace Neighbor.Main.Features.Interaction
 
             Vector3 incomingVelocity = body != null ? body.linearVelocity : collision.relativeVelocity;
             receiver.ReceiveImpact(origin, incomingVelocity, loudness01);
+        }
+
+        private void NotifyDoorImpact(Collision collision)
+        {
+            Door door = collision.collider.GetComponentInParent<Door>();
+            door?.TryPlayLockedImpact();
         }
 
         private void PlayImpactAudio(Vector3 origin, float loudness01)
