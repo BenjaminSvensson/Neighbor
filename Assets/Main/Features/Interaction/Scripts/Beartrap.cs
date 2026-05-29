@@ -24,10 +24,19 @@ namespace Neighbor.Main.Features.Interaction
         [Header("Jaw Animation")]
         [SerializeField] private Transform leftJaw;
         [SerializeField] private Transform rightJaw;
+        [SerializeField] private Transform pressurePlate;
+        [SerializeField] private Vector3 leftClosedPosition = new Vector3(-0.18f, 0.22f, 0f);
+        [SerializeField] private Vector3 leftOpenPosition = new Vector3(-0.46f, 0.22f, 0f);
         [SerializeField] private Vector3 leftClosedEuler = new Vector3(0f, 0f, -10f);
-        [SerializeField] private Vector3 leftOpenEuler = new Vector3(0f, 0f, -68f);
+        [SerializeField] private Vector3 leftOpenEuler = new Vector3(0f, 0f, -82f);
+        [SerializeField] private Vector3 rightClosedPosition = new Vector3(0.18f, 0.22f, 0f);
+        [SerializeField] private Vector3 rightOpenPosition = new Vector3(0.46f, 0.22f, 0f);
         [SerializeField] private Vector3 rightClosedEuler = new Vector3(0f, 0f, 10f);
-        [SerializeField] private Vector3 rightOpenEuler = new Vector3(0f, 0f, 68f);
+        [SerializeField] private Vector3 rightOpenEuler = new Vector3(0f, 0f, 82f);
+        [SerializeField] private Vector3 pressurePlateClosedPosition = new Vector3(0f, 0.17f, 0f);
+        [SerializeField] private Vector3 pressurePlateOpenPosition = new Vector3(0f, 0.34f, 0f);
+        [SerializeField] private Vector3 pressurePlateClosedScale = new Vector3(0.42f, 0.04f, 0.34f);
+        [SerializeField] private Vector3 pressurePlateOpenScale = new Vector3(0.56f, 0.08f, 0.46f);
 
         private Pickupable pickupable;
         private Rigidbody trapBody;
@@ -232,14 +241,23 @@ namespace Neighbor.Main.Features.Interaction
 
         private void ApplyJawPose()
         {
+            float easedOpenAmount = Mathf.SmoothStep(0f, 1f, openAmount);
             if (leftJaw != null)
             {
-                leftJaw.localRotation = Quaternion.Euler(Vector3.Lerp(leftClosedEuler, leftOpenEuler, openAmount));
+                leftJaw.localPosition = Vector3.Lerp(leftClosedPosition, leftOpenPosition, easedOpenAmount);
+                leftJaw.localRotation = Quaternion.Euler(Vector3.Lerp(leftClosedEuler, leftOpenEuler, easedOpenAmount));
             }
 
             if (rightJaw != null)
             {
-                rightJaw.localRotation = Quaternion.Euler(Vector3.Lerp(rightClosedEuler, rightOpenEuler, openAmount));
+                rightJaw.localPosition = Vector3.Lerp(rightClosedPosition, rightOpenPosition, easedOpenAmount);
+                rightJaw.localRotation = Quaternion.Euler(Vector3.Lerp(rightClosedEuler, rightOpenEuler, easedOpenAmount));
+            }
+
+            if (pressurePlate != null)
+            {
+                pressurePlate.localPosition = Vector3.Lerp(pressurePlateClosedPosition, pressurePlateOpenPosition, easedOpenAmount);
+                pressurePlate.localScale = Vector3.Lerp(pressurePlateClosedScale, pressurePlateOpenScale, easedOpenAmount);
             }
         }
 
