@@ -123,6 +123,11 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
+            if (!interactPressed && mouse.leftButton.wasPressedThisFrame && TryUseHeldPickupOnDoorBlocker())
+            {
+                return;
+            }
+
             if (!interactPressed && mouse.leftButton.wasPressedThisFrame)
             {
                 TryUseHeldPickupOnFocusedInteractable();
@@ -211,6 +216,32 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             door.Interact(this);
+            return true;
+        }
+
+        private bool TryUseHeldPickupOnDoorBlocker()
+        {
+            DoorBlockerChair blocker = heldPickup != null ? heldPickup.GetComponentInChildren<DoorBlockerChair>() : null;
+            if (blocker == null)
+            {
+                return false;
+            }
+
+            Ray ray = new Ray(ViewTransform.position, ViewTransform.forward);
+            IInteractable interactable = FindBestInteractable(ray);
+            if (interactable is not Door door || !door.CanInteract(this))
+            {
+                return false;
+            }
+
+            if (!blocker.TryBlockDoor(door, this))
+            {
+                return false;
+            }
+
+            heldPickup = null;
+            releaseButtonWasHeld = false;
+            HideThrowArc();
             return true;
         }
 

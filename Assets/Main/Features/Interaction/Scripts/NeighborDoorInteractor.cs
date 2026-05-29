@@ -29,7 +29,7 @@ namespace Neighbor.Main.Features.Interaction
                     continue;
                 }
 
-                if (door.IsLocked)
+                if (door.IsLocked || door.IsBlocked)
                 {
                     continue;
                 }

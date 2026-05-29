@@ -25,10 +25,13 @@ namespace Neighbor.Main.Features.Interaction
         private bool isLocked;
         private float currentAngle;
         private float closeAtTime;
+        private DoorBlockerChair activeBlocker;
 
         public bool IsLocked => isLocked;
+        public bool IsBlocked => activeBlocker != null;
         public bool IsOpen => isOpen;
         public string RequiredKeyId => requiredKeyId;
+        public Vector3 DefaultOpeningSideNormal => transform.right * Mathf.Sign(openAngle == 0f ? 1f : openAngle);
 
         private void Awake()
         {
@@ -57,6 +60,11 @@ namespace Neighbor.Main.Features.Interaction
 
         public void Interact(PlayerInteractor interactor)
         {
+            if (IsBlocked)
+            {
+                return;
+            }
+
             if (isLocked)
             {
                 DoorKey heldKey = interactor != null && interactor.HeldPickup != null
@@ -79,6 +87,11 @@ namespace Neighbor.Main.Features.Interaction
 
         public bool TryOpenFor(Transform opener)
         {
+            if (IsBlocked)
+            {
+                return false;
+            }
+
             if (isLocked)
             {
                 PlayLockedNudge(opener);
@@ -98,6 +111,37 @@ namespace Neighbor.Main.Features.Interaction
         {
             isLocked = true;
             Close();
+        }
+
+        public bool IsOnDefaultOpeningSide(Vector3 worldPosition)
+        {
+            return Vector3.Dot(DefaultOpeningSideNormal, worldPosition - transform.position) > 0f;
+        }
+
+        public bool TryAddBlocker(DoorBlockerChair blocker, Vector3 playerPosition)
+        {
+            if (blocker == null || activeBlocker != null && activeBlocker != blocker)
+            {
+                return false;
+            }
+
+            if (!IsOnDefaultOpeningSide(playerPosition))
+            {
+                PlayLockedNudge(null);
+                return false;
+            }
+
+            activeBlocker = blocker;
+            Close();
+            return true;
+        }
+
+        public void RemoveBlocker(DoorBlockerChair blocker)
+        {
+            if (activeBlocker == blocker)
+            {
+                activeBlocker = null;
+            }
         }
 
         public void Toggle(Transform opener)
