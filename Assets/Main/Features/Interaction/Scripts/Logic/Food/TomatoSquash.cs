@@ -4,7 +4,7 @@ namespace Neighbor.Main.Features.Interaction
 {
     [RequireComponent(typeof(Rigidbody))]
     [RequireComponent(typeof(Pickupable))]
-    public sealed class TomatoSquash : MonoBehaviour
+    public sealed class TomatoSquash : MonoBehaviour, IPickupInteractionOverride
     {
         [Header("Squash Trigger")]
         [SerializeField, Min(0f)] private float minimumImpactImpulse = 2.4f;
@@ -66,6 +66,11 @@ namespace Neighbor.Main.Features.Interaction
         private void OnCollisionEnter(Collision collision)
         {
             TrySquash(collision);
+        }
+
+        public bool CanPickup(PlayerInteractor interactor)
+        {
+            return !isSquashed;
         }
 
         private void TrySquash(Collision collision)
