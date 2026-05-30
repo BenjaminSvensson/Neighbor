@@ -141,6 +141,11 @@ namespace Neighbor.Main.Features.Interaction
 
             EndActiveHoldInteraction(false);
 
+            if (!interactPressed && mouse.leftButton.wasPressedThisFrame && TryPrimaryUseHeldPickup())
+            {
+                return;
+            }
+
             if (!interactPressed && mouse.leftButton.wasPressedThisFrame && TryUseHeldPickupOnDoorBlocker())
             {
                 return;
@@ -234,6 +239,21 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             door.Interact(this);
+            return true;
+        }
+
+        private bool TryPrimaryUseHeldPickup()
+        {
+            IPrimaryUseInteractable primaryUseInteractable = heldPickup != null
+                ? heldPickup.GetComponentInChildren<IPrimaryUseInteractable>()
+                : null;
+
+            if (primaryUseInteractable == null || !primaryUseInteractable.CanPrimaryUse(this))
+            {
+                return false;
+            }
+
+            primaryUseInteractable.PrimaryUse(this);
             return true;
         }
 
