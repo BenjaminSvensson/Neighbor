@@ -41,6 +41,12 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
+            PlayerHidingState hidingState = target.GetComponent<PlayerHidingState>() ?? target.GetComponentInChildren<PlayerHidingState>();
+            if (hidingState != null && hidingState.IsHidden)
+            {
+                return false;
+            }
+
             Vector3 origin = EyePosition;
             Vector3 targetPosition = GetTargetAimPoint(target);
             Vector3 toTarget = targetPosition - origin;
