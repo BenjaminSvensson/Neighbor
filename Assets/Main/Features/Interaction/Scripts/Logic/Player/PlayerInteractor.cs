@@ -858,6 +858,11 @@ namespace Neighbor.Main.Features.Interaction
                     continue;
                 }
 
+                if (IsInteractionBlockedByCloserHit(hitCount, hit.distance, interactable))
+                {
+                    continue;
+                }
+
                 float alignment = GetViewAlignment(ray, hit);
                 bool isMoreCentered = alignment > bestAlignment + interactAlignmentTieTolerance;
                 bool isTiedAndCloser = Mathf.Abs(alignment - bestAlignment) <= interactAlignmentTieTolerance && hit.distance < bestDistance;
@@ -893,6 +898,11 @@ namespace Neighbor.Main.Features.Interaction
 
                 IPrimaryUseInteractable interactable = hit.collider.GetComponentInParent<IPrimaryUseInteractable>();
                 if (interactable == null || !interactable.CanPrimaryUse(this))
+                {
+                    continue;
+                }
+
+                if (IsInteractionBlockedByCloserHit(hitCount, hit.distance, interactable))
                 {
                     continue;
                 }
@@ -936,6 +946,11 @@ namespace Neighbor.Main.Features.Interaction
                     continue;
                 }
 
+                if (IsInteractionBlockedByCloserHit(hitCount, hit.distance, interactable))
+                {
+                    continue;
+                }
+
                 float alignment = GetViewAlignment(ray, hit);
                 bool isMoreCentered = alignment > bestAlignment + interactAlignmentTieTolerance;
                 bool isTiedAndCloser = Mathf.Abs(alignment - bestAlignment) <= interactAlignmentTieTolerance && hit.distance < bestDistance;
@@ -949,6 +964,41 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             return bestInteractable;
+        }
+
+        private bool IsInteractionBlockedByCloserHit(int hitCount, float candidateDistance, object candidateInteractable)
+        {
+            const float blockerDistanceTolerance = 0.01f;
+            for (int i = 0; i < hitCount; i++)
+            {
+                RaycastHit blockerHit = interactHits[i];
+                Collider blocker = blockerHit.collider;
+                if (blocker == null
+                    || blocker.isTrigger
+                    || blockerHit.distance >= candidateDistance - blockerDistanceTolerance
+                    || IsPlayerCollider(blocker)
+                    || BelongsToCandidate(blocker, candidateInteractable))
+                {
+                    continue;
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool BelongsToCandidate(Collider collider, object candidateInteractable)
+        {
+            if (candidateInteractable is not Component candidateComponent)
+            {
+                return false;
+            }
+
+            Transform candidateTransform = candidateComponent.transform;
+            return collider.transform == candidateTransform
+                || collider.transform.IsChildOf(candidateTransform)
+                || candidateTransform.IsChildOf(collider.transform);
         }
 
         private static float GetViewAlignment(Ray ray, RaycastHit hit)
