@@ -4,7 +4,7 @@ namespace Neighbor.Main.Features.Interaction
 {
     [RequireComponent(typeof(Rigidbody))]
     [RequireComponent(typeof(Pickupable))]
-    public sealed class WoodBoardPryTarget : MonoBehaviour
+    public sealed class WoodBoardPryTarget : MonoBehaviour, IPickupInteractionOverride
     {
         [SerializeField, Min(0f)] private float pryImpulse = 4.5f;
         [SerializeField, Min(0f)] private float upwardImpulse = 1.2f;
@@ -22,9 +22,14 @@ namespace Neighbor.Main.Features.Interaction
             doorBlocker = GetComponent<DoorBlockerChair>();
         }
 
+        public bool CanPickup(PlayerInteractor interactor)
+        {
+            return doorBlocker == null || !doorBlocker.IsBlockingDoor;
+        }
+
         public void PryLoose(Vector3 origin, Vector3 direction, GameObject instigator)
         {
-            doorBlocker?.HandlePickupStarted();
+            doorBlocker?.HandlePriedLoose();
 
             if (body != null)
             {

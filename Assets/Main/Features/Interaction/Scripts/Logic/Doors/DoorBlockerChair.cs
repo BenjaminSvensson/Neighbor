@@ -11,6 +11,9 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float groundProbeDistance = 3f;
         [SerializeField, Min(0f)] private float autoBlockRadius = 1.1f;
         [SerializeField, Range(0f, 45f)] private float leanAngle = 12f;
+        [SerializeField] private bool attachToDoorSurface;
+        [SerializeField, Min(0f)] private float doorSurfaceOffset = 0.03f;
+        [SerializeField] private float doorSurfaceHeight = 1.15f;
         [SerializeField] private LayerMask groundMask = ~0;
         [SerializeField] private LayerMask doorMask = ~0;
 
@@ -19,8 +22,11 @@ namespace Neighbor.Main.Features.Interaction
         private Door blockedDoor;
         private RigidbodyConstraints originalConstraints;
         private bool hasFrozenBlockedBody;
+        private bool blockDisabledUntilPlaced;
         private readonly Collider[] nearbyDoorHits = new Collider[8];
         private readonly RaycastHit[] groundHits = new RaycastHit[12];
+
+        public bool IsBlockingDoor => blockedDoor != null;
 
         private void Awake()
         {
@@ -66,11 +72,23 @@ namespace Neighbor.Main.Features.Interaction
         public void HandlePickupStarted()
         {
             ClearBlockedDoor();
+            blockDisabledUntilPlaced = false;
+        }
+
+        public void HandlePriedLoose()
+        {
+            ClearBlockedDoor();
+            blockDisabledUntilPlaced = true;
+        }
+
+        public void HandlePlaced()
+        {
+            blockDisabledUntilPlaced = false;
         }
 
         private void TryAutoBlockNearbyDoor()
         {
-            if (pickupable == null || pickupable.IsHeld || autoBlockRadius <= 0f)
+            if (pickupable == null || pickupable.IsHeld || blockDisabledUntilPlaced || autoBlockRadius <= 0f)
             {
                 return;
             }
@@ -93,7 +111,9 @@ namespace Neighbor.Main.Features.Interaction
         {
             Vector3 openingNormal = door.DefaultOpeningSideNormal.normalized;
             Quaternion rotation = GetBlockedRotation(openingNormal);
-            Vector3 position = GetPlacementPosition(door, door.transform.position + openingNormal * doorOffset, rotation);
+            Vector3 position = attachToDoorSurface
+                ? GetDoorSurfacePlacementPosition(door, openingNormal, rotation)
+                : GetGroundPlacementPosition(door, door.transform.position + openingNormal * doorOffset, rotation);
 
             pickupable.Place(position, rotation);
             blockedDoor = door;
@@ -106,7 +126,24 @@ namespace Neighbor.Main.Features.Interaction
             return facingDoor * Quaternion.AngleAxis(leanAngle, Vector3.right);
         }
 
-        private Vector3 GetPlacementPosition(Door door, Vector3 desiredCenter, Quaternion rotation)
+        private Vector3 GetDoorSurfacePlacementPosition(Door door, Vector3 openingNormal, Quaternion rotation)
+        {
+            Quaternion originalRotation = transform.rotation;
+            transform.rotation = rotation;
+            Bounds bounds = pickupable.GetPlacementBounds();
+            transform.rotation = originalRotation;
+
+            float normalExtent =
+                Mathf.Abs(openingNormal.x) * bounds.extents.x +
+                Mathf.Abs(openingNormal.y) * bounds.extents.y +
+                Mathf.Abs(openingNormal.z) * bounds.extents.z;
+
+            return door.transform.position
+                + Vector3.up * doorSurfaceHeight
+                + openingNormal * (normalExtent + doorSurfaceOffset);
+        }
+
+        private Vector3 GetGroundPlacementPosition(Door door, Vector3 desiredCenter, Quaternion rotation)
         {
             Quaternion originalRotation = transform.rotation;
             transform.rotation = rotation;

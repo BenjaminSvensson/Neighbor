@@ -158,7 +158,10 @@ MonoBehaviour:
   groundProbeHeight: 1.5
   groundProbeDistance: 3
   autoBlockRadius: 0.75
-  leanAngle: 8
+  leanAngle: 0
+  attachToDoorSurface: 1
+  doorSurfaceOffset: 0.035
+  doorSurfaceHeight: 1.25
   groundMask:
     serializedVersion: 2
     m_Bits: 4294967295
