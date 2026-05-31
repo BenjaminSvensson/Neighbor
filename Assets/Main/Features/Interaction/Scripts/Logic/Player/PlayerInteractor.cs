@@ -17,6 +17,9 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private LayerMask interactMask = ~0;
         [SerializeField] private QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.Ignore;
 
+        [Header("Tooltip")]
+        [SerializeField] private InteractionTooltipView tooltipView;
+
         [Header("Held Item")]
         [SerializeField] private Transform smallHoldPoint;
         [SerializeField] private Transform mediumHoldPoint;
@@ -91,6 +94,7 @@ namespace Neighbor.Main.Features.Interaction
             playerColliders = GetComponentsInParent<Collider>();
             ResolveInteractAction();
             EnsureThrowArcRenderer();
+            EnsureTooltipView();
         }
 
         private void OnEnable()
@@ -103,6 +107,7 @@ namespace Neighbor.Main.Features.Interaction
         {
             interactAction?.Disable();
             HideThrowArc();
+            tooltipView?.Hide();
         }
 
         private void Update()
@@ -131,6 +136,7 @@ namespace Neighbor.Main.Features.Interaction
                 }
 
                 releaseButtonWasHeld = false;
+                UpdateInteractionTooltip(mouse);
                 return;
             }
 
@@ -163,6 +169,8 @@ namespace Neighbor.Main.Features.Interaction
                 bool shouldThrow = heldDuration >= throwHoldThreshold;
                 ReleaseHeldPickup(shouldThrow);
             }
+
+            UpdateInteractionTooltip(mouse);
         }
 
         private void LateUpdate()
@@ -815,6 +823,186 @@ namespace Neighbor.Main.Features.Interaction
             HasFocusedInteractable = FocusedInteractable != null;
         }
 
+        private void UpdateInteractionTooltip(Mouse mouse)
+        {
+            EnsureTooltipView();
+            if (tooltipView == null)
+            {
+                return;
+            }
+
+            if (heldPickup != null)
+            {
+                ShowHeldPickupTooltip(mouse);
+                return;
+            }
+
+            if (FocusedInteractable != null
+                && TryGetTooltip(FocusedInteractable, InteractionTooltipContext.FocusedInteractable, "Interact", "E", out string focusAction, out string focusKey))
+            {
+                tooltipView.Show(focusKey, focusAction);
+                return;
+            }
+
+            Ray ray = new Ray(ViewTransform.position, ViewTransform.forward);
+            IHoldInteractable holdInteractable = FindBestHoldInteractable(ray);
+            if (holdInteractable != null
+                && TryGetTooltip(holdInteractable, InteractionTooltipContext.HoldInteractable, "Hold interact", "Hold E", out string holdAction, out string holdKey))
+            {
+                tooltipView.Show(holdKey, holdAction);
+                return;
+            }
+
+            tooltipView.Hide();
+        }
+
+        private void ShowHeldPickupTooltip(Mouse mouse)
+        {
+            IPrimaryUseInteractable primaryUseInteractable = heldPickup != null
+                ? heldPickup.GetComponentInChildren<IPrimaryUseInteractable>()
+                : null;
+
+            if (mouse != null
+                && primaryUseInteractable != null
+                && primaryUseInteractable.CanPrimaryUse(this)
+                && TryGetTooltip(primaryUseInteractable, InteractionTooltipContext.HeldPrimaryUse, "Use", "Left Mouse", out string primaryAction, out string primaryKey))
+            {
+                tooltipView.Show(primaryKey, primaryAction);
+                return;
+            }
+
+            string secondaryAction = releaseButtonWasHeld ? "Release to throw" : "Place";
+            string secondaryKey = releaseButtonWasHeld ? "Release Right Mouse" : "Right Mouse";
+            if (TryGetTooltip(heldPickup, InteractionTooltipContext.HeldSecondaryUse, secondaryAction, secondaryKey, out string action, out string key))
+            {
+                tooltipView.Show(key, action);
+                return;
+            }
+
+            tooltipView.Hide();
+        }
+
+        private bool TryGetTooltip(
+            object tooltipSource,
+            InteractionTooltipContext context,
+            string fallbackAction,
+            string fallbackKey,
+            out string actionText,
+            out string keyText)
+        {
+            IInteractionTooltipProvider provider = GetTooltipProvider(tooltipSource);
+            if (provider != null && provider.TryGetInteractionTooltip(this, context, out actionText, out keyText))
+            {
+                return true;
+            }
+
+            actionText = GetDefaultTooltipAction(tooltipSource, context, fallbackAction);
+            keyText = fallbackKey;
+            return !string.IsNullOrWhiteSpace(actionText) && !string.IsNullOrWhiteSpace(keyText);
+        }
+
+        private static IInteractionTooltipProvider GetTooltipProvider(object tooltipSource)
+        {
+            if (tooltipSource is IInteractionTooltipProvider directProvider)
+            {
+                return directProvider;
+            }
+
+            return tooltipSource is Component component
+                ? component.GetComponentInChildren<IInteractionTooltipProvider>()
+                : null;
+        }
+
+        private static string GetDefaultTooltipAction(object tooltipSource, InteractionTooltipContext context, string fallbackAction)
+        {
+            if (tooltipSource is Pickupable)
+            {
+                return context == InteractionTooltipContext.HeldSecondaryUse ? fallbackAction : "Pick up";
+            }
+
+            if (tooltipSource is Door door)
+            {
+                if (door.IsBlocked)
+                {
+                    return "Blocked";
+                }
+
+                if (door.IsLocked)
+                {
+                    return "Unlock";
+                }
+
+                return door.IsOpen ? "Close" : "Open";
+            }
+
+            if (tooltipSource is LightSwitch)
+            {
+                return "Toggle light";
+            }
+
+            if (tooltipSource is Doorbell)
+            {
+                return "Ring doorbell";
+            }
+
+            if (tooltipSource is ClosetHideSpot closet)
+            {
+                return closet.HasHiddenPlayer ? "Exit hiding spot" : "Hide";
+            }
+
+            if (tooltipSource is ClosetDoorPair)
+            {
+                return "Open/close closet";
+            }
+
+            if (tooltipSource is SlidingCupboardCompartment)
+            {
+                return "Slide compartment";
+            }
+
+            if (tooltipSource is Flashlight)
+            {
+                return "Toggle flashlight";
+            }
+
+            if (tooltipSource is PhotoCamera)
+            {
+                return "Take photo";
+            }
+
+            if (tooltipSource is SecurityCamera)
+            {
+                return "Attach camera";
+            }
+
+            if (tooltipSource is Beartrap)
+            {
+                return context == InteractionTooltipContext.HoldInteractable ? "Free yourself" : "Set trap";
+            }
+
+            if (tooltipSource is ReadableBook)
+            {
+                return "Read";
+            }
+
+            if (tooltipSource is WritableNotebook)
+            {
+                return "Write";
+            }
+
+            if (tooltipSource is Crowbar)
+            {
+                return "Pry";
+            }
+
+            if (tooltipSource is IHoldInteractable)
+            {
+                return fallbackAction;
+            }
+
+            return fallbackAction;
+        }
+
         private IInteractable FindBestInteractable(Ray ray)
         {
             int hitCount = interactRadius > 0f
@@ -1057,6 +1245,20 @@ namespace Neighbor.Main.Features.Interaction
             throwArcRenderer.endColor = throwArcEndColor;
             throwArcRenderer.sortingOrder = 100;
             throwArcRenderer.material = CreateThrowArcMaterial();
+        }
+
+        private void EnsureTooltipView()
+        {
+            if (tooltipView != null)
+            {
+                return;
+            }
+
+            tooltipView = FindAnyObjectByType<InteractionTooltipView>();
+            if (tooltipView == null)
+            {
+                tooltipView = InteractionTooltipView.CreateRuntimeTooltip();
+            }
         }
 
         private void HideThrowArc()
