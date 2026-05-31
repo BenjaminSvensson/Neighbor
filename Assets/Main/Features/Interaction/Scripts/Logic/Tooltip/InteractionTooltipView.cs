@@ -36,7 +36,7 @@ namespace Neighbor.Main.Features.Interaction
 
         public static InteractionTooltipView CreateRuntimeTooltip()
         {
-            GameObject tooltipObject = new GameObject("InteractionTooltip");
+            GameObject tooltipObject = new GameObject("InteractionTooltip", typeof(RectTransform));
             InteractionTooltipView tooltipView = tooltipObject.AddComponent<InteractionTooltipView>();
             tooltipView.EnsureBuilt();
             tooltipView.Hide();
@@ -97,30 +97,47 @@ namespace Neighbor.Main.Features.Interaction
 
         private RectTransform EnsurePanel()
         {
-            RectTransform rectTransform = transform as RectTransform;
+            Transform existingPanel = transform.Find("Panel");
+            GameObject panelObject = existingPanel != null
+                ? existingPanel.gameObject
+                : new GameObject("Panel", typeof(RectTransform));
+            panelObject.transform.SetParent(transform, false);
+
+            RectTransform rectTransform = panelObject.transform as RectTransform;
             if (rectTransform == null)
             {
-                rectTransform = gameObject.AddComponent<RectTransform>();
+                Destroy(panelObject);
+                panelObject = new GameObject("Panel", typeof(RectTransform));
+                panelObject.transform.SetParent(transform, false);
+                rectTransform = (RectTransform)panelObject.transform;
             }
 
             SetRect(rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 120f), new Vector2(520f, 74f));
 
-            Image panelImage = GetComponent<Image>();
+            Image panelImage = panelObject.GetComponent<Image>();
             if (panelImage == null)
             {
-                panelImage = gameObject.AddComponent<Image>();
+                panelImage = panelObject.AddComponent<Image>();
             }
 
             panelImage.color = new Color(0.04f, 0.04f, 0.04f, 0.72f);
 
-            GameObject keyBackground = transform.Find("KeyBackground")?.gameObject;
+            GameObject keyBackground = rectTransform.Find("KeyBackground")?.gameObject;
             if (keyBackground == null)
             {
-                keyBackground = new GameObject("KeyBackground");
-                keyBackground.transform.SetParent(transform, false);
+                keyBackground = new GameObject("KeyBackground", typeof(RectTransform));
+                keyBackground.transform.SetParent(rectTransform, false);
             }
 
-            RectTransform keyBackgroundRect = keyBackground.GetComponent<RectTransform>() ?? keyBackground.AddComponent<RectTransform>();
+            RectTransform keyBackgroundRect = keyBackground.transform as RectTransform;
+            if (keyBackgroundRect == null)
+            {
+                Destroy(keyBackground);
+                keyBackground = new GameObject("KeyBackground", typeof(RectTransform));
+                keyBackground.transform.SetParent(rectTransform, false);
+                keyBackgroundRect = (RectTransform)keyBackground.transform;
+            }
+
             SetRect(keyBackgroundRect, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(20f, 0f), new Vector2(118f, 44f));
 
             Image keyBackgroundImage = keyBackground.GetComponent<Image>() ?? keyBackground.AddComponent<Image>();
@@ -132,8 +149,15 @@ namespace Neighbor.Main.Features.Interaction
         private static Text EnsureText(string objectName, Transform parent, Font font, TextAnchor alignment, int fontSize, FontStyle fontStyle)
         {
             Transform existing = parent.Find(objectName);
-            GameObject textObject = existing != null ? existing.gameObject : new GameObject(objectName);
+            GameObject textObject = existing != null ? existing.gameObject : new GameObject(objectName, typeof(RectTransform));
             textObject.transform.SetParent(parent, false);
+
+            if (textObject.transform is not RectTransform)
+            {
+                Object.Destroy(textObject);
+                textObject = new GameObject(objectName, typeof(RectTransform));
+                textObject.transform.SetParent(parent, false);
+            }
 
             Text text = textObject.GetComponent<Text>() ?? textObject.AddComponent<Text>();
             text.font = font;
