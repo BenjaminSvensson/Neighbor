@@ -124,7 +124,7 @@ namespace Neighbor.Main.Features.Interaction
 
             gameObject.AddComponent<GraphicRaycaster>();
 
-            Font font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            Font font = GetBuiltInFont();
             Image dimmer = CreateImage("Dimmer", transform, new Color(0f, 0f, 0f, 0.72f));
             Stretch(dimmer.rectTransform, Vector2.zero, Vector2.zero);
 
@@ -191,6 +191,17 @@ namespace Neighbor.Main.Features.Interaction
             text.color = color;
             text.raycastTarget = false;
             return text;
+        }
+
+        private static Font GetBuiltInFont()
+        {
+            Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (font != null)
+            {
+                return font;
+            }
+
+            return Resources.GetBuiltinResource<Font>("Arial.ttf");
         }
 
         private static void Stretch(RectTransform rect, Vector2 offsetMin, Vector2 offsetMax)
