@@ -2,7 +2,8 @@ using UnityEngine;
 
 namespace Neighbor.Main.Features.Interaction
 {
-    public sealed class ReadableBook : MonoBehaviour, IInteractable
+    [RequireComponent(typeof(Pickupable))]
+    public sealed class ReadableBook : MonoBehaviour, IPrimaryUseInteractable
     {
         [SerializeField] private string title = "Placeholder Book";
         [SerializeField, TextArea(3, 8)] private string[] pages =
@@ -12,12 +13,16 @@ namespace Neighbor.Main.Features.Interaction
             "Page 3\n\nReplace these serialized page strings with clue text, notes, diary entries, or instructions."
         };
 
-        public bool CanInteract(PlayerInteractor interactor)
+        public bool CanPrimaryUse(PlayerInteractor interactor)
         {
-            return !BookReaderOverlay.IsOpen;
+            return interactor != null
+                && interactor.HeldPickup != null
+                && interactor.HeldPickup.GetComponentInChildren<ReadableBook>() == this
+                && !BookReaderOverlay.IsOpen
+                && !NotebookWriterOverlay.IsOpen;
         }
 
-        public void Interact(PlayerInteractor interactor)
+        public void PrimaryUse(PlayerInteractor interactor)
         {
             BookReaderOverlay.Open(title, pages);
         }
