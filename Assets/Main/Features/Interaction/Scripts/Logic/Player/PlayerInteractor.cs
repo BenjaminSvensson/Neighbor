@@ -206,6 +206,19 @@ namespace Neighbor.Main.Features.Interaction
             heldPickup.Pickup(this);
         }
 
+        public bool ForgetHeldPickup(Pickupable pickupable)
+        {
+            if (heldPickup != pickupable)
+            {
+                return false;
+            }
+
+            heldPickup = null;
+            releaseButtonWasHeld = false;
+            HideThrowArc();
+            return true;
+        }
+
         private void TryInteract()
         {
             if (heldPickup != null)
