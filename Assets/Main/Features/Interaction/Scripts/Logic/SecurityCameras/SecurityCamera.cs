@@ -44,12 +44,15 @@ namespace Neighbor.Main.Features.Interaction
         private Material sightBeamMaterial;
         private float configuredViewDistance = -1f;
         private float configuredViewAngle = -1f;
+        private Transform originalParent;
+        private Pickupable attachedPickupable;
         private bool isAttached;
 
         private void Awake()
         {
             pickupable = GetComponent<Pickupable>();
             body = GetComponent<Rigidbody>();
+            originalParent = transform.parent;
 
             if (eye == null)
             {
@@ -95,7 +98,9 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            if (Mathf.Abs(Vector3.Dot(hit.normal.normalized, Vector3.up)) > maximumWallUpDot)
+            Pickupable hitPickupable = hit.collider.GetComponentInParent<Pickupable>();
+            bool attachesToOtherPickupable = hitPickupable != null && hitPickupable != pickupable;
+            if (!attachesToOtherPickupable && Mathf.Abs(Vector3.Dot(hit.normal.normalized, Vector3.up)) > maximumWallUpDot)
             {
                 return;
             }
@@ -104,12 +109,14 @@ namespace Neighbor.Main.Features.Interaction
             Vector3 position = hit.point + hit.normal.normalized * wallOffset;
             pickupable.Place(position, rotation, true);
             interactor.ForgetHeldPickup(pickupable);
-            AttachToWall();
+            AttachToSurface(attachesToOtherPickupable ? hitPickupable : null);
         }
 
         public void OnPickupStarted(Pickupable _, PlayerInteractor __)
         {
             isAttached = false;
+            attachedPickupable = null;
+            transform.SetParent(originalParent, true);
             ResetEyeRotation();
 
             if (body == null)
@@ -126,9 +133,11 @@ namespace Neighbor.Main.Features.Interaction
         {
         }
 
-        private void AttachToWall()
+        private void AttachToSurface(Pickupable parentPickupable)
         {
             isAttached = true;
+            attachedPickupable = parentPickupable;
+            transform.SetParent(attachedPickupable != null ? attachedPickupable.transform : originalParent, true);
             baseEyeLocalRotation = eye != null ? eye.localRotation : Quaternion.identity;
 
             if (body == null)
