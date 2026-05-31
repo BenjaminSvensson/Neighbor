@@ -13,6 +13,13 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0.05f)] private float photoEjectDistance = 0.65f;
         [SerializeField, Min(0f)] private float photoEjectImpulse = 1.4f;
 
+        [Header("View Cone")]
+        [SerializeField] private bool showViewCone = true;
+        [SerializeField, Min(0.1f)] private float viewConeLength = 4f;
+        [SerializeField, Range(5f, 120f)] private float viewConeAngle = 45f;
+        [SerializeField] private Color viewConeColor = new(1f, 0f, 0f, 0.22f);
+        [SerializeField] private Vector3 viewConeLocalOffset = new(0f, 0.01f, 0.25f);
+
         [Header("Flash")]
         [SerializeField] private Light flashLight;
         [SerializeField, Min(0f)] private float flashDuration = 0.08f;
@@ -28,6 +35,8 @@ namespace Neighbor.Main.Features.Interaction
         private AudioClip generatedShutterClip;
         private float nextShutterTime;
         private Coroutine flashRoutine;
+        private Coroutine captureRoutine;
+        private MeshRenderer viewConeRenderer;
 
         private void Awake()
         {
@@ -58,6 +67,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             ResolveAudioSource();
+            EnsureViewCone();
         }
 
         public bool CanPrimaryUse(PlayerInteractor interactor)
@@ -76,74 +86,55 @@ namespace Neighbor.Main.Features.Interaction
             PlayShutterSound();
             TriggerFlash();
 
-            Texture2D capturedTexture = CapturePlayerView(interactor);
+            if (captureRoutine != null)
+            {
+                StopCoroutine(captureRoutine);
+            }
+
+            captureRoutine = StartCoroutine(CapturePlayerViewAtEndOfFrame(interactor));
+        }
+
+        private IEnumerator CapturePlayerViewAtEndOfFrame(PlayerInteractor interactor)
+        {
+            SetViewConeVisible(false);
+            yield return new WaitForEndOfFrame();
+
+            Texture2D screenTexture = ScreenCapture.CaptureScreenshotAsTexture();
+            Texture2D capturedTexture = screenTexture != null ? ResizeTexture(screenTexture, captureWidth, captureHeight) : null;
+            if (screenTexture != null)
+            {
+                Destroy(screenTexture);
+            }
+
+            SetViewConeVisible(true);
+            captureRoutine = null;
+
             if (capturedTexture != null)
             {
+                capturedTexture.name = $"{name}_CapturedPhoto";
                 SpawnPhoto(interactor, capturedTexture);
             }
         }
 
-        private Texture2D CapturePlayerView(PlayerInteractor interactor)
+        private static Texture2D ResizeTexture(Texture2D source, int width, int height)
         {
-            Camera sourceCamera = ResolveSourceCamera(interactor);
-            if (sourceCamera == null)
+            if (source == null)
             {
                 return null;
             }
 
-            RenderTexture previousTargetTexture = sourceCamera.targetTexture;
-            RenderTexture previousActiveTexture = RenderTexture.active;
-            RenderTexture renderTexture = new RenderTexture(captureWidth, captureHeight, 24, RenderTextureFormat.ARGB32)
-            {
-                name = $"{name}_PhotoCapture"
-            };
+            RenderTexture previousActive = RenderTexture.active;
+            RenderTexture renderTexture = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32);
+            Graphics.Blit(source, renderTexture);
 
-            Texture2D texture = new Texture2D(captureWidth, captureHeight, TextureFormat.RGBA32, false)
-            {
-                name = $"{name}_CapturedPhoto"
-            };
-
-            sourceCamera.targetTexture = renderTexture;
             RenderTexture.active = renderTexture;
-            sourceCamera.Render();
-            texture.ReadPixels(new Rect(0f, 0f, captureWidth, captureHeight), 0, 0);
-            texture.Apply(false, false);
+            Texture2D resizedTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            resizedTexture.ReadPixels(new Rect(0f, 0f, width, height), 0, 0);
+            resizedTexture.Apply(false, false);
 
-            sourceCamera.targetTexture = previousTargetTexture;
-            RenderTexture.active = previousActiveTexture;
-            renderTexture.Release();
-            Destroy(renderTexture);
-
-            return texture;
-        }
-
-        private Camera ResolveSourceCamera(PlayerInteractor interactor)
-        {
-            if (interactor != null)
-            {
-                Camera camera = interactor.GetComponentInChildren<Camera>() ?? interactor.GetComponentInParent<Camera>();
-                if (camera != null)
-                {
-                    return camera;
-                }
-            }
-
-            if (Camera.main != null)
-            {
-                return Camera.main;
-            }
-
-            Camera[] cameras = FindObjectsByType<Camera>(FindObjectsInactive.Exclude);
-            for (int i = 0; i < cameras.Length; i++)
-            {
-                Camera camera = cameras[i];
-                if (camera != null && camera.cameraType == CameraType.Game && camera.isActiveAndEnabled)
-                {
-                    return camera;
-                }
-            }
-
-            return null;
+            RenderTexture.active = previousActive;
+            RenderTexture.ReleaseTemporary(renderTexture);
+            return resizedTexture;
         }
 
         private void SpawnPhoto(PlayerInteractor interactor, Texture2D capturedTexture)
@@ -199,7 +190,9 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            Shader shader = texture != null
+                ? Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Texture") ?? Shader.Find("Standard")
+                : Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
             Material material = new Material(shader)
             {
                 color = color,
@@ -214,6 +207,93 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             renderer.material = material;
+        }
+
+        private void EnsureViewCone()
+        {
+            if (!showViewCone)
+            {
+                return;
+            }
+
+            GameObject coneObject = new GameObject("RedViewCone");
+            coneObject.layer = gameObject.layer;
+            coneObject.transform.SetParent(transform, false);
+            coneObject.transform.localPosition = viewConeLocalOffset;
+            coneObject.transform.localRotation = Quaternion.identity;
+
+            MeshFilter meshFilter = coneObject.AddComponent<MeshFilter>();
+            meshFilter.sharedMesh = CreateViewConeMesh(viewConeLength, viewConeAngle, 24);
+
+            viewConeRenderer = coneObject.AddComponent<MeshRenderer>();
+            viewConeRenderer.sharedMaterial = CreateViewConeMaterial();
+            SetViewConeVisible(true);
+        }
+
+        private static Mesh CreateViewConeMesh(float length, float angle, int segments)
+        {
+            Mesh mesh = new Mesh
+            {
+                name = "PhotoCameraViewCone"
+            };
+
+            float radius = Mathf.Tan(angle * 0.5f * Mathf.Deg2Rad) * length;
+            Vector3[] vertices = new Vector3[segments + 2];
+            int[] triangles = new int[segments * 6];
+            vertices[0] = Vector3.zero;
+
+            for (int i = 0; i <= segments; i++)
+            {
+                float t = i / (float)segments * Mathf.PI * 2f;
+                vertices[i + 1] = new Vector3(Mathf.Cos(t) * radius, Mathf.Sin(t) * radius, length);
+            }
+
+            int triangleIndex = 0;
+            for (int i = 0; i < segments; i++)
+            {
+                triangles[triangleIndex++] = 0;
+                triangles[triangleIndex++] = i + 1;
+                triangles[triangleIndex++] = i + 2;
+
+                triangles[triangleIndex++] = 0;
+                triangles[triangleIndex++] = i + 2;
+                triangles[triangleIndex++] = i + 1;
+            }
+
+            mesh.vertices = vertices;
+            mesh.triangles = triangles;
+            mesh.RecalculateBounds();
+            mesh.RecalculateNormals();
+            return mesh;
+        }
+
+        private Material CreateViewConeMaterial()
+        {
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color") ?? Shader.Find("Standard");
+            Material material = new Material(shader)
+            {
+                color = viewConeColor
+            };
+
+            material.SetColor("_BaseColor", viewConeColor);
+            material.SetColor("_Color", viewConeColor);
+            material.SetFloat("_Surface", 1f);
+            material.SetFloat("_Blend", 0f);
+            material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            material.SetFloat("_ZWrite", 0f);
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            material.EnableKeyword("_ALPHABLEND_ON");
+            return material;
+        }
+
+        private void SetViewConeVisible(bool visible)
+        {
+            if (viewConeRenderer != null)
+            {
+                viewConeRenderer.enabled = showViewCone && visible;
+            }
         }
 
         private void TriggerFlash()
@@ -322,6 +402,8 @@ namespace Neighbor.Main.Features.Interaction
             shutterCooldown = Mathf.Max(0f, shutterCooldown);
             flashDuration = Mathf.Max(0f, flashDuration);
             flashIntensity = Mathf.Max(0f, flashIntensity);
+            viewConeLength = Mathf.Max(0.1f, viewConeLength);
+            viewConeAngle = Mathf.Clamp(viewConeAngle, 5f, 120f);
         }
     }
 }
