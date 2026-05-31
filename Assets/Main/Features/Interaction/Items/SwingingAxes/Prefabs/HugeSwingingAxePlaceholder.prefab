@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 100001}
   - component: {fileID: 100002}
+  - component: {fileID: 100003}
   m_Layer: 0
   m_Name: HugeSwingingAxePlaceholder
   m_TagString: Untagged
@@ -64,6 +65,31 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &100003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 596eee804623496ebddc25b4a3344a36, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  swingingParts:
+  - {fileID: 100021}
+  - {fileID: 100031}
+  - {fileID: 100041}
+  pivotLocalPosition: {x: 0, y: 4.6, z: 0}
+  maximumAngle: 42
+  swingsPerSecond: 0.42
+  phaseOffset: 0
+  minimumHitAngularSpeed: 35
+  hitCooldown: 0.45
+  rigidbodyImpulse: 9
+  playerPushDistance: 1.7
+  upwardPush: 0.35
 --- !u!1 &100010
 GameObject:
   m_ObjectHideFlags: 0
