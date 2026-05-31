@@ -123,11 +123,6 @@ namespace Neighbor.Main.Features.Interaction
             {
                 if (heldPickup == null)
                 {
-                    if (mouse != null && mouse.leftButton.wasPressedThisFrame)
-                    {
-                        TryPrimaryUseFocusedInteractable();
-                    }
-
                     UpdateHoldInteraction(interactHeld);
                 }
                 else
@@ -141,17 +136,17 @@ namespace Neighbor.Main.Features.Interaction
 
             EndActiveHoldInteraction(false);
 
-            if (!interactPressed && mouse.leftButton.wasPressedThisFrame && TryPrimaryUseHeldPickup())
+            if (mouse.leftButton.wasPressedThisFrame && TryPrimaryUseHeldPickup())
             {
                 return;
             }
 
-            if (!interactPressed && mouse.leftButton.wasPressedThisFrame && TryUseHeldPickupOnDoorBlocker())
+            if (mouse.leftButton.wasPressedThisFrame && TryUseHeldPickupOnDoorBlocker())
             {
                 return;
             }
 
-            if (!interactPressed && mouse.leftButton.wasPressedThisFrame)
+            if (mouse.leftButton.wasPressedThisFrame)
             {
                 TryUseHeldPickupOnFocusedInteractable();
             }
@@ -223,7 +218,6 @@ namespace Neighbor.Main.Features.Interaction
         {
             if (heldPickup != null)
             {
-                TryUseHeldPickupOnFocusedInteractable();
                 return;
             }
 
@@ -261,19 +255,6 @@ namespace Neighbor.Main.Features.Interaction
                 ? heldPickup.GetComponentInChildren<IPrimaryUseInteractable>()
                 : null;
 
-            if (primaryUseInteractable == null || !primaryUseInteractable.CanPrimaryUse(this))
-            {
-                return false;
-            }
-
-            primaryUseInteractable.PrimaryUse(this);
-            return true;
-        }
-
-        private bool TryPrimaryUseFocusedInteractable()
-        {
-            Ray ray = new Ray(ViewTransform.position, ViewTransform.forward);
-            IPrimaryUseInteractable primaryUseInteractable = FindBestPrimaryUseInteractable(ray);
             if (primaryUseInteractable == null || !primaryUseInteractable.CanPrimaryUse(this))
             {
                 return false;
@@ -854,50 +835,6 @@ namespace Neighbor.Main.Features.Interaction
 
                 IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
                 if (interactable == null || !interactable.CanInteract(this))
-                {
-                    continue;
-                }
-
-                if (IsInteractionBlockedByCloserHit(hitCount, hit.distance, interactable))
-                {
-                    continue;
-                }
-
-                float alignment = GetViewAlignment(ray, hit);
-                bool isMoreCentered = alignment > bestAlignment + interactAlignmentTieTolerance;
-                bool isTiedAndCloser = Mathf.Abs(alignment - bestAlignment) <= interactAlignmentTieTolerance && hit.distance < bestDistance;
-
-                if (isMoreCentered || isTiedAndCloser)
-                {
-                    bestAlignment = alignment;
-                    bestDistance = hit.distance;
-                    bestInteractable = interactable;
-                }
-            }
-
-            return bestInteractable;
-        }
-
-        private IPrimaryUseInteractable FindBestPrimaryUseInteractable(Ray ray)
-        {
-            int hitCount = interactRadius > 0f
-                ? Physics.SphereCastNonAlloc(ray, interactRadius, interactHits, interactRange, interactMask, triggerInteraction)
-                : Physics.RaycastNonAlloc(ray, interactHits, interactRange, interactMask, triggerInteraction);
-
-            IPrimaryUseInteractable bestInteractable = null;
-            float bestAlignment = -1f;
-            float bestDistance = float.PositiveInfinity;
-
-            for (int i = 0; i < hitCount; i++)
-            {
-                RaycastHit hit = interactHits[i];
-                if (hit.collider == null || IsPlayerCollider(hit.collider))
-                {
-                    continue;
-                }
-
-                IPrimaryUseInteractable interactable = hit.collider.GetComponentInParent<IPrimaryUseInteractable>();
-                if (interactable == null || !interactable.CanPrimaryUse(this))
                 {
                     continue;
                 }

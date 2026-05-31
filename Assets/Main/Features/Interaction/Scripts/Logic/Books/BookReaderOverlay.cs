@@ -59,18 +59,18 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            if (keyboard.escapeKey.wasPressedThisFrame || keyboard.eKey.wasPressedThisFrame)
+            if (keyboard.escapeKey.wasPressedThisFrame)
             {
                 Close();
                 return;
             }
 
-            if (keyboard.rightArrowKey.wasPressedThisFrame || keyboard.dKey.wasPressedThisFrame || keyboard.pageDownKey.wasPressedThisFrame)
+            if (keyboard.rightArrowKey.wasPressedThisFrame)
             {
                 NextPage();
             }
 
-            if (keyboard.leftArrowKey.wasPressedThisFrame || keyboard.aKey.wasPressedThisFrame || keyboard.pageUpKey.wasPressedThisFrame)
+            if (keyboard.leftArrowKey.wasPressedThisFrame)
             {
                 PreviousPage();
             }
@@ -148,7 +148,7 @@ namespace Neighbor.Main.Features.Interaction
             SetRect(pageCounterText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 28f), new Vector2(0f, 62f));
 
             Text controls = CreateText("Controls", panelRect, font, 16, FontStyle.Italic, TextAnchor.MiddleCenter, new Color(0.25f, 0.17f, 0.09f, 1f));
-            controls.text = "A / Left: previous page     D / Right: next page     E / Esc: close";
+            controls.text = "Left: previous page     Right: next page     Esc: close";
             SetRect(controls.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 8f), new Vector2(0f, 30f));
         }
 

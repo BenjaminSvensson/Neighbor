@@ -106,11 +106,12 @@ namespace Neighbor.Main.Features.Interaction
         public void OnPickupPlaced(Pickupable pickupable)
         {
             isPlaced = true;
+            ConfigureTrapBodyForState();
         }
 
         public bool CanPrimaryUse(PlayerInteractor interactor)
         {
-            return isPlaced && pickupable != null && !pickupable.IsHeld && state == TrapState.Closed && !IsMoving;
+            return pickupable != null && pickupable.IsHeld && state == TrapState.Closed && !IsMoving;
         }
 
         public void PrimaryUse(PlayerInteractor interactor)
