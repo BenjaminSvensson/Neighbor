@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Neighbor.Main.Features.Interaction
 {
@@ -8,6 +9,7 @@ namespace Neighbor.Main.Features.Interaction
     {
         [Header("Swing")]
         [SerializeField] private Transform[] swingingParts;
+        [SerializeField] private bool startsActive = true;
         [SerializeField] private Vector3 pivotLocalPosition = new(0f, 4.6f, 0f);
         [SerializeField, Min(0f)] private float maximumAngle = 42f;
         [SerializeField, Min(0.01f)] private float swingsPerSecond = 0.42f;
@@ -19,9 +21,13 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float rigidbodyImpulse = 9f;
         [SerializeField, Min(0f)] private float playerPushDistance = 1.7f;
         [SerializeField, Min(0f)] private float upwardPush = 0.35f;
+        [SerializeField] private bool resetSceneOnPlayerHit = true;
 
         private readonly Dictionary<Collider, float> nextHitTimes = new();
         private PartPose[] basePoses;
+        private bool isActive;
+        private bool isResettingScene;
+        private float activationTime;
         private float previousAngle;
         private float angularSpeed;
         private float signedAngularSpeed;
@@ -36,15 +42,39 @@ namespace Neighbor.Main.Features.Interaction
         private void Awake()
         {
             CacheBasePoses();
+            isActive = startsActive;
+            activationTime = Time.time;
         }
 
         private void Update()
         {
-            float angle = Mathf.Sin((Time.time + phaseOffset) * swingsPerSecond * Mathf.PI * 2f) * maximumAngle;
+            if (!isActive)
+            {
+                signedAngularSpeed = 0f;
+                angularSpeed = 0f;
+                previousAngle = 0f;
+                ApplySwing(0f);
+                return;
+            }
+
+            float activeTime = Time.time - activationTime;
+            float angle = Mathf.Sin((activeTime + phaseOffset) * swingsPerSecond * Mathf.PI * 2f) * maximumAngle;
             signedAngularSpeed = Mathf.DeltaAngle(previousAngle, angle) / Mathf.Max(Time.deltaTime, 0.0001f);
             angularSpeed = Mathf.Abs(signedAngularSpeed);
             previousAngle = angle;
             ApplySwing(angle);
+        }
+
+        public void Activate()
+        {
+            if (isActive)
+            {
+                return;
+            }
+
+            isActive = true;
+            activationTime = Time.time;
+            previousAngle = 0f;
         }
 
         private void OnTriggerEnter(Collider other)
@@ -59,7 +89,7 @@ namespace Neighbor.Main.Features.Interaction
 
         private void TryHit(Collider other)
         {
-            if (other == null || other.isTrigger || angularSpeed < minimumHitAngularSpeed)
+            if (!isActive || other == null || other.isTrigger || angularSpeed < minimumHitAngularSpeed)
             {
                 return;
             }
@@ -71,6 +101,13 @@ namespace Neighbor.Main.Features.Interaction
 
             nextHitTimes[other] = Time.time + hitCooldown;
 
+            PlayerController player = other.GetComponentInParent<PlayerController>();
+            if (player != null && resetSceneOnPlayerHit)
+            {
+                ResetScene();
+                return;
+            }
+
             Vector3 pushDirection = GetPushDirection(other.transform.position);
             Rigidbody body = other.attachedRigidbody;
             if (body != null && !body.isKinematic)
@@ -79,7 +116,6 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            PlayerController player = other.GetComponentInParent<PlayerController>();
             CharacterController controller = player != null
                 ? player.GetComponent<CharacterController>()
                 : other.GetComponentInParent<CharacterController>();
@@ -87,6 +123,18 @@ namespace Neighbor.Main.Features.Interaction
             {
                 controller.Move((pushDirection + Vector3.up * upwardPush).normalized * playerPushDistance);
             }
+        }
+
+        private void ResetScene()
+        {
+            if (isResettingScene)
+            {
+                return;
+            }
+
+            isResettingScene = true;
+            Scene activeScene = SceneManager.GetActiveScene();
+            SceneManager.LoadScene(activeScene.name);
         }
 
         private Vector3 GetPushDirection(Vector3 hitPosition)
