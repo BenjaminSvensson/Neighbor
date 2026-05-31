@@ -167,18 +167,51 @@ namespace Neighbor.Main.Features.Interaction
             Destroy(paper.GetComponent<Collider>());
             SetRendererMaterial(paper.GetComponent<Renderer>(), Color.white, null);
 
-            GameObject image = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            GameObject image = CreatePhotoImageObject();
             image.name = "PhotoImage";
             image.layer = photo.layer;
             image.transform.SetParent(photo.transform, false);
             image.transform.localPosition = new Vector3(0f, 0.011f, 0.02f);
             image.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
             image.transform.localScale = new Vector3(0.52f, 0.34f, 1f);
-            Destroy(image.GetComponent<Collider>());
             SetRendererMaterial(image.GetComponent<Renderer>(), Color.white, capturedTexture);
 
             body.AddForce(viewTransform.forward * photoEjectImpulse + Vector3.up * 0.25f, ForceMode.Impulse);
             body.AddTorque(Random.insideUnitSphere * 0.08f, ForceMode.Impulse);
+        }
+
+        private static GameObject CreatePhotoImageObject()
+        {
+            GameObject image = new GameObject("PhotoImage");
+            MeshFilter filter = image.AddComponent<MeshFilter>();
+            MeshRenderer renderer = image.AddComponent<MeshRenderer>();
+
+            Mesh mesh = new Mesh
+            {
+                name = "CapturedPhotoImageQuad",
+                vertices = new[]
+                {
+                    new Vector3(-0.5f, -0.5f, 0f),
+                    new Vector3(0.5f, -0.5f, 0f),
+                    new Vector3(-0.5f, 0.5f, 0f),
+                    new Vector3(0.5f, 0.5f, 0f)
+                },
+                uv = new[]
+                {
+                    new Vector2(0f, 0f),
+                    new Vector2(1f, 0f),
+                    new Vector2(0f, 1f),
+                    new Vector2(1f, 1f)
+                },
+                triangles = new[] { 0, 2, 1, 2, 3, 1 }
+            };
+
+            mesh.RecalculateBounds();
+            mesh.RecalculateNormals();
+            filter.sharedMesh = mesh;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            return image;
         }
 
         private static void SetRendererMaterial(Renderer renderer, Color color, Texture texture)
