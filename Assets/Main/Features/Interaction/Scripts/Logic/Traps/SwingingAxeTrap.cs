@@ -22,6 +22,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float playerPushDistance = 1.7f;
         [SerializeField, Min(0f)] private float upwardPush = 0.35f;
         [SerializeField] private bool resetSceneOnPlayerHit = true;
+        [SerializeField] private bool allowRootTriggerHits;
 
         private readonly Dictionary<Collider, float> nextHitTimes = new();
         private PartPose[] basePoses;
@@ -79,10 +80,25 @@ namespace Neighbor.Main.Features.Interaction
 
         private void OnTriggerEnter(Collider other)
         {
+            if (!allowRootTriggerHits)
+            {
+                return;
+            }
+
             TryHit(other);
         }
 
         private void OnTriggerStay(Collider other)
+        {
+            if (!allowRootTriggerHits)
+            {
+                return;
+            }
+
+            TryHit(other);
+        }
+
+        public void HitFromAxe(Collider other)
         {
             TryHit(other);
         }

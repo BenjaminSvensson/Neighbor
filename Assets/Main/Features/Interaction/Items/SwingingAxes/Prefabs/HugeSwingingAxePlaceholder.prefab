@@ -92,6 +92,7 @@ MonoBehaviour:
   playerPushDistance: 1.7
   upwardPush: 0.35
   resetSceneOnPlayerHit: 1
+  allowRootTriggerHits: 0
 --- !u!1 &100010
 GameObject:
   m_ObjectHideFlags: 0
@@ -319,6 +320,8 @@ GameObject:
   - component: {fileID: 100041}
   - component: {fileID: 100042}
   - component: {fileID: 100043}
+  - component: {fileID: 100044}
+  - component: {fileID: 100045}
   m_Layer: 0
   m_Name: HugeAxeHead
   m_TagString: Untagged
@@ -380,6 +383,40 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+--- !u!65 &100044
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100040}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &100045
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100040}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b513b62a2b34cb595b5a83c500f49e7, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  trap: {fileID: 100003}
 --- !u!1 &100050
 GameObject:
   m_ObjectHideFlags: 0
