@@ -11,6 +11,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private LayerMask reflectionMask = ~0;
 
         private Camera mirrorCamera;
+        private Camera sourceCamera;
         private RenderTexture renderTexture;
         private Material mirrorMaterial;
         private int lastTextureSize;
@@ -48,7 +49,7 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            Camera sourceCamera = Camera.main;
+            sourceCamera = ResolveSourceCamera();
             if (sourceCamera == null)
             {
                 return;
@@ -131,9 +132,45 @@ namespace Neighbor.Main.Features.Interaction
 
             if (mirrorMaterial != null)
             {
+                mirrorMaterial.mainTexture = renderTexture;
                 mirrorMaterial.SetTexture("_BaseMap", renderTexture);
                 mirrorMaterial.SetTexture("_MainTex", renderTexture);
             }
+        }
+
+        private Camera ResolveSourceCamera()
+        {
+            Camera taggedCamera = Camera.main;
+            if (IsUsableSourceCamera(taggedCamera))
+            {
+                return taggedCamera;
+            }
+
+            Camera bestCamera = null;
+            float bestDepth = float.NegativeInfinity;
+            Camera[] cameras = FindObjectsByType<Camera>(FindObjectsInactive.Exclude);
+            for (int i = 0; i < cameras.Length; i++)
+            {
+                Camera candidate = cameras[i];
+                if (!IsUsableSourceCamera(candidate) || candidate.depth < bestDepth)
+                {
+                    continue;
+                }
+
+                bestCamera = candidate;
+                bestDepth = candidate.depth;
+            }
+
+            return bestCamera;
+        }
+
+        private bool IsUsableSourceCamera(Camera candidate)
+        {
+            return candidate != null
+                && candidate != mirrorCamera
+                && candidate.isActiveAndEnabled
+                && candidate.targetTexture != renderTexture
+                && candidate.cameraType == CameraType.Game;
         }
 
         private void ReleaseResources()
