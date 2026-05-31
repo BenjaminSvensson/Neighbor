@@ -19,6 +19,12 @@ namespace Neighbor.Main.Features.Interaction
         private Text pageCounterText;
         private CursorLockMode previousLockState;
         private bool previousCursorVisible;
+        private bool waitingForOpeningClickRelease;
+        private bool leftMouseWasHeld;
+        private bool leftMouseHoldAdvancedPage;
+        private float leftMouseDownTime;
+
+        private const float PageAdvanceHoldDuration = 0.32f;
 
         public static bool IsOpen => activeOverlay != null;
 
@@ -46,6 +52,7 @@ namespace Neighbor.Main.Features.Interaction
             previousCursorVisible = Cursor.visible;
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+            waitingForOpeningClickRelease = Mouse.current != null && Mouse.current.leftButton.isPressed;
 
             BuildUi();
             RefreshPage();
@@ -53,6 +60,8 @@ namespace Neighbor.Main.Features.Interaction
 
         private void Update()
         {
+            HandleMouseInput();
+
             Keyboard keyboard = Keyboard.current;
             if (keyboard == null)
             {
@@ -73,6 +82,51 @@ namespace Neighbor.Main.Features.Interaction
             if (keyboard.leftArrowKey.wasPressedThisFrame)
             {
                 PreviousPage();
+            }
+        }
+
+        private void HandleMouseInput()
+        {
+            Mouse mouse = Mouse.current;
+            if (mouse == null)
+            {
+                return;
+            }
+
+            if (waitingForOpeningClickRelease)
+            {
+                waitingForOpeningClickRelease = mouse.leftButton.isPressed;
+                return;
+            }
+
+            if (mouse.leftButton.wasPressedThisFrame)
+            {
+                leftMouseWasHeld = true;
+                leftMouseHoldAdvancedPage = false;
+                leftMouseDownTime = Time.unscaledTime;
+                return;
+            }
+
+            if (leftMouseWasHeld && mouse.leftButton.isPressed && !leftMouseHoldAdvancedPage
+                && Time.unscaledTime - leftMouseDownTime >= PageAdvanceHoldDuration)
+            {
+                leftMouseHoldAdvancedPage = true;
+                NextPage();
+                return;
+            }
+
+            if (!leftMouseWasHeld || !mouse.leftButton.wasReleasedThisFrame)
+            {
+                return;
+            }
+
+            bool shouldClose = !leftMouseHoldAdvancedPage;
+            leftMouseWasHeld = false;
+            leftMouseHoldAdvancedPage = false;
+
+            if (shouldClose)
+            {
+                Close();
             }
         }
 
@@ -148,7 +202,7 @@ namespace Neighbor.Main.Features.Interaction
             SetRect(pageCounterText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 28f), new Vector2(0f, 62f));
 
             Text controls = CreateText("Controls", panelRect, font, 16, FontStyle.Italic, TextAnchor.MiddleCenter, new Color(0.25f, 0.17f, 0.09f, 1f));
-            controls.text = "Left: previous page     Right: next page     Esc: close";
+            controls.text = "LMB: close     Hold LMB: next page     Left/Right: flip pages";
             SetRect(controls.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 8f), new Vector2(0f, 30f));
         }
 
