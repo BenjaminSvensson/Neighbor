@@ -21,6 +21,12 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0.02f)] private float scanInterval = 0.12f;
         [SerializeField] private LayerMask lineOfSightMask = ~0;
 
+        [Header("Scanning")]
+        [SerializeField] private bool sweepWhenAttached = true;
+        [SerializeField, Range(0f, 120f)] private float sweepAngle = 55f;
+        [SerializeField, Min(0.01f)] private float sweepPeriod = 3.5f;
+        [SerializeField] private Color sightConeColor = new(1f, 0f, 0f, 0.22f);
+
         [Header("Neighbor Alert")]
         [SerializeField, Min(0f)] private float alertRadius = 18f;
         [SerializeField, Range(0f, 1f)] private float loudness = 1f;
@@ -32,6 +38,12 @@ namespace Neighbor.Main.Features.Interaction
         private PlayerController player;
         private float nextScanTime;
         private float nextAlertTime;
+        private Quaternion baseEyeLocalRotation;
+        private MeshFilter sightBeamFilter;
+        private MeshRenderer sightBeamRenderer;
+        private Material sightBeamMaterial;
+        private float configuredViewDistance = -1f;
+        private float configuredViewAngle = -1f;
         private bool isAttached;
 
         private void Awake()
@@ -44,11 +56,13 @@ namespace Neighbor.Main.Features.Interaction
                 eye = transform;
             }
 
+            baseEyeLocalRotation = eye.localRotation;
             ConfigureSightBeam();
         }
 
         private void Update()
         {
+            UpdateScanningRotation();
             ConfigureSightBeam();
 
             if (!isAttached || pickupable != null && pickupable.IsHeld || Time.time < nextScanTime)
@@ -96,6 +110,7 @@ namespace Neighbor.Main.Features.Interaction
         public void OnPickupStarted(Pickupable _, PlayerInteractor __)
         {
             isAttached = false;
+            ResetEyeRotation();
 
             if (body == null)
             {
@@ -114,6 +129,7 @@ namespace Neighbor.Main.Features.Interaction
         private void AttachToWall()
         {
             isAttached = true;
+            baseEyeLocalRotation = eye != null ? eye.localRotation : Quaternion.identity;
 
             if (body == null)
             {
@@ -126,6 +142,31 @@ namespace Neighbor.Main.Features.Interaction
             body.useGravity = false;
             body.constraints = RigidbodyConstraints.FreezeAll;
             body.Sleep();
+        }
+
+        private void UpdateScanningRotation()
+        {
+            if (eye == null || !isAttached || pickupable != null && pickupable.IsHeld)
+            {
+                return;
+            }
+
+            if (!sweepWhenAttached || sweepAngle <= 0f)
+            {
+                eye.localRotation = baseEyeLocalRotation;
+                return;
+            }
+
+            float sweep = Mathf.Sin(Time.time / Mathf.Max(0.01f, sweepPeriod) * Mathf.PI * 2f) * sweepAngle * 0.5f;
+            eye.localRotation = baseEyeLocalRotation * Quaternion.Euler(0f, sweep, 0f);
+        }
+
+        private void ResetEyeRotation()
+        {
+            if (eye != null)
+            {
+                eye.localRotation = baseEyeLocalRotation;
+            }
         }
 
         private bool TryDetectPlayer(out Vector3 detectedPosition)
@@ -200,10 +241,83 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            sightBeam.localPosition = new Vector3(0f, 0f, viewDistance * 0.5f);
+            sightBeam.localPosition = Vector3.zero;
             sightBeam.localRotation = Quaternion.identity;
-            sightBeam.localScale = new Vector3(0.04f, 0.04f, viewDistance);
+            sightBeam.localScale = Vector3.one;
             sightBeam.gameObject.SetActive(isAttached && (pickupable == null || !pickupable.IsHeld));
+
+            sightBeamFilter ??= sightBeam.GetComponent<MeshFilter>();
+            sightBeamRenderer ??= sightBeam.GetComponent<MeshRenderer>();
+            if (sightBeamFilter != null && (configuredViewDistance != viewDistance || configuredViewAngle != viewAngle))
+            {
+                sightBeamFilter.sharedMesh = CreateSightConeMesh(viewDistance, viewAngle, 28);
+                configuredViewDistance = viewDistance;
+                configuredViewAngle = viewAngle;
+            }
+
+            if (sightBeamRenderer != null)
+            {
+                sightBeamMaterial ??= CreateSightConeMaterial();
+                sightBeamRenderer.sharedMaterial = sightBeamMaterial;
+            }
+        }
+
+        private Mesh CreateSightConeMesh(float distance, float angle, int segments)
+        {
+            Mesh mesh = new Mesh
+            {
+                name = "SecurityCameraSightCone"
+            };
+
+            float radius = Mathf.Tan(angle * 0.5f * Mathf.Deg2Rad) * distance;
+            Vector3[] vertices = new Vector3[segments + 2];
+            int[] triangles = new int[segments * 6];
+            vertices[0] = Vector3.zero;
+
+            for (int i = 0; i <= segments; i++)
+            {
+                float t = i / (float)segments * Mathf.PI * 2f;
+                vertices[i + 1] = new Vector3(Mathf.Cos(t) * radius, Mathf.Sin(t) * radius, distance);
+            }
+
+            int triangleIndex = 0;
+            for (int i = 0; i < segments; i++)
+            {
+                triangles[triangleIndex++] = 0;
+                triangles[triangleIndex++] = i + 1;
+                triangles[triangleIndex++] = i + 2;
+
+                triangles[triangleIndex++] = 0;
+                triangles[triangleIndex++] = i + 2;
+                triangles[triangleIndex++] = i + 1;
+            }
+
+            mesh.vertices = vertices;
+            mesh.triangles = triangles;
+            mesh.RecalculateBounds();
+            mesh.RecalculateNormals();
+            return mesh;
+        }
+
+        private Material CreateSightConeMaterial()
+        {
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color") ?? Shader.Find("Standard");
+            Material material = new Material(shader)
+            {
+                color = sightConeColor
+            };
+
+            material.SetColor("_BaseColor", sightConeColor);
+            material.SetColor("_Color", sightConeColor);
+            material.SetFloat("_Surface", 1f);
+            material.SetFloat("_Blend", 0f);
+            material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            material.SetFloat("_ZWrite", 0f);
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            material.EnableKeyword("_ALPHABLEND_ON");
+            return material;
         }
 
         private Vector3 EyePosition => eye != null ? eye.position : transform.position;
@@ -229,7 +343,10 @@ namespace Neighbor.Main.Features.Interaction
             attachRange = Mathf.Max(0.1f, attachRange);
             wallOffset = Mathf.Max(0f, wallOffset);
             viewDistance = Mathf.Max(0.1f, viewDistance);
+            viewAngle = Mathf.Clamp(viewAngle, 1f, 180f);
             scanInterval = Mathf.Max(0.02f, scanInterval);
+            sweepAngle = Mathf.Clamp(sweepAngle, 0f, 120f);
+            sweepPeriod = Mathf.Max(0.01f, sweepPeriod);
             alertRadius = Mathf.Max(0f, alertRadius);
             noiseLifetime = Mathf.Max(0.02f, noiseLifetime);
             alertCooldown = Mathf.Max(0f, alertCooldown);

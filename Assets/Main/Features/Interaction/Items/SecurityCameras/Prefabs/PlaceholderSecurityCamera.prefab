@@ -143,6 +143,10 @@ MonoBehaviour:
   lineOfSightMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  sweepWhenAttached: 1
+  sweepAngle: 55
+  sweepPeriod: 3.5
+  sightConeColor: {r: 1, g: 0, b: 0, a: 0.22}
   alertRadius: 18
   loudness: 1
   noiseLifetime: 0.6
