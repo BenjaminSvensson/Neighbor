@@ -15,6 +15,11 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0.01f)] private float swingsPerSecond = 0.42f;
         [SerializeField, Min(0f)] private float phaseOffset;
 
+        [Header("One Shot Decay")]
+        [SerializeField] private bool dampenAfterActivation;
+        [SerializeField, Min(0f)] private float swingDamping = 0.7f;
+        [SerializeField, Min(0f)] private float haltAngle = 1.2f;
+
         [Header("Impact")]
         [SerializeField, Min(0f)] private float minimumHitAngularSpeed = 35f;
         [SerializeField, Min(0f)] private float hitCooldown = 0.45f;
@@ -59,11 +64,23 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             float activeTime = Time.time - activationTime;
-            float angle = Mathf.Sin((activeTime + phaseOffset) * swingsPerSecond * Mathf.PI * 2f) * maximumAngle;
+            float amplitude = dampenAfterActivation
+                ? maximumAngle * Mathf.Exp(-swingDamping * activeTime)
+                : maximumAngle;
+            float angle = Mathf.Sin((activeTime + phaseOffset) * swingsPerSecond * Mathf.PI * 2f) * amplitude;
             signedAngularSpeed = Mathf.DeltaAngle(previousAngle, angle) / Mathf.Max(Time.deltaTime, 0.0001f);
             angularSpeed = Mathf.Abs(signedAngularSpeed);
             previousAngle = angle;
             ApplySwing(angle);
+
+            if (dampenAfterActivation && amplitude <= haltAngle && Mathf.Abs(angle) <= haltAngle)
+            {
+                isActive = false;
+                signedAngularSpeed = 0f;
+                angularSpeed = 0f;
+                previousAngle = 0f;
+                ApplySwing(0f);
+            }
         }
 
         public void Activate()
@@ -209,6 +226,14 @@ namespace Neighbor.Main.Features.Interaction
                 pose.Transform.localPosition = pivotLocalPosition + swingRotation * offsetFromPivot;
                 pose.Transform.localRotation = swingRotation * pose.LocalRotation;
             }
+        }
+
+        private void OnValidate()
+        {
+            maximumAngle = Mathf.Max(0f, maximumAngle);
+            swingsPerSecond = Mathf.Max(0.01f, swingsPerSecond);
+            swingDamping = Mathf.Max(0f, swingDamping);
+            haltAngle = Mathf.Max(0f, haltAngle);
         }
     }
 }

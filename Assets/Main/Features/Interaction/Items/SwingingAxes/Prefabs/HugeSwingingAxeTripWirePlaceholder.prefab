@@ -84,9 +84,12 @@ MonoBehaviour:
   - {fileID: 100041}
   startsActive: 0
   pivotLocalPosition: {x: 0, y: 4.6, z: 0}
-  maximumAngle: 42
-  swingsPerSecond: 0.42
+  maximumAngle: 78
+  swingsPerSecond: 0.85
   phaseOffset: 0
+  dampenAfterActivation: 1
+  swingDamping: 0.72
+  haltAngle: 1.2
   minimumHitAngularSpeed: 35
   hitCooldown: 0.45
   rigidbodyImpulse: 9

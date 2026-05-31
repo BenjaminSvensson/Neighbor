@@ -86,6 +86,9 @@ MonoBehaviour:
   maximumAngle: 42
   swingsPerSecond: 0.42
   phaseOffset: 0
+  dampenAfterActivation: 0
+  swingDamping: 0.7
+  haltAngle: 1.2
   minimumHitAngularSpeed: 35
   hitCooldown: 0.45
   rigidbodyImpulse: 9
