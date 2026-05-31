@@ -44,14 +44,19 @@ namespace Neighbor.Main.Features.Interaction
         private Material sightBeamMaterial;
         private float configuredViewDistance = -1f;
         private float configuredViewAngle = -1f;
+        private Collider[] ownColliders;
+        private Collider[] attachedPickupableColliders;
         private Transform originalParent;
         private Pickupable attachedPickupable;
+        private Vector3 attachedLocalPosition;
+        private Quaternion attachedLocalRotation;
         private bool isAttached;
 
         private void Awake()
         {
             pickupable = GetComponent<Pickupable>();
             body = GetComponent<Rigidbody>();
+            ownColliders = GetComponentsInChildren<Collider>();
             originalParent = transform.parent;
 
             if (eye == null)
@@ -78,6 +83,16 @@ namespace Neighbor.Main.Features.Interaction
             {
                 AlertNeighbor(detectedPosition);
             }
+        }
+
+        private void FixedUpdate()
+        {
+            MaintainPickupableAttachment();
+        }
+
+        private void LateUpdate()
+        {
+            MaintainPickupableAttachment();
         }
 
         public bool CanPrimaryUse(PlayerInteractor interactor)
@@ -115,6 +130,7 @@ namespace Neighbor.Main.Features.Interaction
         public void OnPickupStarted(Pickupable _, PlayerInteractor __)
         {
             isAttached = false;
+            RestoreAttachedPickupableCollision();
             attachedPickupable = null;
             transform.SetParent(originalParent, true);
             ResetEyeRotation();
@@ -135,9 +151,13 @@ namespace Neighbor.Main.Features.Interaction
 
         private void AttachToSurface(Pickupable parentPickupable)
         {
+            RestoreAttachedPickupableCollision();
             isAttached = true;
             attachedPickupable = parentPickupable;
             transform.SetParent(attachedPickupable != null ? attachedPickupable.transform : originalParent, true);
+            attachedLocalPosition = transform.localPosition;
+            attachedLocalRotation = transform.localRotation;
+            IgnoreAttachedPickupableCollision();
             baseEyeLocalRotation = eye != null ? eye.localRotation : Quaternion.identity;
 
             if (body == null)
@@ -151,6 +171,80 @@ namespace Neighbor.Main.Features.Interaction
             body.useGravity = false;
             body.constraints = RigidbodyConstraints.FreezeAll;
             body.Sleep();
+        }
+
+        private void MaintainPickupableAttachment()
+        {
+            if (!isAttached || attachedPickupable == null)
+            {
+                return;
+            }
+
+            Transform attachmentParent = attachedPickupable.transform;
+            if (transform.parent != attachmentParent)
+            {
+                transform.SetParent(attachmentParent, false);
+            }
+
+            transform.localPosition = attachedLocalPosition;
+            transform.localRotation = attachedLocalRotation;
+
+            if (body == null)
+            {
+                return;
+            }
+
+            body.position = transform.position;
+            body.rotation = transform.rotation;
+            body.linearVelocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+            body.Sleep();
+        }
+
+        private void IgnoreAttachedPickupableCollision()
+        {
+            if (attachedPickupable == null || ownColliders == null)
+            {
+                attachedPickupableColliders = null;
+                return;
+            }
+
+            attachedPickupableColliders = attachedPickupable.GetComponentsInChildren<Collider>();
+            SetAttachedPickupableCollisionIgnored(true);
+        }
+
+        private void RestoreAttachedPickupableCollision()
+        {
+            SetAttachedPickupableCollisionIgnored(false);
+            attachedPickupableColliders = null;
+        }
+
+        private void SetAttachedPickupableCollisionIgnored(bool ignored)
+        {
+            if (ownColliders == null || attachedPickupableColliders == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < ownColliders.Length; i++)
+            {
+                Collider ownCollider = ownColliders[i];
+                if (ownCollider == null)
+                {
+                    continue;
+                }
+
+                for (int j = 0; j < attachedPickupableColliders.Length; j++)
+                {
+                    Collider attachedCollider = attachedPickupableColliders[j];
+                    if (attachedCollider == null || attachedCollider == ownCollider)
+                    {
+                        continue;
+                    }
+
+                    Physics.IgnoreCollision(ownCollider, attachedCollider, ignored);
+                }
+            }
         }
 
         private void UpdateScanningRotation()
