@@ -63,20 +63,41 @@ namespace Neighbor.Main.Features.Interaction
 
         private void PlayAlarm(Vector3 origin)
         {
-            if (audioSource == null)
-            {
-                return;
-            }
-
-            audioSource.transform.position = origin;
             AudioClip clip = GetAlarmClip();
             if (clip == null)
             {
                 return;
             }
 
-            audioSource.pitch = Random.Range(1f - pitchRandomness, 1f + pitchRandomness);
-            audioSource.PlayOneShot(clip, alarmVolume);
+            if (audioSource != null && audioSource.transform != transform)
+            {
+                audioSource.transform.position = origin;
+                audioSource.pitch = Random.Range(1f - pitchRandomness, 1f + pitchRandomness);
+                audioSource.PlayOneShot(clip, alarmVolume);
+                return;
+            }
+
+            PlayAlarmAtImpact(origin, clip);
+        }
+
+        private void PlayAlarmAtImpact(Vector3 origin, AudioClip clip)
+        {
+            GameObject audioObject = new GameObject("CarAlarm3DAudio");
+            audioObject.transform.position = origin;
+
+            AudioSource source = audioObject.AddComponent<AudioSource>();
+            source.clip = clip;
+            source.volume = alarmVolume;
+            source.pitch = Random.Range(1f - pitchRandomness, 1f + pitchRandomness);
+            source.playOnAwake = false;
+            source.spatialBlend = 1f;
+            source.rolloffMode = AudioRolloffMode.Logarithmic;
+            source.minDistance = audioSource != null ? audioSource.minDistance : 1f;
+            source.maxDistance = hearingRadius;
+            source.dopplerLevel = 0.1f;
+            source.Play();
+
+            Destroy(audioObject, clip.length / Mathf.Max(0.01f, source.pitch) + 0.05f);
         }
 
         private AudioClip GetAlarmClip()
