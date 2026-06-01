@@ -11,6 +11,11 @@ namespace Neighbor.Main.Features.Interaction
 
         public void Show(string key, string action)
         {
+            if (this == null)
+            {
+                return;
+            }
+
             EnsureBuilt();
 
             if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(action))
@@ -28,6 +33,11 @@ namespace Neighbor.Main.Features.Interaction
 
         public void Hide()
         {
+            if (this == null)
+            {
+                return;
+            }
+
             EnsureBuilt();
             canvasGroup.alpha = 0f;
             canvasGroup.interactable = false;
@@ -51,6 +61,11 @@ namespace Neighbor.Main.Features.Interaction
 
         private void EnsureBuilt()
         {
+            if (this == null)
+            {
+                return;
+            }
+
             if (canvasGroup != null && keyText != null && actionText != null)
             {
                 return;

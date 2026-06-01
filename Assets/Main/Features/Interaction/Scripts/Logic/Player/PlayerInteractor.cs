@@ -107,7 +107,10 @@ namespace Neighbor.Main.Features.Interaction
         {
             interactAction?.Disable();
             HideThrowArc();
-            tooltipView?.Hide();
+            if (tooltipView != null)
+            {
+                tooltipView.Hide();
+            }
         }
 
         private void Update()
