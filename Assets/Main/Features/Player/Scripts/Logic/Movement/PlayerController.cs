@@ -170,6 +170,16 @@ namespace Neighbor.Main.Features.Player
             }
         }
 
+        public void ClampDownwardVelocity(float maximumFallSpeed)
+        {
+            if (maximumFallSpeed <= 0f || IsGrounded || verticalVelocity >= 0f)
+            {
+                return;
+            }
+
+            verticalVelocity = Mathf.Max(verticalVelocity, -maximumFallSpeed);
+        }
+
         private void ResetTransientFeedback()
         {
             JumpStartedThisFrame = false;
