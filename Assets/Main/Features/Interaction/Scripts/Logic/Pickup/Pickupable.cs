@@ -132,10 +132,9 @@ namespace Neighbor.Main.Features.Interaction
             originalCollisionDetection = body.collisionDetectionMode;
             originalInterpolation = body.interpolation;
 
+            ClearBodyVelocity();
             body.useGravity = false;
             body.isKinematic = true;
-            body.linearVelocity = Vector3.zero;
-            body.angularVelocity = Vector3.zero;
             body.linearDamping = heldDrag;
             body.angularDamping = heldAngularDrag;
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
@@ -197,8 +196,7 @@ namespace Neighbor.Main.Features.Interaction
 
             body.position = position;
             body.rotation = rotation;
-            body.linearVelocity = Vector3.zero;
-            body.angularVelocity = Vector3.zero;
+            ClearBodyVelocity();
             SetHeldColliderState(true);
 
             if (sleepAfterPlacing)
@@ -217,14 +215,14 @@ namespace Neighbor.Main.Features.Interaction
         public void Throw(Vector3 velocity)
         {
             RestorePhysics();
-            body.linearVelocity = velocity;
+            SetBodyLinearVelocity(velocity);
         }
 
         public void Throw(Vector3 velocity, Collider[] playerColliders)
         {
             RestorePhysics();
             IgnorePlayerCollisionsTemporarily(playerColliders);
-            body.linearVelocity = velocity;
+            SetBodyLinearVelocity(velocity);
         }
 
         public Bounds GetPlacementBounds()
@@ -315,6 +313,27 @@ namespace Neighbor.Main.Features.Interaction
             body.angularDamping = originalAngularDrag;
             body.collisionDetectionMode = originalCollisionDetection;
             body.interpolation = originalInterpolation;
+        }
+
+        private void ClearBodyVelocity()
+        {
+            SetBodyVelocity(Vector3.zero, Vector3.zero);
+        }
+
+        private void SetBodyLinearVelocity(Vector3 velocity)
+        {
+            SetBodyVelocity(velocity, body != null && !body.isKinematic ? body.angularVelocity : Vector3.zero);
+        }
+
+        private void SetBodyVelocity(Vector3 linearVelocity, Vector3 angularVelocity)
+        {
+            if (body == null || body.isKinematic)
+            {
+                return;
+            }
+
+            body.linearVelocity = linearVelocity;
+            body.angularVelocity = angularVelocity;
         }
 
         private void SetHeldColliderState(bool restore)
