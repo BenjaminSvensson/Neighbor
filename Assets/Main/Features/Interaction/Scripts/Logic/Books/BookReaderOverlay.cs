@@ -22,6 +22,7 @@ namespace Neighbor.Main.Features.Interaction
         private bool waitingForOpeningClickRelease;
         private bool leftMouseWasHeld;
         private bool leftMouseHoldAdvancedPage;
+        private bool hasClosed;
         private float leftMouseDownTime;
 
         private const float PageAdvanceHoldDuration = 0.32f;
@@ -154,6 +155,22 @@ namespace Neighbor.Main.Features.Interaction
 
         public void Close()
         {
+            CompleteClose(true);
+        }
+
+        private void OnDestroy()
+        {
+            CompleteClose(false);
+        }
+
+        private void CompleteClose(bool destroyObject)
+        {
+            if (hasClosed)
+            {
+                return;
+            }
+
+            hasClosed = true;
             Cursor.lockState = previousLockState;
             Cursor.visible = previousCursorVisible;
 
@@ -162,7 +179,10 @@ namespace Neighbor.Main.Features.Interaction
                 activeOverlay = null;
             }
 
-            Destroy(gameObject);
+            if (destroyObject)
+            {
+                Destroy(gameObject);
+            }
         }
 
         private void BuildUi()

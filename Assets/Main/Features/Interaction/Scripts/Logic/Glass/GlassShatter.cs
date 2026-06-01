@@ -104,8 +104,7 @@ namespace Neighbor.Main.Features.Interaction
 
             if (body != null)
             {
-                body.linearVelocity = Vector3.zero;
-                body.angularVelocity = Vector3.zero;
+                RigidbodyVelocityUtility.ClearIfDynamic(body);
                 body.isKinematic = true;
                 body.useGravity = false;
             }

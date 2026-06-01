@@ -129,8 +129,7 @@ namespace Neighbor.Main.Features.Interaction
             {
                 body.position = transform.position;
                 body.rotation = transform.rotation;
-                body.linearVelocity = Vector3.zero;
-                body.angularVelocity = Vector3.zero;
+                RigidbodyVelocityUtility.ClearIfDynamic(body);
                 body.Sleep();
             }
 

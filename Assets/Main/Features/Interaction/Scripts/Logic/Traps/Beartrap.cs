@@ -49,6 +49,7 @@ namespace Neighbor.Main.Features.Interaction
         private PlayerController stuckPlayer;
         private Rigidbody stuckRigidbody;
         private NavMeshAgent stuckAgent;
+        private bool stuckRigidbodyWasKinematic;
 
         private bool IsMoving => !Mathf.Approximately(openAmount, targetOpenAmount);
 
@@ -183,8 +184,8 @@ namespace Neighbor.Main.Features.Interaction
             stuckRigidbody = triggeringCollider.attachedRigidbody;
             if (stuckRigidbody != null && stuckRigidbody != trapBody)
             {
-                stuckRigidbody.linearVelocity = Vector3.zero;
-                stuckRigidbody.angularVelocity = Vector3.zero;
+                stuckRigidbodyWasKinematic = stuckRigidbody.isKinematic;
+                RigidbodyVelocityUtility.ClearIfDynamic(stuckRigidbody);
                 stuckRigidbody.isKinematic = true;
             }
         }
@@ -203,17 +204,15 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
+            RigidbodyVelocityUtility.ClearIfDynamic(trapBody);
             trapBody.isKinematic = state != TrapState.Closed;
-            trapBody.linearVelocity = Vector3.zero;
-            trapBody.angularVelocity = Vector3.zero;
         }
 
         private void KeepTargetStuck()
         {
             if (stuckRigidbody != null)
             {
-                stuckRigidbody.linearVelocity = Vector3.zero;
-                stuckRigidbody.angularVelocity = Vector3.zero;
+                RigidbodyVelocityUtility.ClearIfDynamic(stuckRigidbody);
             }
 
             if (stuckAgent != null)
@@ -234,9 +233,15 @@ namespace Neighbor.Main.Features.Interaction
                 stuckAgent.isStopped = false;
             }
 
+            if (stuckRigidbody != null)
+            {
+                stuckRigidbody.isKinematic = stuckRigidbodyWasKinematic;
+            }
+
             stuckPlayer = null;
             stuckRigidbody = null;
             stuckAgent = null;
+            stuckRigidbodyWasKinematic = false;
             escapeHoldTimer = 0f;
         }
 

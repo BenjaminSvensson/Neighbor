@@ -41,6 +41,7 @@ namespace Neighbor.Main.Features.Interaction
         private Quaternion baseEyeLocalRotation;
         private MeshFilter sightBeamFilter;
         private MeshRenderer sightBeamRenderer;
+        private Mesh generatedSightBeamMesh;
         private Material sightBeamMaterial;
         private float configuredViewDistance = -1f;
         private float configuredViewAngle = -1f;
@@ -165,8 +166,7 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            body.linearVelocity = Vector3.zero;
-            body.angularVelocity = Vector3.zero;
+            RigidbodyVelocityUtility.ClearIfDynamic(body);
             body.isKinematic = true;
             body.useGravity = false;
             body.constraints = RigidbodyConstraints.FreezeAll;
@@ -196,8 +196,6 @@ namespace Neighbor.Main.Features.Interaction
 
             body.position = transform.position;
             body.rotation = transform.rotation;
-            body.linearVelocity = Vector3.zero;
-            body.angularVelocity = Vector3.zero;
             body.Sleep();
         }
 
@@ -353,7 +351,13 @@ namespace Neighbor.Main.Features.Interaction
             sightBeamRenderer ??= sightBeam.GetComponent<MeshRenderer>();
             if (sightBeamFilter != null && (configuredViewDistance != viewDistance || configuredViewAngle != viewAngle))
             {
-                sightBeamFilter.sharedMesh = CreateSightConeMesh(viewDistance, viewAngle, 28);
+                if (generatedSightBeamMesh != null)
+                {
+                    Destroy(generatedSightBeamMesh);
+                }
+
+                generatedSightBeamMesh = CreateSightConeMesh(viewDistance, viewAngle, 28);
+                sightBeamFilter.sharedMesh = generatedSightBeamMesh;
                 configuredViewDistance = viewDistance;
                 configuredViewAngle = viewAngle;
             }
@@ -439,6 +443,19 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             player = FindAnyObjectByType<PlayerController>();
+        }
+
+        private void OnDestroy()
+        {
+            if (generatedSightBeamMesh != null)
+            {
+                Destroy(generatedSightBeamMesh);
+            }
+
+            if (sightBeamMaterial != null)
+            {
+                Destroy(sightBeamMaterial);
+            }
         }
 
         private void OnValidate()

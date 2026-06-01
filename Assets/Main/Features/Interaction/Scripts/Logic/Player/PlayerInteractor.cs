@@ -106,6 +106,8 @@ namespace Neighbor.Main.Features.Interaction
         private void OnDisable()
         {
             interactAction?.Disable();
+            EndActiveHoldInteraction(false);
+            DropHeldPickupForDisable();
             HideThrowArc();
             if (tooltipView != null)
             {
@@ -117,6 +119,18 @@ namespace Neighbor.Main.Features.Interaction
         {
             Keyboard keyboard = Keyboard.current;
             Mouse mouse = Mouse.current;
+
+            if (InteractionOverlayState.IsGameplayInputBlocked)
+            {
+                EndActiveHoldInteraction(false);
+                HideThrowArc();
+                if (tooltipView != null)
+                {
+                    tooltipView.Hide();
+                }
+
+                return;
+            }
 
             bool interactPressed = InteractWasPressedThisFrame(keyboard);
             bool interactHeld = InteractIsPressed(keyboard);
@@ -348,6 +362,19 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             HideThrowArc();
+        }
+
+        private void DropHeldPickupForDisable()
+        {
+            if (heldPickup == null)
+            {
+                return;
+            }
+
+            Pickupable releasedPickup = heldPickup;
+            heldPickup = null;
+            releaseButtonWasHeld = false;
+            releasedPickup.Drop();
         }
 
         private bool TryGetPlacementPose(Pickupable pickupable, out Vector3 position, out Quaternion rotation, out bool foundSurface, out bool shouldSleepAfterPlacement)

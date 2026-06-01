@@ -3,7 +3,7 @@ using UnityEngine;
 namespace Neighbor.Main.Features.Interaction
 {
     [RequireComponent(typeof(Pickupable))]
-    public sealed class DoorBlockerChair : MonoBehaviour
+    public sealed class DoorBlockerChair : MonoBehaviour, IPickupLifecycleReceiver
     {
         [SerializeField, Min(0f)] private float doorOffset = 0.85f;
         [SerializeField, Min(0f)] private float placementSurfacePadding = 0.02f;
@@ -69,7 +69,7 @@ namespace Neighbor.Main.Features.Interaction
             return true;
         }
 
-        public void HandlePickupStarted()
+        public void OnPickupStarted(Pickupable pickupable, PlayerInteractor interactor)
         {
             ClearBlockedDoor();
             blockDisabledUntilPlaced = false;
@@ -81,7 +81,7 @@ namespace Neighbor.Main.Features.Interaction
             blockDisabledUntilPlaced = true;
         }
 
-        public void HandlePlaced()
+        public void OnPickupPlaced(Pickupable pickupable)
         {
             blockDisabledUntilPlaced = false;
         }
@@ -202,8 +202,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             originalConstraints = body.constraints;
-            body.linearVelocity = Vector3.zero;
-            body.angularVelocity = Vector3.zero;
+            RigidbodyVelocityUtility.ClearIfDynamic(body);
             body.constraints = RigidbodyConstraints.FreezeAll;
             body.Sleep();
             hasFrozenBlockedBody = true;

@@ -1,3 +1,4 @@
+using Neighbor.Main.Features.Interaction;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -122,6 +123,11 @@ namespace Neighbor.Main.Features.Player
         private void LateUpdate()
         {
             PlayerFrameInput input = PlayerInputReader.ReadFrameInput(mouseSensitivity, invertLookY);
+
+            if (InteractionOverlayState.IsGameplayInputBlocked)
+            {
+                return;
+            }
 
             if (input.CursorUnlockPressed)
             {

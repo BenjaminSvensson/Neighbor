@@ -21,6 +21,7 @@ namespace Neighbor.Main.Features.Interaction
         private InputField pageInput;
         private CursorLockMode previousLockState;
         private bool previousCursorVisible;
+        private bool hasClosed;
 
         public static bool IsOpen => activeOverlay != null;
 
@@ -105,6 +106,22 @@ namespace Neighbor.Main.Features.Interaction
 
         public void Close()
         {
+            CompleteClose(true);
+        }
+
+        private void OnDestroy()
+        {
+            CompleteClose(false);
+        }
+
+        private void CompleteClose(bool destroyObject)
+        {
+            if (hasClosed)
+            {
+                return;
+            }
+
+            hasClosed = true;
             StoreCurrentPage();
             Cursor.lockState = previousLockState;
             Cursor.visible = previousCursorVisible;
@@ -114,7 +131,10 @@ namespace Neighbor.Main.Features.Interaction
                 activeOverlay = null;
             }
 
-            Destroy(gameObject);
+            if (destroyObject)
+            {
+                Destroy(gameObject);
+            }
         }
 
         private void BuildUi()

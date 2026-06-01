@@ -1,4 +1,5 @@
 using Neighbor.Main.Features.Neighbor;
+using Neighbor.Main.Features.Interaction;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -135,6 +136,11 @@ namespace Neighbor.Main.Features.Player
         private void Update()
         {
             LastInput = PlayerInputReader.ReadFrameInput(mouseSensitivity);
+            if (InteractionOverlayState.IsGameplayInputBlocked)
+            {
+                LastInput = default;
+            }
+
             MoveInput = LastInput.Move;
             ResetTransientFeedback();
 

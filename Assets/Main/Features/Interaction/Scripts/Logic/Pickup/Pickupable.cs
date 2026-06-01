@@ -120,8 +120,6 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            DoorBlockerChair doorBlocker = GetComponent<DoorBlockerChair>();
-            doorBlocker?.HandlePickupStarted();
             NotifyPickupStarted(interactor);
 
             IsHeld = true;
@@ -317,23 +315,12 @@ namespace Neighbor.Main.Features.Interaction
 
         private void ClearBodyVelocity()
         {
-            SetBodyVelocity(Vector3.zero, Vector3.zero);
+            RigidbodyVelocityUtility.ClearIfDynamic(body);
         }
 
         private void SetBodyLinearVelocity(Vector3 velocity)
         {
-            SetBodyVelocity(velocity, body != null && !body.isKinematic ? body.angularVelocity : Vector3.zero);
-        }
-
-        private void SetBodyVelocity(Vector3 linearVelocity, Vector3 angularVelocity)
-        {
-            if (body == null || body.isKinematic)
-            {
-                return;
-            }
-
-            body.linearVelocity = linearVelocity;
-            body.angularVelocity = angularVelocity;
+            RigidbodyVelocityUtility.SetLinearIfDynamic(body, velocity);
         }
 
         private void SetHeldColliderState(bool restore)
