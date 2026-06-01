@@ -53,7 +53,9 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            if (activateOnlyForPlayer && other.GetComponentInParent<PlayerController>() == null)
+            if (activateOnlyForPlayer
+                && other.GetComponentInParent<PlayerController>() == null
+                && !IsTriggeredByWindUpToy(other))
             {
                 return;
             }
@@ -82,6 +84,12 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             ApplyWireColor(highlightedColor);
+        }
+
+        private static bool IsTriggeredByWindUpToy(Collider other)
+        {
+            WindUpToy toy = other.GetComponentInParent<WindUpToy>();
+            return toy != null && toy.IsRunning;
         }
 
         private void ApplyWireColor(Color color)
