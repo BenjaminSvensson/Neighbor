@@ -51,7 +51,10 @@ namespace Neighbor.Main.Features.Interaction
         private Pickupable attachedPickupable;
         private Vector3 attachedLocalPosition;
         private Quaternion attachedLocalRotation;
+        private float blindedUntilTime;
         private bool isAttached;
+
+        public bool IsBlinded => Time.time < blindedUntilTime;
 
         private void Awake()
         {
@@ -74,7 +77,7 @@ namespace Neighbor.Main.Features.Interaction
             UpdateScanningRotation();
             ConfigureSightBeam();
 
-            if (!isAttached || pickupable != null && pickupable.IsHeld || Time.time < nextScanTime)
+            if (IsBlinded || !isAttached || pickupable != null && pickupable.IsHeld || Time.time < nextScanTime)
             {
                 return;
             }
@@ -148,6 +151,18 @@ namespace Neighbor.Main.Features.Interaction
 
         public void OnPickupPlaced(Pickupable _)
         {
+        }
+
+        public void BlindFor(float duration)
+        {
+            if (duration <= 0f)
+            {
+                return;
+            }
+
+            blindedUntilTime = Mathf.Max(blindedUntilTime, Time.time + duration);
+            nextScanTime = blindedUntilTime;
+            ConfigureSightBeam();
         }
 
         private void AttachToSurface(Pickupable parentPickupable)
@@ -345,7 +360,7 @@ namespace Neighbor.Main.Features.Interaction
             sightBeam.localPosition = Vector3.zero;
             sightBeam.localRotation = Quaternion.identity;
             sightBeam.localScale = Vector3.one;
-            sightBeam.gameObject.SetActive(isAttached && (pickupable == null || !pickupable.IsHeld));
+            sightBeam.gameObject.SetActive(!IsBlinded && isAttached && (pickupable == null || !pickupable.IsHeld));
 
             sightBeamFilter ??= sightBeam.GetComponent<MeshFilter>();
             sightBeamRenderer ??= sightBeam.GetComponent<MeshRenderer>();
