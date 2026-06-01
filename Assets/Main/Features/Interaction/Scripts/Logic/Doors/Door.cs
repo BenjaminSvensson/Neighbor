@@ -132,19 +132,36 @@ namespace Neighbor.Main.Features.Interaction
 
         public void Unlock()
         {
-            if (!isLocked)
-            {
-                return;
-            }
-
-            isLocked = false;
-            PlayRandomSound(unlockClips);
+            SetLocked(false, false, true);
         }
 
         public void Lock()
         {
-            isLocked = true;
-            Close();
+            SetLocked(true, true, true);
+        }
+
+        public void SetLocked(bool locked, bool closeWhenLocked = true, bool playSound = true)
+        {
+            if (isLocked == locked)
+            {
+                return;
+            }
+
+            isLocked = locked;
+            if (isLocked)
+            {
+                if (closeWhenLocked)
+                {
+                    Close();
+                }
+
+                return;
+            }
+
+            if (playSound)
+            {
+                PlayRandomSound(unlockClips);
+            }
         }
 
         public bool IsOnDefaultOpeningSide(Vector3 worldPosition)
