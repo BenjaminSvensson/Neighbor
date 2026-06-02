@@ -50,7 +50,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Interaction.RaySawBladeTrap
   startsActive: 1
   activeRange: 3.5
-  castRadius: 0.22
+  castRadius: 0.3
   localDirection: {x: 0, y: 0, z: 1}
   detectionMask:
     serializedVersion: 2
@@ -58,9 +58,10 @@ MonoBehaviour:
   triggerInteraction: 1
   warningDelay: 0.35
   hitCooldown: 1
-  cyclesOnOff: 1
+  cyclesOnOff: 0
   activeDuration: 2.5
   inactiveDuration: 1.25
+  resetSceneOnPlayerHit: 1
   playerKnockbackDistance: 1.9
   rigidbodyImpulse: 7.5
   upwardPush: 0.25
@@ -69,6 +70,7 @@ MonoBehaviour:
   dangerLine: {fileID: 6964937492481892376}
   warningRenderer: {fileID: 7510317851585796415}
   bladeSpinDegreesPerSecond: 720
+  bladeSpinAxis: {x: 0, y: 1, z: 0}
   pathTravelDistance: 3.2
   pathTravelSpeed: 2.2
   slideAmplitude: 0.035

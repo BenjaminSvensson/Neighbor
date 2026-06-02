@@ -1,5 +1,6 @@
 using Neighbor.Main.Features.Player;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Neighbor.Main.Features.Interaction
 {
@@ -21,6 +22,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0.05f)] private float inactiveDuration = 1.2f;
 
         [Header("Effect")]
+        [SerializeField] private bool resetSceneOnPlayerHit = true;
         [SerializeField, Min(0f)] private float playerKnockbackDistance = 1.8f;
         [SerializeField, Min(0f)] private float rigidbodyImpulse = 7f;
         [SerializeField, Min(0f)] private float upwardPush = 0.25f;
@@ -31,6 +33,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private LineRenderer dangerLine;
         [SerializeField] private Renderer warningRenderer;
         [SerializeField, Min(0f)] private float bladeSpinDegreesPerSecond = 720f;
+        [SerializeField] private Vector3 bladeSpinAxis = Vector3.up;
         [SerializeField, Min(0f)] private float pathTravelDistance;
         [SerializeField, Min(0f)] private float pathTravelSpeed = 2.2f;
         [SerializeField, Min(0f)] private float slideAmplitude = 0.04f;
@@ -39,12 +42,14 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private Color warningColor = new(1f, 0.75f, 0.06f, 1f);
         [SerializeField] private Color inactiveColor = new(0.25f, 0.25f, 0.25f, 1f);
 
-        private readonly RaycastHit[] hits = new RaycastHit[12];
+        private readonly Collider[] hitColliders = new Collider[16];
         private MaterialPropertyBlock propertyBlock;
         private Vector3 slidingRestLocalPosition;
+        private Vector3 previousBladeHitCenter;
         private float cycleStateStartTime;
         private float armedAtTime;
         private float nextHitTime;
+        private bool isResettingScene;
         private bool isActive;
 
         private Vector3 Direction => transform.TransformDirection(localDirection.sqrMagnitude > 0.0001f ? localDirection.normalized : Vector3.forward);
@@ -62,19 +67,24 @@ namespace Neighbor.Main.Features.Interaction
 
             ConfigureDangerLine();
             ApplyVisualState();
+            previousBladeHitCenter = GetBladeHitCenter();
         }
 
         private void Update()
         {
+            Vector3 previousHitCenter = previousBladeHitCenter;
             UpdateCycle();
             UpdateAnimation();
+            Vector3 currentHitCenter = GetBladeHitCenter();
             ConfigureDangerLine();
             ApplyVisualState();
 
             if (IsArmed)
             {
-                CheckPath();
+                CheckBladeSweep(previousHitCenter, currentHitCenter);
             }
+
+            previousBladeHitCenter = currentHitCenter;
         }
 
         public void SetActive(bool active)
@@ -103,36 +113,38 @@ namespace Neighbor.Main.Features.Interaction
             }
         }
 
-        private void CheckPath()
+        private void CheckBladeSweep(Vector3 previousCenter, Vector3 currentCenter)
         {
             if (Time.time < nextHitTime)
             {
                 return;
             }
 
-            Vector3 origin = transform.position;
-            Vector3 direction = Direction;
-            int hitCount = castRadius > 0f
-                ? Physics.SphereCastNonAlloc(origin, castRadius, direction, hits, activeRange, detectionMask, triggerInteraction)
-                : Physics.RaycastNonAlloc(origin, direction, hits, activeRange, detectionMask, triggerInteraction);
+            float hitRadius = Mathf.Max(0.01f, castRadius);
+            int hitCount = Physics.OverlapCapsuleNonAlloc(
+                previousCenter,
+                currentCenter,
+                hitRadius,
+                hitColliders,
+                detectionMask,
+                triggerInteraction);
 
-            float bestDistance = float.PositiveInfinity;
             Collider bestHit = null;
             for (int i = 0; i < hitCount; i++)
             {
-                RaycastHit hit = hits[i];
-                if (hit.collider == null || hit.distance >= bestDistance || hit.collider.transform.IsChildOf(transform))
+                Collider hit = hitColliders[i];
+                if (hit == null || hit.transform.IsChildOf(transform))
                 {
                     continue;
                 }
 
-                if (!IsValidTriggerCollider(hit.collider))
+                if (!IsValidTriggerCollider(hit))
                 {
                     continue;
                 }
 
-                bestHit = hit.collider;
-                bestDistance = hit.distance;
+                bestHit = hit;
+                break;
             }
 
             if (bestHit == null)
@@ -170,6 +182,12 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             CharacterController controller = player.GetComponent<CharacterController>();
+            if (resetSceneOnPlayerHit)
+            {
+                ResetScene();
+                return true;
+            }
+
             if (controller == null)
             {
                 return false;
@@ -197,7 +215,8 @@ namespace Neighbor.Main.Features.Interaction
         {
             if (bladeVisual != null && isActive)
             {
-                bladeVisual.Rotate(Vector3.forward, bladeSpinDegreesPerSecond * Time.deltaTime, Space.Self);
+                Vector3 spinAxis = bladeSpinAxis.sqrMagnitude > 0.0001f ? bladeSpinAxis.normalized : Vector3.up;
+                bladeVisual.Rotate(spinAxis, bladeSpinDegreesPerSecond * Time.deltaTime, Space.Self);
             }
 
             if (slidingVisual != null)
@@ -215,6 +234,28 @@ namespace Neighbor.Main.Features.Interaction
                     + localMoveDirection * pathPosition
                     + Vector3.up * wobble;
             }
+        }
+
+        private Vector3 GetBladeHitCenter()
+        {
+            if (bladeVisual != null)
+            {
+                return bladeVisual.position;
+            }
+
+            return slidingVisual != null ? slidingVisual.position : transform.position;
+        }
+
+        private void ResetScene()
+        {
+            if (isResettingScene)
+            {
+                return;
+            }
+
+            isResettingScene = true;
+            Scene activeScene = SceneManager.GetActiveScene();
+            SceneManager.LoadScene(activeScene.name);
         }
 
         private void ConfigureDangerLine()
@@ -260,8 +301,8 @@ namespace Neighbor.Main.Features.Interaction
             Gizmos.DrawLine(transform.position, transform.position + direction * activeRange);
             if (castRadius > 0f)
             {
-                Gizmos.DrawWireSphere(transform.position, castRadius);
-                Gizmos.DrawWireSphere(transform.position + direction * activeRange, castRadius);
+                Vector3 bladeCenter = bladeVisual != null ? bladeVisual.position : transform.position;
+                Gizmos.DrawWireSphere(bladeCenter, castRadius);
             }
         }
 
