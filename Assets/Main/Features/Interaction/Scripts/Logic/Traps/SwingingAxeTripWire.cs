@@ -8,6 +8,7 @@ namespace Neighbor.Main.Features.Interaction
     {
         [SerializeField] private SwingingAxeTrap targetAxe;
         [SerializeField] private bool activateOnlyForPlayer = true;
+        [SerializeField] private bool activateForPhysicsObjects = true;
         [SerializeField] private bool disableAfterTrigger = true;
         [SerializeField] private Renderer wireRenderer;
         [SerializeField] private Color armedColor = new(1f, 0.05f, 0.02f, 0.65f);
@@ -53,9 +54,7 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            if (activateOnlyForPlayer
-                && other.GetComponentInParent<PlayerController>() == null
-                && !IsTriggeredByWindUpToy(other))
+            if (!CanTrigger(other))
             {
                 return;
             }
@@ -86,10 +85,37 @@ namespace Neighbor.Main.Features.Interaction
             ApplyWireColor(highlightedColor);
         }
 
-        private static bool IsTriggeredByWindUpToy(Collider other)
+        private bool CanTrigger(Collider other)
+        {
+            if (!activateOnlyForPlayer)
+            {
+                return true;
+            }
+
+            if (other.GetComponentInParent<PlayerController>() != null)
+            {
+                return true;
+            }
+
+            return activateForPhysicsObjects && IsTriggeredByPhysicsObject(other);
+        }
+
+        private static bool IsTriggeredByPhysicsObject(Collider other)
         {
             WindUpToy toy = other.GetComponentInParent<WindUpToy>();
-            return toy != null && toy.IsRunning;
+            if (toy != null && toy.IsRunning)
+            {
+                return true;
+            }
+
+            Pickupable pickupable = other.GetComponentInParent<Pickupable>();
+            if (pickupable != null && !pickupable.IsHeld)
+            {
+                return true;
+            }
+
+            Rigidbody body = other.attachedRigidbody;
+            return body != null && !body.isKinematic;
         }
 
         private void ApplyWireColor(Color color)

@@ -544,6 +544,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   targetAxe: {fileID: 100003}
   activateOnlyForPlayer: 1
+  activateForPhysicsObjects: 1
   disableAfterTrigger: 1
   wireRenderer: {fileID: 100065}
   armedColor: {r: 1, g: 0.05, b: 0.02, a: 0.65}

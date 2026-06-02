@@ -126,7 +126,7 @@ namespace Neighbor.Main.Features.Interaction
                     continue;
                 }
 
-                if (hit.collider.GetComponentInParent<PlayerController>() == null && hit.collider.attachedRigidbody == null)
+                if (!IsValidTriggerCollider(hit.collider))
                 {
                     continue;
                 }
@@ -144,6 +144,21 @@ namespace Neighbor.Main.Features.Interaction
             {
                 nextHitTime = Time.time + hitCooldown;
             }
+        }
+
+        private bool IsValidTriggerCollider(Collider hit)
+        {
+            if (hit.GetComponentInParent<PlayerController>() != null)
+            {
+                return true;
+            }
+
+            if (hit.attachedRigidbody != null)
+            {
+                return true;
+            }
+
+            return hit.GetComponentInParent<Pickupable>() != null;
         }
 
         private bool TryApplyPlayerEffect(Collider hit)
