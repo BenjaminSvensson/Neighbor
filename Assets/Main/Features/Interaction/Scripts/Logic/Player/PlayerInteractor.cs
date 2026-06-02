@@ -76,6 +76,7 @@ namespace Neighbor.Main.Features.Interaction
         private readonly Collider[] placementBlockHits = new Collider[24];
         private float releaseButtonDownTime;
         private bool releaseButtonWasHeld;
+        private Material throwArcMaterial;
 
         public bool IsHoldingPickup => heldPickup != null;
         public Pickupable HeldPickup => heldPickup;
@@ -113,6 +114,11 @@ namespace Neighbor.Main.Features.Interaction
             {
                 tooltipView.Hide();
             }
+        }
+
+        private void OnDestroy()
+        {
+            ReleaseThrowArcResources();
         }
 
         private void Update()
@@ -1274,7 +1280,8 @@ namespace Neighbor.Main.Features.Interaction
             throwArcRenderer.startColor = throwArcStartColor;
             throwArcRenderer.endColor = throwArcEndColor;
             throwArcRenderer.sortingOrder = 100;
-            throwArcRenderer.material = CreateThrowArcMaterial();
+            throwArcMaterial = CreateThrowArcMaterial();
+            throwArcRenderer.sharedMaterial = throwArcMaterial;
         }
 
         private void EnsureTooltipView()
@@ -1370,6 +1377,20 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             return material;
+        }
+
+        private void ReleaseThrowArcResources()
+        {
+            if (throwArcRenderer != null && throwArcMaterial != null && throwArcRenderer.sharedMaterial == throwArcMaterial)
+            {
+                throwArcRenderer.sharedMaterial = null;
+            }
+
+            if (throwArcMaterial != null)
+            {
+                Destroy(throwArcMaterial);
+                throwArcMaterial = null;
+            }
         }
 
         private void Reset()

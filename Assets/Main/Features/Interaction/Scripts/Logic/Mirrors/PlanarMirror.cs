@@ -15,7 +15,9 @@ namespace Neighbor.Main.Features.Interaction
         private RenderTexture renderTexture;
         private Material mirrorMaterial;
         private int lastTextureSize;
+        private float nextSourceCameraRefreshTime;
         private static bool isRenderingMirror;
+        private const float SourceCameraRefreshInterval = 0.5f;
 
         private void Awake()
         {
@@ -49,6 +51,11 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
+            if (!mirrorRenderer.isVisible)
+            {
+                return;
+            }
+
             sourceCamera = ResolveSourceCamera();
             if (sourceCamera == null)
             {
@@ -61,39 +68,44 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
+            bool previousRendererState = mirrorRenderer.enabled;
+            bool previousInvertCulling = GL.invertCulling;
             isRenderingMirror = true;
 
-            Vector3 planePosition = mirrorPlane.position;
-            Vector3 planeNormal = mirrorPlane.forward.normalized;
-            float planeDistance = -Vector3.Dot(planeNormal, planePosition) - clipPlaneOffset;
-            Vector4 reflectionPlane = new Vector4(planeNormal.x, planeNormal.y, planeNormal.z, planeDistance);
+            try
+            {
+                Vector3 planePosition = mirrorPlane.position;
+                Vector3 planeNormal = mirrorPlane.forward.normalized;
+                float planeDistance = -Vector3.Dot(planeNormal, planePosition) - clipPlaneOffset;
+                Vector4 reflectionPlane = new Vector4(planeNormal.x, planeNormal.y, planeNormal.z, planeDistance);
 
-            Matrix4x4 reflectionMatrix = Matrix4x4.zero;
-            CalculateReflectionMatrix(ref reflectionMatrix, reflectionPlane);
+                Matrix4x4 reflectionMatrix = Matrix4x4.zero;
+                CalculateReflectionMatrix(ref reflectionMatrix, reflectionPlane);
 
-            Vector3 reflectedPosition = reflectionMatrix.MultiplyPoint(sourceCamera.transform.position);
-            Vector3 reflectedForward = reflectionMatrix.MultiplyVector(sourceCamera.transform.forward);
-            Vector3 reflectedUp = reflectionMatrix.MultiplyVector(sourceCamera.transform.up);
+                Vector3 reflectedPosition = reflectionMatrix.MultiplyPoint(sourceCamera.transform.position);
+                Vector3 reflectedForward = reflectionMatrix.MultiplyVector(sourceCamera.transform.forward);
+                Vector3 reflectedUp = reflectionMatrix.MultiplyVector(sourceCamera.transform.up);
 
-            mirrorCamera.CopyFrom(sourceCamera);
-            mirrorCamera.enabled = false;
-            mirrorCamera.cullingMask = reflectionMask;
-            mirrorCamera.targetTexture = renderTexture;
-            mirrorCamera.transform.SetPositionAndRotation(reflectedPosition, Quaternion.LookRotation(reflectedForward, reflectedUp));
-            mirrorCamera.worldToCameraMatrix = sourceCamera.worldToCameraMatrix * reflectionMatrix;
+                mirrorCamera.CopyFrom(sourceCamera);
+                mirrorCamera.enabled = false;
+                mirrorCamera.cullingMask = reflectionMask;
+                mirrorCamera.targetTexture = renderTexture;
+                mirrorCamera.transform.SetPositionAndRotation(reflectedPosition, Quaternion.LookRotation(reflectedForward, reflectedUp));
+                mirrorCamera.worldToCameraMatrix = sourceCamera.worldToCameraMatrix * reflectionMatrix;
 
-            Vector4 cameraSpacePlane = CameraSpacePlane(mirrorCamera, planePosition, planeNormal, 1f);
-            mirrorCamera.projectionMatrix = sourceCamera.CalculateObliqueMatrix(cameraSpacePlane);
+                Vector4 cameraSpacePlane = CameraSpacePlane(mirrorCamera, planePosition, planeNormal, 1f);
+                mirrorCamera.projectionMatrix = sourceCamera.CalculateObliqueMatrix(cameraSpacePlane);
 
-            bool previousRendererState = mirrorRenderer.enabled;
-            mirrorRenderer.enabled = false;
-            bool previousInvertCulling = GL.invertCulling;
-            GL.invertCulling = !previousInvertCulling;
-            mirrorCamera.Render();
-            GL.invertCulling = previousInvertCulling;
-            mirrorRenderer.enabled = previousRendererState;
-
-            isRenderingMirror = false;
+                mirrorRenderer.enabled = false;
+                GL.invertCulling = !previousInvertCulling;
+                mirrorCamera.Render();
+            }
+            finally
+            {
+                GL.invertCulling = previousInvertCulling;
+                mirrorRenderer.enabled = previousRendererState;
+                isRenderingMirror = false;
+            }
         }
 
         private void EnsureResources()
@@ -140,6 +152,12 @@ namespace Neighbor.Main.Features.Interaction
 
         private Camera ResolveSourceCamera()
         {
+            if (Time.time < nextSourceCameraRefreshTime && IsUsableSourceCamera(sourceCamera))
+            {
+                return sourceCamera;
+            }
+
+            nextSourceCameraRefreshTime = Time.time + SourceCameraRefreshInterval;
             Camera taggedCamera = Camera.main;
             if (IsUsableSourceCamera(taggedCamera))
             {

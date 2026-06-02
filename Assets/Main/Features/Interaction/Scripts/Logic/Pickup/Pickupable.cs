@@ -156,6 +156,16 @@ namespace Neighbor.Main.Features.Interaction
 
             float followStep = Mathf.Clamp01(followStrength * Time.fixedDeltaTime);
             Vector3 nextPosition = Vector3.Lerp(body.position, targetPosition, followStep);
+            if (maxVelocity > 0f)
+            {
+                Vector3 movement = nextPosition - body.position;
+                float maximumStepDistance = maxVelocity * Time.fixedDeltaTime;
+                if (movement.sqrMagnitude > maximumStepDistance * maximumStepDistance)
+                {
+                    nextPosition = body.position + movement.normalized * maximumStepDistance;
+                }
+            }
+
             body.MovePosition(nextPosition);
 
             if (!alignToCameraWhileHeld)
