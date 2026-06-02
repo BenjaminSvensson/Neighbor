@@ -31,8 +31,10 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private LineRenderer dangerLine;
         [SerializeField] private Renderer warningRenderer;
         [SerializeField, Min(0f)] private float bladeSpinDegreesPerSecond = 720f;
-        [SerializeField, Min(0f)] private float slideAmplitude = 0.18f;
-        [SerializeField, Min(0f)] private float slideFrequency = 3f;
+        [SerializeField, Min(0f)] private float pathTravelDistance;
+        [SerializeField, Min(0f)] private float pathTravelSpeed = 2.2f;
+        [SerializeField, Min(0f)] private float slideAmplitude = 0.04f;
+        [SerializeField, Min(0f)] private float slideFrequency = 6f;
         [SerializeField] private Color activeColor = new(1f, 0.08f, 0.04f, 1f);
         [SerializeField] private Color warningColor = new(1f, 0.75f, 0.06f, 1f);
         [SerializeField] private Color inactiveColor = new(0.25f, 0.25f, 0.25f, 1f);
@@ -185,8 +187,18 @@ namespace Neighbor.Main.Features.Interaction
 
             if (slidingVisual != null)
             {
-                float slide = isActive ? Mathf.Sin(Time.time * slideFrequency * Mathf.PI * 2f) * slideAmplitude : 0f;
-                slidingVisual.localPosition = slidingRestLocalPosition + Vector3.forward * slide;
+                Vector3 localMoveDirection = localDirection.sqrMagnitude > 0.0001f ? localDirection.normalized : Vector3.forward;
+                float travelDistance = pathTravelDistance > 0f ? pathTravelDistance : activeRange;
+                float pathPosition = isActive && travelDistance > 0f
+                    ? Mathf.PingPong(Time.time * pathTravelSpeed, travelDistance)
+                    : 0f;
+                float wobble = isActive && slideAmplitude > 0f
+                    ? Mathf.Sin(Time.time * slideFrequency * Mathf.PI * 2f) * slideAmplitude
+                    : 0f;
+
+                slidingVisual.localPosition = slidingRestLocalPosition
+                    + localMoveDirection * pathPosition
+                    + Vector3.up * wobble;
             }
         }
 
@@ -250,6 +262,8 @@ namespace Neighbor.Main.Features.Interaction
             rigidbodyImpulse = Mathf.Max(0f, rigidbodyImpulse);
             upwardPush = Mathf.Max(0f, upwardPush);
             bladeSpinDegreesPerSecond = Mathf.Max(0f, bladeSpinDegreesPerSecond);
+            pathTravelDistance = Mathf.Max(0f, pathTravelDistance);
+            pathTravelSpeed = Mathf.Max(0f, pathTravelSpeed);
             slideAmplitude = Mathf.Max(0f, slideAmplitude);
             slideFrequency = Mathf.Max(0f, slideFrequency);
         }

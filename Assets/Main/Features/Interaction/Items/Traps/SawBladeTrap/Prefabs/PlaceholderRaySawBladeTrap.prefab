@@ -69,8 +69,10 @@ MonoBehaviour:
   dangerLine: {fileID: 6964937492481892376}
   warningRenderer: {fileID: 7510317851585796415}
   bladeSpinDegreesPerSecond: 720
-  slideAmplitude: 0.18
-  slideFrequency: 3
+  pathTravelDistance: 3.2
+  pathTravelSpeed: 2.2
+  slideAmplitude: 0.035
+  slideFrequency: 6
   activeColor: {r: 1, g: 0.08, b: 0.04, a: 1}
   warningColor: {r: 1, g: 0.75, b: 0.06, a: 1}
   inactiveColor: {r: 0.25, g: 0.25, b: 0.25, a: 1}
