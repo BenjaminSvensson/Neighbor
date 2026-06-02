@@ -27,8 +27,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3852431456344596768}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.6, z: 0}
+  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: 0, y: 0, z: 0.6}
   m_LocalScale: {x: 0.28, y: 0.045, z: 0.28}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -141,8 +141,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6177159500581017518}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.18, z: 0}
+  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: 0, y: 0, z: -0.18}
   m_LocalScale: {x: 0.045, y: 0.58, z: 0.045}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -287,7 +287,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.32, y: 1.1, z: 0.32}
+  m_Size: {x: 0.32, y: 0.32, z: 1.1}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!54 &1703275441119500183
 Rigidbody:
@@ -491,6 +491,16 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   triggerInteraction: 1
+  visualRoot: {fileID: 8048653475707467065}
+  pullMotionLocalOffset: {x: 0, y: 0, z: -0.16}
+  pullMotionFrequency: 7
+  stickToSurfacesWhenThrown: 1
+  minimumStickSpeed: 2.2
+  stickSurfaceOffset: 0.035
+  localCupDirection: {x: 0, y: 0, z: 1}
+  stickMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
   audioSource: {fileID: 8649290350409640976}
   pullClips: []
   pullVolume: 0.55
@@ -523,8 +533,8 @@ Transform:
   m_GameObject: {fileID: 7781788439926542563}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.48, z: 0}
-  m_LocalScale: {x: 0.34, y: 0.18, z: 0.34}
+  m_LocalPosition: {x: 0, y: 0, z: 0.48}
+  m_LocalScale: {x: 0.34, y: 0.34, z: 0.18}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 5482546780136530901}

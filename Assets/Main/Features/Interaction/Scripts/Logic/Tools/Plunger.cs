@@ -3,7 +3,7 @@ using UnityEngine;
 namespace Neighbor.Main.Features.Interaction
 {
     [RequireComponent(typeof(Pickupable))]
-    public sealed class Plunger : MonoBehaviour, IPrimaryUseInteractable, IInteractionTooltipProvider
+    public sealed class Plunger : MonoBehaviour, IPrimaryUseInteractable, IInteractionTooltipProvider, IPickupLifecycleReceiver
     {
         [Header("Pull")]
         [SerializeField, Min(0.1f)] private float pullRange = 4f;
@@ -18,6 +18,18 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private LayerMask pullMask = ~0;
         [SerializeField] private QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.Ignore;
 
+        [Header("Pull Feedback")]
+        [SerializeField] private Transform visualRoot;
+        [SerializeField] private Vector3 pullMotionLocalOffset = new(0f, 0f, -0.18f);
+        [SerializeField, Min(0f)] private float pullMotionFrequency = 7f;
+
+        [Header("Surface Stick")]
+        [SerializeField] private bool stickToSurfacesWhenThrown = true;
+        [SerializeField, Min(0f)] private float minimumStickSpeed = 2.2f;
+        [SerializeField, Min(0f)] private float stickSurfaceOffset = 0.035f;
+        [SerializeField] private Vector3 localCupDirection = Vector3.forward;
+        [SerializeField] private LayerMask stickMask = ~0;
+
         [Header("Audio")]
         [SerializeField] private AudioSource audioSource;
         [SerializeField] private AudioClip[] pullClips;
@@ -26,18 +38,38 @@ namespace Neighbor.Main.Features.Interaction
 
         private readonly RaycastHit[] hits = new RaycastHit[16];
         private Pickupable pickupable;
+        private Rigidbody ownBody;
         private Rigidbody activeBody;
         private Transform activeViewTransform;
         private AudioClip generatedPullClip;
+        private Vector3 visualRestLocalPosition;
+        private RigidbodyConstraints unstuckConstraints;
         private float activePullEndTime;
         private float activeSnapTime;
         private float nextUseTime;
+        private bool isStuck;
         private bool hasSnappedActivePull;
 
         private void Awake()
         {
             pickupable = GetComponent<Pickupable>();
+            ownBody = GetComponent<Rigidbody>();
+            if (visualRoot == null && transform.childCount > 0)
+            {
+                visualRoot = transform.GetChild(0);
+            }
+
+            if (visualRoot != null)
+            {
+                visualRestLocalPosition = visualRoot.localPosition;
+            }
+
             ResolveAudioSource();
+        }
+
+        private void Update()
+        {
+            UpdatePullMotion();
         }
 
         private void FixedUpdate()
@@ -95,6 +127,17 @@ namespace Neighbor.Main.Features.Interaction
             activeSnapTime = Time.time + snapDelay;
             hasSnappedActivePull = false;
             PlayPullSound();
+        }
+
+        public void OnPickupStarted(Pickupable pickupable, PlayerInteractor interactor)
+        {
+            Unstick();
+            ResetPullMotion();
+        }
+
+        public void OnPickupPlaced(Pickupable pickupable)
+        {
+            ResetPullMotion();
         }
 
         public bool TryGetInteractionTooltip(
@@ -185,6 +228,87 @@ namespace Neighbor.Main.Features.Interaction
             activeBody = null;
             activeViewTransform = null;
             hasSnappedActivePull = false;
+            ResetPullMotion();
+        }
+
+        private void UpdatePullMotion()
+        {
+            if (visualRoot == null)
+            {
+                return;
+            }
+
+            if (activeBody == null || pickupable == null || !pickupable.IsHeld)
+            {
+                ResetPullMotion();
+                return;
+            }
+
+            float pullTime01 = Mathf.InverseLerp(activePullEndTime - pullDuration, activePullEndTime, Time.time);
+            float pulse = Mathf.Sin(pullTime01 * pullMotionFrequency * Mathf.PI);
+            visualRoot.localPosition = visualRestLocalPosition + pullMotionLocalOffset * Mathf.Clamp01(Mathf.Abs(pulse));
+        }
+
+        private void ResetPullMotion()
+        {
+            if (visualRoot != null)
+            {
+                visualRoot.localPosition = visualRestLocalPosition;
+            }
+        }
+
+        private void OnCollisionEnter(Collision collision)
+        {
+            TryStickToSurface(collision);
+        }
+
+        private void TryStickToSurface(Collision collision)
+        {
+            if (!stickToSurfacesWhenThrown || isStuck || collision == null || pickupable == null || pickupable.IsHeld || ownBody == null)
+            {
+                return;
+            }
+
+            if (((1 << collision.gameObject.layer) & stickMask.value) == 0 || collision.rigidbody != null)
+            {
+                return;
+            }
+
+            if (collision.relativeVelocity.magnitude < minimumStickSpeed || collision.contactCount == 0)
+            {
+                return;
+            }
+
+            ContactPoint contact = collision.GetContact(0);
+            Vector3 cupDirection = transform.TransformDirection(localCupDirection.sqrMagnitude > 0.0001f ? localCupDirection.normalized : Vector3.forward);
+            if (Vector3.Dot(cupDirection, -contact.normal) < 0.35f)
+            {
+                return;
+            }
+
+            Quaternion stuckRotation = Quaternion.FromToRotation(cupDirection, -contact.normal) * transform.rotation;
+            Vector3 stuckPosition = contact.point + contact.normal * stickSurfaceOffset;
+            transform.SetPositionAndRotation(stuckPosition, stuckRotation);
+            ownBody.linearVelocity = Vector3.zero;
+            ownBody.angularVelocity = Vector3.zero;
+            ownBody.useGravity = false;
+            ownBody.isKinematic = true;
+            unstuckConstraints = ownBody.constraints;
+            ownBody.constraints = RigidbodyConstraints.FreezeAll;
+            isStuck = true;
+        }
+
+        private void Unstick()
+        {
+            if (!isStuck || ownBody == null)
+            {
+                return;
+            }
+
+            ownBody.constraints = unstuckConstraints;
+            ownBody.isKinematic = false;
+            ownBody.useGravity = true;
+            isStuck = false;
         }
 
         private void PlayPullSound()
@@ -270,6 +394,9 @@ namespace Neighbor.Main.Features.Interaction
             pullDuration = Mathf.Max(0.01f, pullDuration);
             snapDelay = Mathf.Max(0f, snapDelay);
             pullTargetDistance = Mathf.Max(0f, pullTargetDistance);
+            pullMotionFrequency = Mathf.Max(0f, pullMotionFrequency);
+            minimumStickSpeed = Mathf.Max(0f, minimumStickSpeed);
+            stickSurfaceOffset = Mathf.Max(0f, stickSurfaceOffset);
         }
     }
 }
