@@ -86,7 +86,9 @@ namespace Neighbor.Main.Features.Interaction
         private Collider[] stuckTargetColliders;
         private AudioClip generatedAttachClip;
         private AudioClip generatedDetachClip;
-        private Vector3 visualRestLocalPosition;
+        private Transform[] pullMotionRoots;
+        private Vector3[] pullMotionRestLocalPositions;
+        private Vector3 restLocalStickContactPoint;
         private Vector3 activePullLocalPoint;
         private Vector3 activePullLocalNormal;
         private Vector3 previousPullCupPoint;
@@ -108,15 +110,10 @@ namespace Neighbor.Main.Features.Interaction
             ownBody = GetComponent<Rigidbody>();
             ownColliders = GetComponentsInChildren<Collider>();
             ownColliderEnabledBeforeSuppression = new bool[ownColliders.Length];
-            if (visualRoot == null && transform.childCount > 0)
-            {
-                visualRoot = transform.GetChild(0);
-            }
-
-            if (visualRoot != null)
-            {
-                visualRestLocalPosition = visualRoot.localPosition;
-            }
+            restLocalStickContactPoint = stickContactPoint != null
+                ? transform.InverseTransformPoint(stickContactPoint.position)
+                : localStickContactPoint;
+            CachePullMotionRoots();
 
             ResolveAudioSource();
         }
@@ -407,17 +404,12 @@ namespace Neighbor.Main.Features.Interaction
 
         private Vector3 GetCupContactPoint()
         {
-            if (stickContactPoint != null)
-            {
-                return stickContactPoint.position + GetCupDirection() * activePullExtension;
-            }
-
             return GetBaseCupContactPoint() + GetCupDirection() * activePullExtension;
         }
 
         private Vector3 GetBaseCupContactPoint()
         {
-            return transform.TransformPoint(localStickContactPoint);
+            return transform.TransformPoint(restLocalStickContactPoint);
         }
 
         private Vector3 GetCupDirection()
@@ -455,27 +447,70 @@ namespace Neighbor.Main.Features.Interaction
             hasAttachedPullTarget = false;
         }
 
-        private void UpdatePullMotion()
+        private void CachePullMotionRoots()
         {
+            if (transform.childCount > 0)
+            {
+                pullMotionRoots = new Transform[transform.childCount];
+                pullMotionRestLocalPositions = new Vector3[transform.childCount];
+                for (int i = 0; i < transform.childCount; i++)
+                {
+                    Transform child = transform.GetChild(i);
+                    pullMotionRoots[i] = child;
+                    pullMotionRestLocalPositions[i] = child.localPosition;
+                }
+
+                return;
+            }
+
             if (visualRoot == null)
             {
                 return;
             }
 
-            if (pullState == PullState.Idle || pickupable == null || !pickupable.IsHeld)
+            pullMotionRoots = new[] { visualRoot };
+            pullMotionRestLocalPositions = new[] { visualRoot.localPosition };
+        }
+
+        private void UpdatePullMotion()
+        {
+            if (pullMotionRoots == null || pullMotionRestLocalPositions == null)
             {
-                ResetPullMotion();
                 return;
             }
 
-            visualRoot.localPosition = visualRestLocalPosition + GetLocalCupDirection() * activePullExtension;
+            Vector3 localOffset = pullState == PullState.Idle || pickupable == null || !pickupable.IsHeld
+                ? Vector3.zero
+                : GetLocalCupDirection() * activePullExtension;
+
+            for (int i = 0; i < pullMotionRoots.Length; i++)
+            {
+                Transform pullMotionRoot = pullMotionRoots[i];
+                if (pullMotionRoot == null)
+                {
+                    continue;
+                }
+
+                pullMotionRoot.localPosition = pullMotionRestLocalPositions[i] + localOffset;
+            }
         }
 
         private void ResetPullMotion()
         {
-            if (visualRoot != null)
+            if (pullMotionRoots == null || pullMotionRestLocalPositions == null)
             {
-                visualRoot.localPosition = visualRestLocalPosition;
+                return;
+            }
+
+            for (int i = 0; i < pullMotionRoots.Length; i++)
+            {
+                Transform pullMotionRoot = pullMotionRoots[i];
+                if (pullMotionRoot == null)
+                {
+                    continue;
+                }
+
+                pullMotionRoot.localPosition = pullMotionRestLocalPositions[i];
             }
         }
 
@@ -510,9 +545,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             Quaternion stuckRotation = Quaternion.FromToRotation(cupDirection, -contact.normal) * transform.rotation;
-            Vector3 localContactPoint = stickContactPoint != null
-                ? transform.InverseTransformPoint(stickContactPoint.position)
-                : localStickContactPoint;
+            Vector3 localContactPoint = restLocalStickContactPoint;
             Vector3 stuckPosition = contact.point + contact.normal * stickSurfaceOffset - stuckRotation * localContactPoint;
             transform.SetPositionAndRotation(stuckPosition, stuckRotation);
             ownBody.linearVelocity = Vector3.zero;
