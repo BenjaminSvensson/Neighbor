@@ -11,10 +11,9 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float useCooldown = 0.45f;
         [SerializeField, Min(0f)] private float maximumPullMass = 3f;
         [SerializeField, Min(0f)] private float pullForce = 18f;
+        [SerializeField, Min(0f)] private float pullDamping = 7f;
+        [SerializeField, Min(0f)] private float maximumPullAcceleration = 45f;
         [SerializeField, Min(0.01f)] private float pullDuration = 0.65f;
-        [SerializeField, Min(0f)] private float snapDelay = 0.28f;
-        [SerializeField, Min(0f)] private float pullTargetDistance = 1.25f;
-        [SerializeField] private bool snapAfterDelay = true;
         [SerializeField] private LayerMask pullMask = ~0;
         [SerializeField] private QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.Ignore;
 
@@ -43,19 +42,20 @@ namespace Neighbor.Main.Features.Interaction
         private Rigidbody ownBody;
         private Collider[] ownColliders;
         private Rigidbody activeBody;
-        private Transform activeViewTransform;
         private Transform stuckTransform;
         private Collider[] stuckTargetColliders;
         private AudioClip generatedPullClip;
         private Vector3 visualRestLocalPosition;
+        private Vector3 activePullLocalPoint;
+        private Vector3 activePullLocalNormal;
+        private Vector3 previousPullCupPoint;
         private Vector3 stuckLocalPosition;
         private Quaternion stuckLocalRotation;
         private RigidbodyConstraints unstuckConstraints;
         private float activePullEndTime;
-        private float activeSnapTime;
         private float nextUseTime;
         private bool isStuck;
-        private bool hasSnappedActivePull;
+        private bool hasPreviousPullCupPoint;
 
         private void Awake()
         {
@@ -100,22 +100,7 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            Vector3 targetPosition = GetPullTargetPosition();
-            Vector3 toTarget = targetPosition - activeBody.worldCenterOfMass;
-            if (toTarget.sqrMagnitude <= 0.01f)
-            {
-                ClearActivePull();
-                return;
-            }
-
-            activeBody.WakeUp();
-            activeBody.AddForce(toTarget.normalized * pullForce, ForceMode.Acceleration);
-
-            if (snapAfterDelay && !hasSnappedActivePull && Time.time >= activeSnapTime)
-            {
-                hasSnappedActivePull = true;
-                activeBody.position += toTarget * Mathf.Clamp01(Time.fixedDeltaTime * 14f);
-            }
+            ApplyActivePull();
         }
 
         public bool CanPrimaryUse(PlayerInteractor interactor)
@@ -131,16 +116,17 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             nextUseTime = Time.time + useCooldown;
-            if (!TryFindPullTarget(interactor, out Rigidbody targetBody))
+            if (!TryFindPullTarget(interactor, out Rigidbody targetBody, out RaycastHit targetHit))
             {
                 return;
             }
 
             activeBody = targetBody;
-            activeViewTransform = interactor != null ? interactor.ViewTransform : transform;
+            activePullLocalPoint = activeBody.transform.InverseTransformPoint(targetHit.point);
+            activePullLocalNormal = activeBody.transform.InverseTransformDirection(targetHit.normal).normalized;
             activePullEndTime = Time.time + pullDuration;
-            activeSnapTime = Time.time + snapDelay;
-            hasSnappedActivePull = false;
+            previousPullCupPoint = GetCupContactPoint();
+            hasPreviousPullCupPoint = true;
             PlayPullSound();
         }
 
@@ -174,9 +160,10 @@ namespace Neighbor.Main.Features.Interaction
             return true;
         }
 
-        private bool TryFindPullTarget(PlayerInteractor interactor, out Rigidbody targetBody)
+        private bool TryFindPullTarget(PlayerInteractor interactor, out Rigidbody targetBody, out RaycastHit targetHit)
         {
             targetBody = null;
+            targetHit = default;
             Transform viewTransform = interactor != null ? interactor.ViewTransform : transform;
             Ray ray = new(viewTransform.position, viewTransform.forward);
             int hitCount = pullProbeRadius > 0f
@@ -205,6 +192,7 @@ namespace Neighbor.Main.Features.Interaction
                 }
 
                 targetBody = body;
+                targetHit = hit;
                 bestDistance = hit.distance;
             }
 
@@ -233,17 +221,51 @@ namespace Neighbor.Main.Features.Interaction
             return true;
         }
 
-        private Vector3 GetPullTargetPosition()
+        private void ApplyActivePull()
         {
-            Transform viewTransform = activeViewTransform != null ? activeViewTransform : transform;
-            return viewTransform.position + viewTransform.forward * pullTargetDistance;
+            Vector3 surfacePoint = activeBody.transform.TransformPoint(activePullLocalPoint);
+            Vector3 surfaceNormal = activeBody.transform.TransformDirection(activePullLocalNormal).normalized;
+            Vector3 cupPoint = GetCupContactPoint();
+            Vector3 desiredSurfacePoint = cupPoint - surfaceNormal * stickSurfaceOffset;
+            Vector3 anchorError = desiredSurfacePoint - surfacePoint;
+            if (anchorError.sqrMagnitude <= 0.0001f)
+            {
+                previousPullCupPoint = cupPoint;
+                hasPreviousPullCupPoint = true;
+                return;
+            }
+
+            Vector3 cupVelocity = Vector3.zero;
+            if (hasPreviousPullCupPoint && Time.fixedDeltaTime > 0f)
+            {
+                cupVelocity = (cupPoint - previousPullCupPoint) / Time.fixedDeltaTime;
+            }
+
+            Vector3 pointVelocity = activeBody.GetPointVelocity(surfacePoint);
+            Vector3 relativeVelocity = pointVelocity - cupVelocity;
+            Vector3 acceleration = anchorError * pullForce - relativeVelocity * pullDamping;
+            if (maximumPullAcceleration > 0f)
+            {
+                acceleration = Vector3.ClampMagnitude(acceleration, maximumPullAcceleration);
+            }
+
+            activeBody.WakeUp();
+            activeBody.AddForceAtPosition(acceleration, surfacePoint, ForceMode.Acceleration);
+            previousPullCupPoint = cupPoint;
+            hasPreviousPullCupPoint = true;
+        }
+
+        private Vector3 GetCupContactPoint()
+        {
+            return stickContactPoint != null
+                ? stickContactPoint.position
+                : transform.TransformPoint(localStickContactPoint);
         }
 
         private void ClearActivePull()
         {
             activeBody = null;
-            activeViewTransform = null;
-            hasSnappedActivePull = false;
+            hasPreviousPullCupPoint = false;
             ResetPullMotion();
         }
 
@@ -474,9 +496,9 @@ namespace Neighbor.Main.Features.Interaction
             useCooldown = Mathf.Max(0f, useCooldown);
             maximumPullMass = Mathf.Max(0f, maximumPullMass);
             pullForce = Mathf.Max(0f, pullForce);
+            pullDamping = Mathf.Max(0f, pullDamping);
+            maximumPullAcceleration = Mathf.Max(0f, maximumPullAcceleration);
             pullDuration = Mathf.Max(0.01f, pullDuration);
-            snapDelay = Mathf.Max(0f, snapDelay);
-            pullTargetDistance = Mathf.Max(0f, pullTargetDistance);
             pullMotionFrequency = Mathf.Max(0f, pullMotionFrequency);
             minimumStickSpeed = Mathf.Max(0f, minimumStickSpeed);
             stickSurfaceOffset = Mathf.Max(0f, stickSurfaceOffset);
