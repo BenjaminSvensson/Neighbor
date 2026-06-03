@@ -200,7 +200,7 @@ namespace Neighbor.Main.Features.Neighbor
                 nextChaseRepathTime = Time.time + chaseRepathInterval;
             }
 
-            motor.FaceTowards(chasePosition, 12f);
+            motor.FaceMovementDirection(12f);
 
             if (player != null && Vector3.Distance(transform.position, player.position) <= catchDistance)
             {
@@ -272,7 +272,6 @@ namespace Neighbor.Main.Features.Neighbor
             float verticalDelta = chasePosition.y - transform.position.y;
             if (verticalDelta >= climbCommitVerticalDifference)
             {
-                motor.FaceTowards(chasePosition, 18f);
                 if (motor.TryClimbToward(player))
                 {
                     currentClimbLink = null;
@@ -289,7 +288,6 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (verticalDelta <= -dropCommitVerticalDifference || motor.IsDetachedFromNavMesh)
             {
-                motor.FaceTowards(chasePosition, 18f);
                 if (motor.TryJumpDownToward(player))
                 {
                     currentClimbLink = null;

@@ -292,6 +292,37 @@ namespace Neighbor.Main.Features.Neighbor
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 1f - Mathf.Exp(-turnSharpness * Time.deltaTime));
         }
 
+        public void FaceMovementDirection(float turnSharpness)
+        {
+            if (agent == null)
+            {
+                return;
+            }
+
+            Vector3 direction = agent.desiredVelocity;
+            direction.y = 0f;
+
+            if (direction.sqrMagnitude <= 0.001f)
+            {
+                direction = agent.velocity;
+                direction.y = 0f;
+            }
+
+            if (direction.sqrMagnitude <= 0.001f && agent.hasPath && !agent.pathPending)
+            {
+                direction = agent.steeringTarget - transform.position;
+                direction.y = 0f;
+            }
+
+            if (direction.sqrMagnitude <= 0.001f)
+            {
+                return;
+            }
+
+            Quaternion targetRotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 1f - Mathf.Exp(-turnSharpness * Time.deltaTime));
+        }
+
         public bool TryGetRandomReachablePoint(Vector3 origin, float radius, out Vector3 point)
         {
             for (int i = 0; i < 12; i++)
