@@ -48,7 +48,7 @@ internal static class ProBuilderDefaultMaterialInitializer
         {
             s_ApplyingSceneMaterials = true;
 
-            foreach (var mesh in Object.FindObjectsByType<ProBuilderMesh>(FindObjectsSortMode.None))
+            foreach (var mesh in Object.FindObjectsByType<ProBuilderMesh>(FindObjectsInactive.Exclude))
             {
                 var meshRenderer = mesh.GetComponent<MeshRenderer>();
                 if (meshRenderer == null || !ShouldReplace(meshRenderer.sharedMaterial))

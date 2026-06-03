@@ -160,7 +160,7 @@ namespace Neighbor.Main.Features.Interaction
                 return Camera.main;
             }
 
-            Camera[] cameras = FindObjectsByType<Camera>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            Camera[] cameras = FindObjectsByType<Camera>(FindObjectsInactive.Exclude);
             Camera bestCamera = null;
             float bestDepth = float.NegativeInfinity;
             for (int i = 0; i < cameras.Length; i++)
