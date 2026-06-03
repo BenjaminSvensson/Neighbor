@@ -478,22 +478,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9a6bdb9a3fa24f15a7eb1281ac6026d9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Interaction.Plunger
-  pullRange: 4
+  pullRange: 6
   pullProbeRadius: 0.08
   useCooldown: 0.45
   maximumPullMass: 3
   pullForce: 18
-  pullDuration: 0.65
-  snapDelay: 0.28
-  pullTargetDistance: 1.25
-  snapAfterDelay: 1
+  pullDamping: 7
+  maximumPullAcceleration: 45
+  pullDuration: 2
+  pullContactRadius: 0.18
+  pullExtendSpeed: 12
+  pullRetractSpeed: 8
+  pullSurfaceClearance: 0.04
   pullMask:
     serializedVersion: 2
     m_Bits: 4294967295
   triggerInteraction: 1
   visualRoot: {fileID: 8048653475707467065}
-  pullMotionLocalOffset: {x: 0, y: 0, z: -0.16}
-  pullMotionFrequency: 7
   stickToSurfacesWhenThrown: 1
   minimumStickSpeed: 2.2
   stickSurfaceOffset: 0.035
@@ -505,6 +506,8 @@ MonoBehaviour:
     m_Bits: 4294967295
   audioSource: {fileID: 8649290350409640976}
   pullClips: []
+  attachClips: []
+  detachClips: []
   pullVolume: 0.55
   pitchRandomness: 0.06
 --- !u!1 &7781788439926542563

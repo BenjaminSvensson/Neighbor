@@ -7,36 +7,55 @@ namespace Neighbor.Main.Features.Interaction
     {
         private readonly struct PullSurfaceHit
         {
-            public PullSurfaceHit(Vector3 point, Vector3 normal, float distance)
+            public PullSurfaceHit(
+                Rigidbody body,
+                Pickupable pickupable,
+                Collider collider,
+                Vector3 point,
+                Vector3 normal,
+                float distance)
             {
+                Body = body;
+                TargetPickupable = pickupable;
+                Collider = collider;
                 Point = point;
                 Normal = normal;
                 Distance = distance;
             }
 
+            public Rigidbody Body { get; }
+            public Pickupable TargetPickupable { get; }
+            public Collider Collider { get; }
             public Vector3 Point { get; }
             public Vector3 Normal { get; }
             public float Distance { get; }
         }
 
+        private enum PullState
+        {
+            Idle,
+            Extending,
+            Retracting
+        }
+
         [Header("Pull")]
-        [SerializeField, Min(0.1f)] private float pullRange = 4f;
+        [SerializeField, Min(0.1f)] private float pullRange = 6f;
         [SerializeField, Min(0f)] private float pullProbeRadius = 0.08f;
         [SerializeField, Min(0f)] private float useCooldown = 0.45f;
         [SerializeField, Min(0f)] private float maximumPullMass = 3f;
         [SerializeField, Min(0f)] private float pullForce = 18f;
         [SerializeField, Min(0f)] private float pullDamping = 7f;
         [SerializeField, Min(0f)] private float maximumPullAcceleration = 45f;
-        [SerializeField, Min(0.01f)] private float pullDuration = 0.65f;
+        [SerializeField, Min(0.01f)] private float pullDuration = 2f;
         [SerializeField, Min(0f)] private float pullContactRadius = 0.18f;
-        [SerializeField, Min(0f)] private float pullStrokeDistance = 0.85f;
+        [SerializeField, Min(0.01f)] private float pullExtendSpeed = 12f;
+        [SerializeField, Min(0.01f)] private float pullRetractSpeed = 8f;
+        [SerializeField, Min(0f)] private float pullSurfaceClearance = 0.04f;
         [SerializeField] private LayerMask pullMask = ~0;
         [SerializeField] private QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.Ignore;
 
         [Header("Pull Feedback")]
         [SerializeField] private Transform visualRoot;
-        [SerializeField] private Vector3 pullMotionLocalOffset = new(0f, 0f, -0.18f);
-        [SerializeField, Min(0f)] private float pullMotionFrequency = 7f;
 
         [Header("Surface Stick")]
         [SerializeField] private bool stickToSurfacesWhenThrown = true;
@@ -50,10 +69,13 @@ namespace Neighbor.Main.Features.Interaction
         [Header("Audio")]
         [SerializeField] private AudioSource audioSource;
         [SerializeField] private AudioClip[] pullClips;
+        [SerializeField] private AudioClip[] attachClips;
+        [SerializeField] private AudioClip[] detachClips;
         [SerializeField, Range(0f, 1f)] private float pullVolume = 0.55f;
         [SerializeField, Min(0f)] private float pitchRandomness = 0.06f;
 
         private readonly Collider[] pullContactHits = new Collider[16];
+        private readonly RaycastHit[] pullSweepHits = new RaycastHit[16];
         private Pickupable pickupable;
         private Rigidbody ownBody;
         private Collider[] ownColliders;
@@ -62,7 +84,8 @@ namespace Neighbor.Main.Features.Interaction
         private Pickupable stuckTargetPickupable;
         private Transform stuckTransform;
         private Collider[] stuckTargetColliders;
-        private AudioClip generatedPullClip;
+        private AudioClip generatedAttachClip;
+        private AudioClip generatedDetachClip;
         private Vector3 visualRestLocalPosition;
         private Vector3 activePullLocalPoint;
         private Vector3 activePullLocalNormal;
@@ -70,11 +93,13 @@ namespace Neighbor.Main.Features.Interaction
         private Vector3 stuckLocalPosition;
         private Quaternion stuckLocalRotation;
         private RigidbodyConstraints unstuckConstraints;
-        private float activePullStartTime;
+        private PullState pullState;
+        private float activePullExtension;
         private float activePullEndTime;
         private float nextUseTime;
         private bool isStuck;
         private bool hasPreviousPullCupPoint;
+        private bool hasAttachedPullTarget;
         private bool areOwnCollidersSuppressed;
 
         private void Awake()
@@ -117,23 +142,29 @@ namespace Neighbor.Main.Features.Interaction
         {
             UpdateStuckPose();
 
-            if (activeBody == null)
+            if (pullState == PullState.Idle)
             {
                 return;
             }
 
-            if (Time.time >= activePullEndTime || activeBody.isKinematic)
+            if (Time.time >= activePullEndTime)
             {
-                ClearActivePull();
+                FinishPullCycle();
                 return;
             }
 
-            ApplyActivePull();
+            if (pullState == PullState.Extending)
+            {
+                UpdatePullExtension();
+                return;
+            }
+
+            UpdatePullRetraction();
         }
 
         public bool CanPrimaryUse(PlayerInteractor interactor)
         {
-            return pickupable != null && pickupable.IsHeld && Time.time >= nextUseTime;
+            return pickupable != null && pickupable.IsHeld && pullState == PullState.Idle && Time.time >= nextUseTime;
         }
 
         public void PrimaryUse(PlayerInteractor interactor)
@@ -144,30 +175,21 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             nextUseTime = Time.time + useCooldown;
-            if (!TryFindPullTarget(interactor, out Rigidbody targetBody, out PullSurfaceHit targetHit))
-            {
-                return;
-            }
-
-            activeBody = targetBody;
-            activePullLocalPoint = activeBody.transform.InverseTransformPoint(targetHit.Point);
-            activePullLocalNormal = activeBody.transform.InverseTransformDirection(targetHit.Normal).normalized;
-            activePullStartTime = Time.time;
+            activePullExtension = 0f;
             activePullEndTime = Time.time + pullDuration;
-            previousPullCupPoint = GetCupContactPoint();
-            hasPreviousPullCupPoint = true;
-            PlayPullSound();
+            pullState = PullState.Extending;
+            ResetPullAttachment();
         }
 
         public void OnPickupStarted(Pickupable pickupable, PlayerInteractor interactor)
         {
+            ClearActivePull();
             Unstick();
-            ResetPullMotion();
         }
 
         public void OnPickupPlaced(Pickupable pickupable)
         {
-            ResetPullMotion();
+            ClearActivePull();
         }
 
         public bool TryGetInteractionTooltip(
@@ -189,81 +211,85 @@ namespace Neighbor.Main.Features.Interaction
             return true;
         }
 
-        private bool TryFindPullTarget(PlayerInteractor interactor, out Rigidbody targetBody, out PullSurfaceHit targetHit)
+        private bool TryFindPullSurface(float maxDistance, out PullSurfaceHit surfaceHit)
         {
-            targetBody = null;
-            targetHit = default;
-            Vector3 cupPoint = GetCupContactPoint();
+            surfaceHit = default;
+            Vector3 cupBasePoint = GetBaseCupContactPoint();
             Vector3 cupDirection = GetCupDirection();
             float contactRadius = Mathf.Max(pullProbeRadius, pullContactRadius);
-            int hitCount = Physics.OverlapSphereNonAlloc(
-                cupPoint,
+            float bestDistance = float.PositiveInfinity;
+
+            int overlapCount = Physics.OverlapSphereNonAlloc(
+                cupBasePoint,
                 contactRadius,
                 pullContactHits,
                 pullMask,
                 triggerInteraction);
 
-            float bestDistance = float.PositiveInfinity;
-            for (int i = 0; i < hitCount; i++)
+            for (int i = 0; i < overlapCount; i++)
             {
                 Collider hitCollider = pullContactHits[i];
-                if (hitCollider == null || hitCollider.transform.IsChildOf(transform))
+                if (ShouldIgnorePullCollider(hitCollider))
                 {
                     continue;
                 }
 
-                Rigidbody body = hitCollider.attachedRigidbody;
-                Pickupable targetPickupable = hitCollider.GetComponentInParent<Pickupable>();
-                if (targetPickupable != null)
+                Vector3 closestPoint = hitCollider.ClosestPoint(cupBasePoint);
+                Vector3 normal = cupBasePoint - closestPoint;
+                if (normal.sqrMagnitude <= 0.0001f)
                 {
-                    body = targetPickupable.GetComponent<Rigidbody>();
+                    normal = -cupDirection;
+                }
+                else
+                {
+                    normal.Normalize();
                 }
 
-                if (!CanPull(body, targetPickupable, hitCollider)
-                    || !TryGetCupSurfaceHit(hitCollider, cupPoint, cupDirection, contactRadius, out PullSurfaceHit hit)
-                    || hit.Distance >= bestDistance)
-                {
-                    continue;
-                }
-
-                targetBody = body;
-                targetHit = hit;
-                bestDistance = hit.Distance;
+                surfaceHit = CreatePullSurfaceHit(hitCollider, closestPoint, normal, 0f);
+                return true;
             }
 
-            return targetBody != null;
+            int sweepCount = Physics.SphereCastNonAlloc(
+                cupBasePoint,
+                contactRadius,
+                cupDirection,
+                pullSweepHits,
+                maxDistance,
+                pullMask,
+                triggerInteraction);
+
+            for (int i = 0; i < sweepCount; i++)
+            {
+                RaycastHit hit = pullSweepHits[i];
+                if (ShouldIgnorePullCollider(hit.collider) || hit.distance >= bestDistance)
+                {
+                    continue;
+                }
+
+                bestDistance = hit.distance;
+                surfaceHit = CreatePullSurfaceHit(hit.collider, hit.point, hit.normal, hit.distance);
+            }
+
+            return bestDistance < float.PositiveInfinity;
         }
 
-        private bool TryGetCupSurfaceHit(
-            Collider targetCollider,
-            Vector3 cupPoint,
-            Vector3 cupDirection,
-            float contactRadius,
-            out PullSurfaceHit hit)
+        private PullSurfaceHit CreatePullSurfaceHit(Collider hitCollider, Vector3 point, Vector3 normal, float distance)
         {
-            hit = default;
-            Vector3 rayOrigin = cupPoint - cupDirection * contactRadius;
-            if (targetCollider.Raycast(new Ray(rayOrigin, cupDirection), out RaycastHit rayHit, contactRadius * 2f))
+            Rigidbody body = hitCollider.attachedRigidbody;
+            Pickupable targetPickupable = hitCollider.GetComponentInParent<Pickupable>();
+            if (targetPickupable != null)
             {
-                hit = new PullSurfaceHit(rayHit.point, rayHit.normal, rayHit.distance);
-                return Vector3.Dot(cupDirection, -hit.Normal) >= 0.25f;
+                body = targetPickupable.GetComponent<Rigidbody>();
             }
 
-            Vector3 closestPoint = targetCollider.ClosestPoint(cupPoint);
-            Vector3 toCup = cupPoint - closestPoint;
-            if (toCup.sqrMagnitude > contactRadius * contactRadius)
-            {
-                return false;
-            }
+            return new PullSurfaceHit(body, targetPickupable, hitCollider, point, normal.normalized, distance);
+        }
 
-            Vector3 normal = toCup.sqrMagnitude > 0.0001f ? toCup.normalized : -cupDirection;
-            if (Vector3.Dot(cupDirection, -normal) < 0.25f)
-            {
-                return false;
-            }
-
-            hit = new PullSurfaceHit(closestPoint, normal, toCup.magnitude);
-            return true;
+        private bool ShouldIgnorePullCollider(Collider hitCollider)
+        {
+            return hitCollider == null
+                || hitCollider.transform.IsChildOf(transform)
+                || hitCollider.GetComponentInParent<PlayerInteractor>() != null;
         }
 
         private bool CanPull(Rigidbody body, Pickupable targetPickupable, Collider hitCollider)
@@ -288,12 +314,69 @@ namespace Neighbor.Main.Features.Interaction
             return true;
         }
 
+        private void UpdatePullExtension()
+        {
+            float nextExtension = Mathf.MoveTowards(activePullExtension, pullRange, pullExtendSpeed * Time.fixedDeltaTime);
+            if (TryFindPullSurface(nextExtension, out PullSurfaceHit surfaceHit))
+            {
+                activePullExtension = Mathf.Clamp(surfaceHit.Distance - pullSurfaceClearance, 0f, pullRange);
+                if (CanPull(surfaceHit.Body, surfaceHit.TargetPickupable, surfaceHit.Collider))
+                {
+                    AttachPullTarget(surfaceHit);
+                }
+
+                BeginPullRetraction();
+                return;
+            }
+
+            activePullExtension = nextExtension;
+            if (Mathf.Approximately(activePullExtension, pullRange))
+            {
+                BeginPullRetraction();
+            }
+        }
+
+        private void AttachPullTarget(PullSurfaceHit surfaceHit)
+        {
+            activeBody = surfaceHit.Body;
+            activePullLocalPoint = activeBody.transform.InverseTransformPoint(surfaceHit.Point);
+            activePullLocalNormal = activeBody.transform.InverseTransformDirection(surfaceHit.Normal).normalized;
+            previousPullCupPoint = GetCupContactPoint();
+            hasPreviousPullCupPoint = true;
+            hasAttachedPullTarget = true;
+            PlayAttachSound();
+        }
+
+        private void BeginPullRetraction()
+        {
+            pullState = PullState.Retracting;
+        }
+
+        private void UpdatePullRetraction()
+        {
+            if (activeBody != null && !activeBody.isKinematic)
+            {
+                ApplyActivePull();
+            }
+
+            activePullExtension = Mathf.MoveTowards(activePullExtension, 0f, pullRetractSpeed * Time.fixedDeltaTime);
+            if (activePullExtension <= 0.0001f)
+            {
+                FinishPullCycle();
+            }
+        }
+
         private void ApplyActivePull()
         {
+            if (activeBody == null)
+            {
+                return;
+            }
+
             Vector3 surfacePoint = activeBody.transform.TransformPoint(activePullLocalPoint);
             Vector3 surfaceNormal = activeBody.transform.TransformDirection(activePullLocalNormal).normalized;
-            Vector3 cupPoint = GetActivePullCupPoint();
-            Vector3 desiredSurfacePoint = cupPoint - surfaceNormal * stickSurfaceOffset;
+            Vector3 cupPoint = GetCupContactPoint();
+            Vector3 desiredSurfacePoint = cupPoint - surfaceNormal * Mathf.Max(stickSurfaceOffset, pullSurfaceClearance);
             Vector3 anchorError = desiredSurfacePoint - surfacePoint;
             if (anchorError.sqrMagnitude <= 0.0001f)
             {
@@ -324,29 +407,52 @@ namespace Neighbor.Main.Features.Interaction
 
         private Vector3 GetCupContactPoint()
         {
-            return stickContactPoint != null
-                ? stickContactPoint.position
-                : transform.TransformPoint(localStickContactPoint);
+            if (stickContactPoint != null)
+            {
+                return stickContactPoint.position + GetCupDirection() * activePullExtension;
+            }
+
+            return GetBaseCupContactPoint() + GetCupDirection() * activePullExtension;
         }
 
-        private Vector3 GetActivePullCupPoint()
+        private Vector3 GetBaseCupContactPoint()
         {
-            float pull01 = Mathf.InverseLerp(activePullStartTime, activePullEndTime, Time.time);
-            float stroke = Mathf.SmoothStep(0f, pullStrokeDistance, pull01);
-            return GetCupContactPoint() - GetCupDirection() * stroke;
+            return transform.TransformPoint(localStickContactPoint);
         }
 
         private Vector3 GetCupDirection()
         {
-            Vector3 localDirection = localCupDirection.sqrMagnitude > 0.0001f ? localCupDirection.normalized : Vector3.forward;
-            return transform.TransformDirection(localDirection);
+            return transform.TransformDirection(GetLocalCupDirection());
+        }
+
+        private Vector3 GetLocalCupDirection()
+        {
+            return localCupDirection.sqrMagnitude > 0.0001f ? localCupDirection.normalized : Vector3.forward;
         }
 
         private void ClearActivePull()
         {
+            ResetPullAttachment();
+            activePullExtension = 0f;
+            pullState = PullState.Idle;
+            ResetPullMotion();
+        }
+
+        private void FinishPullCycle()
+        {
+            if (hasAttachedPullTarget)
+            {
+                PlayDetachSound();
+            }
+
+            ClearActivePull();
+        }
+
+        private void ResetPullAttachment()
+        {
             activeBody = null;
             hasPreviousPullCupPoint = false;
-            ResetPullMotion();
+            hasAttachedPullTarget = false;
         }
 
         private void UpdatePullMotion()
@@ -356,15 +462,13 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            if (activeBody == null || pickupable == null || !pickupable.IsHeld)
+            if (pullState == PullState.Idle || pickupable == null || !pickupable.IsHeld)
             {
                 ResetPullMotion();
                 return;
             }
 
-            float pullTime01 = Mathf.InverseLerp(activePullEndTime - pullDuration, activePullEndTime, Time.time);
-            float pulse = Mathf.Sin(pullTime01 * pullMotionFrequency * Mathf.PI);
-            visualRoot.localPosition = visualRestLocalPosition + pullMotionLocalOffset * Mathf.Clamp01(Mathf.Abs(pulse));
+            visualRoot.localPosition = visualRestLocalPosition + GetLocalCupDirection() * activePullExtension;
         }
 
         private void ResetPullMotion()
@@ -554,15 +658,19 @@ namespace Neighbor.Main.Features.Interaction
             areOwnCollidersSuppressed = false;
         }
 
-        private void PlayPullSound()
+        private void PlayAttachSound()
         {
-            if (audioSource == null)
-            {
-                return;
-            }
+            PlayPlungerSound(GetAttachClip());
+        }
 
-            AudioClip clip = GetPullClip();
-            if (clip == null)
+        private void PlayDetachSound()
+        {
+            PlayPlungerSound(GetDetachClip());
+        }
+
+        private void PlayPlungerSound(AudioClip clip)
+        {
+            if (audioSource == null || clip == null)
             {
                 return;
             }
@@ -571,25 +679,53 @@ namespace Neighbor.Main.Features.Interaction
             audioSource.PlayOneShot(clip, pullVolume);
         }
 
-        private AudioClip GetPullClip()
+        private AudioClip GetAttachClip()
         {
-            if (pullClips != null && pullClips.Length > 0)
+            AudioClip clip = GetRandomClip(attachClips);
+            if (clip != null)
             {
-                return pullClips[Random.Range(0, pullClips.Length)];
+                return clip;
             }
 
-            if (generatedPullClip == null)
+            clip = GetRandomClip(pullClips);
+            if (clip != null)
             {
-                generatedPullClip = CreateGeneratedPullClip();
+                return clip;
             }
 
-            return generatedPullClip;
+            if (generatedAttachClip == null)
+            {
+                generatedAttachClip = CreateGeneratedPullClip(true);
+            }
+
+            return generatedAttachClip;
         }
 
-        private AudioClip CreateGeneratedPullClip()
+        private AudioClip GetDetachClip()
+        {
+            AudioClip clip = GetRandomClip(detachClips);
+            if (clip != null)
+            {
+                return clip;
+            }
+
+            if (generatedDetachClip == null)
+            {
+                generatedDetachClip = CreateGeneratedPullClip(false);
+            }
+
+            return generatedDetachClip;
+        }
+
+        private static AudioClip GetRandomClip(AudioClip[] clips)
+        {
+            return clips != null && clips.Length > 0 ? clips[Random.Range(0, clips.Length)] : null;
+        }
+
+        private AudioClip CreateGeneratedPullClip(bool attach)
         {
             const int sampleRate = 22050;
-            const float duration = 0.22f;
+            float duration = attach ? 0.18f : 0.16f;
             int sampleCount = Mathf.RoundToInt(sampleRate * duration);
             float[] samples = new float[sampleCount];
 
@@ -597,12 +733,15 @@ namespace Neighbor.Main.Features.Interaction
             {
                 float time = i / (float)sampleRate;
                 float envelope = Mathf.Clamp01(1f - time / duration);
-                float pop = Mathf.Sin(2f * Mathf.PI * 130f * time) * 0.28f;
-                float suction = Mathf.Sin(2f * Mathf.PI * 52f * time) * 0.16f;
+                float popFrequency = attach ? 95f : 180f;
+                float suctionFrequency = attach ? 42f : 72f;
+                float pop = Mathf.Sin(2f * Mathf.PI * popFrequency * time) * (attach ? 0.18f : 0.32f);
+                float suction = Mathf.Sin(2f * Mathf.PI * suctionFrequency * time) * (attach ? 0.24f : 0.1f);
                 samples[i] = (pop + suction) * envelope;
             }
 
-            AudioClip clip = AudioClip.Create($"{name}_GeneratedPlungerPull", sampleCount, 1, sampleRate, false);
+            string clipName = attach ? $"{name}_GeneratedPlungerAttach" : $"{name}_GeneratedPlungerDetach";
+            AudioClip clip = AudioClip.Create(clipName, sampleCount, 1, sampleRate, false);
             clip.SetData(samples, 0);
             return clip;
         }
@@ -638,8 +777,9 @@ namespace Neighbor.Main.Features.Interaction
             maximumPullAcceleration = Mathf.Max(0f, maximumPullAcceleration);
             pullDuration = Mathf.Max(0.01f, pullDuration);
             pullContactRadius = Mathf.Max(0f, pullContactRadius);
-            pullStrokeDistance = Mathf.Max(0f, pullStrokeDistance);
-            pullMotionFrequency = Mathf.Max(0f, pullMotionFrequency);
+            pullExtendSpeed = Mathf.Max(0.01f, pullExtendSpeed);
+            pullRetractSpeed = Mathf.Max(0.01f, pullRetractSpeed);
+            pullSurfaceClearance = Mathf.Max(0f, pullSurfaceClearance);
             minimumStickSpeed = Mathf.Max(0f, minimumStickSpeed);
             stickSurfaceOffset = Mathf.Max(0f, stickSurfaceOffset);
         }
