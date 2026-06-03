@@ -5,9 +5,22 @@ namespace Neighbor.Main.Features.Interaction
 {
     public sealed class InteractionTooltipView : MonoBehaviour
     {
+        private const float MinPanelWidth = 188f;
+        private const float MaxPanelWidth = 360f;
+        private const float PanelHeight = 38f;
+        private const float PanelBottomOffset = 86f;
+        private const float HorizontalPadding = 12f;
+        private const float Gap = 10f;
+        private const float KeyHorizontalPadding = 12f;
+        private const float KeyHeight = 26f;
+        private const float ActionRightPadding = 12f;
+
         [SerializeField] private Text keyText;
         [SerializeField] private Text actionText;
         [SerializeField] private CanvasGroup canvasGroup;
+
+        private RectTransform panelRectTransform;
+        private RectTransform keyBackgroundRectTransform;
 
         public void Show(string key, string action)
         {
@@ -26,6 +39,7 @@ namespace Neighbor.Main.Features.Interaction
 
             keyText.text = key;
             actionText.text = action;
+            UpdateLayout();
             canvasGroup.alpha = 1f;
             canvasGroup.interactable = false;
             canvasGroup.blocksRaycasts = false;
@@ -66,11 +80,6 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            if (canvasGroup != null && keyText != null && actionText != null)
-            {
-                return;
-            }
-
             Canvas canvas = GetComponent<Canvas>();
             if (canvas == null)
             {
@@ -103,11 +112,12 @@ namespace Neighbor.Main.Features.Interaction
 
             Font font = GetDefaultFont();
             RectTransform panel = EnsurePanel();
-            keyText = EnsureText("KeyText", panel, font, TextAnchor.MiddleCenter, 22, FontStyle.Bold);
-            actionText = EnsureText("ActionText", panel, font, TextAnchor.MiddleLeft, 24, FontStyle.Normal);
+            keyText = EnsureText("KeyText", panel, font, TextAnchor.MiddleCenter, 16, FontStyle.Bold);
+            actionText = EnsureText("ActionText", panel, font, TextAnchor.MiddleLeft, 18, FontStyle.Normal);
 
-            SetRect(keyText.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(20f, 0f), new Vector2(118f, 44f));
-            SetRect(actionText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(152f, 0f), new Vector2(-24f, 0f));
+            SetRect(keyText.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(HorizontalPadding, 0f), new Vector2(84f, KeyHeight));
+            SetRect(actionText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(HorizontalPadding + 94f, 0f), new Vector2(-ActionRightPadding, 0f));
+            UpdateLayout();
         }
 
         private RectTransform EnsurePanel()
@@ -127,7 +137,8 @@ namespace Neighbor.Main.Features.Interaction
                 rectTransform = (RectTransform)panelObject.transform;
             }
 
-            SetRect(rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 120f), new Vector2(520f, 74f));
+            SetRect(rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, PanelBottomOffset), new Vector2(MinPanelWidth, PanelHeight));
+            panelRectTransform = rectTransform;
 
             Image panelImage = panelObject.GetComponent<Image>();
             if (panelImage == null)
@@ -135,7 +146,7 @@ namespace Neighbor.Main.Features.Interaction
                 panelImage = panelObject.AddComponent<Image>();
             }
 
-            panelImage.color = new Color(0.04f, 0.04f, 0.04f, 0.72f);
+            panelImage.color = new Color(0.02f, 0.02f, 0.02f, 0.36f);
 
             GameObject keyBackground = rectTransform.Find("KeyBackground")?.gameObject;
             if (keyBackground == null)
@@ -153,12 +164,37 @@ namespace Neighbor.Main.Features.Interaction
                 keyBackgroundRect = (RectTransform)keyBackground.transform;
             }
 
-            SetRect(keyBackgroundRect, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(20f, 0f), new Vector2(118f, 44f));
+            SetRect(keyBackgroundRect, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(HorizontalPadding, 0f), new Vector2(84f, KeyHeight));
+            keyBackgroundRectTransform = keyBackgroundRect;
 
             Image keyBackgroundImage = keyBackground.GetComponent<Image>() ?? keyBackground.AddComponent<Image>();
-            keyBackgroundImage.color = new Color(1f, 1f, 1f, 0.18f);
+            keyBackgroundImage.color = new Color(1f, 1f, 1f, 0.14f);
 
             return rectTransform;
+        }
+
+        private void UpdateLayout()
+        {
+            if (panelRectTransform == null || keyBackgroundRectTransform == null || keyText == null || actionText == null)
+            {
+                return;
+            }
+
+            float keyWidth = Mathf.Clamp(keyText.preferredWidth + KeyHorizontalPadding * 2f, 56f, 132f);
+            float actionWidth = Mathf.Clamp(actionText.preferredWidth, 64f, MaxPanelWidth - keyWidth - HorizontalPadding * 2f - Gap - ActionRightPadding);
+            float panelWidth = Mathf.Clamp(HorizontalPadding + keyWidth + Gap + actionWidth + ActionRightPadding, MinPanelWidth, MaxPanelWidth);
+
+            panelRectTransform.sizeDelta = new Vector2(panelWidth, PanelHeight);
+            keyBackgroundRectTransform.sizeDelta = new Vector2(keyWidth, KeyHeight);
+            keyBackgroundRectTransform.anchoredPosition = new Vector2(HorizontalPadding + keyWidth * 0.5f, 0f);
+            keyText.rectTransform.sizeDelta = new Vector2(keyWidth, KeyHeight);
+            keyText.rectTransform.anchoredPosition = new Vector2(HorizontalPadding + keyWidth * 0.5f, 0f);
+
+            float actionLeft = HorizontalPadding + keyWidth + Gap;
+            actionText.rectTransform.anchorMin = new Vector2(0f, 0f);
+            actionText.rectTransform.anchorMax = new Vector2(1f, 1f);
+            actionText.rectTransform.offsetMin = new Vector2(actionLeft, 0f);
+            actionText.rectTransform.offsetMax = new Vector2(-ActionRightPadding, 0f);
         }
 
         private static Text EnsureText(string objectName, Transform parent, Font font, TextAnchor alignment, int fontSize, FontStyle fontStyle)
@@ -181,7 +217,7 @@ namespace Neighbor.Main.Features.Interaction
             text.fontStyle = fontStyle;
             text.color = Color.white;
             text.raycastTarget = false;
-            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
             text.verticalOverflow = VerticalWrapMode.Truncate;
             return text;
         }
