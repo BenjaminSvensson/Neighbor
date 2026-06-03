@@ -39,14 +39,13 @@ namespace Neighbor.Main.Features.Neighbor
             TryHear(other);
         }
 
-        private void TryHear(Collider other)
+        public void TryHear(NoiseEvent noiseEvent)
         {
             if (Time.time - lastHeardTime < hearingCooldown)
             {
                 return;
             }
 
-            NoiseEvent noiseEvent = other.GetComponent<NoiseEvent>() ?? other.GetComponentInParent<NoiseEvent>();
             if (noiseEvent == null || noiseEvent.Loudness01 < minimumLoudness)
             {
                 return;
@@ -58,6 +57,12 @@ namespace Neighbor.Main.Features.Neighbor
                 noiseEvent.Loudness01,
                 noiseEvent.Radius,
                 noiseEvent.SourceObject));
+        }
+
+        private void TryHear(Collider other)
+        {
+            NoiseEvent noiseEvent = other.GetComponent<NoiseEvent>() ?? other.GetComponentInParent<NoiseEvent>();
+            TryHear(noiseEvent);
         }
     }
 }

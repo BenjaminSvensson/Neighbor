@@ -1,3 +1,4 @@
+using Neighbor.Main.Features.Neighbor;
 using UnityEngine;
 
 namespace Neighbor.Main.Features.Interaction
@@ -42,6 +43,27 @@ namespace Neighbor.Main.Features.Interaction
 
             noiseTrigger.isTrigger = true;
             noiseTrigger.radius = radius;
+
+            NotifyListenersInRange();
+        }
+
+        private void NotifyListenersInRange()
+        {
+            float radiusSqr = Radius * Radius;
+            NeighborHearing[] listeners = FindObjectsByType<NeighborHearing>(FindObjectsInactive.Exclude);
+
+            foreach (NeighborHearing listener in listeners)
+            {
+                if (listener == null)
+                {
+                    continue;
+                }
+
+                if ((listener.transform.position - Origin).sqrMagnitude <= radiusSqr)
+                {
+                    listener.TryHear(this);
+                }
+            }
         }
     }
 }
