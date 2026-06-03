@@ -158,6 +158,9 @@ MonoBehaviour:
   shutterCooldown: 0.45
   photoEjectDistance: 0.65
   photoEjectImpulse: 1.4
+  captureMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
   flashLight: {fileID: 0}
   flashDuration: 0.08
   flashIntensity: 9

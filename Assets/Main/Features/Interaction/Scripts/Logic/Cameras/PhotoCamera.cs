@@ -12,6 +12,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float shutterCooldown = 0.45f;
         [SerializeField, Min(0.05f)] private float photoEjectDistance = 0.65f;
         [SerializeField, Min(0f)] private float photoEjectImpulse = 1.4f;
+        [SerializeField] private LayerMask captureMask = ~0;
 
         [Header("Flash")]
         [SerializeField] private Light flashLight;
@@ -75,7 +76,6 @@ namespace Neighbor.Main.Features.Interaction
 
             nextShutterTime = Time.time + shutterCooldown;
             PlayShutterSound();
-            TriggerFlash();
 
             if (captureRoutine != null)
             {
@@ -89,14 +89,100 @@ namespace Neighbor.Main.Features.Interaction
         {
             yield return new WaitForEndOfFrame();
 
-            Texture2D capturedTexture = CaptureFrameBuffer();
+            Texture2D capturedTexture = CapturePlayerView(interactor);
             captureRoutine = null;
+            TriggerFlash();
 
             if (capturedTexture != null)
             {
                 capturedTexture.name = $"{name}_CapturedPhoto";
                 SpawnPhoto(interactor, capturedTexture);
             }
+        }
+
+        private Texture2D CapturePlayerView(PlayerInteractor interactor)
+        {
+            Camera sourceCamera = ResolveCaptureCamera(interactor);
+            if (sourceCamera == null)
+            {
+                return CaptureFrameBuffer();
+            }
+
+            RenderTexture previousActive = RenderTexture.active;
+            RenderTexture renderTexture = RenderTexture.GetTemporary(captureWidth, captureHeight, 24, RenderTextureFormat.ARGB32);
+            GameObject captureObject = new GameObject($"{name}_PhotoCaptureCamera");
+            captureObject.hideFlags = HideFlags.HideAndDontSave;
+
+            Camera captureCamera = captureObject.AddComponent<Camera>();
+            captureCamera.CopyFrom(sourceCamera);
+            captureCamera.enabled = false;
+            captureCamera.cullingMask = captureMask;
+            captureCamera.targetTexture = renderTexture;
+            captureCamera.transform.SetPositionAndRotation(sourceCamera.transform.position, sourceCamera.transform.rotation);
+
+            bool restoreFlashEnabled = false;
+            if (flashLight != null)
+            {
+                restoreFlashEnabled = flashLight.enabled;
+                flashLight.enabled = false;
+            }
+
+            captureCamera.Render();
+            RenderTexture.active = renderTexture;
+
+            Texture2D capturedTexture = new Texture2D(captureWidth, captureHeight, TextureFormat.RGBA32, false);
+            capturedTexture.ReadPixels(new Rect(0f, 0f, captureWidth, captureHeight), 0, 0);
+            capturedTexture.Apply(false, false);
+
+            if (flashLight != null)
+            {
+                flashLight.enabled = restoreFlashEnabled;
+            }
+
+            RenderTexture.active = previousActive;
+            RenderTexture.ReleaseTemporary(renderTexture);
+            Destroy(captureObject);
+            return capturedTexture;
+        }
+
+        private static Camera ResolveCaptureCamera(PlayerInteractor interactor)
+        {
+            Camera interactorCamera = interactor != null && interactor.ViewTransform != null
+                ? interactor.ViewTransform.GetComponent<Camera>()
+                : null;
+            if (IsUsableCaptureCamera(interactorCamera))
+            {
+                return interactorCamera;
+            }
+
+            if (IsUsableCaptureCamera(Camera.main))
+            {
+                return Camera.main;
+            }
+
+            Camera[] cameras = FindObjectsByType<Camera>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            Camera bestCamera = null;
+            float bestDepth = float.NegativeInfinity;
+            for (int i = 0; i < cameras.Length; i++)
+            {
+                Camera candidate = cameras[i];
+                if (!IsUsableCaptureCamera(candidate) || candidate.depth < bestDepth)
+                {
+                    continue;
+                }
+
+                bestCamera = candidate;
+                bestDepth = candidate.depth;
+            }
+
+            return bestCamera;
+        }
+
+        private static bool IsUsableCaptureCamera(Camera candidate)
+        {
+            return candidate != null
+                && candidate.isActiveAndEnabled
+                && candidate.cameraType == CameraType.Game;
         }
 
         private Texture2D CaptureFrameBuffer()
@@ -203,7 +289,7 @@ namespace Neighbor.Main.Features.Interaction
                     new Vector2(0f, 1f),
                     new Vector2(1f, 1f)
                 },
-                triangles = new[] { 0, 2, 1, 2, 3, 1 }
+                triangles = new[] { 0, 1, 2, 2, 1, 3 }
             };
 
             mesh.RecalculateBounds();
