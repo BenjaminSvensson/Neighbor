@@ -41,10 +41,15 @@ namespace Neighbor.Main.Features.Interaction
         private readonly RaycastHit[] hits = new RaycastHit[16];
         private Pickupable pickupable;
         private Rigidbody ownBody;
+        private Collider[] ownColliders;
         private Rigidbody activeBody;
         private Transform activeViewTransform;
+        private Transform stuckTransform;
+        private Collider[] stuckTargetColliders;
         private AudioClip generatedPullClip;
         private Vector3 visualRestLocalPosition;
+        private Vector3 stuckLocalPosition;
+        private Quaternion stuckLocalRotation;
         private RigidbodyConstraints unstuckConstraints;
         private float activePullEndTime;
         private float activeSnapTime;
@@ -56,6 +61,7 @@ namespace Neighbor.Main.Features.Interaction
         {
             pickupable = GetComponent<Pickupable>();
             ownBody = GetComponent<Rigidbody>();
+            ownColliders = GetComponentsInChildren<Collider>();
             if (visualRoot == null && transform.childCount > 0)
             {
                 visualRoot = transform.GetChild(0);
@@ -74,8 +80,15 @@ namespace Neighbor.Main.Features.Interaction
             UpdatePullMotion();
         }
 
+        private void LateUpdate()
+        {
+            UpdateStuckPose();
+        }
+
         private void FixedUpdate()
         {
+            UpdateStuckPose();
+
             if (activeBody == null)
             {
                 return;
@@ -200,7 +213,7 @@ namespace Neighbor.Main.Features.Interaction
 
         private bool CanPull(Rigidbody body, Pickupable targetPickupable, Collider hitCollider)
         {
-            if (body == null || body.isKinematic || body == GetComponent<Rigidbody>())
+            if (body == null || body.isKinematic || body == ownBody)
             {
                 return false;
             }
@@ -211,12 +224,13 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             PlungerPullTarget pullTarget = hitCollider.GetComponentInParent<PlungerPullTarget>();
-            if (pullTarget != null && pullTarget.AllowPull)
+            if (pullTarget != null)
             {
-                return pullTarget.AllowHeavyPull || body.mass <= Mathf.Max(maximumPullMass, pullTarget.MaximumPullMass);
+                return pullTarget.AllowPull
+                    && (pullTarget.AllowHeavyPull || body.mass <= Mathf.Max(maximumPullMass, pullTarget.MaximumPullMass));
             }
 
-            return targetPickupable != null && body.mass <= maximumPullMass;
+            return true;
         }
 
         private Vector3 GetPullTargetPosition()
@@ -302,6 +316,15 @@ namespace Neighbor.Main.Features.Interaction
             unstuckConstraints = ownBody.constraints;
             ownBody.constraints = RigidbodyConstraints.FreezeAll;
             isStuck = true;
+
+            Rigidbody targetBody = targetCollider.attachedRigidbody;
+            stuckTransform = targetBody != null ? targetBody.transform : targetCollider.transform;
+            if (stuckTransform != null && targetBody != ownBody)
+            {
+                stuckLocalPosition = stuckTransform.InverseTransformPoint(transform.position);
+                stuckLocalRotation = Quaternion.Inverse(stuckTransform.rotation) * transform.rotation;
+                CacheAndIgnoreStuckTargetCollisions(stuckTransform);
+            }
         }
 
         private void Unstick()
@@ -314,7 +337,61 @@ namespace Neighbor.Main.Features.Interaction
             ownBody.constraints = unstuckConstraints;
             ownBody.isKinematic = false;
             ownBody.useGravity = true;
+            SetStuckTargetCollisionIgnored(false);
+            stuckTargetColliders = null;
+            stuckTransform = null;
             isStuck = false;
+        }
+
+        private void UpdateStuckPose()
+        {
+            if (!isStuck)
+            {
+                return;
+            }
+
+            if (stuckTransform == null)
+            {
+                Unstick();
+                return;
+            }
+
+            transform.SetPositionAndRotation(
+                stuckTransform.TransformPoint(stuckLocalPosition),
+                stuckTransform.rotation * stuckLocalRotation);
+        }
+
+        private void CacheAndIgnoreStuckTargetCollisions(Transform targetRoot)
+        {
+            SetStuckTargetCollisionIgnored(false);
+            stuckTargetColliders = targetRoot.GetComponentsInChildren<Collider>();
+            SetStuckTargetCollisionIgnored(true);
+        }
+
+        private void SetStuckTargetCollisionIgnored(bool ignore)
+        {
+            if (ownColliders == null || stuckTargetColliders == null)
+            {
+                return;
+            }
+
+            foreach (Collider ownCollider in ownColliders)
+            {
+                if (ownCollider == null)
+                {
+                    continue;
+                }
+
+                foreach (Collider targetCollider in stuckTargetColliders)
+                {
+                    if (targetCollider == null || targetCollider == ownCollider)
+                    {
+                        continue;
+                    }
+
+                    Physics.IgnoreCollision(ownCollider, targetCollider, ignore);
+                }
+            }
         }
 
         private void PlayPullSound()
