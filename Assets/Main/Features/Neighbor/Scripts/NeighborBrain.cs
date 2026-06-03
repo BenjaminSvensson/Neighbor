@@ -32,6 +32,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         [Header("Investigation")]
         [SerializeField, Min(0f)] private float minimumInvestigateLoudness = 0.08f;
+        [SerializeField, Min(0f)] private float noiseDestinationSampleRadius = 4f;
         [SerializeField, Min(0f)] private float investigationWaitTime = 2.2f;
         [SerializeField, Min(0f)] private float searchDuration = 4f;
 
@@ -55,7 +56,7 @@ namespace Neighbor.Main.Features.Neighbor
         private Vector3 lastKnownPlayerPosition;
         private float waitUntilTime;
         private float goalWaitDuration;
-        private float lastPlayerSeenTime;
+        private float lastPlayerSeenTime = float.NegativeInfinity;
         private float nextChaseRepathTime;
         private float nextClimbLinkSearchTime;
         private float stunnedUntilTime;
@@ -438,12 +439,12 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            currentGoal = stimulus.Position;
             goalWaitDuration = investigationWaitTime;
             waitingAtGoal = false;
             motor?.SetMoveMode(NeighborMotor.MoveMode.Run);
-            if (motor != null && motor.SetDestination(currentGoal))
+            if (motor != null && motor.TrySetDestinationNear(stimulus.Position, noiseDestinationSampleRadius, out Vector3 investigatePosition))
             {
+                currentGoal = investigatePosition;
                 SetState(BehaviorState.Investigate);
             }
         }

@@ -118,23 +118,37 @@ namespace Neighbor.Main.Features.Neighbor
 
         public bool SetDestination(Vector3 destination)
         {
+            return TrySetDestination(destination, destinationSampleRadius, out _);
+        }
+
+        public bool TrySetDestinationNear(Vector3 destination, float sampleRadius, out Vector3 sampledDestination)
+        {
+            return TrySetDestination(destination, Mathf.Max(destinationSampleRadius, sampleRadius), out sampledDestination);
+        }
+
+        private bool TrySetDestination(Vector3 destination, float sampleRadius, out Vector3 sampledDestination)
+        {
             if (IsOffMeshChasing)
             {
+                sampledDestination = destination;
                 return false;
             }
 
             if (agent == null || !agent.enabled || !agent.isOnNavMesh)
             {
+                sampledDestination = destination;
                 return false;
             }
 
-            if (!NavMesh.SamplePosition(destination, out NavMeshHit hit, destinationSampleRadius, agent.areaMask))
+            if (!NavMesh.SamplePosition(destination, out NavMeshHit hit, Mathf.Max(0f, sampleRadius), agent.areaMask))
             {
+                sampledDestination = destination;
                 return false;
             }
 
             requestedDestination = hit.position;
             hasRequestedDestination = true;
+            sampledDestination = hit.position;
             return agent.SetDestination(hit.position);
         }
 
