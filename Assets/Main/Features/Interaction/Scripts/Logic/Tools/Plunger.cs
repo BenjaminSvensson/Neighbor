@@ -28,6 +28,8 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float minimumStickSpeed = 2.2f;
         [SerializeField, Min(0f)] private float stickSurfaceOffset = 0.035f;
         [SerializeField] private Vector3 localCupDirection = Vector3.forward;
+        [SerializeField] private Transform stickContactPoint;
+        [SerializeField] private Vector3 localStickContactPoint = new(0f, 0f, 0.64f);
         [SerializeField] private LayerMask stickMask = ~0;
 
         [Header("Audio")]
@@ -269,17 +271,18 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            if (((1 << collision.gameObject.layer) & stickMask.value) == 0 || collision.rigidbody != null)
-            {
-                return;
-            }
-
             if (collision.relativeVelocity.magnitude < minimumStickSpeed || collision.contactCount == 0)
             {
                 return;
             }
 
             ContactPoint contact = collision.GetContact(0);
+            Collider targetCollider = contact.otherCollider != null ? contact.otherCollider : collision.collider;
+            if (targetCollider == null || targetCollider.transform.IsChildOf(transform) || ((1 << targetCollider.gameObject.layer) & stickMask.value) == 0)
+            {
+                return;
+            }
+
             Vector3 cupDirection = transform.TransformDirection(localCupDirection.sqrMagnitude > 0.0001f ? localCupDirection.normalized : Vector3.forward);
             if (Vector3.Dot(cupDirection, -contact.normal) < 0.35f)
             {
@@ -287,7 +290,10 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             Quaternion stuckRotation = Quaternion.FromToRotation(cupDirection, -contact.normal) * transform.rotation;
-            Vector3 stuckPosition = contact.point + contact.normal * stickSurfaceOffset;
+            Vector3 localContactPoint = stickContactPoint != null
+                ? transform.InverseTransformPoint(stickContactPoint.position)
+                : localStickContactPoint;
+            Vector3 stuckPosition = contact.point + contact.normal * stickSurfaceOffset - stuckRotation * localContactPoint;
             transform.SetPositionAndRotation(stuckPosition, stuckRotation);
             ownBody.linearVelocity = Vector3.zero;
             ownBody.angularVelocity = Vector3.zero;

@@ -498,6 +498,8 @@ MonoBehaviour:
   minimumStickSpeed: 2.2
   stickSurfaceOffset: 0.035
   localCupDirection: {x: 0, y: 0, z: 1}
+  stickContactPoint: {fileID: 0}
+  localStickContactPoint: {x: 0, y: 0, z: 0.64}
   stickMask:
     serializedVersion: 2
     m_Bits: 4294967295
