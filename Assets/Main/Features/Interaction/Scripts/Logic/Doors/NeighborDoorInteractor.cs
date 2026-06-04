@@ -18,8 +18,8 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float lockedDoorAbortDistance = 2.2f;
         [SerializeField, Min(0f)] private float kickTurnSharpness = 12f;
         [SerializeField] private bool closeDoorsBehindNeighbor = true;
-        [SerializeField, Min(0f)] private float closeBehindDelay = 0.65f;
-        [SerializeField, Min(0f)] private float closeBehindDistance = 1.35f;
+        [SerializeField, Min(0f)] private float closeBehindDelay = 0.15f;
+        [SerializeField, Min(0f)] private float closeBehindDistance = 1.5f;
         [SerializeField] private bool requirePassingThroughDoorToClose = true;
 
         private readonly Collider[] hits = new Collider[8];
@@ -275,8 +275,9 @@ namespace Neighbor.Main.Features.Interaction
                     continue;
                 }
 
-                if (Vector3.Distance(transform.position, door.transform.position) < closeBehindDistance)
+                if (Vector3.Distance(transform.position, door.transform.position) > closeBehindDistance)
                 {
+                    openedDoors.RemoveAt(i);
                     continue;
                 }
 
