@@ -65,6 +65,8 @@ namespace Neighbor.Main.Features.Neighbor
         private float ignorePlayerSightUntilTime;
         private bool isResettingScene;
         private bool waitingAtGoal;
+        private NeighborTaskLocation currentTaskLocation;
+        private NeighborTaskLocation activeTaskAudioLocation;
 
         public BehaviorState CurrentState => currentState;
         public Vector3 LastKnownPlayerPosition => lastKnownPlayerPosition;
@@ -91,6 +93,8 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 hearing.NoiseHeard -= HandleNoiseHeard;
             }
+
+            StopActiveTaskAudio();
         }
 
         private void Start()
@@ -258,6 +262,8 @@ namespace Neighbor.Main.Features.Neighbor
             goalWaitDuration = searchDuration;
             waitingAtGoal = false;
             currentClimbLink = null;
+            currentTaskLocation = null;
+            StopActiveTaskAudio();
             ignorePlayerSightUntilTime = Time.time + giveUpSightIgnoreTime;
 
             if (motor != null && !motor.SetDestination(currentGoal))
@@ -441,6 +447,8 @@ namespace Neighbor.Main.Features.Neighbor
 
             goalWaitDuration = investigationWaitTime;
             waitingAtGoal = false;
+            currentTaskLocation = null;
+            StopActiveTaskAudio();
             motor?.SetMoveMode(NeighborMotor.MoveMode.Run);
             if (motor != null && motor.TrySetDestinationNear(stimulus.Position, noiseDestinationSampleRadius, out Vector3 investigatePosition))
             {
@@ -463,6 +471,7 @@ namespace Neighbor.Main.Features.Neighbor
         {
             if (motor == null)
             {
+                currentTaskLocation = null;
                 SetState(BehaviorState.Idle);
                 return;
             }
@@ -473,6 +482,7 @@ namespace Neighbor.Main.Features.Neighbor
                 currentGoal = wanderPoint;
                 goalWaitDuration = Random.Range(idleWaitMinimum, Mathf.Max(idleWaitMinimum, idleWaitMaximum));
                 waitingAtGoal = false;
+                currentTaskLocation = null;
                 if (motor.SetDestination(currentGoal))
                 {
                     SetState(BehaviorState.Wander);
@@ -483,6 +493,7 @@ namespace Neighbor.Main.Features.Neighbor
             NeighborTaskLocation taskLocation = GetRandomTaskLocation();
             if (taskLocation == null)
             {
+                currentTaskLocation = null;
                 SetState(BehaviorState.Idle);
                 goalWaitDuration = Random.Range(idleWaitMinimum, Mathf.Max(idleWaitMinimum, idleWaitMaximum));
                 waitingAtGoal = false;
@@ -490,6 +501,7 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             lastTaskLocation = taskLocation;
+            currentTaskLocation = taskLocation;
             currentGoal = taskLocation.Position;
             goalWaitDuration = taskLocation.RandomWaitTime;
             waitingAtGoal = false;
@@ -499,6 +511,7 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            currentTaskLocation = null;
             SetState(BehaviorState.Idle);
         }
 
@@ -508,9 +521,19 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 waitingAtGoal = true;
                 waitUntilTime = Time.time + goalWaitDuration;
+                if (currentState == BehaviorState.Task)
+                {
+                    BeginCurrentTaskAudio();
+                }
             }
 
-            return Time.time >= waitUntilTime;
+            bool waitComplete = Time.time >= waitUntilTime;
+            if (waitComplete && currentState == BehaviorState.Task)
+            {
+                StopActiveTaskAudio();
+            }
+
+            return waitComplete;
         }
 
         private NeighborTaskLocation GetRandomTaskLocation()
@@ -540,6 +563,11 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            if (currentState == BehaviorState.Task && state != BehaviorState.Task)
+            {
+                StopActiveTaskAudio();
+            }
+
             currentState = state;
             if (state == BehaviorState.Chase)
             {
@@ -548,6 +576,29 @@ namespace Neighbor.Main.Features.Neighbor
                     : float.PositiveInfinity;
                 lastChaseProgressTime = Time.time;
             }
+        }
+
+        private void BeginCurrentTaskAudio()
+        {
+            if (currentTaskLocation == null || activeTaskAudioLocation == currentTaskLocation)
+            {
+                return;
+            }
+
+            StopActiveTaskAudio();
+            activeTaskAudioLocation = currentTaskLocation;
+            activeTaskAudioLocation.BeginTaskAudio();
+        }
+
+        private void StopActiveTaskAudio()
+        {
+            if (activeTaskAudioLocation == null)
+            {
+                return;
+            }
+
+            activeTaskAudioLocation.StopTaskAudio();
+            activeTaskAudioLocation = null;
         }
 
         private void ResolvePlayer()
