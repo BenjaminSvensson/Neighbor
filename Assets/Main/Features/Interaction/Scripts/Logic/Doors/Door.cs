@@ -1,5 +1,7 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace Neighbor.Main.Features.Interaction
 {
@@ -15,8 +17,18 @@ namespace Neighbor.Main.Features.Interaction
         [Header("Lock")]
         [SerializeField] private bool startsLocked = true;
         [SerializeField] private string requiredKeyId = "test_key";
+        [SerializeField] private bool neighborCanUnlock = true;
         [SerializeField, Min(0f)] private float lockedNudgeAngle = 6f;
         [SerializeField, Min(0.01f)] private float lockedNudgeDuration = 0.12f;
+
+        [Header("Neighbor Kick")]
+        [SerializeField] private bool neighborCanKickBlockedDoor = true;
+        [SerializeField, Min(0f)] private float blockerKickImpulse = 3.5f;
+        [SerializeField, Min(0f)] private float blockerKickUpwardImpulse = 0.45f;
+
+        [Header("Navigation")]
+        [SerializeField] private bool blockNeighborNavigationWhenUnavailable = true;
+        [SerializeField, Min(0f)] private float navigationObstaclePadding = 0.08f;
 
         [Header("Door Audio")]
         [SerializeField] private AudioSource audioSource;
@@ -39,10 +51,13 @@ namespace Neighbor.Main.Features.Interaction
         private float currentAngle;
         private float closeAtTime;
         private DoorBlockerChair activeBlocker;
+        private NavMeshObstacle[] navigationObstacles;
 
         public bool IsLocked => isLocked;
         public bool IsBlocked => activeBlocker != null;
         public bool IsOpen => isOpen;
+        public bool NeighborCanUnlock => neighborCanUnlock;
+        public bool NeighborCanKickBlockedDoor => neighborCanKickBlockedDoor;
         public string RequiredKeyId => requiredKeyId;
         public Vector3 DefaultOpeningSideNormal => -transform.forward * Mathf.Sign(openAngle == 0f ? 1f : openAngle);
 
@@ -58,6 +73,8 @@ namespace Neighbor.Main.Features.Interaction
             closedRotation = hinge.localRotation;
             isLocked = startsLocked;
             ResolveAudioSource();
+            ResolveNavigationObstacles();
+            UpdateNavigationObstacles();
         }
 
         private void OnDisable()
@@ -124,6 +141,54 @@ namespace Neighbor.Main.Features.Interaction
             return true;
         }
 
+        public bool TryOpenForNeighbor(Transform neighbor)
+        {
+            if (IsBlocked)
+            {
+                PlayLockedNudge();
+                return false;
+            }
+
+            if (isLocked)
+            {
+                if (!neighborCanUnlock)
+                {
+                    PlayLockedNudge();
+                    return false;
+                }
+
+                Unlock();
+            }
+
+            OpenIgnoring(neighbor);
+            return true;
+        }
+
+        public bool TryKickOpenForNeighbor(Transform neighbor)
+        {
+            if (!IsBlocked || !neighborCanKickBlockedDoor)
+            {
+                PlayLockedNudge();
+                return false;
+            }
+
+            DoorBlockerChair blocker = activeBlocker;
+            Vector3 kickDirection = GetNeighborKickDirection(neighbor, blocker);
+            if (blocker != null)
+            {
+                blocker.HandleKickedLoose(kickDirection, blockerKickImpulse, blockerKickUpwardImpulse);
+            }
+
+            SetLocked(false, false, false);
+            OpenIgnoring(neighbor);
+            return true;
+        }
+
+        public void PlayNeighborKickFeedback()
+        {
+            PlayNudge(0f);
+        }
+
         public void PlayImpactNudge()
         {
             float returnAngle = IsLocked || IsBlocked ? 0f : currentAngle;
@@ -148,6 +213,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             isLocked = locked;
+            UpdateNavigationObstacles();
             if (isLocked)
             {
                 if (closeWhenLocked)
@@ -188,6 +254,7 @@ namespace Neighbor.Main.Features.Interaction
 
             activeBlocker = blocker;
             Close();
+            UpdateNavigationObstacles();
             return true;
         }
 
@@ -196,6 +263,7 @@ namespace Neighbor.Main.Features.Interaction
             if (activeBlocker == blocker)
             {
                 activeBlocker = null;
+                UpdateNavigationObstacles();
             }
         }
 
@@ -214,14 +282,25 @@ namespace Neighbor.Main.Features.Interaction
         {
             isOpen = true;
             closeAtTime = Time.time + autoCloseDelay;
+            UpdateNavigationObstacles();
             PlayRandomSound(openClips);
             AnimateTo(openAngle, openCloseDuration, interactor != null ? interactor.GetComponentsInParent<Collider>() : null);
+        }
+
+        private void OpenIgnoring(Transform opener)
+        {
+            isOpen = true;
+            closeAtTime = Time.time + autoCloseDelay;
+            UpdateNavigationObstacles();
+            PlayRandomSound(openClips);
+            AnimateTo(openAngle, openCloseDuration, opener != null ? opener.GetComponentsInParent<Collider>() : null);
         }
 
         public void Close()
         {
             bool shouldPlayCloseSound = isOpen || !Mathf.Approximately(currentAngle, 0f);
             isOpen = false;
+            UpdateNavigationObstacles();
             if (shouldPlayCloseSound)
             {
                 PlayRandomSound(closeClips);
@@ -233,6 +312,26 @@ namespace Neighbor.Main.Features.Interaction
         private void PlayLockedNudge()
         {
             PlayNudge(0f);
+        }
+
+        private Vector3 GetNeighborKickDirection(Transform neighbor, DoorBlockerChair blocker)
+        {
+            Vector3 direction = neighbor != null ? neighbor.forward : DefaultOpeningSideNormal;
+            direction.y = 0f;
+
+            if (direction.sqrMagnitude <= 0.001f && blocker != null)
+            {
+                direction = blocker.transform.position - transform.position;
+                direction.y = 0f;
+            }
+
+            if (direction.sqrMagnitude <= 0.001f)
+            {
+                direction = DefaultOpeningSideNormal;
+                direction.y = 0f;
+            }
+
+            return direction.normalized;
         }
 
         private void PlayNudge(float returnAngle)
@@ -371,6 +470,67 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             ConfigureAudioSource();
+        }
+
+        private void ResolveNavigationObstacles()
+        {
+            if (!blockNeighborNavigationWhenUnavailable || ownColliders == null)
+            {
+                navigationObstacles = new NavMeshObstacle[0];
+                return;
+            }
+
+            List<NavMeshObstacle> obstacles = new List<NavMeshObstacle>();
+            foreach (Collider ownCollider in ownColliders)
+            {
+                if (ownCollider == null || ownCollider.isTrigger)
+                {
+                    continue;
+                }
+
+                BoxCollider boxCollider = ownCollider as BoxCollider;
+                if (boxCollider == null)
+                {
+                    continue;
+                }
+
+                NavMeshObstacle obstacle = boxCollider.GetComponent<NavMeshObstacle>();
+                if (obstacle == null)
+                {
+                    obstacle = boxCollider.gameObject.AddComponent<NavMeshObstacle>();
+                }
+
+                obstacle.shape = NavMeshObstacleShape.Box;
+                obstacle.center = boxCollider.center;
+                obstacle.size = boxCollider.size + Vector3.one * navigationObstaclePadding;
+                obstacle.carving = true;
+                obstacle.carveOnlyStationary = false;
+                obstacle.carvingMoveThreshold = 0.05f;
+                obstacle.carvingTimeToStationary = 0.05f;
+                obstacles.Add(obstacle);
+            }
+
+            navigationObstacles = obstacles.ToArray();
+        }
+
+        private void UpdateNavigationObstacles()
+        {
+            if (navigationObstacles == null)
+            {
+                return;
+            }
+
+            bool shouldBlock = blockNeighborNavigationWhenUnavailable
+                && !isOpen
+                && (IsBlocked || isLocked && !neighborCanUnlock);
+
+            foreach (NavMeshObstacle obstacle in navigationObstacles)
+            {
+                if (obstacle != null)
+                {
+                    obstacle.enabled = shouldBlock;
+                }
+            }
         }
 
         private void PlayRandomSound(AudioClip[] clips)

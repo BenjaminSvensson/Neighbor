@@ -51,8 +51,14 @@ MonoBehaviour:
   autoCloseDelay: 0
   startsLocked: 1
   requiredKeyId: test_key
+  neighborCanUnlock: 1
   lockedNudgeAngle: 6
   lockedNudgeDuration: 0.12
+  neighborCanKickBlockedDoor: 1
+  blockerKickImpulse: 3.5
+  blockerKickUpwardImpulse: 0.45
+  blockNeighborNavigationWhenUnavailable: 1
+  navigationObstaclePadding: 0.08
 --- !u!1 &100010
 GameObject:
   m_ObjectHideFlags: 0

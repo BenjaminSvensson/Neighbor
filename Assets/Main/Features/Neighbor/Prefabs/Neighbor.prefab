@@ -416,12 +416,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7e69c65a0861457fb4df370f8fdcb4a2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  motor: {fileID: 1396788348566312222}
   checkRadius: 0.55
   checkDistance: 1.2
   doorMask:
     serializedVersion: 2
     m_Bits: 64
   interactionCooldown: 0.35
+  blockedDoorKickDuration: 2.25
+  blockedDoorKickInterval: 0.48
+  blockedDoorKickAbortDistance: 2.2
+  lockedDoorRetryInterval: 0.7
+  lockedDoorAbortDistance: 2.2
+  kickTurnSharpness: 12
 --- !u!114 &6254384187814207898
 MonoBehaviour:
   m_ObjectHideFlags: 0

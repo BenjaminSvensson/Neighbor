@@ -54,8 +54,14 @@ MonoBehaviour:
   autoCloseDelay: 0
   startsLocked: 1
   requiredKeyId: test_key
+  neighborCanUnlock: 1
   lockedNudgeAngle: 6
   lockedNudgeDuration: 0.12
+  neighborCanKickBlockedDoor: 1
+  blockerKickImpulse: 3.5
+  blockerKickUpwardImpulse: 0.45
+  blockNeighborNavigationWhenUnavailable: 1
+  navigationObstaclePadding: 0.08
   audioSource: {fileID: 100003}
   openClips:
   - {fileID: 8300000, guid: e7e701bbd5c0c7042b8ad23e181ec26f, type: 3}

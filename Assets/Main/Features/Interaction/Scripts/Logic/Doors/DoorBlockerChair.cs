@@ -81,6 +81,29 @@ namespace Neighbor.Main.Features.Interaction
             blockDisabledUntilPlaced = true;
         }
 
+        public void HandleKickedLoose(Vector3 kickDirection, float impulse, float upwardImpulse)
+        {
+            ClearBlockedDoor();
+            blockDisabledUntilPlaced = true;
+
+            if (body == null || body.isKinematic || impulse <= 0f)
+            {
+                return;
+            }
+
+            Vector3 impulseDirection = kickDirection;
+            impulseDirection.y = 0f;
+            if (impulseDirection.sqrMagnitude <= 0.001f)
+            {
+                impulseDirection = transform.forward;
+                impulseDirection.y = 0f;
+            }
+
+            body.WakeUp();
+            body.AddForce(impulseDirection.normalized * impulse + Vector3.up * upwardImpulse, ForceMode.Impulse);
+            body.AddTorque(Vector3.Cross(Vector3.up, impulseDirection.normalized) * impulse, ForceMode.Impulse);
+        }
+
         public void OnPickupPlaced(Pickupable pickupable)
         {
             blockDisabledUntilPlaced = false;
