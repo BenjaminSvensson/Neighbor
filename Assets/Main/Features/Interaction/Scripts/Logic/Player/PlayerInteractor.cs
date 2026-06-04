@@ -1,11 +1,14 @@
 using Neighbor.Main.Features.Player;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.Controls;
 
 namespace Neighbor.Main.Features.Interaction
 {
     public sealed class PlayerInteractor : MonoBehaviour
     {
+        private const int MaximumInventorySlots = 6;
+
         [Header("Raycast")]
         [SerializeField] private Camera viewCamera;
         [SerializeField] private InputActionAsset inputActions;
@@ -32,6 +35,10 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float holdObstructionRadius = 0.35f;
         [SerializeField, Min(0f)] private float holdObstructionPadding = 0.18f;
         [SerializeField] private LayerMask holdObstructionMask = ~0;
+
+        [Header("Inventory")]
+        [SerializeField, Range(1, MaximumInventorySlots)] private int inventorySlotCount = MaximumInventorySlots;
+        [SerializeField] private Transform inventoryStashRoot;
 
         [Header("Placement")]
         [SerializeField, Min(0.2f)] private float placementRange = 3.25f;
@@ -74,12 +81,16 @@ namespace Neighbor.Main.Features.Interaction
         private readonly RaycastHit[] holdObstructionHits = new RaycastHit[12];
         private readonly RaycastHit[] placementHits = new RaycastHit[12];
         private readonly Collider[] placementBlockHits = new Collider[24];
+        private Pickupable[] inventorySlots;
+        private int activeInventorySlot;
         private float releaseButtonDownTime;
         private bool releaseButtonWasHeld;
         private Material throwArcMaterial;
 
         public bool IsHoldingPickup => heldPickup != null;
         public Pickupable HeldPickup => heldPickup;
+        public int ActiveInventorySlot => activeInventorySlot;
+        public int InventorySlotCount => inventorySlotCount;
         public bool HasFocusedInteractable { get; private set; }
         public IInteractable FocusedInteractable { get; private set; }
         public Vector3 ViewForward => ViewTransform.forward;
@@ -96,6 +107,7 @@ namespace Neighbor.Main.Features.Interaction
             ResolveInteractAction();
             EnsureThrowArcRenderer();
             EnsureTooltipView();
+            EnsureInventorySlots();
         }
 
         private void OnEnable()
@@ -108,7 +120,7 @@ namespace Neighbor.Main.Features.Interaction
         {
             interactAction?.Disable();
             EndActiveHoldInteraction(false);
-            DropHeldPickupForDisable();
+            DropInventoryForDisable();
             HideThrowArc();
             if (tooltipView != null)
             {
@@ -140,6 +152,12 @@ namespace Neighbor.Main.Features.Interaction
 
             bool interactPressed = InteractWasPressedThisFrame(keyboard);
             bool interactHeld = InteractIsPressed(keyboard);
+            int requestedInventorySlot = GetPressedInventorySlot(keyboard);
+            if (requestedInventorySlot >= 0)
+            {
+                SelectInventorySlot(requestedInventorySlot);
+            }
+
             if (interactPressed)
             {
                 TryInteract();
@@ -223,11 +241,32 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            if (heldPickup != null)
+            EnsureInventorySlots();
+            int existingSlot = FindInventorySlot(pickupable);
+            if (existingSlot >= 0)
             {
-                ReleaseHeldPickup(false);
+                SelectInventorySlot(existingSlot);
+                return;
             }
 
+            if (heldPickup != null)
+            {
+                int emptySlot = FindFirstEmptyInventorySlot();
+                if (emptySlot >= 0)
+                {
+                    StashHeldPickupInSlot(emptySlot);
+                }
+                else
+                {
+                    ReleaseHeldPickup(false);
+                    if (heldPickup != null)
+                    {
+                        return;
+                    }
+                }
+            }
+
+            inventorySlots[activeInventorySlot] = pickupable;
             heldPickup = pickupable;
             heldPickup.Pickup(this);
         }
@@ -240,6 +279,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             heldPickup = null;
+            ClearInventorySlot(pickupable);
             releaseButtonWasHeld = false;
             HideThrowArc();
             return true;
@@ -323,6 +363,7 @@ namespace Neighbor.Main.Features.Interaction
             if (heldPickup == pickup)
             {
                 heldPickup = null;
+                ClearInventorySlot(pickup);
             }
 
             releaseButtonWasHeld = false;
@@ -344,6 +385,7 @@ namespace Neighbor.Main.Features.Interaction
 
             Pickupable releasedPickup = heldPickup;
             heldPickup = null;
+            ClearInventorySlot(releasedPickup);
             releaseButtonWasHeld = false;
 
             if (throwPickup)
@@ -361,6 +403,7 @@ namespace Neighbor.Main.Features.Interaction
             else if (foundPlacementSurface)
             {
                 heldPickup = releasedPickup;
+                inventorySlots[activeInventorySlot] = releasedPickup;
             }
             else
             {
@@ -370,17 +413,210 @@ namespace Neighbor.Main.Features.Interaction
             HideThrowArc();
         }
 
-        private void DropHeldPickupForDisable()
+        private void DropInventoryForDisable()
         {
-            if (heldPickup == null)
+            EnsureInventorySlots();
+
+            Vector3 dropPosition = ViewTransform.position + ViewTransform.forward * holdDistance;
+            Quaternion dropRotation = ViewTransform.rotation;
+
+            if (heldPickup != null && FindInventorySlot(heldPickup) < 0)
+            {
+                heldPickup.transform.SetPositionAndRotation(dropPosition, dropRotation);
+                heldPickup.Drop();
+            }
+
+            for (int i = 0; i < inventorySlots.Length; i++)
+            {
+                Pickupable inventoryPickup = inventorySlots[i];
+                if (inventoryPickup == null)
+                {
+                    continue;
+                }
+
+                inventoryPickup.transform.SetPositionAndRotation(dropPosition, dropRotation);
+                inventoryPickup.Drop();
+                inventorySlots[i] = null;
+            }
+
+            heldPickup = null;
+            releaseButtonWasHeld = false;
+        }
+
+        private void SelectInventorySlot(int slotIndex)
+        {
+            EnsureInventorySlots();
+            if (slotIndex < 0 || slotIndex >= inventorySlots.Length || slotIndex == activeInventorySlot)
             {
                 return;
             }
 
-            Pickupable releasedPickup = heldPickup;
+            EndActiveHoldInteraction(false);
+            releaseButtonWasHeld = false;
+            HideThrowArc();
+
+            Pickupable previousPickup = heldPickup;
+            if (previousPickup != null)
+            {
+                inventorySlots[activeInventorySlot] = previousPickup;
+                previousPickup.StoreInInventory(GetInventoryStashRoot());
+                heldPickup = null;
+            }
+
+            activeInventorySlot = slotIndex;
+            Pickupable selectedPickup = inventorySlots[activeInventorySlot];
+            if (selectedPickup == null)
+            {
+                return;
+            }
+
+            selectedPickup.EquipFromInventory(this);
+            heldPickup = selectedPickup;
+        }
+
+        private bool StashHeldPickupInSlot(int slotIndex)
+        {
+            EnsureInventorySlots();
+            if (heldPickup == null || slotIndex < 0 || slotIndex >= inventorySlots.Length || inventorySlots[slotIndex] != null)
+            {
+                return false;
+            }
+
+            Pickupable pickupToStore = heldPickup;
+            ClearInventorySlot(pickupToStore);
+            inventorySlots[slotIndex] = pickupToStore;
             heldPickup = null;
             releaseButtonWasHeld = false;
-            releasedPickup.Drop();
+            HideThrowArc();
+            pickupToStore.StoreInInventory(GetInventoryStashRoot());
+            return true;
+        }
+
+        private int GetPressedInventorySlot(Keyboard keyboard)
+        {
+            if (keyboard == null)
+            {
+                return -1;
+            }
+
+            if (WasPressedThisFrame(keyboard.digit1Key) || WasPressedThisFrame(keyboard.numpad1Key))
+            {
+                return 0;
+            }
+
+            if (inventorySlotCount >= 2 && (WasPressedThisFrame(keyboard.digit2Key) || WasPressedThisFrame(keyboard.numpad2Key)))
+            {
+                return 1;
+            }
+
+            if (inventorySlotCount >= 3 && (WasPressedThisFrame(keyboard.digit3Key) || WasPressedThisFrame(keyboard.numpad3Key)))
+            {
+                return 2;
+            }
+
+            if (inventorySlotCount >= 4 && (WasPressedThisFrame(keyboard.digit4Key) || WasPressedThisFrame(keyboard.numpad4Key)))
+            {
+                return 3;
+            }
+
+            if (inventorySlotCount >= 5 && (WasPressedThisFrame(keyboard.digit5Key) || WasPressedThisFrame(keyboard.numpad5Key)))
+            {
+                return 4;
+            }
+
+            if (inventorySlotCount >= 6 && (WasPressedThisFrame(keyboard.digit6Key) || WasPressedThisFrame(keyboard.numpad6Key)))
+            {
+                return 5;
+            }
+
+            return -1;
+        }
+
+        private static bool WasPressedThisFrame(ButtonControl control)
+        {
+            return control != null && control.wasPressedThisFrame;
+        }
+
+        private int FindFirstEmptyInventorySlot()
+        {
+            EnsureInventorySlots();
+            for (int i = 0; i < inventorySlots.Length; i++)
+            {
+                if (inventorySlots[i] == null)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        private int FindInventorySlot(Pickupable pickupable)
+        {
+            EnsureInventorySlots();
+            if (pickupable == null)
+            {
+                return -1;
+            }
+
+            for (int i = 0; i < inventorySlots.Length; i++)
+            {
+                if (inventorySlots[i] == pickupable)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        private void ClearInventorySlot(Pickupable pickupable)
+        {
+            int slotIndex = FindInventorySlot(pickupable);
+            if (slotIndex >= 0)
+            {
+                inventorySlots[slotIndex] = null;
+            }
+        }
+
+        private void EnsureInventorySlots()
+        {
+            int clampedSlotCount = Mathf.Clamp(inventorySlotCount, 1, MaximumInventorySlots);
+            inventorySlotCount = clampedSlotCount;
+
+            if (inventorySlots != null && inventorySlots.Length == clampedSlotCount)
+            {
+                activeInventorySlot = Mathf.Clamp(activeInventorySlot, 0, clampedSlotCount - 1);
+                return;
+            }
+
+            Pickupable[] resizedSlots = new Pickupable[clampedSlotCount];
+            if (inventorySlots != null)
+            {
+                int copyCount = Mathf.Min(inventorySlots.Length, resizedSlots.Length);
+                for (int i = 0; i < copyCount; i++)
+                {
+                    resizedSlots[i] = inventorySlots[i];
+                }
+            }
+
+            inventorySlots = resizedSlots;
+            activeInventorySlot = Mathf.Clamp(activeInventorySlot, 0, clampedSlotCount - 1);
+        }
+
+        private Transform GetInventoryStashRoot()
+        {
+            if (inventoryStashRoot != null)
+            {
+                return inventoryStashRoot;
+            }
+
+            GameObject stashObject = new GameObject("InventoryStash");
+            inventoryStashRoot = stashObject.transform;
+            inventoryStashRoot.SetParent(transform, false);
+            inventoryStashRoot.localPosition = Vector3.zero;
+            inventoryStashRoot.localRotation = Quaternion.identity;
+            return inventoryStashRoot;
         }
 
         private bool TryGetPlacementPose(Pickupable pickupable, out Vector3 position, out Quaternion rotation, out bool foundSurface, out bool shouldSleepAfterPlacement)

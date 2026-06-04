@@ -43,6 +43,8 @@ namespace Neighbor.Main.Features.Interaction
         private IPickupInteractionOverride[] pickupInteractionOverrides;
         private IPickupLifecycleReceiver[] lifecycleReceivers;
         private bool[] originalColliderEnabled;
+        private bool[] inventoryColliderEnabled;
+        private bool[] originalRendererEnabled;
         private readonly Collider[] supportWakeHits = new Collider[24];
         private bool wasUsingGravity;
         private bool wasKinematic;
@@ -54,6 +56,7 @@ namespace Neighbor.Main.Features.Interaction
         private float restorePlayerCollisionTime;
 
         public bool IsHeld { get; private set; }
+        public bool IsInventoryStored { get; private set; }
         public HoldPointSize AssignedHoldPointSize => holdPointSize;
         public Vector3 ThrowOrigin => body != null ? body.worldCenterOfMass : transform.position;
 
@@ -65,6 +68,8 @@ namespace Neighbor.Main.Features.Interaction
             pickupInteractionOverrides = GetComponentsInChildren<IPickupInteractionOverride>();
             lifecycleReceivers = GetComponentsInChildren<IPickupLifecycleReceiver>();
             originalColliderEnabled = new bool[ownColliders.Length];
+            inventoryColliderEnabled = new bool[ownColliders.Length];
+            originalRendererEnabled = new bool[ownRenderers.Length];
         }
 
         private void OnDisable()
@@ -72,6 +77,10 @@ namespace Neighbor.Main.Features.Interaction
             if (IsHeld)
             {
                 RestorePhysics();
+            }
+            else if (IsInventoryStored)
+            {
+                RestoreInventoryState();
             }
 
             RestoreIgnoredPlayerCollisions();
@@ -87,7 +96,7 @@ namespace Neighbor.Main.Features.Interaction
 
         public bool CanInteract(PlayerInteractor interactor)
         {
-            if (IsHeld || body == null || body.mass > maximumPickupMass)
+            if (IsHeld || IsInventoryStored || body == null || body.mass > maximumPickupMass)
             {
                 return false;
             }
@@ -113,7 +122,7 @@ namespace Neighbor.Main.Features.Interaction
             interactor.Pickup(this);
         }
 
-        public void Pickup(PlayerInteractor interactor)
+        public void Pickup(PlayerInteractor interactor, bool playPickupFeedback = true)
         {
             if (IsHeld || body == null)
             {
@@ -123,12 +132,7 @@ namespace Neighbor.Main.Features.Interaction
             NotifyPickupStarted(interactor);
 
             IsHeld = true;
-            wasUsingGravity = body.useGravity;
-            wasKinematic = body.isKinematic;
-            originalDrag = body.linearDamping;
-            originalAngularDrag = body.angularDamping;
-            originalCollisionDetection = body.collisionDetectionMode;
-            originalInterpolation = body.interpolation;
+            CapturePhysicsState();
 
             ClearBodyVelocity();
             body.useGravity = false;
@@ -139,7 +143,10 @@ namespace Neighbor.Main.Features.Interaction
             body.interpolation = RigidbodyInterpolation.Interpolate;
 
             WakeSupportedBodiesAfterColliderStateChange(false);
-            PlayPickupSound();
+            if (playPickupFeedback)
+            {
+                PlayPickupSound();
+            }
         }
 
         public void MoveHeld(
@@ -179,11 +186,13 @@ namespace Neighbor.Main.Features.Interaction
 
         public void Drop()
         {
+            RestoreInventoryState();
             RestorePhysics();
         }
 
         public void Place(Vector3 position, Quaternion rotation, bool sleepAfterPlacing = true)
         {
+            RestoreInventoryState();
             transform.SetPositionAndRotation(position, rotation);
 
             if (body == null)
@@ -222,15 +231,57 @@ namespace Neighbor.Main.Features.Interaction
 
         public void Throw(Vector3 velocity)
         {
+            RestoreInventoryState();
             RestorePhysics();
             SetBodyLinearVelocity(velocity);
         }
 
         public void Throw(Vector3 velocity, Collider[] playerColliders)
         {
+            RestoreInventoryState();
             RestorePhysics();
             IgnorePlayerCollisionsTemporarily(playerColliders);
             SetBodyLinearVelocity(velocity);
+        }
+
+        public void StoreInInventory(Transform inventoryParent)
+        {
+            if (body == null || IsInventoryStored)
+            {
+                return;
+            }
+
+            if (IsHeld)
+            {
+                IsHeld = false;
+                SetHeldColliderState(true);
+                RestoreCapturedPhysicsState();
+            }
+            else
+            {
+                CapturePhysicsState();
+            }
+
+            ClearBodyVelocity();
+            body.useGravity = false;
+            body.isKinematic = true;
+            body.Sleep();
+
+            SetInventoryVisibility(false);
+            if (inventoryParent != null)
+            {
+                transform.SetParent(inventoryParent, false);
+                transform.localPosition = Vector3.zero;
+                transform.localRotation = Quaternion.identity;
+            }
+
+            IsInventoryStored = true;
+        }
+
+        public void EquipFromInventory(PlayerInteractor interactor)
+        {
+            RestoreInventoryState();
+            Pickup(interactor, false);
         }
 
         public Bounds GetPlacementBounds()
@@ -315,6 +366,31 @@ namespace Neighbor.Main.Features.Interaction
 
             IsHeld = false;
             SetHeldColliderState(true);
+            RestoreCapturedPhysicsState();
+        }
+
+        private void CapturePhysicsState()
+        {
+            if (body == null)
+            {
+                return;
+            }
+
+            wasUsingGravity = body.useGravity;
+            wasKinematic = body.isKinematic;
+            originalDrag = body.linearDamping;
+            originalAngularDrag = body.angularDamping;
+            originalCollisionDetection = body.collisionDetectionMode;
+            originalInterpolation = body.interpolation;
+        }
+
+        private void RestoreCapturedPhysicsState()
+        {
+            if (body == null)
+            {
+                return;
+            }
+
             body.useGravity = wasUsingGravity;
             body.isKinematic = wasKinematic;
             body.linearDamping = originalDrag;
@@ -357,6 +433,65 @@ namespace Neighbor.Main.Features.Interaction
                 originalColliderEnabled[i] = ownCollider.enabled;
                 ownCollider.enabled = false;
             }
+        }
+
+        private void SetInventoryVisibility(bool visible)
+        {
+            if (ownRenderers != null)
+            {
+                for (int i = 0; i < ownRenderers.Length; i++)
+                {
+                    Renderer ownRenderer = ownRenderers[i];
+                    if (ownRenderer == null)
+                    {
+                        continue;
+                    }
+
+                    if (visible)
+                    {
+                        ownRenderer.enabled = originalRendererEnabled[i];
+                        continue;
+                    }
+
+                    originalRendererEnabled[i] = ownRenderer.enabled;
+                    ownRenderer.enabled = false;
+                }
+            }
+
+            if (ownColliders != null)
+            {
+                for (int i = 0; i < ownColliders.Length; i++)
+                {
+                    Collider ownCollider = ownColliders[i];
+                    if (ownCollider == null)
+                    {
+                        continue;
+                    }
+
+                    if (visible)
+                    {
+                        ownCollider.enabled = inventoryColliderEnabled[i];
+                        continue;
+                    }
+
+                    inventoryColliderEnabled[i] = ownCollider.enabled;
+                    ownCollider.enabled = false;
+                }
+            }
+        }
+
+        private void RestoreInventoryState()
+        {
+            if (!IsInventoryStored)
+            {
+                return;
+            }
+
+            IsInventoryStored = false;
+            transform.SetParent(null, true);
+            SetInventoryVisibility(true);
+            RestoreCapturedPhysicsState();
+            body?.WakeUp();
         }
 
         private void PlayPickupSound()
