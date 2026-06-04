@@ -197,6 +197,7 @@ GameObject:
   - component: {fileID: 6627152104098474557}
   - component: {fileID: 2581463567810445751}
   - component: {fileID: 7659305663438818443}
+  - component: {fileID: 6254384187814207898}
   m_Layer: 7
   m_Name: Neighbor
   m_TagString: Untagged
@@ -421,6 +422,91 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   interactionCooldown: 0.35
+--- !u!114 &6254384187814207898
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5206360911464809966}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78fb3f54e31649b4b808591f9bbf2c58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  brain: {fileID: 3418586483215124470}
+  motor: {fileID: 1396788348566312222}
+  bodyAnchor: {fileID: 0}
+  voiceAnchor: {fileID: 0}
+  leftFootAnchor: {fileID: 0}
+  rightFootAnchor: {fileID: 0}
+  leftFootSource: {fileID: 0}
+  rightFootSource: {fileID: 0}
+  bodyOneShotSource: {fileID: 0}
+  voiceSource: {fileID: 0}
+  breathingLoopSource: {fileID: 0}
+  chaseLoopSource: {fileID: 0}
+  movementFoleyLoopSource: {fileID: 0}
+  downstairsWalkFootsteps: []
+  downstairsRunFootsteps: []
+  upstairsWalkFootsteps: []
+  upstairsRunFootsteps: []
+  upstairsHeight: 2.2
+  minimumFootstepSpeed: 0.32
+  runSpeedReference: 5.8
+  slowStepInterval: 0.54
+  fastStepInterval: 0.24
+  footstepMinimumVolume: 0.34
+  footstepMaximumVolume: 0.78
+  upstairsVolumeBoost: 0.14
+  footstepPitchRandomness: 0.07
+  footstepStereoWidth: 0.22
+  movementFoleyLoopClip: {fileID: 0}
+  movementFoleyVolume: 0.16
+  movementFoleySpeedThreshold: 0.45
+  climbStartClips: []
+  climbEndClips: []
+  dropLandingClips: []
+  climbVolume: 0.72
+  landingVolume: 0.82
+  dropLandingHeight: 0.25
+  alertedClips: []
+  chaseStartClips: []
+  searchLostClips: []
+  stunnedClips: []
+  idleMutterClips: []
+  alertedVolume: 0.74
+  chaseStartVolume: 0.88
+  searchLostVolume: 0.48
+  stunnedVolume: 0.7
+  idleMutterVolume: 0.2
+  idleMutterMinimumDelay: 7
+  idleMutterMaximumDelay: 15
+  breathingLoopClip: {fileID: 0}
+  chaseLoopClip: {fileID: 0}
+  idleBreathingVolume: 0.08
+  alertedBreathingVolume: 0.18
+  chaseBreathingVolume: 0.34
+  chaseLoopVolume: 0.45
+  searchLoopVolume: 0.16
+  loopFadeSharpness: 8
+  minDistance: 0.3
+  footstepMaxDistance: 14
+  voiceMaxDistance: 18
+  chaseMaxDistance: 22
+  dopplerLevel: 0.12
+  enableOcclusion: 1
+  occlusionMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  occludedVolumeMultiplier: 0.56
+  clearLowPassCutoff: 22000
+  occludedLowPassCutoff: 1600
+  occlusionRefreshInterval: 0.12
+  occlusionFadeSharpness: 9
+  useGeneratedFallbacks: 1
+  generatedSampleRate: 22050
+  generatedFootstepVariants: 4
 --- !u!1 &5918387904681610444
 GameObject:
   m_ObjectHideFlags: 0
