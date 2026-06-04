@@ -1,4 +1,5 @@
 using Neighbor.Main.Features.Neighbor;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Neighbor.Main.Features.Interaction
@@ -16,8 +17,13 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0.05f)] private float lockedDoorRetryInterval = 0.7f;
         [SerializeField, Min(0f)] private float lockedDoorAbortDistance = 2.2f;
         [SerializeField, Min(0f)] private float kickTurnSharpness = 12f;
+        [SerializeField] private bool closeDoorsBehindNeighbor = true;
+        [SerializeField, Min(0f)] private float closeBehindDelay = 0.65f;
+        [SerializeField, Min(0f)] private float closeBehindDistance = 1.35f;
+        [SerializeField] private bool requirePassingThroughDoorToClose = true;
 
         private readonly Collider[] hits = new Collider[8];
+        private readonly List<OpenedDoorTracker> openedDoors = new();
         private float nextInteractionTime;
         private Door kickingDoor;
         private Door lockedOutDoor;
@@ -32,6 +38,8 @@ namespace Neighbor.Main.Features.Interaction
 
         private void Update()
         {
+            UpdateOpenedDoors();
+
             if (kickingDoor != null)
             {
                 UpdateBlockedDoorKick();
@@ -75,6 +83,7 @@ namespace Neighbor.Main.Features.Interaction
                 nextInteractionTime = Time.time + interactionCooldown;
                 if (opened)
                 {
+                    TrackOpenedDoor(door);
                     return;
                 }
             }
@@ -122,7 +131,11 @@ namespace Neighbor.Main.Features.Interaction
 
             if (!kickingDoor.IsBlocked)
             {
-                kickingDoor.TryOpenForNeighbor(transform);
+                if (kickingDoor.TryOpenForNeighbor(transform))
+                {
+                    TrackOpenedDoor(kickingDoor);
+                }
+
                 FinishBlockedDoorKick();
                 return;
             }
@@ -138,7 +151,11 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            kickingDoor.TryKickOpenForNeighbor(transform);
+            if (kickingDoor.TryKickOpenForNeighbor(transform))
+            {
+                TrackOpenedDoor(kickingDoor);
+            }
+
             FinishBlockedDoorKick();
         }
 
@@ -169,7 +186,11 @@ namespace Neighbor.Main.Features.Interaction
 
             if (!lockedOutDoor.IsLocked || lockedOutDoor.NeighborCanUnlock)
             {
-                lockedOutDoor.TryOpenForNeighbor(transform);
+                if (lockedOutDoor.TryOpenForNeighbor(transform))
+                {
+                    TrackOpenedDoor(lockedOutDoor);
+                }
+
                 FinishLockedDoorWait();
                 return;
             }
@@ -203,6 +224,79 @@ namespace Neighbor.Main.Features.Interaction
         {
             lockedOutDoor = null;
             nextInteractionTime = Time.time + interactionCooldown;
+        }
+
+        private void TrackOpenedDoor(Door door)
+        {
+            if (!closeDoorsBehindNeighbor || door == null)
+            {
+                return;
+            }
+
+            bool openedFromDefaultSide = door.IsOnDefaultOpeningSide(transform.position);
+            for (int i = 0; i < openedDoors.Count; i++)
+            {
+                if (openedDoors[i].Door == door)
+                {
+                    openedDoors[i] = new OpenedDoorTracker(door, openedFromDefaultSide, Time.time + closeBehindDelay);
+                    return;
+                }
+            }
+
+            openedDoors.Add(new OpenedDoorTracker(door, openedFromDefaultSide, Time.time + closeBehindDelay));
+        }
+
+        private void UpdateOpenedDoors()
+        {
+            if (!closeDoorsBehindNeighbor)
+            {
+                openedDoors.Clear();
+                return;
+            }
+
+            for (int i = openedDoors.Count - 1; i >= 0; i--)
+            {
+                OpenedDoorTracker tracker = openedDoors[i];
+                Door door = tracker.Door;
+                if (door == null || !door.IsOpen)
+                {
+                    openedDoors.RemoveAt(i);
+                    continue;
+                }
+
+                if (Time.time < tracker.CloseAfterTime)
+                {
+                    continue;
+                }
+
+                bool hasPassedThrough = door.IsOnDefaultOpeningSide(transform.position) != tracker.OpenedFromDefaultSide;
+                if (requirePassingThroughDoorToClose && !hasPassedThrough)
+                {
+                    continue;
+                }
+
+                if (Vector3.Distance(transform.position, door.transform.position) < closeBehindDistance)
+                {
+                    continue;
+                }
+
+                door.Close();
+                openedDoors.RemoveAt(i);
+            }
+        }
+
+        private readonly struct OpenedDoorTracker
+        {
+            public OpenedDoorTracker(Door door, bool openedFromDefaultSide, float closeAfterTime)
+            {
+                Door = door;
+                OpenedFromDefaultSide = openedFromDefaultSide;
+                CloseAfterTime = closeAfterTime;
+            }
+
+            public Door Door { get; }
+            public bool OpenedFromDefaultSide { get; }
+            public float CloseAfterTime { get; }
         }
     }
 }
