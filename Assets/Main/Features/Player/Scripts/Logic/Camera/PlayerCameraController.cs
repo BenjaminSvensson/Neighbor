@@ -59,6 +59,20 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float stairPitchKick = 2.2f;
         [SerializeField, Min(0f)] private float stairRollKick = 2.8f;
         [SerializeField, Min(0f)] private float stairShake = 0.18f;
+
+        [Header("Climb Camera")]
+        [SerializeField, Min(0f)] private float climbStartKick = 0.18f;
+        [SerializeField, Min(0f)] private float climbStartPitchKick = 5.5f;
+        [SerializeField, Min(0f)] private float climbStartRollKick = 3.5f;
+        [SerializeField, Min(0f)] private float climbPullVerticalOffset = 0.16f;
+        [SerializeField, Min(0f)] private float climbPullPitchOffset = 5f;
+        [SerializeField, Min(0f)] private float climbPullRollOffset = 4f;
+        [SerializeField, Min(0f)] private float climbEndKick = 0.14f;
+        [SerializeField, Min(0f)] private float climbEndPitchKick = 4f;
+        [SerializeField, Min(0f)] private float climbEndShake = 0.28f;
+        [SerializeField, Min(0f)] private float climbCameraSmoothing = 16f;
+
+        [Header("Impact Return")]
         [SerializeField, Min(0f)] private float impactReturnSpeed = 18f;
 
         private Camera playerCamera;
@@ -76,6 +90,9 @@ namespace Neighbor.Main.Features.Player
         private float impactRollOffset;
         private float impactFovOffset;
         private float impactShake;
+        private float climbVerticalOffset;
+        private float climbPitchOffset;
+        private float climbRollOffset;
         private float targetImpactVerticalOffset;
         private float targetImpactPitchOffset;
         private float targetImpactRollOffset;
@@ -213,11 +230,11 @@ namespace Neighbor.Main.Features.Player
             float shakeRoll = Noise(time * 2.7f, 22.41f) * impactShake * 12f;
 
             Vector3 leanOffset = Vector3.right * (smoothedLean * leanDistance);
-            Vector3 impactOffset = new Vector3(shakeX * 0.01f, impactVerticalOffset + shakeY * 0.01f, 0f);
+            Vector3 impactOffset = new Vector3(shakeX * 0.01f, impactVerticalOffset + climbVerticalOffset + shakeY * 0.01f, 0f);
             transform.localPosition = baseLocalPosition + leanOffset + bobOffset + impactOffset + new Vector3(wobbleX, wobbleY, 0f) * 0.01f;
 
-            float roll = -smoothedLean * leanAngle + wobbleRoll + shakeRoll + impactRollOffset + bobStep * bobRollAmount * moveAmount;
-            transform.localRotation = Quaternion.Euler(smoothedPitch + wobbleY + impactPitchOffset, wobbleX, roll);
+            float roll = -smoothedLean * leanAngle + wobbleRoll + shakeRoll + impactRollOffset + climbRollOffset + bobStep * bobRollAmount * moveAmount;
+            transform.localRotation = Quaternion.Euler(smoothedPitch + wobbleY + impactPitchOffset + climbPitchOffset, wobbleX, roll);
         }
 
         private void UpdateImpactFeedback()
@@ -265,7 +282,25 @@ namespace Neighbor.Main.Features.Player
                     targetImpactRollOffset += stairStepSide * stairRollKick * impact;
                     targetImpactShake += stairShake * impact;
                 }
+
+                if (playerController.LedgeClimbStartedThisFrame)
+                {
+                    stairStepSide *= -1f;
+                    targetImpactVerticalOffset -= climbStartKick;
+                    targetImpactPitchOffset -= climbStartPitchKick;
+                    targetImpactRollOffset += stairStepSide * climbStartRollKick;
+                    targetImpactShake += climbStartKick;
+                }
+
+                if (playerController.LedgeClimbEndedThisFrame)
+                {
+                    targetImpactVerticalOffset -= climbEndKick;
+                    targetImpactPitchOffset += climbEndPitchKick;
+                    targetImpactShake += climbEndShake;
+                }
             }
+
+            UpdateClimbCameraFeedback();
 
             float settleSpeed = impactReturnSpeed * 0.45f;
             impactVerticalOffset = Damp(impactVerticalOffset, targetImpactVerticalOffset, impactReturnSpeed);
@@ -279,6 +314,27 @@ namespace Neighbor.Main.Features.Player
             targetImpactRollOffset = Damp(targetImpactRollOffset, 0f, settleSpeed);
             targetImpactFovOffset = Damp(targetImpactFovOffset, 0f, settleSpeed);
             targetImpactShake = Damp(targetImpactShake, 0f, settleSpeed);
+        }
+
+        private void UpdateClimbCameraFeedback()
+        {
+            float targetVertical = 0f;
+            float targetPitch = 0f;
+            float targetRoll = 0f;
+
+            if (playerController != null && playerController.IsLedgeClimbing)
+            {
+                float progress = playerController.LedgeClimbProgress;
+                float effort = Mathf.Sin(progress * Mathf.PI);
+                float reach = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(progress * 2.2f));
+                targetVertical = -climbPullVerticalOffset * effort;
+                targetPitch = Mathf.Lerp(-climbPullPitchOffset, climbPullPitchOffset * 0.45f, reach) * Mathf.Lerp(0.6f, 1f, effort);
+                targetRoll = Mathf.Sin(progress * Mathf.PI * 2f) * climbPullRollOffset;
+            }
+
+            climbVerticalOffset = Damp(climbVerticalOffset, targetVertical, climbCameraSmoothing);
+            climbPitchOffset = Damp(climbPitchOffset, targetPitch, climbCameraSmoothing);
+            climbRollOffset = Damp(climbRollOffset, targetRoll, climbCameraSmoothing);
         }
 
         private float Zoom01 => Mathf.InverseLerp(maximumFieldOfView, minimumFieldOfView, currentFieldOfView);

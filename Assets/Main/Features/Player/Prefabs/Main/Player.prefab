@@ -390,6 +390,10 @@ MonoBehaviour:
   ledgeMinimumHeight: 0.45
   ledgeMaximumHeight: 1.25
   ledgeTopProbeForwardOffset: 0.35
+  ledgeTopSurfaceProbeStartDistance: 0.32
+  ledgeTopSurfaceProbeSpacing: 0.18
+  ledgeTopSurfaceProbeCount: 5
+  ledgeTopSurfaceMinimumNormalY: 0.55
   ledgeClimbDuration: 0.24
   ledgeClimbMask:
     serializedVersion: 2
@@ -925,6 +929,16 @@ MonoBehaviour:
   stairPitchKick: 2.2
   stairRollKick: 2.8
   stairShake: 0.24
+  climbStartKick: 0.2
+  climbStartPitchKick: 6
+  climbStartRollKick: 4
+  climbPullVerticalOffset: 0.18
+  climbPullPitchOffset: 5.5
+  climbPullRollOffset: 4.5
+  climbEndKick: 0.16
+  climbEndPitchKick: 4.5
+  climbEndShake: 0.32
+  climbCameraSmoothing: 14
   impactReturnSpeed: 10
 --- !u!114 &7301234288172884471
 MonoBehaviour:
@@ -944,10 +958,12 @@ MonoBehaviour:
   interactActionName: Interact
   interactRange: 3.6
   interactRadius: 0.14
+  interactAlignmentTieTolerance: 0.002
   interactMask:
     serializedVersion: 2
     m_Bits: 64
   triggerInteraction: 1
+  tooltipView: {fileID: 0}
   smallHoldPoint: {fileID: 4750545373015777063}
   mediumHoldPoint: {fileID: 6488719506441061430}
   largeHoldPoint: {fileID: 7098320009907703960}
@@ -1107,9 +1123,7 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 3600286444276436676, guid: ccc415abeb3e3734ea058bf3e7a9b01f, type: 3}
-    - {fileID: 5008554305159189935, guid: ccc415abeb3e3734ea058bf3e7a9b01f, type: 3}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []

@@ -38,6 +38,10 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float ledgeMinimumHeight = 0.45f;
         [SerializeField, Min(0f)] private float ledgeMaximumHeight = 1.25f;
         [SerializeField, Min(0f)] private float ledgeTopProbeForwardOffset = 0.35f;
+        [SerializeField, Min(0.05f)] private float ledgeTopSurfaceProbeStartDistance = 0.35f;
+        [SerializeField, Min(0.05f)] private float ledgeTopSurfaceProbeSpacing = 0.18f;
+        [SerializeField, Range(1, 8)] private int ledgeTopSurfaceProbeCount = 5;
+        [SerializeField, Range(0f, 1f)] private float ledgeTopSurfaceMinimumNormalY = 0.55f;
         [SerializeField, Min(0.01f)] private float ledgeClimbDuration = 0.24f;
         [SerializeField] private LayerMask ledgeClimbMask = ~0;
 
@@ -102,6 +106,9 @@ namespace Neighbor.Main.Features.Player
         public float HeavyLandingImpact { get; private set; }
         public bool StepImpactThisFrame { get; private set; }
         public float StepImpact { get; private set; }
+        public bool LedgeClimbStartedThisFrame { get; private set; }
+        public bool LedgeClimbEndedThisFrame { get; private set; }
+        public float LedgeClimbProgress { get; private set; }
         public bool IsGrounded { get; private set; }
         public bool IsRunning { get; private set; }
         public bool IsCrouching { get; private set; }
@@ -189,6 +196,8 @@ namespace Neighbor.Main.Features.Player
             HeavyLandingImpact = 0f;
             StepImpactThisFrame = false;
             StepImpact = 0f;
+            LedgeClimbStartedThisFrame = false;
+            LedgeClimbEndedThisFrame = false;
         }
 
         private void UpdateGrounding()
@@ -547,16 +556,26 @@ namespace Neighbor.Main.Features.Player
 
             Vector3 forward = transform.forward;
             Vector3 wallRayOrigin = transform.position + Vector3.up * (ledgeMinimumHeight + 0.1f);
-            if (!Physics.Raycast(wallRayOrigin, forward, out RaycastHit wallHit, ledgeCheckDistance, ledgeClimbMask, QueryTriggerInteraction.Ignore))
+            if (Physics.Raycast(wallRayOrigin, forward, out RaycastHit wallHit, ledgeCheckDistance, ledgeClimbMask, QueryTriggerInteraction.Ignore)
+                && wallHit.normal.y <= 0.25f
+                && TryFindWallLedgeTarget(wallHit, forward, out Vector3 wallTargetPosition))
             {
-                return false;
+                StartLedgeClimb(wallTargetPosition);
+                return true;
             }
 
-            if (wallHit.normal.y > 0.25f)
+            if (TryFindTopSurfaceLedgeTarget(forward, out Vector3 topSurfaceTargetPosition))
             {
-                return false;
+                StartLedgeClimb(topSurfaceTargetPosition);
+                return true;
             }
 
+            return false;
+        }
+
+        private bool TryFindWallLedgeTarget(RaycastHit wallHit, Vector3 forward, out Vector3 targetPosition)
+        {
+            targetPosition = default;
             float topProbeHeight = ledgeMaximumHeight + 0.35f;
             Vector3 topRayOrigin = wallHit.point + forward * ledgeTopProbeForwardOffset + Vector3.up * topProbeHeight;
             if (!Physics.Raycast(topRayOrigin, Vector3.down, out RaycastHit topHit, topProbeHeight + 0.5f, ledgeClimbMask, QueryTriggerInteraction.Ignore))
@@ -570,14 +589,57 @@ namespace Neighbor.Main.Features.Player
                 return false;
             }
 
-            Vector3 targetPosition = new Vector3(topHit.point.x, topHit.point.y + 0.03f, topHit.point.z);
+            targetPosition = new Vector3(topHit.point.x, topHit.point.y + 0.03f, topHit.point.z);
             if (!HasStandingClearance(targetPosition))
             {
                 return false;
             }
 
-            StartLedgeClimb(targetPosition);
             return true;
+        }
+
+        private bool TryFindTopSurfaceLedgeTarget(Vector3 forward, out Vector3 targetPosition)
+        {
+            targetPosition = default;
+            float topProbeHeight = ledgeMaximumHeight + 0.45f;
+            float castDistance = topProbeHeight + 0.65f;
+
+            for (int i = 0; i < ledgeTopSurfaceProbeCount; i++)
+            {
+                float forwardDistance = ledgeTopSurfaceProbeStartDistance + ledgeTopSurfaceProbeSpacing * i;
+                if (forwardDistance > ledgeCheckDistance + ledgeTopProbeForwardOffset)
+                {
+                    break;
+                }
+
+                Vector3 probeOrigin = transform.position + forward * forwardDistance + Vector3.up * topProbeHeight;
+                if (!Physics.Raycast(probeOrigin, Vector3.down, out RaycastHit topHit, castDistance, ledgeClimbMask, QueryTriggerInteraction.Ignore))
+                {
+                    continue;
+                }
+
+                if (topHit.normal.y < ledgeTopSurfaceMinimumNormalY)
+                {
+                    continue;
+                }
+
+                float ledgeHeight = topHit.point.y - transform.position.y;
+                if (ledgeHeight < ledgeMinimumHeight || ledgeHeight > ledgeMaximumHeight)
+                {
+                    continue;
+                }
+
+                Vector3 candidateTargetPosition = new Vector3(topHit.point.x, topHit.point.y + 0.03f, topHit.point.z);
+                if (!HasStandingClearance(candidateTargetPosition))
+                {
+                    continue;
+                }
+
+                targetPosition = candidateTargetPosition;
+                return true;
+            }
+
+            return false;
         }
 
         private void StartLedgeClimb(Vector3 targetPosition)
@@ -589,6 +651,8 @@ namespace Neighbor.Main.Features.Player
             ledgeClimbTimer = 0f;
             ledgeClimbStart = transform.position;
             ledgeClimbTarget = targetPosition;
+            LedgeClimbProgress = 0f;
+            LedgeClimbStartedThisFrame = true;
             horizontalVelocity = Vector3.zero;
             verticalVelocity = 0f;
             characterController.enabled = false;
@@ -598,6 +662,7 @@ namespace Neighbor.Main.Features.Player
         {
             ledgeClimbTimer += Time.deltaTime;
             float climb01 = Mathf.Clamp01(ledgeClimbTimer / ledgeClimbDuration);
+            LedgeClimbProgress = climb01;
             float easedClimb = Mathf.SmoothStep(0f, 1f, climb01);
 
             transform.position = Vector3.Lerp(ledgeClimbStart, ledgeClimbTarget, easedClimb);
@@ -609,6 +674,8 @@ namespace Neighbor.Main.Features.Player
 
             characterController.enabled = true;
             IsLedgeClimbing = false;
+            LedgeClimbEndedThisFrame = true;
+            LedgeClimbProgress = 1f;
             IsGrounded = true;
             lastGroundedTime = Time.time;
             verticalVelocity = groundedStickForce;

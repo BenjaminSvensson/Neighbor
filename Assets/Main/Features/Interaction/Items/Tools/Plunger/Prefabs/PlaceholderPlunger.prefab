@@ -506,7 +506,8 @@ MonoBehaviour:
     m_Bits: 4294967295
   audioSource: {fileID: 8649290350409640976}
   pullClips: []
-  attachClips: []
+  attachClips:
+  - {fileID: 8300000, guid: 9f82d045868bf6744a3a3c2596072b9b, type: 3}
   detachClips: []
   pullVolume: 0.55
   pitchRandomness: 0.06
