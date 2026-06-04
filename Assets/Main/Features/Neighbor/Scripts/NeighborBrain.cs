@@ -432,6 +432,11 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (!GoalWaitComplete())
             {
+                if (currentState == BehaviorState.Task && currentTaskLocation != null)
+                {
+                    motor.FaceTowards(transform.position + currentTaskLocation.LookDirection, 5f);
+                }
+
                 return;
             }
 

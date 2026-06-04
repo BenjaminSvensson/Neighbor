@@ -18,6 +18,9 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float maximumWaitTime = 5f;
         [SerializeField] private bool canRepeatImmediately;
         [SerializeField] private NeighborTaskLocation forcedNextTask;
+        [SerializeField, Min(0.1f)] private float lookArrowLength = 1.2f;
+        [SerializeField, Min(0.05f)] private float lookArrowHeadSize = 0.25f;
+        [SerializeField] private Color lookArrowColor = new Color(0.1f, 0.85f, 1f, 0.9f);
 
         [Header("Task Audio")]
         [SerializeField] private AudioSource audioSource;
@@ -35,6 +38,7 @@ namespace Neighbor.Main.Features.Neighbor
         private AudioClip activeLoopClip;
 
         public Vector3 Position => transform.position;
+        public Vector3 LookDirection => transform.forward;
         public float RandomWaitTime => Random.Range(minimumWaitTime, Mathf.Max(minimumWaitTime, maximumWaitTime));
         public bool CanRepeatImmediately => canRepeatImmediately;
         public NeighborTaskLocation ForcedNextTask => forcedNextTask;
@@ -119,6 +123,44 @@ namespace Neighbor.Main.Features.Neighbor
             maximumWaitTime = Mathf.Max(minimumWaitTime, maximumWaitTime);
             audioMaxDistance = Mathf.Max(0.1f, audioMaxDistance);
             audioMinDistance = Mathf.Min(audioMinDistance, audioMaxDistance);
+        }
+
+        private void OnDrawGizmos()
+        {
+            DrawLookDirectionGizmo(false);
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            DrawLookDirectionGizmo(true);
+        }
+
+        private void DrawLookDirectionGizmo(bool selected)
+        {
+            float arrowLength = Mathf.Max(0.1f, lookArrowLength);
+            float arrowHeadSize = Mathf.Max(0.05f, lookArrowHeadSize);
+            Vector3 start = transform.position + Vector3.up * 0.08f;
+            Vector3 direction = transform.forward.sqrMagnitude > 0.001f ? transform.forward.normalized : Vector3.forward;
+            Vector3 end = start + direction * arrowLength;
+
+            Color previousColor = Gizmos.color;
+            Color color = lookArrowColor;
+            if (!selected)
+            {
+                color.a *= 0.65f;
+            }
+
+            Gizmos.color = color;
+            Gizmos.DrawSphere(start, selected ? 0.12f : 0.08f);
+            Gizmos.DrawLine(start, end);
+
+            Quaternion headRotation = Quaternion.LookRotation(direction, Vector3.up);
+            Vector3 left = headRotation * Quaternion.Euler(0f, 150f, 0f) * Vector3.forward;
+            Vector3 right = headRotation * Quaternion.Euler(0f, -150f, 0f) * Vector3.forward;
+            Gizmos.DrawLine(end, end + left * arrowHeadSize);
+            Gizmos.DrawLine(end, end + right * arrowHeadSize);
+
+            Gizmos.color = previousColor;
         }
 
         private AudioClip GetTaskClip()
