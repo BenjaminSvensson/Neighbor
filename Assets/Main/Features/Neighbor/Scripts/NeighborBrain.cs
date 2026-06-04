@@ -530,7 +530,7 @@ namespace Neighbor.Main.Features.Neighbor
             bool waitComplete = Time.time >= waitUntilTime;
             if (waitComplete && currentState == BehaviorState.Task)
             {
-                StopActiveTaskAudio();
+                StopActiveTaskAudio(true);
             }
 
             return waitComplete;
@@ -590,14 +590,14 @@ namespace Neighbor.Main.Features.Neighbor
             activeTaskAudioLocation.BeginTaskAudio();
         }
 
-        private void StopActiveTaskAudio()
+        private void StopActiveTaskAudio(bool playFinishSound = false)
         {
             if (activeTaskAudioLocation == null)
             {
                 return;
             }
 
-            activeTaskAudioLocation.StopTaskAudio();
+            activeTaskAudioLocation.StopTaskAudio(playFinishSound);
             activeTaskAudioLocation = null;
         }
 

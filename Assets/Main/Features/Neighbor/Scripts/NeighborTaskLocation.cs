@@ -20,9 +20,13 @@ namespace Neighbor.Main.Features.Neighbor
 
         [Header("Task Audio")]
         [SerializeField] private AudioSource audioSource;
+        [SerializeField] private AudioClip[] taskStartClips;
         [SerializeField] private AudioClip[] taskClips;
+        [SerializeField] private AudioClip[] taskFinishClips;
         [SerializeField] private TaskAudioPlaybackMode audioPlaybackMode = TaskAudioPlaybackMode.OneShot;
         [SerializeField, Range(0f, 1f)] private float audioVolume = 0.65f;
+        [SerializeField, Range(0f, 1f)] private float startAudioVolume = 0.65f;
+        [SerializeField, Range(0f, 1f)] private float finishAudioVolume = 0.65f;
         [SerializeField, Min(0f)] private float pitchRandomness = 0.04f;
         [SerializeField, Min(0f)] private float audioMinDistance = 0.4f;
         [SerializeField, Min(0.1f)] private float audioMaxDistance = 12f;
@@ -55,6 +59,8 @@ namespace Neighbor.Main.Features.Neighbor
 
         public void BeginTaskAudio()
         {
+            PlayOneShot(taskStartClips, startAudioVolume);
+
             AudioClip clip = GetTaskClip();
             if (clip == null || audioSource == null)
             {
@@ -81,7 +87,7 @@ namespace Neighbor.Main.Features.Neighbor
             audioSource.PlayOneShot(clip, audioVolume);
         }
 
-        public void StopTaskAudio()
+        public void StopTaskAudio(bool playFinishSound = false)
         {
             if (audioSource == null)
             {
@@ -99,6 +105,11 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             activeLoopClip = null;
+
+            if (playFinishSound)
+            {
+                PlayOneShot(taskFinishClips, finishAudioVolume);
+            }
         }
 
         private void OnValidate()
@@ -110,14 +121,32 @@ namespace Neighbor.Main.Features.Neighbor
 
         private AudioClip GetTaskClip()
         {
-            if (taskClips == null || taskClips.Length == 0)
+            return GetRandomClip(taskClips);
+        }
+
+        private void PlayOneShot(AudioClip[] clips, float volume)
+        {
+            AudioClip clip = GetRandomClip(clips);
+            if (clip == null || audioSource == null)
+            {
+                return;
+            }
+
+            audioSource.loop = false;
+            audioSource.pitch = Random.Range(1f - pitchRandomness, 1f + pitchRandomness);
+            audioSource.PlayOneShot(clip, volume);
+        }
+
+        private AudioClip GetRandomClip(AudioClip[] clips)
+        {
+            if (clips == null || clips.Length == 0)
             {
                 return null;
             }
 
-            for (int i = 0; i < taskClips.Length; i++)
+            for (int i = 0; i < clips.Length; i++)
             {
-                AudioClip clip = taskClips[Random.Range(0, taskClips.Length)];
+                AudioClip clip = clips[Random.Range(0, clips.Length)];
                 if (clip != null)
                 {
                     return clip;
