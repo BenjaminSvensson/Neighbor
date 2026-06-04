@@ -17,6 +17,7 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float minimumWaitTime = 1.5f;
         [SerializeField, Min(0f)] private float maximumWaitTime = 5f;
         [SerializeField] private bool canRepeatImmediately;
+        [SerializeField] private NeighborTaskLocation forcedNextTask;
 
         [Header("Task Audio")]
         [SerializeField] private AudioSource audioSource;
@@ -36,6 +37,7 @@ namespace Neighbor.Main.Features.Neighbor
         public Vector3 Position => transform.position;
         public float RandomWaitTime => Random.Range(minimumWaitTime, Mathf.Max(minimumWaitTime, maximumWaitTime));
         public bool CanRepeatImmediately => canRepeatImmediately;
+        public NeighborTaskLocation ForcedNextTask => forcedNextTask;
         public static IReadOnlyList<NeighborTaskLocation> Locations => ActiveLocations;
 
         private void Awake()

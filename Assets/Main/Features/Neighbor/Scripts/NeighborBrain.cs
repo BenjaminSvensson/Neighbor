@@ -435,6 +435,11 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            if (currentState == BehaviorState.Task && TryStartForcedNextTask())
+            {
+                return;
+            }
+
             ChooseNextRoutineGoal();
         }
 
@@ -500,14 +505,8 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            lastTaskLocation = taskLocation;
-            currentTaskLocation = taskLocation;
-            currentGoal = taskLocation.Position;
-            goalWaitDuration = taskLocation.RandomWaitTime;
-            waitingAtGoal = false;
-            if (motor.SetDestination(currentGoal))
+            if (TryStartTask(taskLocation))
             {
-                SetState(BehaviorState.Task);
                 return;
             }
 
@@ -534,6 +533,41 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             return waitComplete;
+        }
+
+        private bool TryStartForcedNextTask()
+        {
+            NeighborTaskLocation completedTask = currentTaskLocation;
+            NeighborTaskLocation forcedNextTask = completedTask != null ? completedTask.ForcedNextTask : null;
+            if (forcedNextTask == null || !forcedNextTask.isActiveAndEnabled)
+            {
+                return false;
+            }
+
+            return TryStartTask(forcedNextTask);
+        }
+
+        private bool TryStartTask(NeighborTaskLocation taskLocation)
+        {
+            if (taskLocation == null || motor == null)
+            {
+                return false;
+            }
+
+            lastTaskLocation = taskLocation;
+            currentTaskLocation = taskLocation;
+            currentGoal = taskLocation.Position;
+            goalWaitDuration = taskLocation.RandomWaitTime;
+            waitingAtGoal = false;
+
+            if (!motor.SetDestination(currentGoal))
+            {
+                currentTaskLocation = null;
+                return false;
+            }
+
+            SetState(BehaviorState.Task);
+            return true;
         }
 
         private NeighborTaskLocation GetRandomTaskLocation()
