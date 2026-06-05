@@ -22,6 +22,7 @@ namespace Neighbor.Main.Features.Interaction
 
         [Header("Tooltip")]
         [SerializeField] private InteractionTooltipView tooltipView;
+        [SerializeField] private PlayerInventoryHudView inventoryHudView;
 
         [Header("Held Item")]
         [SerializeField] private Transform smallHoldPoint;
@@ -91,6 +92,12 @@ namespace Neighbor.Main.Features.Interaction
         public Pickupable HeldPickup => heldPickup;
         public int ActiveInventorySlot => activeInventorySlot;
         public int InventorySlotCount => inventorySlotCount;
+        public Pickupable GetInventorySlotPickup(int slotIndex)
+        {
+            EnsureInventorySlots();
+            return slotIndex >= 0 && slotIndex < inventorySlots.Length ? inventorySlots[slotIndex] : null;
+        }
+
         public bool HasFocusedInteractable { get; private set; }
         public IInteractable FocusedInteractable { get; private set; }
         public Vector3 ViewForward => ViewTransform.forward;
@@ -108,6 +115,7 @@ namespace Neighbor.Main.Features.Interaction
             EnsureThrowArcRenderer();
             EnsureTooltipView();
             EnsureInventorySlots();
+            EnsureInventoryHudView();
         }
 
         private void OnEnable()
@@ -125,6 +133,11 @@ namespace Neighbor.Main.Features.Interaction
             if (tooltipView != null)
             {
                 tooltipView.Hide();
+            }
+
+            if (inventoryHudView != null)
+            {
+                inventoryHudView.Hide();
             }
         }
 
@@ -1532,6 +1545,24 @@ namespace Neighbor.Main.Features.Interaction
             {
                 tooltipView = InteractionTooltipView.CreateRuntimeTooltip();
             }
+        }
+
+        private void EnsureInventoryHudView()
+        {
+            if (inventoryHudView != null)
+            {
+                inventoryHudView.SetInteractor(this);
+                return;
+            }
+
+            inventoryHudView = FindAnyObjectByType<PlayerInventoryHudView>();
+            if (inventoryHudView == null)
+            {
+                inventoryHudView = PlayerInventoryHudView.CreateRuntimeHud(this);
+                return;
+            }
+
+            inventoryHudView.SetInteractor(this);
         }
 
         private void HideThrowArc()
