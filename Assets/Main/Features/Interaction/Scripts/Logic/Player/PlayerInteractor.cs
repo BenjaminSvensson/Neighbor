@@ -1,3 +1,4 @@
+using System;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -291,6 +292,7 @@ namespace Neighbor.Main.Features.Interaction
             ClearInventorySlot(pickupable);
             releaseButtonWasHeld = false;
             HideThrowArc();
+            TrySelectMatchingInventoryPickup(pickupable);
             return true;
         }
 
@@ -368,6 +370,7 @@ namespace Neighbor.Main.Features.Interaction
             {
                 heldPickup = null;
                 ClearInventorySlot(pickup);
+                TrySelectMatchingInventoryPickup(pickup);
             }
 
             releaseButtonWasHeld = false;
@@ -397,12 +400,14 @@ namespace Neighbor.Main.Features.Interaction
                 Vector3 throwVelocity = CalculateThrowVelocity(1f);
                 releasedPickup.Throw(throwVelocity, playerColliders);
                 HideThrowArc();
+                TrySelectMatchingInventoryPickup(releasedPickup);
                 return;
             }
 
             if (TryGetPlacementPose(releasedPickup, out Vector3 placementPosition, out Quaternion placementRotation, out bool foundPlacementSurface, out bool shouldSleepAfterPlacement))
             {
                 releasedPickup.Place(placementPosition, placementRotation, shouldSleepAfterPlacement);
+                TrySelectMatchingInventoryPickup(releasedPickup);
             }
             else if (foundPlacementSurface)
             {
@@ -412,6 +417,7 @@ namespace Neighbor.Main.Features.Interaction
             else
             {
                 releasedPickup.Drop();
+                TrySelectMatchingInventoryPickup(releasedPickup);
             }
 
             HideThrowArc();
@@ -587,6 +593,76 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             return -1;
+        }
+
+        private void TrySelectMatchingInventoryPickup(Pickupable releasedPickup)
+        {
+            int matchingSlot = FindFirstMatchingInventorySlot(releasedPickup);
+            if (matchingSlot >= 0)
+            {
+                SelectInventorySlot(matchingSlot);
+            }
+        }
+
+        private int FindFirstMatchingInventorySlot(Pickupable pickupable)
+        {
+            EnsureInventorySlots();
+            string releasedKey = GetPickupMatchKey(pickupable);
+            if (string.IsNullOrWhiteSpace(releasedKey))
+            {
+                return -1;
+            }
+
+            for (int i = 0; i < inventorySlots.Length; i++)
+            {
+                Pickupable inventoryPickup = inventorySlots[i];
+                if (inventoryPickup == null)
+                {
+                    continue;
+                }
+
+                if (string.Equals(GetPickupMatchKey(inventoryPickup), releasedKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        private static string GetPickupMatchKey(Pickupable pickupable)
+        {
+            if (pickupable == null)
+            {
+                return null;
+            }
+
+            string itemName = pickupable.gameObject.name.Replace("(Clone)", string.Empty).Trim();
+            return RemoveUnityDuplicateSuffix(itemName);
+        }
+
+        private static string RemoveUnityDuplicateSuffix(string itemName)
+        {
+            if (string.IsNullOrWhiteSpace(itemName) || !itemName.EndsWith(")", StringComparison.Ordinal))
+            {
+                return itemName;
+            }
+
+            int openParenIndex = itemName.LastIndexOf(" (", StringComparison.Ordinal);
+            if (openParenIndex < 0 || openParenIndex >= itemName.Length - 2)
+            {
+                return itemName;
+            }
+
+            for (int i = openParenIndex + 2; i < itemName.Length - 1; i++)
+            {
+                if (!char.IsDigit(itemName[i]))
+                {
+                    return itemName;
+                }
+            }
+
+            return itemName.Substring(0, openParenIndex).TrimEnd();
         }
 
         private void ClearInventorySlot(Pickupable pickupable)
