@@ -271,11 +271,7 @@ namespace Neighbor.Main.Features.Interaction
                 }
                 else
                 {
-                    ReleaseHeldPickup(false);
-                    if (heldPickup != null)
-                    {
-                        return;
-                    }
+                    DropHeldPickupForReplacement();
                 }
             }
 
@@ -300,11 +296,6 @@ namespace Neighbor.Main.Features.Interaction
 
         private void TryInteract()
         {
-            if (heldPickup != null)
-            {
-                return;
-            }
-
             Ray ray = new Ray(ViewTransform.position, ViewTransform.forward);
             IInteractable interactable = FocusedInteractable ?? FindBestInteractable(ray);
 
@@ -424,6 +415,21 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             HideThrowArc();
+        }
+
+        private void DropHeldPickupForReplacement()
+        {
+            if (heldPickup == null)
+            {
+                return;
+            }
+
+            Pickupable replacedPickup = heldPickup;
+            heldPickup = null;
+            ClearInventorySlot(replacedPickup);
+            releaseButtonWasHeld = false;
+            HideThrowArc();
+            replacedPickup.Drop();
         }
 
         private void DropInventoryForDisable()
@@ -1096,13 +1102,6 @@ namespace Neighbor.Main.Features.Interaction
 
         private void UpdateFocusedInteractable()
         {
-            if (heldPickup != null)
-            {
-                FocusedInteractable = null;
-                HasFocusedInteractable = false;
-                return;
-            }
-
             Ray ray = new Ray(ViewTransform.position, ViewTransform.forward);
             FocusedInteractable = FindBestInteractable(ray);
             HasFocusedInteractable = FocusedInteractable != null;
@@ -1118,6 +1117,13 @@ namespace Neighbor.Main.Features.Interaction
 
             if (heldPickup != null)
             {
+                if (FocusedInteractable != null
+                    && TryGetTooltip(FocusedInteractable, InteractionTooltipContext.FocusedInteractable, "Interact", "E", out string heldFocusAction, out string heldFocusKey))
+                {
+                    tooltipView.Show(heldFocusKey, heldFocusAction);
+                    return;
+                }
+
                 ShowHeldPickupTooltip(mouse);
                 return;
             }
