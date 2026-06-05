@@ -273,6 +273,7 @@ namespace Neighbor.Main.Features.Interaction
                 transform.SetParent(inventoryParent, false);
                 transform.localPosition = Vector3.zero;
                 transform.localRotation = Quaternion.identity;
+                SetBodyPose(transform.position, transform.rotation);
             }
 
             IsInventoryStored = true;
@@ -280,7 +281,13 @@ namespace Neighbor.Main.Features.Interaction
 
         public void EquipFromInventory(PlayerInteractor interactor)
         {
+            EquipFromInventory(interactor, transform.position, transform.rotation);
+        }
+
+        public void EquipFromInventory(PlayerInteractor interactor, Vector3 equipPosition, Quaternion equipRotation)
+        {
             RestoreInventoryState();
+            SetBodyPose(equipPosition, equipRotation);
             Pickup(interactor, false);
         }
 
@@ -407,6 +414,18 @@ namespace Neighbor.Main.Features.Interaction
         private void SetBodyLinearVelocity(Vector3 velocity)
         {
             RigidbodyVelocityUtility.SetLinearIfDynamic(body, velocity);
+        }
+
+        private void SetBodyPose(Vector3 position, Quaternion rotation)
+        {
+            transform.SetPositionAndRotation(position, rotation);
+            if (body == null)
+            {
+                return;
+            }
+
+            body.position = position;
+            body.rotation = rotation;
         }
 
         private void SetHeldColliderState(bool restore)

@@ -495,7 +495,7 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            selectedPickup.EquipFromInventory(this);
+            selectedPickup.EquipFromInventory(this, GetHoldPosition(selectedPickup), ViewTransform.rotation);
             heldPickup = selectedPickup;
         }
 
@@ -989,7 +989,12 @@ namespace Neighbor.Main.Features.Interaction
 
         private Vector3 GetHoldPosition()
         {
-            Transform activeHoldPoint = GetHoldPointFor(heldPickup);
+            return GetHoldPosition(heldPickup);
+        }
+
+        private Vector3 GetHoldPosition(Pickupable pickupable)
+        {
+            Transform activeHoldPoint = GetHoldPointFor(pickupable);
             Vector3 desiredPosition;
             if (activeHoldPoint != null)
             {
