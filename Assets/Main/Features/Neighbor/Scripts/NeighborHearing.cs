@@ -6,16 +6,18 @@ namespace Neighbor.Main.Features.Neighbor
 {
     public readonly struct NeighborNoiseStimulus
     {
-        public NeighborNoiseStimulus(Vector3 position, float loudness01, float radius, GameObject sourceObject)
+        public NeighborNoiseStimulus(Vector3 position, float loudness01, float urgency01, float radius, GameObject sourceObject)
         {
             Position = position;
             Loudness01 = loudness01;
+            Urgency01 = urgency01;
             Radius = radius;
             SourceObject = sourceObject;
         }
 
         public Vector3 Position { get; }
         public float Loudness01 { get; }
+        public float Urgency01 { get; }
         public float Radius { get; }
         public GameObject SourceObject { get; }
     }
@@ -55,6 +57,7 @@ namespace Neighbor.Main.Features.Neighbor
             NoiseHeard?.Invoke(new NeighborNoiseStimulus(
                 noiseEvent.Origin,
                 noiseEvent.Loudness01,
+                noiseEvent.Urgency01,
                 noiseEvent.Radius,
                 noiseEvent.SourceObject));
         }

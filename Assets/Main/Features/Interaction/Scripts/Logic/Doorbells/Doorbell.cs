@@ -24,6 +24,7 @@ namespace Neighbor.Main.Features.Interaction
         [Header("Neighbor Alert")]
         [SerializeField, Min(0f)] private float noiseRadius = 18f;
         [SerializeField, Range(0f, 1f)] private float noiseLoudness = 1f;
+        [SerializeField, Range(0f, 1f)] private float alertUrgency = 0.25f;
         [SerializeField, Min(0.02f)] private float noiseLifetime = 0.45f;
 
         private Coroutine pressRoutine;
@@ -149,7 +150,7 @@ namespace Neighbor.Main.Features.Interaction
             noiseBody.useGravity = false;
 
             NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
-            noiseEvent.Initialize(transform.position, noiseRadius, noiseLoudness, gameObject, noiseLifetime);
+            noiseEvent.Initialize(transform.position, noiseRadius, noiseLoudness, gameObject, noiseLifetime, alertUrgency);
         }
 
         private void AnimateButtonPress()

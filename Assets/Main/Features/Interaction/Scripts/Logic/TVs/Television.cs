@@ -18,6 +18,7 @@ namespace Neighbor.Main.Features.Interaction
         [Header("Neighbor Distraction")]
         [SerializeField, Min(0f)] private float noiseRadius = 16f;
         [SerializeField, Range(0f, 1f)] private float noiseLoudness = 0.65f;
+        [SerializeField, Range(0f, 1f)] private float alertUrgency = 0.35f;
         [SerializeField, Min(0.02f)] private float noiseLifetime = 0.6f;
         [SerializeField, Min(0.1f)] private float noiseInterval = 1.25f;
 
@@ -186,7 +187,7 @@ namespace Neighbor.Main.Features.Interaction
             noiseBody.useGravity = false;
 
             NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
-            noiseEvent.Initialize(RemoteTargetPosition, noiseRadius, noiseLoudness, gameObject, noiseLifetime);
+            noiseEvent.Initialize(RemoteTargetPosition, noiseRadius, noiseLoudness, gameObject, noiseLifetime, alertUrgency);
         }
 
         private void PlayToggleSound()

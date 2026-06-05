@@ -32,6 +32,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         [Header("Investigation")]
         [SerializeField, Min(0f)] private float minimumInvestigateLoudness = 0.08f;
+        [SerializeField, Range(0f, 1f)] private float minimumUrgencyToRunToNoise = 0.65f;
         [SerializeField, Min(0f)] private float noiseDestinationSampleRadius = 4f;
         [SerializeField, Min(0f)] private float investigationWaitTime = 2.2f;
         [SerializeField, Min(0f)] private float searchDuration = 4f;
@@ -67,6 +68,7 @@ namespace Neighbor.Main.Features.Neighbor
         private bool waitingAtGoal;
         private NeighborTaskLocation currentTaskLocation;
         private NeighborTaskLocation activeTaskAudioLocation;
+        private NeighborMotor.MoveMode investigationMoveMode = NeighborMotor.MoveMode.Walk;
 
         public BehaviorState CurrentState => currentState;
         public Vector3 LastKnownPlayerPosition => lastKnownPlayerPosition;
@@ -380,7 +382,7 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            motor.SetMoveMode(NeighborMotor.MoveMode.Walk);
+            motor.SetMoveMode(investigationMoveMode);
             if (!motor.HasArrived)
             {
                 return;
@@ -459,7 +461,10 @@ namespace Neighbor.Main.Features.Neighbor
             waitingAtGoal = false;
             currentTaskLocation = null;
             StopActiveTaskAudio();
-            motor?.SetMoveMode(NeighborMotor.MoveMode.Run);
+            investigationMoveMode = stimulus.Urgency01 >= minimumUrgencyToRunToNoise
+                ? NeighborMotor.MoveMode.Run
+                : NeighborMotor.MoveMode.Walk;
+            motor?.SetMoveMode(investigationMoveMode);
             if (motor != null && motor.TrySetDestinationNear(stimulus.Position, noiseDestinationSampleRadius, out Vector3 investigatePosition))
             {
                 currentGoal = investigatePosition;

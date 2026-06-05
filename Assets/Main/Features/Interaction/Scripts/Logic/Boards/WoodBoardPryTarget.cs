@@ -11,6 +11,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float torqueImpulse = 6f;
         [SerializeField, Min(0f)] private float hearingRadius = 9f;
         [SerializeField, Range(0f, 1f)] private float loudness = 0.55f;
+        [SerializeField, Range(0f, 1f)] private float alertUrgency = 0.65f;
         [SerializeField, Min(0.02f)] private float noiseLifetime = 0.3f;
 
         private Rigidbody body;
@@ -65,7 +66,7 @@ namespace Neighbor.Main.Features.Interaction
             noiseBody.useGravity = false;
 
             NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
-            noiseEvent.Initialize(origin, hearingRadius, loudness, instigator != null ? instigator : gameObject, noiseLifetime);
+            noiseEvent.Initialize(origin, hearingRadius, loudness, instigator != null ? instigator : gameObject, noiseLifetime, alertUrgency);
         }
 
         private void OnValidate()

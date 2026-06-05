@@ -21,6 +21,7 @@ namespace Neighbor.Main.Features.Interaction
         [Header("Noise")]
         [SerializeField, Min(0f)] private float hearingRadius = 13f;
         [SerializeField, Range(0f, 1f)] private float loudness = 0.75f;
+        [SerializeField, Range(0f, 1f)] private float alertUrgency = 0.85f;
         [SerializeField, Min(0.02f)] private float noiseLifetime = 0.45f;
 
         [Header("Audio")]
@@ -234,7 +235,7 @@ namespace Neighbor.Main.Features.Interaction
             noiseBody.useGravity = false;
 
             NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
-            noiseEvent.Initialize(origin, hearingRadius, loudness, gameObject, noiseLifetime);
+            noiseEvent.Initialize(origin, hearingRadius, loudness, gameObject, noiseLifetime, alertUrgency);
         }
 
         private void OnValidate()

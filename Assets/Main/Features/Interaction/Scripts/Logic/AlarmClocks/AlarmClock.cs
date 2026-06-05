@@ -12,6 +12,7 @@ namespace Neighbor.Main.Features.Interaction
         [Header("Neighbor Alert")]
         [SerializeField, Min(0f)] private float hearingRadius = 20f;
         [SerializeField, Range(0f, 1f)] private float loudness = 1f;
+        [SerializeField, Range(0f, 1f)] private float alertUrgency = 0.75f;
         [SerializeField, Min(0.02f)] private float noiseLifetime = 0.8f;
 
         [Header("Placeholder Feedback")]
@@ -280,7 +281,7 @@ namespace Neighbor.Main.Features.Interaction
             noiseBody.useGravity = false;
 
             NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
-            noiseEvent.Initialize(origin, hearingRadius, loudness, gameObject, noiseLifetime);
+            noiseEvent.Initialize(origin, hearingRadius, loudness, gameObject, noiseLifetime, alertUrgency);
         }
 
         private void ResolveAudioSource()

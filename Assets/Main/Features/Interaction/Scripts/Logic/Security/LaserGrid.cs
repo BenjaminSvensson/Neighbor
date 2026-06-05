@@ -24,6 +24,7 @@ namespace Neighbor.Main.Features.Interaction
         [Header("Alert")]
         [SerializeField, Min(0f)] private float alertRadius = 16f;
         [SerializeField, Range(0f, 1f)] private float alertLoudness = 0.75f;
+        [SerializeField, Range(0f, 1f)] private float alertUrgency = 0.9f;
         [SerializeField, Min(0.02f)] private float alertLifetime = 0.75f;
         [SerializeField, Min(0f)] private float triggerCooldown = 1.2f;
         [SerializeField] private GameObject[] activationTargets;
@@ -153,7 +154,7 @@ namespace Neighbor.Main.Features.Interaction
             noiseBody.useGravity = false;
 
             NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
-            noiseEvent.Initialize(origin, alertRadius, alertLoudness, gameObject, alertLifetime);
+            noiseEvent.Initialize(origin, alertRadius, alertLoudness, gameObject, alertLifetime, alertUrgency);
         }
 
         private void ActivateTargets()

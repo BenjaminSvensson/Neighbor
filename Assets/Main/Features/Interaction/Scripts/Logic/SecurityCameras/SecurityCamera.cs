@@ -30,6 +30,7 @@ namespace Neighbor.Main.Features.Interaction
         [Header("Neighbor Alert")]
         [SerializeField, Min(0f)] private float alertRadius = 18f;
         [SerializeField, Range(0f, 1f)] private float loudness = 1f;
+        [SerializeField, Range(0f, 1f)] private float alertUrgency = 0.95f;
         [SerializeField, Min(0.02f)] private float noiseLifetime = 0.6f;
         [SerializeField, Min(0f)] private float alertCooldown = 1.5f;
 
@@ -347,7 +348,7 @@ namespace Neighbor.Main.Features.Interaction
             noiseBody.useGravity = false;
 
             NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
-            noiseEvent.Initialize(detectedPosition, alertRadius, loudness, gameObject, noiseLifetime);
+            noiseEvent.Initialize(detectedPosition, alertRadius, loudness, gameObject, noiseLifetime, alertUrgency);
         }
 
         private void ConfigureSightBeam()

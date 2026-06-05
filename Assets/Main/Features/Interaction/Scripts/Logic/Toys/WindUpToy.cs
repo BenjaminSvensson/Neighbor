@@ -21,6 +21,7 @@ namespace Neighbor.Main.Features.Interaction
         [Header("Neighbor Noise")]
         [SerializeField, Min(0f)] private float noiseRadius = 12f;
         [SerializeField, Range(0f, 1f)] private float noiseLoudness = 0.55f;
+        [SerializeField, Range(0f, 1f)] private float alertUrgency = 0.35f;
         [SerializeField, Min(0.02f)] private float noiseLifetime = 0.35f;
         [SerializeField, Min(0.05f)] private float noiseInterval = 0.55f;
 
@@ -298,7 +299,7 @@ namespace Neighbor.Main.Features.Interaction
             noiseBody.useGravity = false;
 
             NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
-            noiseEvent.Initialize(origin, noiseRadius, noiseLoudness, gameObject, noiseLifetime);
+            noiseEvent.Initialize(origin, noiseRadius, noiseLoudness, gameObject, noiseLifetime, alertUrgency);
         }
 
         private void PlayWindUpSound()
