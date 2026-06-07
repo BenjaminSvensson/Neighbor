@@ -14,7 +14,7 @@ namespace Neighbor.Main.Features.Neighbor
             Wander,
             Investigate,
             Chase,
-            Search,
+            HuntMode,
             Stunned
         }
 
@@ -35,7 +35,15 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Range(0f, 1f)] private float minimumUrgencyToRunToNoise = 0.65f;
         [SerializeField, Min(0f)] private float noiseDestinationSampleRadius = 4f;
         [SerializeField, Min(0f)] private float investigationWaitTime = 2.2f;
-        [SerializeField, Min(0f)] private float searchDuration = 4f;
+
+        [Header("Hunt Mode")]
+        [SerializeField, Min(0f)] private float huntDuration = 15f;
+        [SerializeField, Min(0f)] private float huntPointWaitTime = 0.65f;
+        [SerializeField, Min(0f)] private float huntDirectionWeight = 8f;
+        [SerializeField, Min(0f)] private float huntDistancePenalty = 0.08f;
+        [SerializeField, Min(0f)] private float huntDestinationTimePadding = 0.35f;
+        [SerializeField, Min(0f)] private float playerDirectionSampleMaximumGap = 0.5f;
+        [SerializeField, Min(0f)] private float playerDirectionMinimumDistance = 0.01f;
 
         [Header("Chase")]
         [SerializeField, Min(0f)] private float chaseMemoryTime = 3.5f;
@@ -51,12 +59,17 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float giveUpSightIgnoreTime = 3f;
 
         private BehaviorState currentState;
+        private readonly HashSet<NeighborSearchPoint> visitedSearchPoints = new();
         private NeighborTaskLocation lastTaskLocation;
+        private NeighborSearchPoint currentSearchPoint;
         private NeighborClimbLink currentClimbLink;
         private Vector3 currentGoal;
         private Vector3 lastKnownPlayerPosition;
+        private Vector3 lastObservedPlayerPosition;
+        private Vector3 lastSeenPlayerMoveDirection;
         private float waitUntilTime;
         private float goalWaitDuration;
+        private float huntUntilTime;
         private float lastPlayerSeenTime = float.NegativeInfinity;
         private float nextChaseRepathTime;
         private float nextClimbLinkSearchTime;
@@ -65,6 +78,8 @@ namespace Neighbor.Main.Features.Neighbor
         private float lastChaseProgressTime;
         private float ignorePlayerSightUntilTime;
         private bool isResettingScene;
+        private bool hasObservedPlayerPosition;
+        private bool hasPlayerMoveDirectionForCurrentChase;
         private bool waitingAtGoal;
         private NeighborTaskLocation currentTaskLocation;
         private NeighborTaskLocation activeTaskAudioLocation;
@@ -114,7 +129,7 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (currentState == BehaviorState.Stunned)
             {
-                SetState(BehaviorState.Search);
+                ChooseNextRoutineGoal();
             }
 
             UpdatePerception();
@@ -146,6 +161,13 @@ namespace Neighbor.Main.Features.Neighbor
             if (vision.TrySeeTarget(out Transform seenTarget, out Vector3 seenPosition))
             {
                 player = seenTarget;
+                if (currentState != BehaviorState.Chase)
+                {
+                    hasObservedPlayerPosition = false;
+                    hasPlayerMoveDirectionForCurrentChase = false;
+                }
+
+                UpdateLastSeenPlayerDirection(seenPosition);
                 lastKnownPlayerPosition = seenPosition;
                 lastPlayerSeenTime = Time.time;
                 SetState(BehaviorState.Chase);
@@ -162,8 +184,8 @@ namespace Neighbor.Main.Features.Neighbor
                 case BehaviorState.Investigate:
                     UpdateInvestigate();
                     break;
-                case BehaviorState.Search:
-                    UpdateSearch();
+                case BehaviorState.HuntMode:
+                    UpdateHuntMode();
                     break;
                 case BehaviorState.Task:
                 case BehaviorState.Wander:
@@ -217,11 +239,7 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (!canStillChase)
             {
-                currentGoal = lastKnownPlayerPosition;
-                motor.SetDestination(currentGoal);
-                goalWaitDuration = searchDuration;
-                waitingAtGoal = false;
-                SetState(BehaviorState.Search);
+                BeginHuntMode(lastKnownPlayerPosition);
             }
         }
 
@@ -259,21 +277,8 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void GiveUpChase(Vector3 chasePosition)
         {
-            lastKnownPlayerPosition = chasePosition;
-            currentGoal = chasePosition;
-            goalWaitDuration = searchDuration;
-            waitingAtGoal = false;
-            currentClimbLink = null;
-            currentTaskLocation = null;
-            StopActiveTaskAudio();
             ignorePlayerSightUntilTime = Time.time + giveUpSightIgnoreTime;
-
-            if (motor != null && !motor.SetDestination(currentGoal))
-            {
-                motor.Stop();
-            }
-
-            SetState(BehaviorState.Search);
+            BeginHuntMode(chasePosition);
         }
 
         private bool TryHandleVerticalChase(Vector3 chasePosition)
@@ -397,7 +402,7 @@ namespace Neighbor.Main.Features.Neighbor
             ChooseNextRoutineGoal();
         }
 
-        private void UpdateSearch()
+        private void UpdateHuntMode()
         {
             if (motor == null)
             {
@@ -405,6 +410,22 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             motor.SetMoveMode(NeighborMotor.MoveMode.Run);
+            if (Time.time >= huntUntilTime)
+            {
+                EndHuntMode();
+                return;
+            }
+
+            if (currentSearchPoint == null)
+            {
+                if (!TrySetNextHuntDestination())
+                {
+                    motor.Stop();
+                }
+
+                return;
+            }
+
             if (!motor.HasArrived)
             {
                 return;
@@ -412,11 +433,15 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (!GoalWaitComplete())
             {
-                motor.FaceTowards(lastKnownPlayerPosition, 5f);
+                motor.FaceTowards(currentGoal, 5f);
                 return;
             }
 
-            ChooseNextRoutineGoal();
+            currentSearchPoint = null;
+            if (!TrySetNextHuntDestination())
+            {
+                motor.Stop();
+            }
         }
 
         private void UpdateRoutine()
@@ -474,7 +499,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         private bool ShouldIgnoreNoiseBecausePlayerIsKnown()
         {
-            if (currentState == BehaviorState.Chase || currentState == BehaviorState.Search)
+            if (currentState == BehaviorState.Chase || currentState == BehaviorState.HuntMode)
             {
                 return true;
             }
@@ -598,6 +623,123 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             return locations[Random.Range(0, locations.Count)];
+        }
+
+        private void UpdateLastSeenPlayerDirection(Vector3 seenPosition)
+        {
+            if (hasObservedPlayerPosition && Time.time - lastPlayerSeenTime <= playerDirectionSampleMaximumGap)
+            {
+                Vector3 movement = seenPosition - lastObservedPlayerPosition;
+                movement.y = 0f;
+                if (movement.sqrMagnitude >= playerDirectionMinimumDistance * playerDirectionMinimumDistance)
+                {
+                    lastSeenPlayerMoveDirection = movement.normalized;
+                    hasPlayerMoveDirectionForCurrentChase = true;
+                }
+            }
+
+            lastObservedPlayerPosition = seenPosition;
+            hasObservedPlayerPosition = true;
+        }
+
+        private void BeginHuntMode(Vector3 lostPlayerPosition)
+        {
+            lastKnownPlayerPosition = lostPlayerPosition;
+            currentClimbLink = null;
+            currentTaskLocation = null;
+            currentSearchPoint = null;
+            StopActiveTaskAudio();
+            visitedSearchPoints.Clear();
+            huntUntilTime = Time.time + huntDuration;
+
+            Vector3 fallbackDirection = lostPlayerPosition - transform.position;
+            fallbackDirection.y = 0f;
+            if ((!hasPlayerMoveDirectionForCurrentChase || lastSeenPlayerMoveDirection.sqrMagnitude <= 0.001f)
+                && fallbackDirection.sqrMagnitude > 0.001f)
+            {
+                lastSeenPlayerMoveDirection = fallbackDirection.normalized;
+            }
+
+            SetState(BehaviorState.HuntMode);
+            if (!TrySetNextHuntDestination())
+            {
+                motor?.Stop();
+            }
+        }
+
+        private bool TrySetNextHuntDestination()
+        {
+            if (motor == null || Time.time >= huntUntilTime)
+            {
+                return false;
+            }
+
+            NeighborSearchPoint bestPoint = null;
+            Vector3 bestDestination = default;
+            float bestScore = float.NegativeInfinity;
+            float remainingHuntTime = huntUntilTime - Time.time;
+            float runSpeed = Mathf.Max(0.01f, motor.GetMoveSpeed(NeighborMotor.MoveMode.Run));
+            IReadOnlyList<NeighborSearchPoint> points = NeighborSearchPoint.Points;
+
+            for (int i = 0; i < points.Count; i++)
+            {
+                NeighborSearchPoint point = points[i];
+                if (point == null || visitedSearchPoints.Contains(point)
+                    || !motor.CanReach(point.Position, out float pathDistance, out Vector3 sampledPosition))
+                {
+                    continue;
+                }
+
+                float estimatedVisitTime = pathDistance / runSpeed + huntPointWaitTime + huntDestinationTimePadding;
+                if (estimatedVisitTime > remainingHuntTime)
+                {
+                    continue;
+                }
+
+                Vector3 fromLastSeen = point.Position - lastKnownPlayerPosition;
+                fromLastSeen.y = 0f;
+                float alignment = fromLastSeen.sqrMagnitude > 0.001f && lastSeenPlayerMoveDirection.sqrMagnitude > 0.001f
+                    ? Vector3.Dot(lastSeenPlayerMoveDirection.normalized, fromLastSeen.normalized)
+                    : 0f;
+                float score = alignment * huntDirectionWeight
+                    + point.SelectionPriority
+                    - pathDistance * huntDistancePenalty;
+                if (score <= bestScore)
+                {
+                    continue;
+                }
+
+                bestScore = score;
+                bestPoint = point;
+                bestDestination = sampledPosition;
+            }
+
+            if (bestPoint == null)
+            {
+                return false;
+            }
+
+            currentSearchPoint = bestPoint;
+            visitedSearchPoints.Add(bestPoint);
+            currentGoal = bestDestination;
+            goalWaitDuration = huntPointWaitTime;
+            waitingAtGoal = false;
+            motor.SetMoveMode(NeighborMotor.MoveMode.Run);
+            if (motor.SetDestination(bestDestination))
+            {
+                return true;
+            }
+
+            visitedSearchPoints.Remove(bestPoint);
+            currentSearchPoint = null;
+            return false;
+        }
+
+        private void EndHuntMode()
+        {
+            currentSearchPoint = null;
+            visitedSearchPoints.Clear();
+            ChooseNextRoutineGoal();
         }
 
         private void SetState(BehaviorState state)

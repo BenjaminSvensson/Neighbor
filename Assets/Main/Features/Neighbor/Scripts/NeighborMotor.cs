@@ -116,6 +116,11 @@ namespace Neighbor.Main.Features.Neighbor
             agent.speed = mode == MoveMode.Run ? runSpeed : walkSpeed;
         }
 
+        public float GetMoveSpeed(MoveMode mode)
+        {
+            return mode == MoveMode.Run ? runSpeed : walkSpeed;
+        }
+
         public bool SetDestination(Vector3 destination)
         {
             return TrySetDestination(destination, destinationSampleRadius, out _);

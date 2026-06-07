@@ -267,7 +267,7 @@ namespace Neighbor.Main.Features.Neighbor
                 case NeighborBrain.BehaviorState.Chase:
                     PlayRandom(voiceSource, chaseStartClips, generatedChaseStartClips, chaseStartVolume, 0.04f);
                     break;
-                case NeighborBrain.BehaviorState.Search:
+                case NeighborBrain.BehaviorState.HuntMode:
                     PlayRandom(voiceSource, searchLostClips, generatedSearchLostClips, searchLostVolume, 0.06f);
                     break;
                 case NeighborBrain.BehaviorState.Stunned:
@@ -351,7 +351,7 @@ namespace Neighbor.Main.Features.Neighbor
 
             float breathingTarget = idleBreathingVolume + speed01 * 0.05f;
             float breathingPitch = Mathf.Lerp(0.94f, 1.12f, speed01);
-            if (state == NeighborBrain.BehaviorState.Investigate || state == NeighborBrain.BehaviorState.Search)
+            if (state == NeighborBrain.BehaviorState.Investigate || state == NeighborBrain.BehaviorState.HuntMode)
             {
                 breathingTarget = Mathf.Max(breathingTarget, alertedBreathingVolume);
                 breathingPitch += 0.05f;
@@ -374,7 +374,7 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 chaseTarget = chaseLoopVolume;
             }
-            else if (state == NeighborBrain.BehaviorState.Search)
+            else if (state == NeighborBrain.BehaviorState.HuntMode)
             {
                 chaseTarget = searchLoopVolume;
             }
@@ -635,7 +635,7 @@ namespace Neighbor.Main.Features.Neighbor
         private bool IsUrgentState(NeighborBrain.BehaviorState state)
         {
             return state == NeighborBrain.BehaviorState.Chase
-                || state == NeighborBrain.BehaviorState.Search
+                || state == NeighborBrain.BehaviorState.HuntMode
                 || state == NeighborBrain.BehaviorState.Investigate;
         }
 
