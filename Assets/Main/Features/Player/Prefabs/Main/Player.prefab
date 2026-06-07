@@ -456,7 +456,8 @@ MonoBehaviour:
   slideStartVolume: 0.75
   slideLoopVolume: 0.45
   slideEndVolume: 0.45
-  ledgeClimbStartClips: []
+  ledgeClimbStartClips:
+  - {fileID: 8300000, guid: f359a0e978aec764d8b408a257b41784, type: 3}
   ledgeClimbEndClips: []
   ledgeClimbVolume: 0.65
   minDistance: 0.25

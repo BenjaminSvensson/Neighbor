@@ -138,10 +138,17 @@ MonoBehaviour:
   placementSurfacePadding: 0.02
   groundProbeHeight: 1.5
   groundProbeDistance: 3
-  removalDistance: 0.65
+  autoBlockRadius: 1.1
+  leanAngle: 12
+  attachToDoorSurface: 0
+  doorSurfaceOffset: 0.03
+  doorSurfaceHeight: 1.15
   groundMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 1
+  doorMask:
+    serializedVersion: 2
+    m_Bits: 64
 --- !u!114 &100006
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -159,6 +166,7 @@ MonoBehaviour:
   impactCooldown: 0.08
   minimumNoiseRadius: 1.5
   maximumNoiseRadius: 14
+  alertUrgency: 0.7
   noiseLifetime: 0.25
   impactClips:
   - {fileID: 8300000, guid: 4353bccfc087e0c4098b4b8e329d1530, type: 3}
