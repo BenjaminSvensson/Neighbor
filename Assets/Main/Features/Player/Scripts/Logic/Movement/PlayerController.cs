@@ -1,7 +1,6 @@
 using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Interaction;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace Neighbor.Main.Features.Player
 {
@@ -10,6 +9,7 @@ namespace Neighbor.Main.Features.Player
     {
         [Header("References")]
         [SerializeField] private Transform playerHead;
+        [SerializeField] private PlayerDeathController deathController;
 
         [Header("Movement")]
         [SerializeField, Min(0f)] private float walkSpeed = 4.2f;
@@ -85,7 +85,6 @@ namespace Neighbor.Main.Features.Player
         private float airborneTimer;
         private float heavyLandingSlowTimer;
         private float heavyLandingSlowImpact;
-        private bool isResettingScene;
         private bool isBeartrapLocked;
         private Vector3 slideDirection;
         private float currentSlideSpeed;
@@ -138,6 +137,13 @@ namespace Neighbor.Main.Features.Player
 
             headBaseHeight = playerHead != null ? playerHead.localPosition.y : standingHeight * 0.9f;
             ApplyControllerHeight(standingHeight);
+            deathController = deathController != null ? deathController : GetComponent<PlayerDeathController>();
+            if (deathController == null)
+            {
+                deathController = gameObject.AddComponent<PlayerDeathController>();
+            }
+
+            deathController.Initialize(this);
         }
 
         private void Update()
@@ -501,7 +507,7 @@ namespace Neighbor.Main.Features.Player
             NeighborBrain neighborBrain = hit.collider != null ? hit.collider.GetComponentInParent<NeighborBrain>() : null;
             if (neighborBrain != null && neighborBrain.CurrentState == NeighborBrain.BehaviorState.Chase)
             {
-                ResetCurrentScene();
+                PlayerDeathController.Kill(this, neighborBrain.transform.position);
                 return;
             }
 
@@ -531,15 +537,64 @@ namespace Neighbor.Main.Features.Player
             hit.rigidbody.AddForceAtPosition(impulse, hit.point, ForceMode.Impulse);
         }
 
-        private void ResetCurrentScene()
+        public void PrepareForDeath()
         {
-            if (isResettingScene)
+            horizontalVelocity = Vector3.zero;
+            verticalVelocity = 0f;
+            slideTimer = 0f;
+            slideBonusSpeed = 0f;
+            IsSliding = false;
+            IsRunning = false;
+            IsLedgeClimbing = false;
+            MoveAmount = 0f;
+            Speed01 = 0f;
+
+            if (characterController != null)
             {
-                return;
+                characterController.enabled = false;
             }
 
-            isResettingScene = true;
-            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+            enabled = false;
+        }
+
+        public void ResetForRespawn(Vector3 position, Quaternion rotation)
+        {
+            horizontalVelocity = Vector3.zero;
+            verticalVelocity = 0f;
+            slideTimer = 0f;
+            slideBonusSpeed = 0f;
+            airborneTimer = 0f;
+            heavyLandingSlowTimer = 0f;
+            IsSliding = false;
+            IsRunning = false;
+            IsCrouching = false;
+            IsLedgeClimbing = false;
+            SetBeartrapLocked(false);
+            MoveAmount = 0f;
+            Speed01 = 0f;
+            LastInput = default;
+
+            if (characterController != null)
+            {
+                characterController.enabled = false;
+            }
+
+            transform.SetPositionAndRotation(position, rotation);
+            currentControllerHeight = standingHeight;
+            ApplyControllerHeight(standingHeight);
+            if (playerHead != null)
+            {
+                Vector3 localPosition = playerHead.localPosition;
+                localPosition.y = headBaseHeight;
+                playerHead.localPosition = localPosition;
+            }
+
+            if (characterController != null)
+            {
+                characterController.enabled = true;
+            }
+
+            enabled = true;
         }
 
         private bool TryStartLedgeClimb()

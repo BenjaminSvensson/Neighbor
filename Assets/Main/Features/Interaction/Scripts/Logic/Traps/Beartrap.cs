@@ -245,6 +245,15 @@ namespace Neighbor.Main.Features.Interaction
             escapeHoldTimer = 0f;
         }
 
+        public void ReleasePlayerForRespawn(PlayerController player)
+        {
+            if (player != null && stuckPlayer == player)
+            {
+                ReleaseStuckTarget();
+                SetState(TrapState.Open);
+            }
+        }
+
         private void ApplyJawPose()
         {
             float easedOpenAmount = Mathf.SmoothStep(0f, 1f, openAmount);

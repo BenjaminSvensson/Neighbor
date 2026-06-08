@@ -366,6 +366,34 @@ namespace Neighbor.Main.Features.Player
             Cursor.visible = !locked;
         }
 
+        public void SyncAfterRespawn()
+        {
+            yaw = yawRoot != null ? yawRoot.rotation.eulerAngles.y : transform.root.rotation.eulerAngles.y;
+            pitch = NormalizeAngle(transform.localEulerAngles.x);
+            smoothedPitch = pitch;
+            smoothedLean = 0f;
+            bobTime = 0f;
+            impactVerticalOffset = 0f;
+            impactPitchOffset = 0f;
+            impactRollOffset = 0f;
+            impactFovOffset = 0f;
+            impactShake = 0f;
+            climbVerticalOffset = 0f;
+            climbPitchOffset = 0f;
+            climbRollOffset = 0f;
+            targetImpactVerticalOffset = 0f;
+            targetImpactPitchOffset = 0f;
+            targetImpactRollOffset = 0f;
+            targetImpactFovOffset = 0f;
+            targetImpactShake = 0f;
+
+            if (playerCamera != null)
+            {
+                currentFieldOfView = playerCamera.fieldOfView;
+                scrolledFieldOfView = playerCamera.fieldOfView;
+            }
+        }
+
         private void Reset()
         {
             playerController = GetComponentInParent<PlayerController>();

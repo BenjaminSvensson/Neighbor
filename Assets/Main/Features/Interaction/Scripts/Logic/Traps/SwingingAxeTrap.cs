@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
-using UnityEngine.SceneManagement;
+using UnityEngine.Serialization;
 
 namespace Neighbor.Main.Features.Interaction
 {
@@ -26,13 +26,13 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float rigidbodyImpulse = 9f;
         [SerializeField, Min(0f)] private float playerPushDistance = 1.7f;
         [SerializeField, Min(0f)] private float upwardPush = 0.35f;
-        [SerializeField] private bool resetSceneOnPlayerHit = true;
+        [FormerlySerializedAs("resetSceneOnPlayerHit")]
+        [SerializeField] private bool killPlayerOnHit = true;
         [SerializeField] private bool allowRootTriggerHits;
 
         private readonly Dictionary<Collider, float> nextHitTimes = new();
         private PartPose[] basePoses;
         private bool isActive;
-        private bool isResettingScene;
         private float activationTime;
         private float previousAngle;
         private float angularSpeed;
@@ -135,9 +135,9 @@ namespace Neighbor.Main.Features.Interaction
             nextHitTimes[other] = Time.time + hitCooldown;
 
             PlayerController player = other.GetComponentInParent<PlayerController>();
-            if (player != null && resetSceneOnPlayerHit)
+            if (player != null && killPlayerOnHit)
             {
-                ResetScene();
+                PlayerDeathController.Kill(player, transform.position);
                 return;
             }
 
@@ -156,18 +156,6 @@ namespace Neighbor.Main.Features.Interaction
             {
                 controller.Move((pushDirection + Vector3.up * upwardPush).normalized * playerPushDistance);
             }
-        }
-
-        private void ResetScene()
-        {
-            if (isResettingScene)
-            {
-                return;
-            }
-
-            isResettingScene = true;
-            Scene activeScene = SceneManager.GetActiveScene();
-            SceneManager.LoadScene(activeScene.name);
         }
 
         private Vector3 GetPushDirection(Vector3 hitPosition)

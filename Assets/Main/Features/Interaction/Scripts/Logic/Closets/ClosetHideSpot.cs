@@ -102,6 +102,24 @@ namespace Neighbor.Main.Features.Interaction
             }
         }
 
+        public void ReleasePlayerForRespawn(PlayerController player)
+        {
+            if (player == null || hiddenPlayer != player)
+            {
+                return;
+            }
+
+            if (hiddenCharacterController != null)
+            {
+                hiddenCharacterController.enabled = true;
+            }
+
+            hiddenState?.SetHidden(false);
+            hiddenPlayer = null;
+            hiddenCharacterController = null;
+            hiddenState = null;
+        }
+
         private bool IsHiddenPlayer(PlayerInteractor interactor)
         {
             return interactor != null

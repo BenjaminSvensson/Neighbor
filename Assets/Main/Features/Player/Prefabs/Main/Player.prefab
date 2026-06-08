@@ -308,6 +308,7 @@ GameObject:
   - component: {fileID: 2801324474213207061}
   - component: {fileID: 2098546478872310776}
   - component: {fileID: 144846750235035850}
+  - component: {fileID: 8082241173593974563}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -370,6 +371,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerHead: {fileID: 1357196244085932726}
+  deathController: {fileID: 8082241173593974563}
   walkSpeed: 5.4
   runSpeed: 7.4
   crouchSpeed: 2.3
@@ -418,6 +420,29 @@ MonoBehaviour:
   minimumStepImpactHeight: 0.08
   stepImpactCooldown: 0.13
   mouseSensitivity: 0.08
+--- !u!114 &8082241173593974563
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4793360982295166136}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2c7b0749b5448efb9f77e2ebd8a8a9f, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Player.PlayerDeathController
+  fallDuration: 0.85
+  groundHoldDuration: 0.65
+  fadeOutDuration: 0.45
+  fallenCameraHeight: 0.25
+  fallRollDegrees: 78
+  fallPitchDegrees: 18
+  deathFieldOfView: 42
+  deathShakeAmount: 0.035
+  deathShakeFrequency: 22
+  reinforcementLocationsPerDeath: 2
+  neighborRespawnSightGraceTime: 2.5
 --- !u!114 &2098546478872310776
 MonoBehaviour:
   m_ObjectHideFlags: 0

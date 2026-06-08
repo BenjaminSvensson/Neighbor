@@ -1,6 +1,6 @@
 using Neighbor.Main.Features.Player;
 using UnityEngine;
-using UnityEngine.SceneManagement;
+using UnityEngine.Serialization;
 
 namespace Neighbor.Main.Features.Interaction
 {
@@ -22,7 +22,8 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0.05f)] private float inactiveDuration = 1.2f;
 
         [Header("Effect")]
-        [SerializeField] private bool resetSceneOnPlayerHit = true;
+        [FormerlySerializedAs("resetSceneOnPlayerHit")]
+        [SerializeField] private bool killPlayerOnHit = true;
         [SerializeField, Min(0f)] private float playerKnockbackDistance = 1.8f;
         [SerializeField, Min(0f)] private float rigidbodyImpulse = 7f;
         [SerializeField, Min(0f)] private float upwardPush = 0.25f;
@@ -49,7 +50,6 @@ namespace Neighbor.Main.Features.Interaction
         private float cycleStateStartTime;
         private float armedAtTime;
         private float nextHitTime;
-        private bool isResettingScene;
         private bool isActive;
 
         private Vector3 Direction => transform.TransformDirection(localDirection.sqrMagnitude > 0.0001f ? localDirection.normalized : Vector3.forward);
@@ -182,9 +182,9 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             CharacterController controller = player.GetComponent<CharacterController>();
-            if (resetSceneOnPlayerHit)
+            if (killPlayerOnHit)
             {
-                ResetScene();
+                PlayerDeathController.Kill(player, GetBladeHitCenter());
                 return true;
             }
 
@@ -244,18 +244,6 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             return slidingVisual != null ? slidingVisual.position : transform.position;
-        }
-
-        private void ResetScene()
-        {
-            if (isResettingScene)
-            {
-                return;
-            }
-
-            isResettingScene = true;
-            Scene activeScene = SceneManager.GetActiveScene();
-            SceneManager.LoadScene(activeScene.name);
         }
 
         private void ConfigureDangerLine()

@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace Neighbor.Main.Features.Neighbor
 {
@@ -77,7 +76,6 @@ namespace Neighbor.Main.Features.Neighbor
         private float bestChaseDistance;
         private float lastChaseProgressTime;
         private float ignorePlayerSightUntilTime;
-        private bool isResettingScene;
         private bool hasObservedPlayerPosition;
         private bool hasPlayerMoveDirectionForCurrentChase;
         private bool waitingAtGoal;
@@ -233,7 +231,12 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (player != null && Vector3.Distance(transform.position, player.position) <= catchDistance)
             {
-                ResetCurrentScene();
+                PlayerController playerController = player.GetComponent<PlayerController>() ?? player.GetComponentInParent<PlayerController>();
+                if (PlayerDeathController.Kill(playerController, transform.position))
+                {
+                    motor.Stop();
+                }
+
                 return;
             }
 
@@ -263,16 +266,20 @@ namespace Neighbor.Main.Features.Neighbor
             return Time.time - lastChaseProgressTime >= unreachableGiveUpTime;
         }
 
-        private void ResetCurrentScene()
+        public void HandlePlayerRespawned(float sightGraceTime)
         {
-            if (isResettingScene)
-            {
-                return;
-            }
-
-            isResettingScene = true;
+            currentClimbLink = null;
+            currentSearchPoint = null;
+            currentTaskLocation = null;
+            visitedSearchPoints.Clear();
+            StopActiveTaskAudio();
             motor?.Stop();
-            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+            lastPlayerSeenTime = float.NegativeInfinity;
+            ignorePlayerSightUntilTime = Time.time + Mathf.Max(0f, sightGraceTime);
+            hasObservedPlayerPosition = false;
+            hasPlayerMoveDirectionForCurrentChase = false;
+            waitingAtGoal = false;
+            ChooseNextRoutineGoal();
         }
 
         private void GiveUpChase(Vector3 chasePosition)
