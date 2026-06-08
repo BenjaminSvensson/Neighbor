@@ -71,7 +71,7 @@ namespace Neighbor.Main.Features.Neighbor
         private float offMeshChaseUntilTime;
         private readonly RaycastHit[] climbProbeHits = new RaycastHit[10];
         private readonly RaycastHit[] dynamicObstacleHits = new RaycastHit[12];
-        private readonly NavMeshPath dynamicObstaclePath = new();
+        private NavMeshPath dynamicObstaclePath;
         private bool isAvoidingDynamicObstacle;
         private Vector3 dynamicObstacleDetour;
         private float dynamicObstacleDetourUntilTime;
@@ -90,6 +90,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void Awake()
         {
+            dynamicObstaclePath = new NavMeshPath();
             agent = GetComponent<NavMeshAgent>();
             ConfigureAgent();
             SnapToNavMeshIfNeeded();
