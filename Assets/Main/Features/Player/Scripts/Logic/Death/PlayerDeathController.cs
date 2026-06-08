@@ -25,6 +25,7 @@ namespace Neighbor.Main.Features.Player
 
         [Header("Reset")]
         [SerializeField, Range(0, 12)] private int reinforcementLocationsPerDeath = 2;
+        [SerializeField, Range(0, 12)] private int reinforcedDoorsPerDeath = 2;
         [SerializeField, Min(0f)] private float neighborRespawnSightGraceTime = 2.5f;
 
         private readonly List<Behaviour> disabledBehaviours = new();
@@ -141,6 +142,8 @@ namespace Neighbor.Main.Features.Player
                 yield return null;
             }
 
+            Door.ResetAllToStartingState();
+            Door.ApplyRunReinforcements(reinforcedDoorsPerDeath);
             ReinforcementTrigger.ApplyRunReinforcements(reinforcementLocationsPerDeath);
             ResetRun();
 

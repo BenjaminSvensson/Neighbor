@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Neighbor.Main.Features.Player;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -7,12 +8,15 @@ namespace Neighbor.Main.Features.Interaction
 {
     public sealed class Door : MonoBehaviour, IInteractable
     {
+        private static readonly List<Door> ActiveDoors = new();
+
         [Header("Door")]
         [SerializeField] private Transform hinge;
         [SerializeField] private Vector3 pivotOffset = new Vector3(-0.6f, 0f, 0f);
         [SerializeField, Min(0f)] private float openAngle = 95f;
         [SerializeField, Min(0.01f)] private float openCloseDuration = 0.28f;
         [SerializeField, Min(0f)] private float autoCloseDelay = 0f;
+        [SerializeField] private bool startsOpen;
 
         [Header("Lock")]
         [SerializeField] private bool startsLocked = true;
@@ -29,6 +33,15 @@ namespace Neighbor.Main.Features.Interaction
         [Header("Navigation")]
         [SerializeField] private bool blockNeighborNavigationWhenUnavailable = true;
         [SerializeField, Min(0f)] private float navigationObstaclePadding = 0.08f;
+
+        [Header("Adaptive Reinforcement")]
+        [SerializeField] private bool trackPlayerUseForReinforcement = true;
+        [SerializeField, Min(0f)] private float playerOpenWeight = 0.5f;
+        [SerializeField, Min(0f)] private float playerPassageWeight = 1f;
+        [SerializeField] private bool reinforcementCanLockDoor;
+        [SerializeField] private bool reinforcementCanBlockDoor = true;
+        [SerializeField] private GameObject[] blockerReinforcementPrefabs;
+        [SerializeField] private Transform blockerReinforcementSpawnPoint;
 
         [Header("Door Audio")]
         [SerializeField] private AudioSource audioSource;
@@ -52,6 +65,11 @@ namespace Neighbor.Main.Features.Interaction
         private float closeAtTime;
         private DoorBlockerChair activeBlocker;
         private NavMeshObstacle[] navigationObstacles;
+        private PlayerController trackedOpeningPlayer;
+        private float trackedPlayerOpeningSide;
+        private float runReinforcementScore;
+        private bool playerPassedThroughThisRun;
+        private GameObject spawnedReinforcement;
 
         public bool IsLocked => isLocked;
         public bool IsBlocked => activeBlocker != null;
@@ -72,13 +90,25 @@ namespace Neighbor.Main.Features.Interaction
             closedPosition = hinge.localPosition;
             closedRotation = hinge.localRotation;
             isLocked = startsLocked;
+            isOpen = startsOpen;
+            SetAngle(startsOpen ? openAngle : 0f);
+            closeAtTime = startsOpen && autoCloseDelay > 0f ? Time.time + autoCloseDelay : 0f;
             ResolveAudioSource();
             ResolveNavigationObstacles();
             UpdateNavigationObstacles();
         }
 
+        private void OnEnable()
+        {
+            if (!ActiveDoors.Contains(this))
+            {
+                ActiveDoors.Add(this);
+            }
+        }
+
         private void OnDisable()
         {
+            ActiveDoors.Remove(this);
             RestoreIgnoredPlayerCollisions();
         }
 
@@ -88,6 +118,8 @@ namespace Neighbor.Main.Features.Interaction
             {
                 Close();
             }
+
+            TrackPlayerPassage();
         }
 
         public bool CanInteract(PlayerInteractor interactor)
@@ -120,6 +152,7 @@ namespace Neighbor.Main.Features.Interaction
                 }
             }
 
+            TrackPlayerOpening(interactor);
             Toggle(interactor);
         }
 
@@ -267,6 +300,39 @@ namespace Neighbor.Main.Features.Interaction
             }
         }
 
+        public static void ResetAllToStartingState()
+        {
+            for (int i = 0; i < ActiveDoors.Count; i++)
+            {
+                ActiveDoors[i]?.ResetToStartingState();
+            }
+        }
+
+        public static void ApplyRunReinforcements(int maximumDoors)
+        {
+            List<Door> rankedDoors = new();
+            for (int i = 0; i < ActiveDoors.Count; i++)
+            {
+                Door door = ActiveDoors[i];
+                if (door != null && door.runReinforcementScore > 0f && door.CanApplyReinforcement())
+                {
+                    rankedDoors.Add(door);
+                }
+            }
+
+            rankedDoors.Sort((a, b) => b.runReinforcementScore.CompareTo(a.runReinforcementScore));
+            int reinforcementCount = Mathf.Min(Mathf.Max(0, maximumDoors), rankedDoors.Count);
+            for (int i = 0; i < reinforcementCount; i++)
+            {
+                rankedDoors[i].ApplyReinforcement();
+            }
+
+            for (int i = 0; i < ActiveDoors.Count; i++)
+            {
+                ActiveDoors[i]?.ClearRunTracking();
+            }
+        }
+
         public void Toggle(PlayerInteractor interactor = null)
         {
             if (isOpen)
@@ -307,6 +373,159 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             AnimateTo(0f, openCloseDuration);
+        }
+
+        private void TrackPlayerOpening(PlayerInteractor interactor)
+        {
+            if (!trackPlayerUseForReinforcement || isOpen || interactor == null)
+            {
+                return;
+            }
+
+            PlayerController player = interactor.GetComponentInParent<PlayerController>();
+            if (player == null)
+            {
+                return;
+            }
+
+            runReinforcementScore += playerOpenWeight;
+            trackedOpeningPlayer = player;
+            trackedPlayerOpeningSide = GetSideOfDoor(player.transform.position);
+        }
+
+        private void TrackPlayerPassage()
+        {
+            if (!trackPlayerUseForReinforcement || trackedOpeningPlayer == null || playerPassedThroughThisRun)
+            {
+                return;
+            }
+
+            float currentSide = GetSideOfDoor(trackedOpeningPlayer.transform.position);
+            if (trackedPlayerOpeningSide == 0f || currentSide == 0f || Mathf.Sign(currentSide) == Mathf.Sign(trackedPlayerOpeningSide))
+            {
+                return;
+            }
+
+            playerPassedThroughThisRun = true;
+            runReinforcementScore += playerPassageWeight;
+            trackedOpeningPlayer = null;
+        }
+
+        private float GetSideOfDoor(Vector3 position)
+        {
+            return Vector3.Dot(transform.forward, position - transform.position);
+        }
+
+        private bool CanApplyReinforcement()
+        {
+            bool canLock = reinforcementCanLockDoor && playerPassedThroughThisRun;
+            bool canBlock = reinforcementCanBlockDoor && HasBlockerReinforcementPrefab();
+            return canLock || canBlock;
+        }
+
+        private void ApplyReinforcement()
+        {
+            if (reinforcementCanLockDoor && playerPassedThroughThisRun)
+            {
+                SetLocked(true, true, false);
+            }
+
+            if (reinforcementCanBlockDoor)
+            {
+                TrySpawnBlockerReinforcement();
+            }
+
+            UpdateNavigationObstacles();
+        }
+
+        private bool TrySpawnBlockerReinforcement()
+        {
+            GameObject prefab = GetBlockerReinforcementPrefab();
+            if (prefab == null)
+            {
+                return false;
+            }
+
+            Transform spawnAnchor = blockerReinforcementSpawnPoint != null ? blockerReinforcementSpawnPoint : transform;
+            GameObject reinforcement = Instantiate(prefab, spawnAnchor.position, spawnAnchor.rotation);
+            DoorBlockerChair blocker = reinforcement.GetComponent<DoorBlockerChair>() ?? reinforcement.GetComponentInChildren<DoorBlockerChair>();
+            if (blocker == null || !blocker.TryBlockDoorAsReinforcement(this))
+            {
+                Destroy(reinforcement);
+                return false;
+            }
+
+            spawnedReinforcement = reinforcement;
+            return true;
+        }
+
+        private GameObject GetBlockerReinforcementPrefab()
+        {
+            if (blockerReinforcementPrefabs == null || blockerReinforcementPrefabs.Length == 0)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < blockerReinforcementPrefabs.Length; i++)
+            {
+                GameObject prefab = blockerReinforcementPrefabs[Random.Range(0, blockerReinforcementPrefabs.Length)];
+                if (prefab != null)
+                {
+                    return prefab;
+                }
+            }
+
+            return null;
+        }
+
+        private bool HasBlockerReinforcementPrefab()
+        {
+            if (blockerReinforcementPrefabs == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < blockerReinforcementPrefabs.Length; i++)
+            {
+                if (blockerReinforcementPrefabs[i] != null)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void ResetToStartingState()
+        {
+            if (animationRoutine != null)
+            {
+                StopCoroutine(animationRoutine);
+                animationRoutine = null;
+            }
+
+            RestoreIgnoredPlayerCollisions();
+            activeBlocker?.ReleaseForDoorReset();
+
+            if (spawnedReinforcement != null)
+            {
+                Destroy(spawnedReinforcement);
+                spawnedReinforcement = null;
+            }
+
+            isLocked = startsLocked;
+            isOpen = startsOpen;
+            SetAngle(startsOpen ? openAngle : 0f);
+            closeAtTime = startsOpen && autoCloseDelay > 0f ? Time.time + autoCloseDelay : 0f;
+            trackedOpeningPlayer = null;
+            UpdateNavigationObstacles();
+        }
+
+        private void ClearRunTracking()
+        {
+            runReinforcementScore = 0f;
+            playerPassedThroughThisRun = false;
+            trackedOpeningPlayer = null;
         }
 
         private void PlayLockedNudge()

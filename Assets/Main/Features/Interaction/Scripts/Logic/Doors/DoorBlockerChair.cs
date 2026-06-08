@@ -69,6 +69,30 @@ namespace Neighbor.Main.Features.Interaction
             return true;
         }
 
+        public bool TryBlockDoorAsReinforcement(Door door)
+        {
+            if (door == null || pickupable == null)
+            {
+                return false;
+            }
+
+            blockDisabledUntilPlaced = false;
+            Vector3 openingSidePosition = door.transform.position + door.DefaultOpeningSideNormal;
+            if (!door.TryAddBlocker(this, openingSidePosition, false))
+            {
+                return false;
+            }
+
+            ApplyBlockedPose(door);
+            return true;
+        }
+
+        public void ReleaseForDoorReset()
+        {
+            ClearBlockedDoor();
+            blockDisabledUntilPlaced = true;
+        }
+
         public void OnPickupStarted(Pickupable pickupable, PlayerInteractor interactor)
         {
             ClearBlockedDoor();
