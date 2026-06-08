@@ -1,3 +1,4 @@
+using Neighbor.Main.Features.Neighbor;
 using UnityEngine;
 
 namespace Neighbor.Main.Features.Interaction
@@ -126,6 +127,10 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             NotifyPickupStarted(interactor);
+            if (interactor != null)
+            {
+                NeighborEnvironmentalAwareness.Report(transform.position, 0.16f, gameObject);
+            }
 
             IsHeld = true;
             CapturePhysicsState();

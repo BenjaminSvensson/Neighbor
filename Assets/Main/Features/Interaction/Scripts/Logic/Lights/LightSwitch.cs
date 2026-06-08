@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Neighbor.Main.Features.Neighbor;
 using UnityEngine;
 
 namespace Neighbor.Main.Features.Interaction
@@ -41,6 +42,7 @@ namespace Neighbor.Main.Features.Interaction
 
         public void Interact(PlayerInteractor interactor)
         {
+            NeighborEnvironmentalAwareness.Report(transform.position, 0.3f, gameObject);
             Toggle();
         }
 

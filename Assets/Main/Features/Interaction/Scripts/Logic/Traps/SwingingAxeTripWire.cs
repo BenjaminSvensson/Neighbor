@@ -61,6 +61,11 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             triggered = true;
+            if (other.GetComponentInParent<PlayerController>() != null)
+            {
+                NeighborEnvironmentalAwareness.Report(transform.position, 0.65f, gameObject);
+            }
+
             targetAxe?.Activate();
             ApplyWireColor(triggeredColor);
 

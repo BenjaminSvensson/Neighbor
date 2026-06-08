@@ -1,4 +1,5 @@
 using UnityEngine;
+using Neighbor.Main.Features.Neighbor;
 
 namespace Neighbor.Main.Features.Interaction
 {
@@ -89,6 +90,7 @@ namespace Neighbor.Main.Features.Interaction
         private void Shatter(Vector3 origin, Vector3 incomingVelocity)
         {
             isShattered = true;
+            NeighborEnvironmentalAwareness.Report(origin, 0.8f, gameObject);
 
             if (intactVisualRoot != null)
             {

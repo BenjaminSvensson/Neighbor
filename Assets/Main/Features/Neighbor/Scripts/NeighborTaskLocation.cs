@@ -16,6 +16,7 @@ namespace Neighbor.Main.Features.Neighbor
         [Header("Task")]
         [SerializeField, Min(0f)] private float minimumWaitTime = 1.5f;
         [SerializeField, Min(0f)] private float maximumWaitTime = 5f;
+        [SerializeField, Min(0f)] private float selectionPriority = 1f;
         [SerializeField] private bool canRepeatImmediately;
         [SerializeField] private NeighborTaskLocation forcedNextTask;
         [SerializeField, Min(0.1f)] private float lookArrowLength = 1.2f;
@@ -41,6 +42,7 @@ namespace Neighbor.Main.Features.Neighbor
         public Vector3 LookDirection => transform.forward;
         public float RandomWaitTime => Random.Range(minimumWaitTime, Mathf.Max(minimumWaitTime, maximumWaitTime));
         public bool CanRepeatImmediately => canRepeatImmediately;
+        public float SelectionPriority => selectionPriority;
         public NeighborTaskLocation ForcedNextTask => forcedNextTask;
         public static IReadOnlyList<NeighborTaskLocation> Locations => ActiveLocations;
 

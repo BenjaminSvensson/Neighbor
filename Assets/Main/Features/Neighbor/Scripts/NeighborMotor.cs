@@ -10,11 +10,13 @@ namespace Neighbor.Main.Features.Neighbor
         public enum MoveMode
         {
             Walk,
+            Cautious,
             Run
         }
 
         [Header("Movement")]
         [SerializeField, Min(0f)] private float walkSpeed = 2.4f;
+        [SerializeField, Min(0f)] private float cautiousSpeed = 1.65f;
         [SerializeField, Min(0f)] private float runSpeed = 5.8f;
         [SerializeField, Min(0f)] private float acceleration = 18f;
         [SerializeField, Min(0f)] private float angularSpeed = 540f;
@@ -135,12 +137,17 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            agent.speed = mode == MoveMode.Run ? runSpeed : walkSpeed;
+            agent.speed = GetMoveSpeed(mode);
         }
 
         public float GetMoveSpeed(MoveMode mode)
         {
-            return mode == MoveMode.Run ? runSpeed : walkSpeed;
+            return mode switch
+            {
+                MoveMode.Run => runSpeed,
+                MoveMode.Cautious => cautiousSpeed,
+                _ => walkSpeed
+            };
         }
 
         public bool SetDestination(Vector3 destination)
@@ -176,6 +183,7 @@ namespace Neighbor.Main.Features.Neighbor
             requestedDestination = hit.position;
             hasRequestedDestination = true;
             sampledDestination = hit.position;
+            agent.isStopped = false;
             if (isAvoidingDynamicObstacle)
             {
                 return true;
@@ -328,7 +336,18 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            agent.isStopped = false;
             agent.ResetPath();
+        }
+
+        public void SetPaused(bool paused)
+        {
+            if (agent == null || !agent.enabled || !agent.isOnNavMesh)
+            {
+                return;
+            }
+
+            agent.isStopped = paused;
         }
 
         public void ResetToPosition(Vector3 position, Quaternion rotation)
@@ -353,6 +372,7 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 agent.updatePosition = true;
                 agent.updateRotation = true;
+                agent.isStopped = false;
 
                 if (NavMesh.SamplePosition(position, out NavMeshHit hit, startNavMeshSnapRadius, agent.areaMask))
                 {

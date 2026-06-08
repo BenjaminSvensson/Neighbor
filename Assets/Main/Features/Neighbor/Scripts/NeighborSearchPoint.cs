@@ -16,6 +16,7 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField] private Color gizmoColor = new Color(1f, 0.65f, 0.08f, 0.9f);
 
         public Vector3 Position => transform.position;
+        public Vector3 LookDirection => transform.forward;
         public float SelectionPriority => selectionPriority;
         public static IReadOnlyList<NeighborSearchPoint> Points => ActivePoints;
 

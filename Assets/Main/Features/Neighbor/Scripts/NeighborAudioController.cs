@@ -351,6 +351,11 @@ namespace Neighbor.Main.Features.Neighbor
 
             float breathingTarget = idleBreathingVolume + speed01 * 0.05f;
             float breathingPitch = Mathf.Lerp(0.94f, 1.12f, speed01);
+            if (brain != null)
+            {
+                breathingTarget = Mathf.Max(breathingTarget, Mathf.Lerp(idleBreathingVolume, alertedBreathingVolume, brain.Suspicion));
+                breathingPitch += brain.Suspicion * 0.04f;
+            }
             if (state == NeighborBrain.BehaviorState.Investigate || state == NeighborBrain.BehaviorState.HuntMode)
             {
                 breathingTarget = Mathf.Max(breathingTarget, alertedBreathingVolume);
@@ -403,7 +408,8 @@ namespace Neighbor.Main.Features.Neighbor
                 || brain.CurrentState == NeighborBrain.BehaviorState.Task
                 || brain.CurrentState == NeighborBrain.BehaviorState.Wander)
             {
-                PlayRandom(voiceSource, idleMutterClips, generatedIdleMutterClips, idleMutterVolume, 0.08f);
+                float suspicionVolume = Mathf.Lerp(idleMutterVolume, idleMutterVolume * 1.35f, brain.Suspicion);
+                PlayRandom(voiceSource, idleMutterClips, generatedIdleMutterClips, suspicionVolume, 0.08f);
             }
 
             ScheduleNextMutter();

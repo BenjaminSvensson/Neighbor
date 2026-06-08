@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
 
@@ -5,6 +7,8 @@ namespace Neighbor.Main.Features.Interaction
 {
     public sealed class ClosetHideSpot : MonoBehaviour, IInteractable
     {
+        private static readonly List<ClosetHideSpot> ActiveHideSpots = new();
+
         [SerializeField] private ClosetDoorPair doors;
         [SerializeField] private Transform hidePoint;
         [SerializeField] private Transform exitPoint;
@@ -16,6 +20,21 @@ namespace Neighbor.Main.Features.Interaction
         private PlayerHidingState hiddenState;
 
         public bool HasHiddenPlayer => hiddenPlayer != null;
+        public Vector3 SearchPosition => exitPoint != null ? exitPoint.position : transform.position;
+        public static IReadOnlyList<ClosetHideSpot> HideSpots => ActiveHideSpots;
+
+        private void OnEnable()
+        {
+            if (!ActiveHideSpots.Contains(this))
+            {
+                ActiveHideSpots.Add(this);
+            }
+        }
+
+        private void OnDisable()
+        {
+            ActiveHideSpots.Remove(this);
+        }
 
         public bool CanInteract(PlayerInteractor interactor)
         {
@@ -118,6 +137,18 @@ namespace Neighbor.Main.Features.Interaction
             hiddenPlayer = null;
             hiddenCharacterController = null;
             hiddenState = null;
+        }
+
+        public PlayerController SearchByNeighbor(NeighborBrain neighbor)
+        {
+            doors?.SetOpen(true);
+            PlayerController foundPlayer = hiddenPlayer;
+            if (foundPlayer != null)
+            {
+                Exit();
+            }
+
+            return foundPlayer;
         }
 
         private bool IsHiddenPlayer(PlayerInteractor interactor)

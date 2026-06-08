@@ -1,3 +1,4 @@
+using Neighbor.Main.Features.Neighbor;
 using UnityEngine;
 
 namespace Neighbor.Main.Features.Interaction
@@ -95,6 +96,7 @@ namespace Neighbor.Main.Features.Interaction
 
         public void OnPickupStarted(Pickupable pickupable, PlayerInteractor interactor)
         {
+            NeighborEnvironmentalAwareness.Report(transform.position, 0.55f, gameObject);
             ClearBlockedDoor();
             blockDisabledUntilPlaced = false;
         }

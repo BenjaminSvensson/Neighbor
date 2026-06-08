@@ -7,6 +7,7 @@ namespace Neighbor.Main.Features.Interaction
     public sealed class NeighborDoorInteractor : MonoBehaviour
     {
         [SerializeField] private NeighborMotor motor;
+        [SerializeField] private NeighborBrain brain;
         [SerializeField, Min(0f)] private float checkRadius = 0.55f;
         [SerializeField, Min(0f)] private float checkDistance = 1.2f;
         [SerializeField] private LayerMask doorMask = ~0;
@@ -17,6 +18,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0.05f)] private float lockedDoorRetryInterval = 0.7f;
         [SerializeField, Min(0f)] private float lockedDoorAbortDistance = 2.2f;
         [SerializeField, Min(0f)] private float kickTurnSharpness = 12f;
+        [SerializeField, Min(0f)] private float cautiousDoorOpenPause = 0.32f;
         [SerializeField] private bool closeDoorsBehindNeighbor = true;
         [SerializeField, Min(0f)] private float closeBehindDelay = 0.15f;
         [SerializeField, Min(0f)] private float closeBehindDistance = 1.5f;
@@ -29,18 +31,28 @@ namespace Neighbor.Main.Features.Interaction
         private float nextInteractionTime;
         private Door kickingDoor;
         private Door lockedOutDoor;
+        private Door cautiouslyOpeningDoor;
         private float kickCompleteTime;
         private float nextKickFeedbackTime;
         private float nextLockedDoorFeedbackTime;
+        private float cautiousDoorOpenAtTime;
+        private bool cautiousDoorPauseActive;
 
         private void Awake()
         {
             motor = motor != null ? motor : GetComponent<NeighborMotor>();
+            brain = brain != null ? brain : GetComponent<NeighborBrain>();
         }
 
         private void Update()
         {
             UpdateOpenedDoors();
+
+            if (cautiousDoorPauseActive)
+            {
+                UpdateCautiousDoorOpen();
+                return;
+            }
 
             if (kickingDoor != null)
             {
@@ -81,6 +93,17 @@ namespace Neighbor.Main.Features.Interaction
                     return;
                 }
 
+                if (!door.IsOpen && cautiousDoorOpenPause > 0f && brain != null
+                    && (brain.CurrentState == NeighborBrain.BehaviorState.Investigate
+                        || brain.CurrentState == NeighborBrain.BehaviorState.HuntMode))
+                {
+                    cautiouslyOpeningDoor = door;
+                    cautiousDoorOpenAtTime = Time.time + cautiousDoorOpenPause;
+                    cautiousDoorPauseActive = true;
+                    motor?.SetPaused(true);
+                    return;
+                }
+
                 bool opened = door.TryOpenForNeighbor(transform);
                 nextInteractionTime = Time.time + interactionCooldown;
                 if (opened)
@@ -89,6 +112,34 @@ namespace Neighbor.Main.Features.Interaction
                     return;
                 }
             }
+        }
+
+        private void UpdateCautiousDoorOpen()
+        {
+            if (cautiouslyOpeningDoor == null)
+            {
+                cautiousDoorPauseActive = false;
+                motor?.SetPaused(false);
+                return;
+            }
+
+            motor?.SetPaused(true);
+            motor?.FaceTowards(cautiouslyOpeningDoor.transform.position, kickTurnSharpness);
+            if (Time.time < cautiousDoorOpenAtTime)
+            {
+                return;
+            }
+
+            Door door = cautiouslyOpeningDoor;
+            cautiouslyOpeningDoor = null;
+            cautiousDoorPauseActive = false;
+            motor?.SetPaused(false);
+            if (door.TryOpenForNeighbor(transform))
+            {
+                TrackOpenedDoor(door);
+            }
+
+            nextInteractionTime = Time.time + interactionCooldown;
         }
 
         private void BeginBlockedDoorKick(Door door)

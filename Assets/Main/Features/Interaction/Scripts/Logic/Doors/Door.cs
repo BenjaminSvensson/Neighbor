@@ -133,6 +133,7 @@ namespace Neighbor.Main.Features.Interaction
 
         public void Interact(PlayerInteractor interactor)
         {
+            NeighborEnvironmentalAwareness.Report(transform.position, 0.22f, gameObject);
             if (IsBlocked)
             {
                 PlayLockedNudge();
