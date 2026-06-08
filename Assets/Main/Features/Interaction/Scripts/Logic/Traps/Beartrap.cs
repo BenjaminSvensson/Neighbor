@@ -1,3 +1,4 @@
+using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
 using UnityEngine.AI;
@@ -20,6 +21,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private bool startsPlaced;
         [SerializeField, Min(0.05f)] private float openCloseDuration = 0.22f;
         [SerializeField, Min(0.05f)] private float escapeHoldDuration = 1.4f;
+        [SerializeField, Min(0.05f)] private float neighborEscapeDuration = 2.5f;
 
         [Header("Jaw Animation")]
         [SerializeField] private Transform leftJaw;
@@ -50,6 +52,7 @@ namespace Neighbor.Main.Features.Interaction
         private Rigidbody stuckRigidbody;
         private NavMeshAgent stuckAgent;
         private bool stuckRigidbodyWasKinematic;
+        private float releaseNeighborAtTime;
 
         private bool IsMoving => !Mathf.Approximately(openAmount, targetOpenAmount);
 
@@ -179,6 +182,11 @@ namespace Neighbor.Main.Features.Interaction
                 {
                     stuckAgent.ResetPath();
                 }
+
+                if (triggeringCollider.GetComponentInParent<NeighborBrain>() != null)
+                {
+                    releaseNeighborAtTime = Time.time + neighborEscapeDuration;
+                }
             }
 
             stuckRigidbody = triggeringCollider.attachedRigidbody;
@@ -210,6 +218,13 @@ namespace Neighbor.Main.Features.Interaction
 
         private void KeepTargetStuck()
         {
+            if (stuckAgent != null && releaseNeighborAtTime > 0f && Time.time >= releaseNeighborAtTime)
+            {
+                ReleaseStuckTarget();
+                SetState(TrapState.Open);
+                return;
+            }
+
             if (stuckRigidbody != null)
             {
                 RigidbodyVelocityUtility.ClearIfDynamic(stuckRigidbody);
@@ -242,6 +257,7 @@ namespace Neighbor.Main.Features.Interaction
             stuckRigidbody = null;
             stuckAgent = null;
             stuckRigidbodyWasKinematic = false;
+            releaseNeighborAtTime = 0f;
             escapeHoldTimer = 0f;
         }
 

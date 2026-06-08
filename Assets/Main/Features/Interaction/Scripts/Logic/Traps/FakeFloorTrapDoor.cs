@@ -1,4 +1,5 @@
 using System.Collections;
+using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
 
@@ -48,7 +49,10 @@ namespace Neighbor.Main.Features.Interaction
 
             if (triggerOnlyForPlayer && other.GetComponentInParent<PlayerController>() == null)
             {
-                return;
+                if (other.GetComponentInParent<NeighborImpactReceiver>() == null)
+                {
+                    return;
+                }
             }
 
             Open();

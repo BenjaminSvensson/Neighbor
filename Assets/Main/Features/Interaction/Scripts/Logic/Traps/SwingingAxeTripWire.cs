@@ -1,3 +1,4 @@
+using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
 
@@ -93,6 +94,11 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             if (other.GetComponentInParent<PlayerController>() != null)
+            {
+                return true;
+            }
+
+            if (other.GetComponentInParent<NeighborImpactReceiver>() != null)
             {
                 return true;
             }

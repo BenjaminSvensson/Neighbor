@@ -1,3 +1,4 @@
+using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -152,7 +153,7 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            if (TryApplyPlayerEffect(bestHit) || TryApplyRigidbodyEffect(bestHit))
+            if (TryApplyNeighborEffect(bestHit) || TryApplyPlayerEffect(bestHit) || TryApplyRigidbodyEffect(bestHit))
             {
                 nextHitTime = Time.time + hitCooldown;
             }
@@ -161,6 +162,11 @@ namespace Neighbor.Main.Features.Interaction
         private bool IsValidTriggerCollider(Collider hit)
         {
             if (hit.GetComponentInParent<PlayerController>() != null)
+            {
+                return true;
+            }
+
+            if (hit.GetComponentInParent<NeighborImpactReceiver>() != null)
             {
                 return true;
             }
@@ -195,6 +201,18 @@ namespace Neighbor.Main.Features.Interaction
 
             Vector3 pushDirection = (Direction + Vector3.up * upwardPush).normalized;
             controller.Move(pushDirection * playerKnockbackDistance);
+            return true;
+        }
+
+        private bool TryApplyNeighborEffect(Collider hit)
+        {
+            NeighborImpactReceiver receiver = hit.GetComponentInParent<NeighborImpactReceiver>();
+            if (receiver == null)
+            {
+                return false;
+            }
+
+            receiver.ReceiveImpact(GetBladeHitCenter(), Direction * rigidbodyImpulse, 1f);
             return true;
         }
 

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -195,6 +196,14 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             Vector3 pushDirection = GetPushDirection(other.transform.position);
+            NeighborImpactReceiver neighbor = other.GetComponentInParent<NeighborImpactReceiver>();
+            if (neighbor != null)
+            {
+                PlayHitImpactSound();
+                neighbor.ReceiveImpact(other.ClosestPoint(transform.position), pushDirection * rigidbodyImpulse, 1f);
+                return;
+            }
+
             Rigidbody body = other.attachedRigidbody;
             if (body != null && !body.isKinematic)
             {
@@ -395,6 +404,11 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             if (hit.GetComponentInParent<PlayerController>() != null)
+            {
+                return false;
+            }
+
+            if (hit.GetComponentInParent<NeighborImpactReceiver>() != null)
             {
                 return false;
             }

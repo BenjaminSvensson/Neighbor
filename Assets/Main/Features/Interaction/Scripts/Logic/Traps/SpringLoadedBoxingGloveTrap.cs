@@ -1,3 +1,4 @@
+using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
 
@@ -107,7 +108,7 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            if (other != null && other.GetComponentInParent<PlayerController>() != null)
+            if (other != null && IsLivingTarget(other))
             {
                 TryTrigger();
             }
@@ -129,7 +130,7 @@ namespace Neighbor.Main.Features.Interaction
             for (int i = 0; i < hitCount; i++)
             {
                 Collider hit = rayHits[i].collider;
-                if (hit != null && hit.GetComponentInParent<PlayerController>() != null)
+                if (hit != null && IsLivingTarget(hit))
                 {
                     TryTrigger();
                     return;
@@ -255,7 +256,7 @@ namespace Neighbor.Main.Features.Interaction
                     continue;
                 }
 
-                if (TryPushPlayer(hit) || TryPushRigidbody(hit))
+                if (TryPushNeighbor(hit) || TryPushPlayer(hit) || TryPushRigidbody(hit))
                 {
                     hasHitThisPunch = true;
                     return;
@@ -280,6 +281,24 @@ namespace Neighbor.Main.Features.Interaction
             Vector3 pushDirection = (transform.forward + Vector3.up * upwardPush).normalized;
             controller.Move(pushDirection * pushForce);
             return true;
+        }
+
+        private bool TryPushNeighbor(Collider hit)
+        {
+            NeighborImpactReceiver receiver = hit.GetComponentInParent<NeighborImpactReceiver>();
+            if (receiver == null)
+            {
+                return false;
+            }
+
+            receiver.ReceiveImpact(glove != null ? glove.position : transform.position, transform.forward * rigidbodyImpulse, 1f);
+            return true;
+        }
+
+        private static bool IsLivingTarget(Collider hit)
+        {
+            return hit.GetComponentInParent<PlayerController>() != null
+                || hit.GetComponentInParent<NeighborImpactReceiver>() != null;
         }
 
         private bool TryPushRigidbody(Collider hit)

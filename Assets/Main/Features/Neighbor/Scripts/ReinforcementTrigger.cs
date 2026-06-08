@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.Serialization;
 
 namespace Neighbor.Main.Features.Neighbor
@@ -70,8 +71,16 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0)] private int maximumPersistentReinforcements = 1;
         [SerializeField] private bool randomizeYaw;
 
+        [Header("Neighbor Avoidance")]
+        [SerializeField] private bool addNeighborAvoidanceObstacle = true;
+        [SerializeField, Min(0f)] private float avoidancePadding = 0.65f;
+        [SerializeField, Min(0.05f)] private float minimumAvoidanceHeight = 1.2f;
+
         [Header("Editor Gizmo")]
         [SerializeField] private Color gizmoColor = new Color(1f, 0.16f, 0.08f, 0.55f);
+        [SerializeField] private Color directionGizmoColor = new Color(1f, 0.85f, 0.08f, 0.95f);
+        [SerializeField, Min(0.1f)] private float directionGizmoLength = 1.15f;
+        [SerializeField, Min(0.01f)] private float directionGizmoHeadSize = 0.22f;
 
         private readonly HashSet<PlayerController> playersInside = new();
         private float runScore;
@@ -169,7 +178,8 @@ namespace Neighbor.Main.Features.Neighbor
                 rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
             }
 
-            Instantiate(selection.Prefab, anchor.position, rotation);
+            GameObject reinforcement = Instantiate(selection.Prefab, anchor.position, rotation);
+            ConfigureNeighborAvoidance(reinforcement);
             spawnedReinforcementCount++;
             budget.TrySpend(selection.Cost);
             return true;
@@ -220,6 +230,93 @@ namespace Neighbor.Main.Features.Neighbor
                 || legacyReinforcementPrefabs != null && legacyReinforcementPrefabs.Length > 0;
         }
 
+        private void ConfigureNeighborAvoidance(GameObject reinforcement)
+        {
+            if (!addNeighborAvoidanceObstacle || reinforcement == null)
+            {
+                return;
+            }
+
+            NavMeshObstacle obstacle = reinforcement.GetComponent<NavMeshObstacle>();
+            if (obstacle == null)
+            {
+                obstacle = reinforcement.AddComponent<NavMeshObstacle>();
+            }
+
+            Bounds bounds = CalculateWorldBounds(reinforcement);
+            Vector3 localCenter = reinforcement.transform.InverseTransformPoint(bounds.center);
+            Vector3 localSize = WorldSizeToLocalSize(bounds.size + Vector3.one * avoidancePadding, reinforcement.transform);
+            localSize.y = Mathf.Max(localSize.y, minimumAvoidanceHeight);
+
+            obstacle.shape = NavMeshObstacleShape.Box;
+            obstacle.center = localCenter;
+            obstacle.size = localSize;
+            obstacle.carving = true;
+            obstacle.carveOnlyStationary = false;
+        }
+
+        private static Bounds CalculateWorldBounds(GameObject root)
+        {
+            Collider[] colliders = root.GetComponentsInChildren<Collider>();
+            bool hasBounds = false;
+            Bounds bounds = new(root.transform.position, Vector3.one * 0.5f);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                Collider collider = colliders[i];
+                if (collider == null)
+                {
+                    continue;
+                }
+
+                if (!hasBounds)
+                {
+                    bounds = collider.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(collider.bounds);
+                }
+            }
+
+            Renderer[] renderers = root.GetComponentsInChildren<Renderer>();
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                if (renderer == null)
+                {
+                    continue;
+                }
+
+                if (!hasBounds)
+                {
+                    bounds = renderer.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(renderer.bounds);
+                }
+            }
+
+            return bounds;
+        }
+
+        private static Vector3 WorldSizeToLocalSize(Vector3 worldSize, Transform transform)
+        {
+            Vector3 scale = transform != null ? transform.lossyScale : Vector3.one;
+            return new Vector3(
+                DivideByAxis(worldSize.x, scale.x),
+                DivideByAxis(worldSize.y, scale.y),
+                DivideByAxis(worldSize.z, scale.z));
+        }
+
+        private static float DivideByAxis(float value, float axis)
+        {
+            float divisor = Mathf.Abs(axis);
+            return divisor > 0.0001f ? value / divisor : value;
+        }
+
         private void OnDrawGizmos()
         {
             Collider trigger = GetComponent<Collider>();
@@ -234,8 +331,27 @@ namespace Neighbor.Main.Features.Neighbor
 
             Transform anchor = spawnPoint != null ? spawnPoint : transform;
             Gizmos.DrawSphere(anchor.position, 0.18f);
-            Gizmos.DrawLine(anchor.position, anchor.position + anchor.forward);
+            DrawDirectionArrow(anchor);
             Gizmos.color = previousColor;
+        }
+
+        private void DrawDirectionArrow(Transform anchor)
+        {
+            if (anchor == null)
+            {
+                return;
+            }
+
+            Vector3 start = anchor.position;
+            Vector3 direction = anchor.forward.sqrMagnitude > 0.001f ? anchor.forward.normalized : transform.forward;
+            Vector3 end = start + direction * directionGizmoLength;
+            Gizmos.color = directionGizmoColor;
+            Gizmos.DrawLine(start, end);
+
+            Quaternion leftRotation = Quaternion.AngleAxis(145f, Vector3.up);
+            Quaternion rightRotation = Quaternion.AngleAxis(-145f, Vector3.up);
+            Gizmos.DrawLine(end, end + leftRotation * direction * directionGizmoHeadSize);
+            Gizmos.DrawLine(end, end + rightRotation * direction * directionGizmoHeadSize);
         }
     }
 }
