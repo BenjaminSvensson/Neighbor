@@ -109,40 +109,60 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             RenderTexture previousActive = RenderTexture.active;
-            RenderTexture renderTexture = RenderTexture.GetTemporary(captureWidth, captureHeight, 24, RenderTextureFormat.ARGB32);
-            GameObject captureObject = new GameObject($"{name}_PhotoCaptureCamera");
-            captureObject.hideFlags = HideFlags.HideAndDontSave;
-
-            Camera captureCamera = captureObject.AddComponent<Camera>();
-            captureCamera.CopyFrom(sourceCamera);
-            captureCamera.enabled = false;
-            captureCamera.cullingMask = captureMask;
-            captureCamera.targetTexture = renderTexture;
-            captureCamera.transform.SetPositionAndRotation(sourceCamera.transform.position, sourceCamera.transform.rotation);
-
+            RenderTexture renderTexture = null;
+            GameObject captureObject = null;
             bool restoreFlashEnabled = false;
             if (flashLight != null)
             {
                 restoreFlashEnabled = flashLight.enabled;
-                flashLight.enabled = false;
             }
 
-            captureCamera.Render();
-            RenderTexture.active = renderTexture;
-
-            Texture2D capturedTexture = new Texture2D(captureWidth, captureHeight, TextureFormat.RGBA32, false);
-            capturedTexture.ReadPixels(new Rect(0f, 0f, captureWidth, captureHeight), 0, 0);
-            capturedTexture.Apply(false, false);
-
-            if (flashLight != null)
+            try
             {
-                flashLight.enabled = restoreFlashEnabled;
-            }
+                renderTexture = RenderTexture.GetTemporary(captureWidth, captureHeight, 24, RenderTextureFormat.ARGB32);
+                captureObject = new GameObject($"{name}_PhotoCaptureCamera")
+                {
+                    hideFlags = HideFlags.HideAndDontSave
+                };
 
-            RenderTexture.active = previousActive;
-            RenderTexture.ReleaseTemporary(renderTexture);
-            Destroy(captureObject);
-            return capturedTexture;
+                Camera captureCamera = captureObject.AddComponent<Camera>();
+                captureCamera.CopyFrom(sourceCamera);
+                captureCamera.enabled = false;
+                captureCamera.cullingMask = captureMask;
+                captureCamera.targetTexture = renderTexture;
+                captureCamera.transform.SetPositionAndRotation(sourceCamera.transform.position, sourceCamera.transform.rotation);
+
+                if (flashLight != null)
+                {
+                    flashLight.enabled = false;
+                }
+
+                captureCamera.Render();
+                RenderTexture.active = renderTexture;
+
+                Texture2D capturedTexture = new Texture2D(captureWidth, captureHeight, TextureFormat.RGBA32, false);
+                capturedTexture.ReadPixels(new Rect(0f, 0f, captureWidth, captureHeight), 0, 0);
+                capturedTexture.Apply(false, false);
+                return capturedTexture;
+            }
+            finally
+            {
+                if (flashLight != null)
+                {
+                    flashLight.enabled = restoreFlashEnabled;
+                }
+
+                RenderTexture.active = previousActive;
+                if (renderTexture != null)
+                {
+                    RenderTexture.ReleaseTemporary(renderTexture);
+                }
+
+                if (captureObject != null)
+                {
+                    Destroy(captureObject);
+                }
+            }
         }
 
         private static Camera ResolveCaptureCamera(PlayerInteractor interactor)
@@ -155,9 +175,10 @@ namespace Neighbor.Main.Features.Interaction
                 return interactorCamera;
             }
 
-            if (IsUsableCaptureCamera(Camera.main))
+            Camera mainCamera = Camera.main;
+            if (IsUsableCaptureCamera(mainCamera))
             {
-                return Camera.main;
+                return mainCamera;
             }
 
             Camera[] cameras = FindObjectsByType<Camera>(FindObjectsInactive.Exclude);
@@ -251,7 +272,7 @@ namespace Neighbor.Main.Features.Interaction
             paper.transform.localRotation = Quaternion.identity;
             paper.transform.localScale = new Vector3(0.62f, 0.018f, 0.48f);
             Destroy(paper.GetComponent<Collider>());
-            SetRendererMaterial(paper.GetComponent<Renderer>(), Color.white, null);
+            Material paperMaterial = SetRendererMaterial(paper.GetComponent<Renderer>(), Color.white, null);
 
             GameObject image = CreatePhotoImageObject();
             image.name = "PhotoImage";
@@ -260,7 +281,9 @@ namespace Neighbor.Main.Features.Interaction
             image.transform.localPosition = new Vector3(0f, 0.011f, 0.02f);
             image.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
             image.transform.localScale = new Vector3(0.52f, 0.34f, 1f);
-            SetRendererMaterial(image.GetComponent<Renderer>(), Color.white, capturedTexture);
+            Material imageMaterial = SetRendererMaterial(image.GetComponent<Renderer>(), Color.white, capturedTexture);
+            Mesh imageMesh = image.GetComponent<MeshFilter>()?.sharedMesh;
+            photo.AddComponent<GeneratedPhotoResources>().Initialize(capturedTexture, imageMesh, paperMaterial, imageMaterial);
 
             body.AddForce(viewTransform.forward * photoEjectImpulse + Vector3.up * 0.25f, ForceMode.Impulse);
             body.AddTorque(Random.insideUnitSphere * 0.08f, ForceMode.Impulse);
@@ -300,11 +323,11 @@ namespace Neighbor.Main.Features.Interaction
             return image;
         }
 
-        private static void SetRendererMaterial(Renderer renderer, Color color, Texture texture)
+        private static Material SetRendererMaterial(Renderer renderer, Color color, Texture texture)
         {
             if (renderer == null)
             {
-                return;
+                return null;
             }
 
             Shader shader = texture != null
@@ -313,6 +336,7 @@ namespace Neighbor.Main.Features.Interaction
             Material material = new Material(shader)
             {
                 color = color,
+                hideFlags = HideFlags.HideAndDontSave,
                 mainTexture = texture
             };
             material.SetColor("_BaseColor", color);
@@ -323,7 +347,8 @@ namespace Neighbor.Main.Features.Interaction
                 material.SetTexture("_MainTex", texture);
             }
 
-            renderer.material = material;
+            renderer.sharedMaterial = material;
+            return material;
         }
 
         private void TriggerFlash()
@@ -425,6 +450,15 @@ namespace Neighbor.Main.Features.Interaction
             audioSource.dopplerLevel = 0.05f;
         }
 
+        private void OnDestroy()
+        {
+            if (generatedShutterClip != null)
+            {
+                Destroy(generatedShutterClip);
+                generatedShutterClip = null;
+            }
+        }
+
         private void OnValidate()
         {
             captureWidth = Mathf.Max(64, captureWidth);
@@ -432,6 +466,47 @@ namespace Neighbor.Main.Features.Interaction
             shutterCooldown = Mathf.Max(0f, shutterCooldown);
             flashDuration = Mathf.Max(0f, flashDuration);
             flashIntensity = Mathf.Max(0f, flashIntensity);
+        }
+    }
+
+    [DisallowMultipleComponent]
+    internal sealed class GeneratedPhotoResources : MonoBehaviour
+    {
+        private Texture capturedTexture;
+        private Mesh generatedMesh;
+        private Material[] generatedMaterials;
+
+        public void Initialize(Texture texture, Mesh mesh, params Material[] materials)
+        {
+            capturedTexture = texture;
+            generatedMesh = mesh;
+            generatedMaterials = materials;
+        }
+
+        private void OnDestroy()
+        {
+            if (capturedTexture != null)
+            {
+                Destroy(capturedTexture);
+            }
+
+            if (generatedMesh != null)
+            {
+                Destroy(generatedMesh);
+            }
+
+            if (generatedMaterials == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < generatedMaterials.Length; i++)
+            {
+                if (generatedMaterials[i] != null)
+                {
+                    Destroy(generatedMaterials[i]);
+                }
+            }
         }
     }
 }

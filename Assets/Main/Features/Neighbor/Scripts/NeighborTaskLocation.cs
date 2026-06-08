@@ -188,9 +188,10 @@ namespace Neighbor.Main.Features.Neighbor
                 return null;
             }
 
+            int startIndex = Random.Range(0, clips.Length);
             for (int i = 0; i < clips.Length; i++)
             {
-                AudioClip clip = clips[Random.Range(0, clips.Length)];
+                AudioClip clip = clips[(startIndex + i) % clips.Length];
                 if (clip != null)
                 {
                     return clip;

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Neighbor.Main.Features.Neighbor;
 using UnityEngine;
 
@@ -52,10 +53,11 @@ namespace Neighbor.Main.Features.Interaction
         private void NotifyListenersInRange()
         {
             float radiusSqr = Radius * Radius;
-            NeighborHearing[] listeners = FindObjectsByType<NeighborHearing>(FindObjectsInactive.Exclude);
+            IReadOnlyList<NeighborHearing> listeners = NeighborHearing.Listeners;
 
-            foreach (NeighborHearing listener in listeners)
+            for (int i = listeners.Count - 1; i >= 0; i--)
             {
+                NeighborHearing listener = listeners[i];
                 if (listener == null)
                 {
                     continue;

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Neighbor.Main.Features.Interaction;
 using UnityEngine;
 
@@ -24,12 +25,28 @@ namespace Neighbor.Main.Features.Neighbor
 
     public sealed class NeighborHearing : MonoBehaviour
     {
+        private static readonly List<NeighborHearing> ActiveListeners = new();
+
         [SerializeField, Range(0f, 1f)] private float minimumLoudness = 0.05f;
         [SerializeField, Min(0f)] private float hearingCooldown = 0.2f;
 
         private float lastHeardTime;
 
+        public static IReadOnlyList<NeighborHearing> Listeners => ActiveListeners;
         public event Action<NeighborNoiseStimulus> NoiseHeard;
+
+        private void OnEnable()
+        {
+            if (!ActiveListeners.Contains(this))
+            {
+                ActiveListeners.Add(this);
+            }
+        }
+
+        private void OnDisable()
+        {
+            ActiveListeners.Remove(this);
+        }
 
         private void OnTriggerEnter(Collider other)
         {
@@ -66,6 +83,12 @@ namespace Neighbor.Main.Features.Neighbor
         {
             NoiseEvent noiseEvent = other.GetComponent<NoiseEvent>() ?? other.GetComponentInParent<NoiseEvent>();
             TryHear(noiseEvent);
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetActiveListeners()
+        {
+            ActiveListeners.Clear();
         }
     }
 }

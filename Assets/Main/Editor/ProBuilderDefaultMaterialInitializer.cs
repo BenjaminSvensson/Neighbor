@@ -14,11 +14,12 @@ internal static class ProBuilderDefaultMaterialInitializer
     private static readonly Settings ProBuilderSettings = new Settings(ProBuilderPackageName);
     private static Material s_DefaultMaterial;
     private static bool s_ApplyingSceneMaterials;
+    private static bool s_ApplyScheduled;
 
     static ProBuilderDefaultMaterialInitializer()
     {
         EditorApplication.delayCall += ConfigureProBuilderMaterial;
-        EditorApplication.hierarchyChanged += ApplyMaterialToDefaultProBuilderObjects;
+        EditorApplication.hierarchyChanged += ScheduleMaterialApplication;
     }
 
     private static void ConfigureProBuilderMaterial()
@@ -30,6 +31,21 @@ internal static class ProBuilderDefaultMaterialInitializer
         ProBuilderSettings.Set(UserMaterialPreferenceKey, s_DefaultMaterial, SettingsScope.Project);
         ProBuilderSettings.Save();
 
+        ApplyMaterialToDefaultProBuilderObjects();
+    }
+
+    private static void ScheduleMaterialApplication()
+    {
+        if (s_ApplyScheduled)
+            return;
+
+        s_ApplyScheduled = true;
+        EditorApplication.delayCall += ApplyScheduledMaterials;
+    }
+
+    private static void ApplyScheduledMaterials()
+    {
+        s_ApplyScheduled = false;
         ApplyMaterialToDefaultProBuilderObjects();
     }
 

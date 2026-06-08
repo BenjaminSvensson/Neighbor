@@ -226,8 +226,29 @@ namespace Neighbor.Main.Features.Neighbor
 
         private bool HasConfiguredReinforcement()
         {
-            return reinforcementOptions != null && reinforcementOptions.Length > 0
-                || legacyReinforcementPrefabs != null && legacyReinforcementPrefabs.Length > 0;
+            if (reinforcementOptions != null)
+            {
+                for (int i = 0; i < reinforcementOptions.Length; i++)
+                {
+                    if (reinforcementOptions[i]?.Prefab != null)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            if (legacyReinforcementPrefabs != null)
+            {
+                for (int i = 0; i < legacyReinforcementPrefabs.Length; i++)
+                {
+                    if (legacyReinforcementPrefabs[i] != null)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private void ConfigureNeighborAvoidance(GameObject reinforcement)

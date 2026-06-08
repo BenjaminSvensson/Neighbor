@@ -151,13 +151,15 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             Renderer renderer = splat.GetComponent<Renderer>();
+            Material material = null;
             if (renderer != null)
             {
-                renderer.sharedMaterial = PaintSplat.CreateMaterial(paintColor);
+                material = PaintSplat.CreateMaterial(paintColor);
+                renderer.sharedMaterial = material;
             }
 
             PaintSplat paintSplat = splat.AddComponent<PaintSplat>();
-            paintSplat.Initialize(splatLifetime);
+            paintSplat.Initialize(splatLifetime, material);
         }
 
         private void BlindSecurityCamera(RaycastHit hit)

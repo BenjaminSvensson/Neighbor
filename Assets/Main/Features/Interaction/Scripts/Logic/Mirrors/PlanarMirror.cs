@@ -13,7 +13,9 @@ namespace Neighbor.Main.Features.Interaction
         private Camera mirrorCamera;
         private Camera sourceCamera;
         private RenderTexture renderTexture;
-        private Material mirrorMaterial;
+        private MaterialPropertyBlock mirrorPropertyBlock;
+        private MaterialPropertyBlock originalPropertyBlock;
+        private bool hasCapturedOriginalPropertyBlock;
         private int lastTextureSize;
         private float nextSourceCameraRefreshTime;
         private static bool isRenderingMirror;
@@ -93,7 +95,7 @@ namespace Neighbor.Main.Features.Interaction
                 mirrorCamera.transform.SetPositionAndRotation(reflectedPosition, Quaternion.LookRotation(reflectedForward, reflectedUp));
                 mirrorCamera.worldToCameraMatrix = sourceCamera.worldToCameraMatrix * reflectionMatrix;
 
-                Vector4 cameraSpacePlane = CameraSpacePlane(mirrorCamera, planePosition, planeNormal, 1f);
+                Vector4 cameraSpacePlane = CameraSpacePlane(mirrorCamera, planePosition, planeNormal, 1f, clipPlaneOffset);
                 mirrorCamera.projectionMatrix = sourceCamera.CalculateObliqueMatrix(cameraSpacePlane);
 
                 mirrorRenderer.enabled = false;
@@ -122,6 +124,7 @@ namespace Neighbor.Main.Features.Interaction
                 renderTexture = new RenderTexture(size, size, 16, RenderTextureFormat.ARGB32)
                 {
                     name = $"{name}_MirrorReflection",
+                    hideFlags = HideFlags.HideAndDontSave,
                     antiAliasing = 2,
                     useMipMap = false
                 };
@@ -137,16 +140,20 @@ namespace Neighbor.Main.Features.Interaction
                 mirrorCamera.enabled = false;
             }
 
-            if (mirrorRenderer != null && mirrorMaterial == null)
+            if (mirrorRenderer != null)
             {
-                mirrorMaterial = mirrorRenderer.material;
-            }
+                if (!hasCapturedOriginalPropertyBlock)
+                {
+                    originalPropertyBlock ??= new MaterialPropertyBlock();
+                    mirrorRenderer.GetPropertyBlock(originalPropertyBlock);
+                    hasCapturedOriginalPropertyBlock = true;
+                }
 
-            if (mirrorMaterial != null)
-            {
-                mirrorMaterial.mainTexture = renderTexture;
-                mirrorMaterial.SetTexture("_BaseMap", renderTexture);
-                mirrorMaterial.SetTexture("_MainTex", renderTexture);
+                mirrorPropertyBlock ??= new MaterialPropertyBlock();
+                mirrorRenderer.GetPropertyBlock(mirrorPropertyBlock);
+                mirrorPropertyBlock.SetTexture("_BaseMap", renderTexture);
+                mirrorPropertyBlock.SetTexture("_MainTex", renderTexture);
+                mirrorRenderer.SetPropertyBlock(mirrorPropertyBlock);
             }
         }
 
@@ -193,6 +200,14 @@ namespace Neighbor.Main.Features.Interaction
 
         private void ReleaseResources()
         {
+            if (mirrorRenderer != null && mirrorPropertyBlock != null)
+            {
+                mirrorRenderer.SetPropertyBlock(hasCapturedOriginalPropertyBlock ? originalPropertyBlock : null);
+                mirrorPropertyBlock = null;
+                originalPropertyBlock = null;
+                hasCapturedOriginalPropertyBlock = false;
+            }
+
             if (renderTexture != null)
             {
                 renderTexture.Release();
@@ -205,17 +220,11 @@ namespace Neighbor.Main.Features.Interaction
                 Destroy(mirrorCamera.gameObject);
                 mirrorCamera = null;
             }
-
-            if (mirrorMaterial != null)
-            {
-                Destroy(mirrorMaterial);
-                mirrorMaterial = null;
-            }
         }
 
-        private static Vector4 CameraSpacePlane(Camera camera, Vector3 position, Vector3 normal, float sideSign)
+        private static Vector4 CameraSpacePlane(Camera camera, Vector3 position, Vector3 normal, float sideSign, float offset)
         {
-            Vector3 offsetPosition = position + normal * 0.04f;
+            Vector3 offsetPosition = position + normal * offset;
             Matrix4x4 worldToCamera = camera.worldToCameraMatrix;
             Vector3 cameraPosition = worldToCamera.MultiplyPoint(offsetPosition);
             Vector3 cameraNormal = worldToCamera.MultiplyVector(normal).normalized * sideSign;
