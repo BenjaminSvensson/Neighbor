@@ -24,6 +24,7 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float deathShakeFrequency = 22f;
 
         [Header("Reset")]
+        [SerializeField, Min(0)] private int reinforcementBudgetPerDeath = 5;
         [SerializeField, Range(0, 12)] private int reinforcementLocationsPerDeath = 2;
         [SerializeField, Range(0, 12)] private int reinforcedDoorsPerDeath = 2;
         [SerializeField, Min(0f)] private float neighborRespawnSightGraceTime = 2.5f;
@@ -143,8 +144,9 @@ namespace Neighbor.Main.Features.Player
             }
 
             Door.ResetAllToStartingState();
-            Door.ApplyRunReinforcements(reinforcedDoorsPerDeath);
-            ReinforcementTrigger.ApplyRunReinforcements(reinforcementLocationsPerDeath);
+            ReinforcementBudget reinforcementBudget = new ReinforcementBudget(reinforcementBudgetPerDeath);
+            Door.ApplyRunReinforcements(reinforcedDoorsPerDeath, reinforcementBudget);
+            ReinforcementTrigger.ApplyRunReinforcements(reinforcementLocationsPerDeath, reinforcementBudget);
             ResetRun();
 
             timer = 0f;

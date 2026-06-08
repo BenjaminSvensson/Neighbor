@@ -1,8 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
+using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Serialization;
 
 namespace Neighbor.Main.Features.Interaction
 {
@@ -39,8 +41,10 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float playerOpenWeight = 0.5f;
         [SerializeField, Min(0f)] private float playerPassageWeight = 1f;
         [SerializeField] private bool reinforcementCanLockDoor;
+        [SerializeField, Min(1)] private int reinforcementLockCost = 1;
         [SerializeField] private bool reinforcementCanBlockDoor = true;
-        [SerializeField] private GameObject[] blockerReinforcementPrefabs;
+        [SerializeField] private ReinforcementPrefabOption[] blockerReinforcementOptions;
+        [SerializeField, HideInInspector, FormerlySerializedAs("blockerReinforcementPrefabs")] private GameObject[] legacyBlockerReinforcementPrefabs;
         [SerializeField] private Transform blockerReinforcementSpawnPoint;
 
         [Header("Door Audio")]
@@ -308,23 +312,27 @@ namespace Neighbor.Main.Features.Interaction
             }
         }
 
-        public static void ApplyRunReinforcements(int maximumDoors)
+        public static void ApplyRunReinforcements(int maximumDoors, ReinforcementBudget budget)
         {
             List<Door> rankedDoors = new();
             for (int i = 0; i < ActiveDoors.Count; i++)
             {
                 Door door = ActiveDoors[i];
-                if (door != null && door.runReinforcementScore > 0f && door.CanApplyReinforcement())
+                if (door != null && door.runReinforcementScore > 0f && door.CanApplyReinforcement(budget))
                 {
                     rankedDoors.Add(door);
                 }
             }
 
             rankedDoors.Sort((a, b) => b.runReinforcementScore.CompareTo(a.runReinforcementScore));
-            int reinforcementCount = Mathf.Min(Mathf.Max(0, maximumDoors), rankedDoors.Count);
-            for (int i = 0; i < reinforcementCount; i++)
+            int maximumReinforcementCount = Mathf.Min(Mathf.Max(0, maximumDoors), rankedDoors.Count);
+            int reinforcedCount = 0;
+            for (int i = 0; i < rankedDoors.Count && reinforcedCount < maximumReinforcementCount; i++)
             {
-                rankedDoors[i].ApplyReinforcement();
+                if (rankedDoors[i].ApplyReinforcement(budget))
+                {
+                    reinforcedCount++;
+                }
             }
 
             for (int i = 0; i < ActiveDoors.Count; i++)
@@ -416,38 +424,40 @@ namespace Neighbor.Main.Features.Interaction
             return Vector3.Dot(transform.forward, position - transform.position);
         }
 
-        private bool CanApplyReinforcement()
+        private bool CanApplyReinforcement(ReinforcementBudget budget)
         {
-            bool canLock = reinforcementCanLockDoor && playerPassedThroughThisRun;
-            bool canBlock = reinforcementCanBlockDoor && HasBlockerReinforcementPrefab();
+            bool canLock = reinforcementCanLockDoor && playerPassedThroughThisRun && budget.CanAfford(reinforcementLockCost);
+            bool canBlock = reinforcementCanBlockDoor && TryGetBlockerReinforcement(budget, out _);
             return canLock || canBlock;
         }
 
-        private void ApplyReinforcement()
+        private bool ApplyReinforcement(ReinforcementBudget budget)
         {
-            if (reinforcementCanLockDoor && playerPassedThroughThisRun)
+            bool reinforced = false;
+            if (reinforcementCanLockDoor && playerPassedThroughThisRun && budget.TrySpend(reinforcementLockCost))
             {
                 SetLocked(true, true, false);
+                reinforced = true;
             }
 
-            if (reinforcementCanBlockDoor)
+            if (reinforcementCanBlockDoor && TrySpawnBlockerReinforcement(budget))
             {
-                TrySpawnBlockerReinforcement();
+                reinforced = true;
             }
 
             UpdateNavigationObstacles();
+            return reinforced;
         }
 
-        private bool TrySpawnBlockerReinforcement()
+        private bool TrySpawnBlockerReinforcement(ReinforcementBudget budget)
         {
-            GameObject prefab = GetBlockerReinforcementPrefab();
-            if (prefab == null)
+            if (!TryGetBlockerReinforcement(budget, out ReinforcementPrefabSelection selection))
             {
                 return false;
             }
 
             Transform spawnAnchor = blockerReinforcementSpawnPoint != null ? blockerReinforcementSpawnPoint : transform;
-            GameObject reinforcement = Instantiate(prefab, spawnAnchor.position, spawnAnchor.rotation);
+            GameObject reinforcement = Instantiate(selection.Prefab, spawnAnchor.position, spawnAnchor.rotation);
             DoorBlockerChair blocker = reinforcement.GetComponent<DoorBlockerChair>() ?? reinforcement.GetComponentInChildren<DoorBlockerChair>();
             if (blocker == null || !blocker.TryBlockDoorAsReinforcement(this))
             {
@@ -456,40 +466,43 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             spawnedReinforcement = reinforcement;
+            budget.TrySpend(selection.Cost);
             return true;
         }
 
-        private GameObject GetBlockerReinforcementPrefab()
+        private bool TryGetBlockerReinforcement(ReinforcementBudget budget, out ReinforcementPrefabSelection selection)
         {
-            if (blockerReinforcementPrefabs == null || blockerReinforcementPrefabs.Length == 0)
-            {
-                return null;
-            }
-
-            for (int i = 0; i < blockerReinforcementPrefabs.Length; i++)
-            {
-                GameObject prefab = blockerReinforcementPrefabs[Random.Range(0, blockerReinforcementPrefabs.Length)];
-                if (prefab != null)
-                {
-                    return prefab;
-                }
-            }
-
-            return null;
-        }
-
-        private bool HasBlockerReinforcementPrefab()
-        {
-            if (blockerReinforcementPrefabs == null)
+            selection = default;
+            if (budget == null)
             {
                 return false;
             }
 
-            for (int i = 0; i < blockerReinforcementPrefabs.Length; i++)
+            if (blockerReinforcementOptions != null && blockerReinforcementOptions.Length > 0)
             {
-                if (blockerReinforcementPrefabs[i] != null)
+                int startIndex = Random.Range(0, blockerReinforcementOptions.Length);
+                for (int i = 0; i < blockerReinforcementOptions.Length; i++)
                 {
-                    return true;
+                    ReinforcementPrefabOption option = blockerReinforcementOptions[(startIndex + i) % blockerReinforcementOptions.Length];
+                    if (option != null && option.Prefab != null && budget.CanAfford(option.Cost))
+                    {
+                        selection = new ReinforcementPrefabSelection(option.Prefab, option.Cost);
+                        return true;
+                    }
+                }
+            }
+
+            if (legacyBlockerReinforcementPrefabs != null && legacyBlockerReinforcementPrefabs.Length > 0 && budget.CanAfford(1))
+            {
+                int startIndex = Random.Range(0, legacyBlockerReinforcementPrefabs.Length);
+                for (int i = 0; i < legacyBlockerReinforcementPrefabs.Length; i++)
+                {
+                    GameObject prefab = legacyBlockerReinforcementPrefabs[(startIndex + i) % legacyBlockerReinforcementPrefabs.Length];
+                    if (prefab != null)
+                    {
+                        selection = new ReinforcementPrefabSelection(prefab, 1);
+                        return true;
+                    }
                 }
             }
 

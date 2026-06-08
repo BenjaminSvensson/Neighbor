@@ -1,9 +1,59 @@
 using System.Collections.Generic;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Neighbor.Main.Features.Neighbor
 {
+    [System.Serializable]
+    public sealed class ReinforcementPrefabOption
+    {
+        [SerializeField] private GameObject prefab;
+        [SerializeField, Min(1)] private int cost = 1;
+
+        public GameObject Prefab => prefab;
+        public int Cost => Mathf.Max(1, cost);
+    }
+
+    public sealed class ReinforcementBudget
+    {
+        public int Remaining { get; private set; }
+
+        public ReinforcementBudget(int amount)
+        {
+            Remaining = Mathf.Max(0, amount);
+        }
+
+        public bool CanAfford(int cost)
+        {
+            return Remaining >= Mathf.Max(1, cost);
+        }
+
+        public bool TrySpend(int cost)
+        {
+            int normalizedCost = Mathf.Max(1, cost);
+            if (Remaining < normalizedCost)
+            {
+                return false;
+            }
+
+            Remaining -= normalizedCost;
+            return true;
+        }
+    }
+
+    public readonly struct ReinforcementPrefabSelection
+    {
+        public GameObject Prefab { get; }
+        public int Cost { get; }
+
+        public ReinforcementPrefabSelection(GameObject prefab, int cost)
+        {
+            Prefab = prefab;
+            Cost = Mathf.Max(1, cost);
+        }
+    }
+
     [AddComponentMenu("Neighbor/Reinforcement Trigger")]
     [RequireComponent(typeof(Collider))]
     public sealed class ReinforcementTrigger : MonoBehaviour
@@ -14,7 +64,8 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0.01f)] private float visitWeight = 1f;
 
         [Header("Reinforcement")]
-        [SerializeField] private GameObject[] reinforcementPrefabs;
+        [SerializeField] private ReinforcementPrefabOption[] reinforcementOptions;
+        [SerializeField, HideInInspector, FormerlySerializedAs("reinforcementPrefabs")] private GameObject[] legacyReinforcementPrefabs;
         [SerializeField] private Transform spawnPoint;
         [SerializeField, Min(0)] private int maximumPersistentReinforcements = 1;
         [SerializeField] private bool randomizeYaw;
@@ -64,23 +115,27 @@ namespace Neighbor.Main.Features.Neighbor
             }
         }
 
-        public static void ApplyRunReinforcements(int maximumLocations)
+        public static void ApplyRunReinforcements(int maximumLocations, ReinforcementBudget budget)
         {
             List<ReinforcementTrigger> rankedTriggers = new();
             for (int i = 0; i < ActiveTriggers.Count; i++)
             {
                 ReinforcementTrigger trigger = ActiveTriggers[i];
-                if (trigger != null && trigger.runScore > 0f && trigger.CanSpawnReinforcement())
+                if (trigger != null && trigger.runScore > 0f && trigger.CanSpawnReinforcement(budget))
                 {
                     rankedTriggers.Add(trigger);
                 }
             }
 
             rankedTriggers.Sort((a, b) => b.runScore.CompareTo(a.runScore));
-            int spawnCount = Mathf.Min(Mathf.Max(0, maximumLocations), rankedTriggers.Count);
-            for (int i = 0; i < spawnCount; i++)
+            int maximumSpawnCount = Mathf.Min(Mathf.Max(0, maximumLocations), rankedTriggers.Count);
+            int spawnedCount = 0;
+            for (int i = 0; i < rankedTriggers.Count && spawnedCount < maximumSpawnCount; i++)
             {
-                rankedTriggers[i].SpawnReinforcement();
+                if (rankedTriggers[i].SpawnReinforcement(budget))
+                {
+                    spawnedCount++;
+                }
             }
 
             for (int i = 0; i < ActiveTriggers.Count; i++)
@@ -93,19 +148,18 @@ namespace Neighbor.Main.Features.Neighbor
             }
         }
 
-        private bool CanSpawnReinforcement()
+        private bool CanSpawnReinforcement(ReinforcementBudget budget)
         {
-            return reinforcementPrefabs != null
-                && reinforcementPrefabs.Length > 0
+            return HasConfiguredReinforcement()
+                && TryGetRandomAffordableReinforcement(budget, out _)
                 && (maximumPersistentReinforcements <= 0 || spawnedReinforcementCount < maximumPersistentReinforcements);
         }
 
-        private void SpawnReinforcement()
+        private bool SpawnReinforcement(ReinforcementBudget budget)
         {
-            GameObject prefab = GetRandomReinforcementPrefab();
-            if (prefab == null)
+            if (!TryGetRandomAffordableReinforcement(budget, out ReinforcementPrefabSelection selection))
             {
-                return;
+                return false;
             }
 
             Transform anchor = spawnPoint != null ? spawnPoint : transform;
@@ -115,22 +169,55 @@ namespace Neighbor.Main.Features.Neighbor
                 rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
             }
 
-            Instantiate(prefab, anchor.position, rotation);
+            Instantiate(selection.Prefab, anchor.position, rotation);
             spawnedReinforcementCount++;
+            budget.TrySpend(selection.Cost);
+            return true;
         }
 
-        private GameObject GetRandomReinforcementPrefab()
+        private bool TryGetRandomAffordableReinforcement(ReinforcementBudget budget, out ReinforcementPrefabSelection selection)
         {
-            for (int i = 0; i < reinforcementPrefabs.Length; i++)
+            selection = default;
+            if (budget == null)
             {
-                GameObject prefab = reinforcementPrefabs[Random.Range(0, reinforcementPrefabs.Length)];
-                if (prefab != null)
+                return false;
+            }
+
+            if (reinforcementOptions != null && reinforcementOptions.Length > 0)
+            {
+                int startIndex = Random.Range(0, reinforcementOptions.Length);
+                for (int i = 0; i < reinforcementOptions.Length; i++)
                 {
-                    return prefab;
+                    ReinforcementPrefabOption option = reinforcementOptions[(startIndex + i) % reinforcementOptions.Length];
+                    if (option != null && option.Prefab != null && budget.CanAfford(option.Cost))
+                    {
+                        selection = new ReinforcementPrefabSelection(option.Prefab, option.Cost);
+                        return true;
+                    }
                 }
             }
 
-            return null;
+            if (legacyReinforcementPrefabs != null && legacyReinforcementPrefabs.Length > 0 && budget.CanAfford(1))
+            {
+                int startIndex = Random.Range(0, legacyReinforcementPrefabs.Length);
+                for (int i = 0; i < legacyReinforcementPrefabs.Length; i++)
+                {
+                    GameObject prefab = legacyReinforcementPrefabs[(startIndex + i) % legacyReinforcementPrefabs.Length];
+                    if (prefab != null)
+                    {
+                        selection = new ReinforcementPrefabSelection(prefab, 1);
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private bool HasConfiguredReinforcement()
+        {
+            return reinforcementOptions != null && reinforcementOptions.Length > 0
+                || legacyReinforcementPrefabs != null && legacyReinforcementPrefabs.Length > 0;
         }
 
         private void OnDrawGizmos()
