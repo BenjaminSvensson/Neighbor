@@ -20,6 +20,8 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private bool closeDoorsBehindNeighbor = true;
         [SerializeField, Min(0f)] private float closeBehindDelay = 0.15f;
         [SerializeField, Min(0f)] private float closeBehindDistance = 1.5f;
+        [SerializeField, Min(0f)] private float closeBehindClearDistance = 0.65f;
+        [SerializeField, Min(0f)] private float closeBehindFailsafeDelay = 2.5f;
         [SerializeField] private bool requirePassingThroughDoorToClose = true;
 
         private readonly Collider[] hits = new Collider[8];
@@ -238,12 +240,15 @@ namespace Neighbor.Main.Features.Interaction
             {
                 if (openedDoors[i].Door == door)
                 {
-                    openedDoors[i] = new OpenedDoorTracker(door, openedFromDefaultSide, Time.time + closeBehindDelay);
                     return;
                 }
             }
 
-            openedDoors.Add(new OpenedDoorTracker(door, openedFromDefaultSide, Time.time + closeBehindDelay));
+            openedDoors.Add(new OpenedDoorTracker(
+                door,
+                openedFromDefaultSide,
+                Time.time + closeBehindDelay,
+                Time.time + closeBehindFailsafeDelay));
         }
 
         private void UpdateOpenedDoors()
@@ -270,14 +275,22 @@ namespace Neighbor.Main.Features.Interaction
                 }
 
                 bool hasPassedThrough = door.IsOnDefaultOpeningSide(transform.position) != tracker.OpenedFromDefaultSide;
-                if (requirePassingThroughDoorToClose && !hasPassedThrough)
+                bool failsafeReady = Time.time >= tracker.FailsafeCloseTime;
+                if (requirePassingThroughDoorToClose && !hasPassedThrough && !failsafeReady)
                 {
                     continue;
                 }
 
-                if (Vector3.Distance(transform.position, door.transform.position) > closeBehindDistance)
+                float distanceToDoor = Vector3.Distance(transform.position, door.transform.position);
+                bool isClearOfDoorway = distanceToDoor >= closeBehindClearDistance;
+                bool hasLeftCloseRange = closeBehindDistance > 0f && distanceToDoor > closeBehindDistance;
+                if (!isClearOfDoorway && !failsafeReady)
                 {
-                    openedDoors.RemoveAt(i);
+                    continue;
+                }
+
+                if (hasLeftCloseRange && !hasPassedThrough && !failsafeReady)
+                {
                     continue;
                 }
 
@@ -288,16 +301,18 @@ namespace Neighbor.Main.Features.Interaction
 
         private readonly struct OpenedDoorTracker
         {
-            public OpenedDoorTracker(Door door, bool openedFromDefaultSide, float closeAfterTime)
+            public OpenedDoorTracker(Door door, bool openedFromDefaultSide, float closeAfterTime, float failsafeCloseTime)
             {
                 Door = door;
                 OpenedFromDefaultSide = openedFromDefaultSide;
                 CloseAfterTime = closeAfterTime;
+                FailsafeCloseTime = failsafeCloseTime;
             }
 
             public Door Door { get; }
             public bool OpenedFromDefaultSide { get; }
             public float CloseAfterTime { get; }
+            public float FailsafeCloseTime { get; }
         }
     }
 }

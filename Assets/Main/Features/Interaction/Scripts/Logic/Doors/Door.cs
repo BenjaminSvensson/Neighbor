@@ -197,6 +197,11 @@ namespace Neighbor.Main.Features.Interaction
                 Unlock();
             }
 
+            if (isOpen)
+            {
+                return true;
+            }
+
             OpenIgnoring(neighbor);
             return true;
         }
