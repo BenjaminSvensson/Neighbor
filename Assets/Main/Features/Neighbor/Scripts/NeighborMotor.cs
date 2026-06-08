@@ -298,6 +298,55 @@ namespace Neighbor.Main.Features.Neighbor
             agent.ResetPath();
         }
 
+        public void ResetToPosition(Vector3 position, Quaternion rotation)
+        {
+            if (traversalRoutine != null)
+            {
+                StopCoroutine(traversalRoutine);
+                traversalRoutine = null;
+            }
+
+            if (knockbackRoutine != null)
+            {
+                StopCoroutine(knockbackRoutine);
+                knockbackRoutine = null;
+            }
+
+            hasRequestedDestination = false;
+            offMeshChaseUntilTime = 0f;
+
+            if (agent != null && agent.enabled)
+            {
+                agent.updatePosition = true;
+                agent.updateRotation = true;
+
+                if (NavMesh.SamplePosition(position, out NavMeshHit hit, startNavMeshSnapRadius, agent.areaMask))
+                {
+                    agent.Warp(hit.position);
+                }
+                else if (agent.isOnNavMesh)
+                {
+                    agent.Warp(position);
+                }
+                else
+                {
+                    transform.position = position;
+                    agent.nextPosition = position;
+                }
+
+                if (agent.isOnNavMesh)
+                {
+                    agent.ResetPath();
+                }
+            }
+            else
+            {
+                transform.position = position;
+            }
+
+            transform.rotation = rotation;
+        }
+
         public void FaceTowards(Vector3 position, float turnSharpness)
         {
             Vector3 toPosition = position - transform.position;

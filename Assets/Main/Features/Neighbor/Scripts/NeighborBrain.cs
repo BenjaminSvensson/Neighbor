@@ -82,12 +82,16 @@ namespace Neighbor.Main.Features.Neighbor
         private NeighborTaskLocation currentTaskLocation;
         private NeighborTaskLocation activeTaskAudioLocation;
         private NeighborMotor.MoveMode investigationMoveMode = NeighborMotor.MoveMode.Walk;
+        private Vector3 startingPosition;
+        private Quaternion startingRotation;
 
         public BehaviorState CurrentState => currentState;
         public Vector3 LastKnownPlayerPosition => lastKnownPlayerPosition;
 
         private void Awake()
         {
+            startingPosition = transform.position;
+            startingRotation = transform.rotation;
             motor = motor != null ? motor : GetComponent<NeighborMotor>();
             vision = vision != null ? vision : GetComponent<NeighborVision>();
             hearing = hearing != null ? hearing : GetComponent<NeighborHearing>();
@@ -273,7 +277,7 @@ namespace Neighbor.Main.Features.Neighbor
             currentTaskLocation = null;
             visitedSearchPoints.Clear();
             StopActiveTaskAudio();
-            motor?.Stop();
+            motor?.ResetToPosition(startingPosition, startingRotation);
             lastPlayerSeenTime = float.NegativeInfinity;
             ignorePlayerSightUntilTime = Time.time + Mathf.Max(0f, sightGraceTime);
             hasObservedPlayerPosition = false;
