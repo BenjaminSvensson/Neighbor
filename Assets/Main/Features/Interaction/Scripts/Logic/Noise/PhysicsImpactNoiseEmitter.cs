@@ -16,6 +16,8 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float maximumNoiseRadius = 14f;
         [SerializeField, Range(0f, 1f)] private float alertUrgency = 0.7f;
         [SerializeField, Min(0.02f)] private float noiseLifetime = 0.25f;
+        [SerializeField, Min(0f)] private float neighborAttributionTime = 1f;
+        [SerializeField, Min(0f)] private float neighborAttributionMaximumObjectSpeed = 0.75f;
 
         [Header("3D Audio")]
         [SerializeField] private AudioClip[] impactClips;
@@ -28,6 +30,9 @@ namespace Neighbor.Main.Features.Interaction
         private AudioSource audioSource;
         private AudioClip generatedImpactClip;
         private float lastImpactTime;
+        private float speedBeforePhysicsStep;
+        private float neighborAttributionUntilTime;
+        private GameObject recentNeighborInstigator;
 
         private void Awake()
         {
@@ -51,8 +56,15 @@ namespace Neighbor.Main.Features.Interaction
             EmitCollisionNoise(collision);
         }
 
+        private void FixedUpdate()
+        {
+            speedBeforePhysicsStep = body != null ? body.linearVelocity.magnitude : 0f;
+        }
+
         private void EmitCollisionNoise(Collision collision)
         {
+            UpdateNoiseAttribution(collision);
+
             if (Time.time - lastImpactTime < impactCooldown)
             {
                 return;
@@ -70,9 +82,34 @@ namespace Neighbor.Main.Features.Interaction
 
             lastImpactTime = Time.time;
             PlayImpactAudio(origin, loudness01);
-            SpawnNoiseTrigger(origin, loudness01);
+            SpawnNoiseTrigger(origin, loudness01, ResolveNoiseSource());
             NotifyImpactReceiver(collision, origin, loudness01);
             NotifyDoorImpact(collision);
+        }
+
+        private void UpdateNoiseAttribution(Collision collision)
+        {
+            NeighborBrain neighbor = collision.collider != null
+                ? collision.collider.GetComponentInParent<NeighborBrain>()
+                : null;
+            if (neighbor == null || speedBeforePhysicsStep > neighborAttributionMaximumObjectSpeed)
+            {
+                return;
+            }
+
+            recentNeighborInstigator = neighbor.gameObject;
+            neighborAttributionUntilTime = Time.time + neighborAttributionTime;
+        }
+
+        private GameObject ResolveNoiseSource()
+        {
+            if (recentNeighborInstigator != null && Time.time <= neighborAttributionUntilTime)
+            {
+                return recentNeighborInstigator;
+            }
+
+            recentNeighborInstigator = null;
+            return gameObject;
         }
 
         private void NotifyImpactReceiver(Collision collision, Vector3 origin, float loudness01)
@@ -150,7 +187,7 @@ namespace Neighbor.Main.Features.Interaction
             return clip;
         }
 
-        private void SpawnNoiseTrigger(Vector3 origin, float loudness01)
+        private void SpawnNoiseTrigger(Vector3 origin, float loudness01, GameObject sourceObject)
         {
             float radius = Mathf.Lerp(minimumNoiseRadius, maximumNoiseRadius, loudness01);
             GameObject noiseObject = new GameObject("NoiseEvent");
@@ -165,7 +202,7 @@ namespace Neighbor.Main.Features.Interaction
             noiseBody.useGravity = false;
 
             NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
-            noiseEvent.Initialize(origin, radius, loudness01, gameObject, noiseLifetime, alertUrgency);
+            noiseEvent.Initialize(origin, radius, loudness01, sourceObject, noiseLifetime, alertUrgency);
         }
 
         private void ConfigureAudioSource()
@@ -192,6 +229,13 @@ namespace Neighbor.Main.Features.Interaction
                 source.rolloffMode = AudioRolloffMode.Logarithmic;
                 source.playOnAwake = false;
             }
+        }
+
+        private void OnValidate()
+        {
+            maximumImpactImpulse = Mathf.Max(0.01f, maximumImpactImpulse);
+            neighborAttributionTime = Mathf.Max(0f, neighborAttributionTime);
+            neighborAttributionMaximumObjectSpeed = Mathf.Max(0f, neighborAttributionMaximumObjectSpeed);
         }
     }
 }

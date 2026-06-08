@@ -60,12 +60,12 @@ namespace Neighbor.Main.Features.Neighbor
 
         public void TryHear(NoiseEvent noiseEvent)
         {
-            if (Time.time - lastHeardTime < hearingCooldown)
+            if (noiseEvent == null || IsNoiseFromNeighbor(noiseEvent.SourceObject))
             {
                 return;
             }
 
-            if (noiseEvent == null || noiseEvent.Loudness01 < minimumLoudness)
+            if (Time.time - lastHeardTime < hearingCooldown || noiseEvent.Loudness01 < minimumLoudness)
             {
                 return;
             }
@@ -77,6 +77,11 @@ namespace Neighbor.Main.Features.Neighbor
                 noiseEvent.Urgency01,
                 noiseEvent.Radius,
                 noiseEvent.SourceObject));
+        }
+
+        private static bool IsNoiseFromNeighbor(GameObject sourceObject)
+        {
+            return sourceObject != null && sourceObject.GetComponentInParent<NeighborBrain>() != null;
         }
 
         private void TryHear(Collider other)
