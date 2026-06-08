@@ -78,10 +78,6 @@ namespace Neighbor.Main.Features.Interaction
             {
                 RestorePhysics();
             }
-            else if (IsInventoryStored)
-            {
-                RestoreInventoryState();
-            }
 
             RestoreIgnoredPlayerCollisions();
         }
