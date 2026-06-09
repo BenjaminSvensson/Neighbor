@@ -491,7 +491,7 @@ namespace Neighbor.Main.Features.Interaction
 
             sightBeam.localPosition = Vector3.zero;
             sightBeam.localRotation = Quaternion.identity;
-            sightBeam.localScale = Vector3.one;
+            sightBeam.localScale = GetInverseWorldScale(sightBeam.parent);
             sightBeam.gameObject.SetActive(!IsBlinded && isAttached && (pickupable == null || !pickupable.IsHeld));
 
             sightBeamFilter ??= sightBeam.GetComponent<MeshFilter>();
@@ -514,6 +514,20 @@ namespace Neighbor.Main.Features.Interaction
                 sightBeamMaterial ??= CreateSightConeMaterial();
                 sightBeamRenderer.sharedMaterial = sightBeamMaterial;
             }
+        }
+
+        private static Vector3 GetInverseWorldScale(Transform parent)
+        {
+            if (parent == null)
+            {
+                return Vector3.one;
+            }
+
+            Vector3 scale = parent.lossyScale;
+            return new Vector3(
+                Mathf.Abs(scale.x) > 0.0001f ? 1f / Mathf.Abs(scale.x) : 1f,
+                Mathf.Abs(scale.y) > 0.0001f ? 1f / Mathf.Abs(scale.y) : 1f,
+                Mathf.Abs(scale.z) > 0.0001f ? 1f / Mathf.Abs(scale.z) : 1f);
         }
 
         private Mesh CreateSightConeMesh(float distance, float angle, int segments)
