@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
 
@@ -7,6 +8,9 @@ namespace Neighbor.Main.Features.Interaction
     [RequireComponent(typeof(Pickupable))]
     public sealed class SecurityCamera : MonoBehaviour, IPrimaryUseInteractable, IPickupLifecycleReceiver
     {
+        private const int MaximumNeighborPlacedCameras = 5;
+        private static readonly HashSet<SecurityCamera> NeighborPlacedCameras = new();
+
         [Header("Wall Attachment")]
         [SerializeField, Min(0.1f)] private float attachRange = 3.2f;
         [SerializeField, Min(0f)] private float wallOffset = 0.08f;
@@ -54,8 +58,25 @@ namespace Neighbor.Main.Features.Interaction
         private Quaternion attachedLocalRotation;
         private float blindedUntilTime;
         private bool isAttached;
+        private bool isNeighborPlaced;
 
         public bool IsBlinded => Time.time < blindedUntilTime;
+        public bool IsNeighborPlaced => isNeighborPlaced;
+        public static int NeighborPlacedCameraCount
+        {
+            get
+            {
+                NeighborPlacedCameras.RemoveWhere(camera => camera == null);
+                return NeighborPlacedCameras.Count;
+            }
+        }
+        public static bool CanPlaceNeighborCamera => NeighborPlacedCameraCount < MaximumNeighborPlacedCameras;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetNeighborPlacedCameras()
+        {
+            NeighborPlacedCameras.Clear();
+        }
 
         private void Awake()
         {
@@ -164,6 +185,24 @@ namespace Neighbor.Main.Features.Interaction
             blindedUntilTime = Mathf.Max(blindedUntilTime, Time.time + duration);
             nextScanTime = blindedUntilTime;
             ConfigureSightBeam();
+        }
+
+        public bool TryAttachByNeighbor(Vector3 wallPosition, Vector3 wallNormal)
+        {
+            if (!CanPlaceNeighborCamera || pickupable == null || wallNormal.sqrMagnitude <= 0.001f)
+            {
+                return false;
+            }
+
+            Vector3 normalizedWallNormal = wallNormal.normalized;
+            transform.SetPositionAndRotation(
+                wallPosition + normalizedWallNormal * wallOffset,
+                Quaternion.LookRotation(normalizedWallNormal, Vector3.up));
+            pickupable.Place(transform.position, transform.rotation, true);
+            AttachToSurface(null);
+            isNeighborPlaced = true;
+            NeighborPlacedCameras.Add(this);
+            return true;
         }
 
         private void AttachToSurface(Pickupable parentPickupable)
@@ -463,6 +502,8 @@ namespace Neighbor.Main.Features.Interaction
 
         private void OnDestroy()
         {
+            NeighborPlacedCameras.Remove(this);
+
             if (generatedSightBeamMesh != null)
             {
                 Destroy(generatedSightBeamMesh);
