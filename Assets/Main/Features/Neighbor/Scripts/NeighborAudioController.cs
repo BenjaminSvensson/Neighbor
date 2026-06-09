@@ -30,13 +30,12 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float upstairsHeight = 2.2f;
         [SerializeField, Min(0f)] private float minimumFootstepSpeed = 0.32f;
         [SerializeField, Min(0.1f)] private float runSpeedReference = 5.8f;
-        [SerializeField, Min(0.05f)] private float slowStepInterval = 0.54f;
-        [SerializeField, Min(0.05f)] private float fastStepInterval = 0.24f;
         [SerializeField, Range(0f, 1f)] private float footstepMinimumVolume = 0.34f;
         [SerializeField, Range(0f, 1f)] private float footstepMaximumVolume = 0.78f;
         [SerializeField, Range(0f, 1f)] private float upstairsVolumeBoost = 0.14f;
         [SerializeField, Range(0f, 1f)] private float footstepPitchRandomness = 0.07f;
         [SerializeField, Range(0f, 1f)] private float footstepStereoWidth = 0.22f;
+        [SerializeField, Min(0f)] private float footstepLoopFadeSharpness = 9f;
 
         [Header("Movement Foley")]
         [SerializeField] private AudioClip movementFoleyLoopClip;
@@ -102,10 +101,11 @@ namespace Neighbor.Main.Features.Neighbor
         private Vector3 lastPosition;
         private float planarSpeed;
         private float verticalTraversalStartY;
-        private float footstepTimer;
         private float nextMutterTime;
         private float nextOcclusionTime;
-        private int footstepSide;
+        private int activeFootstepSourceIndex;
+        private int activeFootstepCategory = -1;
+        private float activeFootstepPitch = 1f;
         private bool wasTraversing;
         private NeighborBrain.BehaviorState previousState;
         private AudioListener listener;
@@ -195,8 +195,8 @@ namespace Neighbor.Main.Features.Neighbor
             chaseLoopSource = chaseLoopSource != null ? chaseLoopSource : bodyAnchor.gameObject.AddComponent<AudioSource>();
             movementFoleyLoopSource = movementFoleyLoopSource != null ? movementFoleyLoopSource : bodyAnchor.gameObject.AddComponent<AudioSource>();
 
-            ConfigureSource(leftFootSource, false, footstepMaxDistance);
-            ConfigureSource(rightFootSource, false, footstepMaxDistance);
+            ConfigureSource(leftFootSource, true, footstepMaxDistance);
+            ConfigureSource(rightFootSource, true, footstepMaxDistance);
             ConfigureSource(bodyOneShotSource, false, voiceMaxDistance);
             ConfigureSource(voiceSource, false, voiceMaxDistance);
             ConfigureSource(breathingLoopSource, true, voiceMaxDistance);
@@ -304,44 +304,80 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void UpdateFootsteps()
         {
-            if (motor != null && motor.IsTraversingSpecialMove)
-            {
-                footstepTimer = 0f;
-                return;
-            }
-
-            if (brain != null && brain.CurrentState == NeighborBrain.BehaviorState.Stunned)
-            {
-                footstepTimer = 0f;
-                return;
-            }
-
-            if (planarSpeed < minimumFootstepSpeed)
-            {
-                footstepTimer = 0f;
-                return;
-            }
-
-            footstepTimer -= Time.deltaTime;
-            if (footstepTimer > 0f)
-            {
-                return;
-            }
-
+            bool canPlayFootsteps = planarSpeed >= minimumFootstepSpeed
+                && (motor == null || !motor.IsTraversingSpecialMove)
+                && (brain == null || brain.CurrentState != NeighborBrain.BehaviorState.Stunned);
             float speed01 = Mathf.InverseLerp(minimumFootstepSpeed, runSpeedReference, planarSpeed);
             bool upstairs = transform.position.y >= upstairsHeight;
             bool running = speed01 >= 0.58f || brain != null && IsUrgentState(brain.CurrentState);
-            AudioClip[] clips = GetFootstepClips(upstairs, running);
-            AudioClip[] generatedClips = GetGeneratedFootstepClips(upstairs, running);
-            AudioSource source = footstepSide == 0 ? leftFootSource : rightFootSource;
+            int category = (upstairs ? 2 : 0) + (running ? 1 : 0);
+            if (canPlayFootsteps && category != activeFootstepCategory)
+            {
+                SwitchFootstepLoop(upstairs, running, category);
+            }
 
+            AudioSource activeSource = activeFootstepSourceIndex == 0 ? leftFootSource : rightFootSource;
+            AudioSource fadingSource = activeFootstepSourceIndex == 0 ? rightFootSource : leftFootSource;
             float upstairsBoost = upstairs ? upstairsVolumeBoost : 0f;
-            float volume = Mathf.Clamp01(Mathf.Lerp(footstepMinimumVolume, footstepMaximumVolume, speed01) + upstairsBoost);
-            float pitch = Mathf.Lerp(0.88f, 1.12f, speed01);
-            PlayRandom(source, clips, generatedClips, volume, footstepPitchRandomness, pitch);
+            float targetVolume = canPlayFootsteps
+                ? Mathf.Clamp01(Mathf.Lerp(footstepMinimumVolume, footstepMaximumVolume, speed01) + upstairsBoost)
+                : 0f;
+            float targetPitch = activeFootstepPitch * Mathf.Lerp(0.97f, 1.04f, speed01);
+            FadeFootstepLoop(activeSource, targetVolume, targetPitch);
+            FadeFootstepLoop(fadingSource, 0f, targetPitch);
+        }
 
-            footstepSide = 1 - footstepSide;
-            footstepTimer = Mathf.Lerp(slowStepInterval, fastStepInterval, speed01);
+        private void SwitchFootstepLoop(bool upstairs, bool running, int category)
+        {
+            AudioClip clip = PickClip(GetFootstepClips(upstairs, running));
+            if (clip == null)
+            {
+                clip = PickClip(GetGeneratedFootstepClips(upstairs, running));
+            }
+
+            if (clip == null)
+            {
+                activeFootstepCategory = category;
+                return;
+            }
+
+            activeFootstepSourceIndex = 1 - activeFootstepSourceIndex;
+            AudioSource source = activeFootstepSourceIndex == 0 ? leftFootSource : rightFootSource;
+            if (source == null)
+            {
+                return;
+            }
+
+            activeFootstepCategory = category;
+            activeFootstepPitch = UnityEngine.Random.Range(1f - footstepPitchRandomness, 1f + footstepPitchRandomness);
+            source.Stop();
+            source.clip = clip;
+            source.loop = true;
+            source.volume = 0f;
+            source.pitch = activeFootstepPitch;
+            source.Play();
+        }
+
+        private void FadeFootstepLoop(AudioSource source, float targetVolume, float targetPitch)
+        {
+            if (source == null)
+            {
+                return;
+            }
+
+            float fade = 1f - Mathf.Exp(-footstepLoopFadeSharpness * Time.deltaTime);
+            float occlusionMultiplier = GetOcclusionVolumeMultiplier(source);
+            source.volume = Mathf.Lerp(source.volume, targetVolume * occlusionMultiplier, fade);
+            source.pitch = Mathf.Lerp(source.pitch, targetPitch, fade);
+
+            if (targetVolume <= 0.001f && source.isPlaying && source.volume <= 0.01f)
+            {
+                source.Stop();
+            }
+            else if (targetVolume > 0.001f && source.clip != null && !source.isPlaying)
+            {
+                source.Play();
+            }
         }
 
         private void UpdateLoops()
