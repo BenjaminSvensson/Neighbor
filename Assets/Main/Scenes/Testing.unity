@@ -60777,6 +60777,14 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 9
       objectReference: {fileID: 0}
+    - target: {fileID: 2098546478872310776, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
+      propertyPath: landingClips.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2098546478872310776, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
+      propertyPath: 'landingClips.Array.data[0]'
+      value: 
+      objectReference: {fileID: 0}
     - target: {fileID: 2285926682653444884, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: m_SizeDelta.x
       value: 6
