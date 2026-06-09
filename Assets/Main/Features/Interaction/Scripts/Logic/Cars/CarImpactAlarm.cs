@@ -23,13 +23,39 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Range(0f, 1f)] private float alarmVolume = 0.85f;
         [SerializeField, Min(0f)] private float pitchRandomness = 0.04f;
 
+        [Header("Visual Shake")]
+        [SerializeField] private Transform visualRoot;
+        [SerializeField, Min(0f)] private float impactShakeDuration = 0.28f;
+        [SerializeField, Min(0f)] private float impactPositionAmount = 0.025f;
+        [SerializeField, Min(0f)] private float impactRotationAmount = 1.2f;
+        [SerializeField, Min(0f)] private float alarmPositionAmount = 0.002f;
+        [SerializeField, Min(0f)] private float alarmRotationAmount = 0.12f;
+        [SerializeField, Min(0f)] private float shakeFrequency = 30f;
+
         private AudioClip generatedAlarmClip;
         private float nextAlertTime;
+        private float impactShakeEndTime;
+        private float alarmShakeEndTime;
+        private Vector3 visualRestPosition;
+        private Quaternion visualRestRotation;
+        private Vector3 impactShakeDirection;
+        private float shakeSeed;
 
         private void Awake()
         {
             ConfigureBody();
             ResolveAudioSource();
+            ResolveVisualRoot();
+        }
+
+        private void LateUpdate()
+        {
+            UpdateVisualShake();
+        }
+
+        private void OnDisable()
+        {
+            ResetVisualRoot();
         }
 
         private void OnCollisionEnter(Collision collision)
@@ -58,30 +84,33 @@ namespace Neighbor.Main.Features.Interaction
 
             Vector3 origin = collision.contactCount > 0 ? collision.GetContact(0).point : transform.position;
             nextAlertTime = Time.time + alertCooldown;
-            PlayAlarm(origin);
+            StartImpactShake(collision.relativeVelocity);
+            alarmShakeEndTime = Mathf.Max(alarmShakeEndTime, Time.time + PlayAlarm(origin));
             SpawnNoiseEvent(origin);
         }
 
-        private void PlayAlarm(Vector3 origin)
+        private float PlayAlarm(Vector3 origin)
         {
             AudioClip clip = GetAlarmClip();
             if (clip == null)
             {
-                return;
+                return 0f;
             }
 
+            float pitch = Random.Range(1f - pitchRandomness, 1f + pitchRandomness);
             if (audioSource != null && audioSource.transform != transform)
             {
                 audioSource.transform.position = origin;
-                audioSource.pitch = Random.Range(1f - pitchRandomness, 1f + pitchRandomness);
+                audioSource.pitch = pitch;
                 audioSource.PlayOneShot(clip, alarmVolume);
-                return;
+                return clip.length / Mathf.Max(0.01f, pitch);
             }
 
-            PlayAlarmAtImpact(origin, clip);
+            PlayAlarmAtImpact(origin, clip, pitch);
+            return clip.length / Mathf.Max(0.01f, pitch);
         }
 
-        private void PlayAlarmAtImpact(Vector3 origin, AudioClip clip)
+        private void PlayAlarmAtImpact(Vector3 origin, AudioClip clip, float pitch)
         {
             GameObject audioObject = new GameObject("CarAlarm3DAudio");
             audioObject.transform.position = origin;
@@ -89,7 +118,7 @@ namespace Neighbor.Main.Features.Interaction
             AudioSource source = audioObject.AddComponent<AudioSource>();
             source.clip = clip;
             source.volume = alarmVolume;
-            source.pitch = Random.Range(1f - pitchRandomness, 1f + pitchRandomness);
+            source.pitch = pitch;
             source.playOnAwake = false;
             source.spatialBlend = 1f;
             source.rolloffMode = AudioRolloffMode.Logarithmic;
@@ -99,6 +128,76 @@ namespace Neighbor.Main.Features.Interaction
             source.Play();
 
             Destroy(audioObject, clip.length / Mathf.Max(0.01f, source.pitch) + 0.05f);
+        }
+
+        private void StartImpactShake(Vector3 relativeVelocity)
+        {
+            Vector3 localVelocity = transform.InverseTransformDirection(relativeVelocity);
+            localVelocity.y = 0f;
+            impactShakeDirection = localVelocity.sqrMagnitude > 0.001f
+                ? -localVelocity.normalized
+                : Random.insideUnitSphere.normalized;
+            impactShakeDirection.y = Mathf.Max(0.35f, Mathf.Abs(impactShakeDirection.y));
+            impactShakeDirection.Normalize();
+            impactShakeEndTime = Time.time + impactShakeDuration;
+            shakeSeed = Random.Range(0f, 1000f);
+        }
+
+        private void UpdateVisualShake()
+        {
+            if (visualRoot == null)
+            {
+                return;
+            }
+
+            float impactAmount = impactShakeDuration > 0f
+                ? Mathf.Clamp01((impactShakeEndTime - Time.time) / impactShakeDuration)
+                : 0f;
+            float alarmAmount = Time.time < alarmShakeEndTime ? 1f : 0f;
+            if (impactAmount <= 0f && alarmAmount <= 0f)
+            {
+                ResetVisualRoot();
+                return;
+            }
+
+            float sample = Time.time * shakeFrequency + shakeSeed;
+            Vector3 noise = new Vector3(
+                Mathf.PerlinNoise(sample, 0.13f) * 2f - 1f,
+                Mathf.PerlinNoise(sample, 4.71f) * 2f - 1f,
+                Mathf.PerlinNoise(sample, 9.37f) * 2f - 1f);
+
+            Vector3 impactOffset = Vector3.Scale(noise, impactShakeDirection) * impactPositionAmount * impactAmount;
+            Vector3 alarmOffset = noise * alarmPositionAmount * alarmAmount;
+            visualRoot.localPosition = visualRestPosition + impactOffset + alarmOffset;
+
+            Vector3 rotationNoise = new Vector3(noise.z, noise.x, noise.y);
+            float rotationAmount = impactRotationAmount * impactAmount + alarmRotationAmount * alarmAmount;
+            visualRoot.localRotation = visualRestRotation * Quaternion.Euler(rotationNoise * rotationAmount);
+        }
+
+        private void ResolveVisualRoot()
+        {
+            if (visualRoot == null && transform.childCount > 0)
+            {
+                visualRoot = transform.GetChild(0);
+            }
+
+            if (visualRoot != null)
+            {
+                visualRestPosition = visualRoot.localPosition;
+                visualRestRotation = visualRoot.localRotation;
+            }
+        }
+
+        private void ResetVisualRoot()
+        {
+            if (visualRoot == null)
+            {
+                return;
+            }
+
+            visualRoot.localPosition = visualRestPosition;
+            visualRoot.localRotation = visualRestRotation;
         }
 
         private AudioClip GetAlarmClip()
@@ -193,6 +292,12 @@ namespace Neighbor.Main.Features.Interaction
             alertCooldown = Mathf.Max(0f, alertCooldown);
             hearingRadius = Mathf.Max(0f, hearingRadius);
             noiseLifetime = Mathf.Max(0.02f, noiseLifetime);
+            impactShakeDuration = Mathf.Max(0f, impactShakeDuration);
+            impactPositionAmount = Mathf.Max(0f, impactPositionAmount);
+            impactRotationAmount = Mathf.Max(0f, impactRotationAmount);
+            alarmPositionAmount = Mathf.Min(Mathf.Max(0f, alarmPositionAmount), impactPositionAmount);
+            alarmRotationAmount = Mathf.Min(Mathf.Max(0f, alarmRotationAmount), impactRotationAmount);
+            shakeFrequency = Mathf.Max(0f, shakeFrequency);
         }
     }
 }
