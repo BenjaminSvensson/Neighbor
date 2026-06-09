@@ -20,8 +20,8 @@ namespace Neighbor.Main.Features.Interaction
         [Header("Vision")]
         [SerializeField] private Transform eye;
         [SerializeField] private Transform sightBeam;
-        [SerializeField, Min(0.1f)] private float viewDistance = 9f;
-        [SerializeField, Range(1f, 180f)] private float viewAngle = 70f;
+        [SerializeField, Min(0.1f)] private float viewDistance = 28f;
+        [SerializeField, Range(1f, 180f)] private float viewAngle = 80f;
         [SerializeField, Min(0.02f)] private float scanInterval = 0.12f;
         [SerializeField] private LayerMask lineOfSightMask = ~0;
 
@@ -29,21 +29,32 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private bool sweepWhenAttached = true;
         [SerializeField, Range(0f, 120f)] private float sweepAngle = 55f;
         [SerializeField, Min(0.01f)] private float sweepPeriod = 3.5f;
+        [SerializeField, Range(0f, 80f)] private float downwardScanAngle = 24f;
+        [SerializeField, Min(0f)] private float trackingTurnSpeed = 8f;
+        [SerializeField, Min(0f)] private float trackingMemory = 2.25f;
         [SerializeField] private Color sightConeColor = new(1f, 0f, 0f, 0.22f);
 
         [Header("Neighbor Alert")]
-        [SerializeField, Min(0f)] private float alertRadius = 18f;
+        [SerializeField, Min(0f)] private float alertRadius = 35f;
         [SerializeField, Range(0f, 1f)] private float loudness = 1f;
         [SerializeField, Range(0f, 1f)] private float alertUrgency = 0.95f;
         [SerializeField, Min(0.02f)] private float noiseLifetime = 0.6f;
         [SerializeField, Min(0f)] private float alertCooldown = 1.5f;
+        [SerializeField] private AudioClip alertSound;
+        [SerializeField, Range(0f, 1f)] private float alertVolume = 0.9f;
+        [SerializeField, Min(0f)] private float alertSoundMinDistance = 3f;
+        [SerializeField, Min(0.1f)] private float alertSoundMaxDistance = 35f;
 
         private Pickupable pickupable;
         private Rigidbody body;
         private PlayerController player;
         private float nextScanTime;
         private float nextAlertTime;
+        private float trackingUntilTime;
         private Quaternion baseEyeLocalRotation;
+        private Vector3 lastDetectedPosition;
+        private AudioSource alertAudioSource;
+        private AudioClip generatedAlertSound;
         private MeshFilter sightBeamFilter;
         private MeshRenderer sightBeamRenderer;
         private Mesh generatedSightBeamMesh;
@@ -96,19 +107,27 @@ namespace Neighbor.Main.Features.Interaction
 
         private void Update()
         {
-            UpdateScanningRotation();
             ConfigureSightBeam();
 
-            if (IsBlinded || !isAttached || pickupable != null && pickupable.IsHeld || Time.time < nextScanTime)
+            if (IsBlinded || !isAttached || pickupable != null && pickupable.IsHeld)
             {
+                trackingUntilTime = 0f;
+                UpdateScanningRotation();
                 return;
             }
 
-            nextScanTime = Time.time + scanInterval;
-            if (TryDetectPlayer(out Vector3 detectedPosition))
+            if (Time.time >= nextScanTime)
             {
-                AlertNeighbor(detectedPosition);
+                nextScanTime = Time.time + scanInterval;
+                if (TryDetectPlayer(out Vector3 detectedPosition))
+                {
+                    lastDetectedPosition = GetPlayerAimPoint(player);
+                    trackingUntilTime = Time.time + trackingMemory;
+                    AlertNeighbor(detectedPosition);
+                }
             }
+
+            UpdateScanningRotation();
         }
 
         private void FixedUpdate()
@@ -160,6 +179,7 @@ namespace Neighbor.Main.Features.Interaction
             attachedPickupable = null;
             transform.SetParent(originalParent, true);
             ResetEyeRotation();
+            trackingUntilTime = 0f;
 
             if (body == null)
             {
@@ -307,14 +327,40 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
+            Quaternion targetRotation;
+            if (Time.time < trackingUntilTime)
+            {
+                Vector3 trackingDirection = lastDetectedPosition - eye.position;
+                if (trackingDirection.sqrMagnitude > 0.001f)
+                {
+                    Quaternion worldTarget = Quaternion.LookRotation(trackingDirection.normalized, Vector3.up);
+                    targetRotation = eye.parent != null
+                        ? Quaternion.Inverse(eye.parent.rotation) * worldTarget
+                        : worldTarget;
+                    eye.localRotation = Quaternion.Slerp(
+                        eye.localRotation,
+                        targetRotation,
+                        Time.deltaTime * trackingTurnSpeed);
+                    return;
+                }
+            }
+
+            Quaternion downwardRotation = baseEyeLocalRotation * Quaternion.Euler(downwardScanAngle, 0f, 0f);
             if (!sweepWhenAttached || sweepAngle <= 0f)
             {
-                eye.localRotation = baseEyeLocalRotation;
+                eye.localRotation = Quaternion.Slerp(
+                    eye.localRotation,
+                    downwardRotation,
+                    Time.deltaTime * trackingTurnSpeed);
                 return;
             }
 
             float sweep = Mathf.Sin(Time.time / Mathf.Max(0.01f, sweepPeriod) * Mathf.PI * 2f) * sweepAngle * 0.5f;
-            eye.localRotation = baseEyeLocalRotation * Quaternion.Euler(0f, sweep, 0f);
+            targetRotation = baseEyeLocalRotation * Quaternion.Euler(downwardScanAngle, sweep, 0f);
+            eye.localRotation = Quaternion.Slerp(
+                eye.localRotation,
+                targetRotation,
+                Time.deltaTime * trackingTurnSpeed);
         }
 
         private void ResetEyeRotation()
@@ -374,6 +420,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             nextAlertTime = Time.time + alertCooldown;
+            PlayAlertSound();
 
             GameObject noiseObject = new GameObject("SecurityCameraAlertNoiseEvent");
             noiseObject.transform.position = detectedPosition;
@@ -388,6 +435,51 @@ namespace Neighbor.Main.Features.Interaction
 
             NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
             noiseEvent.Initialize(detectedPosition, alertRadius, loudness, gameObject, noiseLifetime, alertUrgency);
+        }
+
+        private void PlayAlertSound()
+        {
+            if (alertVolume <= 0f)
+            {
+                return;
+            }
+
+            if (alertAudioSource == null)
+            {
+                alertAudioSource = gameObject.AddComponent<AudioSource>();
+                alertAudioSource.playOnAwake = false;
+                alertAudioSource.loop = false;
+                alertAudioSource.spatialBlend = 1f;
+                alertAudioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+            }
+
+            alertAudioSource.minDistance = alertSoundMinDistance;
+            alertAudioSource.maxDistance = alertSoundMaxDistance;
+            alertAudioSource.PlayOneShot(alertSound != null ? alertSound : GetGeneratedAlertSound(), alertVolume);
+        }
+
+        private AudioClip GetGeneratedAlertSound()
+        {
+            if (generatedAlertSound != null)
+            {
+                return generatedAlertSound;
+            }
+
+            const int sampleRate = 44100;
+            const float duration = 0.42f;
+            int sampleCount = Mathf.CeilToInt(sampleRate * duration);
+            float[] samples = new float[sampleCount];
+            for (int i = 0; i < sampleCount; i++)
+            {
+                float time = i / (float)sampleRate;
+                float pulse = Mathf.Sin(time * Mathf.PI * 2f * 4f) > 0f ? 1f : 0.18f;
+                float envelope = Mathf.Min(1f, time * 30f) * Mathf.Clamp01((duration - time) * 12f);
+                samples[i] = Mathf.Sin(time * Mathf.PI * 2f * 1120f) * pulse * envelope * 0.35f;
+            }
+
+            generatedAlertSound = AudioClip.Create("GeneratedSecurityCameraAlert", sampleCount, 1, sampleRate, false);
+            generatedAlertSound.SetData(samples, 0);
+            return generatedAlertSound;
         }
 
         private void ConfigureSightBeam()
@@ -513,6 +605,11 @@ namespace Neighbor.Main.Features.Interaction
             {
                 Destroy(sightBeamMaterial);
             }
+
+            if (generatedAlertSound != null)
+            {
+                Destroy(generatedAlertSound);
+            }
         }
 
         private void OnValidate()
@@ -524,9 +621,14 @@ namespace Neighbor.Main.Features.Interaction
             scanInterval = Mathf.Max(0.02f, scanInterval);
             sweepAngle = Mathf.Clamp(sweepAngle, 0f, 120f);
             sweepPeriod = Mathf.Max(0.01f, sweepPeriod);
+            downwardScanAngle = Mathf.Clamp(downwardScanAngle, 0f, 80f);
+            trackingTurnSpeed = Mathf.Max(0f, trackingTurnSpeed);
+            trackingMemory = Mathf.Max(0f, trackingMemory);
             alertRadius = Mathf.Max(0f, alertRadius);
             noiseLifetime = Mathf.Max(0.02f, noiseLifetime);
             alertCooldown = Mathf.Max(0f, alertCooldown);
+            alertSoundMinDistance = Mathf.Max(0f, alertSoundMinDistance);
+            alertSoundMaxDistance = Mathf.Max(0.1f, alertSoundMaxDistance);
         }
     }
 }
