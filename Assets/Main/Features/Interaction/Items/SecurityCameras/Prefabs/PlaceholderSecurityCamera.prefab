@@ -138,12 +138,14 @@ MonoBehaviour:
     m_Bits: 4294967295
   eye: {fileID: 210001}
   sightBeam: {fileID: 230001}
-  viewDistance: 28
-  viewAngle: 80
+  viewDistance: 24
+  viewAngle: 76
   scanInterval: 0.12
   lineOfSightMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  sightOcclusionRefreshInterval: 0.08
+  sightWallPadding: 0.08
   sweepWhenAttached: 1
   sweepAngle: 55
   sweepPeriod: 3.5

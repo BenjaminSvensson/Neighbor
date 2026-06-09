@@ -20,10 +20,12 @@ namespace Neighbor.Main.Features.Interaction
         [Header("Vision")]
         [SerializeField] private Transform eye;
         [SerializeField] private Transform sightBeam;
-        [SerializeField, Min(0.1f)] private float viewDistance = 28f;
-        [SerializeField, Range(1f, 180f)] private float viewAngle = 80f;
+        [SerializeField, Min(0.1f)] private float viewDistance = 24f;
+        [SerializeField, Range(1f, 180f)] private float viewAngle = 76f;
         [SerializeField, Min(0.02f)] private float scanInterval = 0.12f;
         [SerializeField] private LayerMask lineOfSightMask = ~0;
+        [SerializeField, Min(0.02f)] private float sightOcclusionRefreshInterval = 0.08f;
+        [SerializeField, Min(0f)] private float sightWallPadding = 0.08f;
 
         [Header("Scanning")]
         [SerializeField] private bool sweepWhenAttached = true;
@@ -51,6 +53,7 @@ namespace Neighbor.Main.Features.Interaction
         private float nextScanTime;
         private float nextAlertTime;
         private float trackingUntilTime;
+        private float nextSightOcclusionRefreshTime;
         private Quaternion baseEyeLocalRotation;
         private Vector3 lastDetectedPosition;
         private AudioSource alertAudioSource;
@@ -62,6 +65,7 @@ namespace Neighbor.Main.Features.Interaction
         private float configuredViewDistance = -1f;
         private float configuredViewAngle = -1f;
         private Collider[] ownColliders;
+        private readonly RaycastHit[] sightOcclusionHits = new RaycastHit[16];
         private Collider[] attachedPickupableColliders;
         private Transform originalParent;
         private Pickupable attachedPickupable;
@@ -509,6 +513,15 @@ namespace Neighbor.Main.Features.Interaction
                 configuredViewAngle = viewAngle;
             }
 
+            if (sightBeamFilter != null
+                && generatedSightBeamMesh != null
+                && sightBeam.gameObject.activeInHierarchy
+                && Time.time >= nextSightOcclusionRefreshTime)
+            {
+                nextSightOcclusionRefreshTime = Time.time + sightOcclusionRefreshInterval;
+                UpdateSightConeOcclusion(generatedSightBeamMesh, viewDistance, viewAngle, 28);
+            }
+
             if (sightBeamRenderer != null)
             {
                 sightBeamMaterial ??= CreateSightConeMaterial();
@@ -567,6 +580,76 @@ namespace Neighbor.Main.Features.Interaction
             return mesh;
         }
 
+        private void UpdateSightConeOcclusion(Mesh mesh, float distance, float angle, int segments)
+        {
+            Vector3[] vertices = mesh.vertices;
+            if (vertices.Length != segments + 2)
+            {
+                return;
+            }
+
+            vertices[0] = Vector3.zero;
+            float radiusAtOneMeter = Mathf.Tan(angle * 0.5f * Mathf.Deg2Rad);
+            Vector3 origin = EyePosition;
+            for (int i = 0; i <= segments; i++)
+            {
+                float t = i / (float)segments * Mathf.PI * 2f;
+                Vector3 localDirection = new Vector3(
+                    Mathf.Cos(t) * radiusAtOneMeter,
+                    Mathf.Sin(t) * radiusAtOneMeter,
+                    1f).normalized;
+                Vector3 worldDirection = sightBeam.TransformDirection(localDirection).normalized;
+                float visibleDistance = FindSightObstacleDistance(origin, worldDirection, distance);
+                vertices[i + 1] = localDirection * visibleDistance;
+            }
+
+            mesh.vertices = vertices;
+            mesh.RecalculateBounds();
+            mesh.RecalculateNormals();
+        }
+
+        private float FindSightObstacleDistance(Vector3 origin, Vector3 direction, float maximumDistance)
+        {
+            int hitCount = Physics.RaycastNonAlloc(
+                origin,
+                direction,
+                sightOcclusionHits,
+                maximumDistance,
+                lineOfSightMask,
+                QueryTriggerInteraction.Ignore);
+            float nearestDistance = maximumDistance;
+            for (int i = 0; i < hitCount; i++)
+            {
+                RaycastHit hit = sightOcclusionHits[i];
+                if (hit.collider == null || IsOwnCollider(hit.collider))
+                {
+                    continue;
+                }
+
+                nearestDistance = Mathf.Min(nearestDistance, Mathf.Max(0f, hit.distance - sightWallPadding));
+            }
+
+            return nearestDistance;
+        }
+
+        private bool IsOwnCollider(Collider candidate)
+        {
+            if (ownColliders == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < ownColliders.Length; i++)
+            {
+                if (ownColliders[i] == candidate)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private Material CreateSightConeMaterial()
         {
             Shader shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color") ?? Shader.Find("Standard");
@@ -582,6 +665,7 @@ namespace Neighbor.Main.Features.Interaction
             material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
             material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
             material.SetFloat("_ZWrite", 0f);
+            material.SetFloat("_ZTest", (float)UnityEngine.Rendering.CompareFunction.LessEqual);
             material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
             material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
             material.EnableKeyword("_ALPHABLEND_ON");
@@ -633,6 +717,8 @@ namespace Neighbor.Main.Features.Interaction
             viewDistance = Mathf.Max(0.1f, viewDistance);
             viewAngle = Mathf.Clamp(viewAngle, 1f, 180f);
             scanInterval = Mathf.Max(0.02f, scanInterval);
+            sightOcclusionRefreshInterval = Mathf.Max(0.02f, sightOcclusionRefreshInterval);
+            sightWallPadding = Mathf.Max(0f, sightWallPadding);
             sweepAngle = Mathf.Clamp(sweepAngle, 0f, 120f);
             sweepPeriod = Mathf.Max(0.01f, sweepPeriod);
             downwardScanAngle = Mathf.Clamp(downwardScanAngle, 0f, 80f);
