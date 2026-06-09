@@ -7,6 +7,7 @@ namespace Neighbor.Main.Features.Interaction
     {
         [SerializeField] private Transform leftDoor;
         [SerializeField] private Transform rightDoor;
+        [SerializeField] private ClosetHideSpot hideSpot;
         [SerializeField] private Vector3 leftOpenEuler = new Vector3(0f, -85f, 0f);
         [SerializeField] private Vector3 rightOpenEuler = new Vector3(0f, 85f, 0f);
         [SerializeField, Min(0.01f)] private float moveDuration = 0.32f;
@@ -18,9 +19,13 @@ namespace Neighbor.Main.Features.Interaction
         private bool isOpen;
 
         public bool IsOpen => isOpen;
+        public ClosetHideSpot HideSpot => hideSpot;
 
         private void Awake()
         {
+            hideSpot = hideSpot != null
+                ? hideSpot
+                : GetComponentInParent<ClosetHideSpot>() ?? GetComponentInChildren<ClosetHideSpot>(true);
             if (leftDoor != null)
             {
                 leftClosedRotation = leftDoor.localRotation;
@@ -34,11 +39,17 @@ namespace Neighbor.Main.Features.Interaction
 
         public bool CanInteract(PlayerInteractor interactor)
         {
-            return leftDoor != null || rightDoor != null;
+            return hideSpot != null ? hideSpot.CanInteract(interactor) : leftDoor != null || rightDoor != null;
         }
 
         public void Interact(PlayerInteractor interactor)
         {
+            if (hideSpot != null)
+            {
+                hideSpot.Interact(interactor);
+                return;
+            }
+
             Toggle();
         }
 

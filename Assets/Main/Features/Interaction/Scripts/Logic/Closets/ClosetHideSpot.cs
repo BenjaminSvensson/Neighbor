@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
@@ -12,19 +13,26 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private ClosetDoorPair doors;
         [SerializeField] private Transform hidePoint;
         [SerializeField] private Transform exitPoint;
-        [SerializeField] private bool closeDoorsWhenHidden = true;
-        [SerializeField] private bool openDoorsWhenExiting = true;
+        [SerializeField, Min(0.05f)] private float transitionDuration = 0.42f;
+        [SerializeField, Min(0f)] private float doorLeadTime = 0.16f;
+        [SerializeField, Min(0f)] private float doorCloseDelay = 0.08f;
+        [SerializeField] private AnimationCurve transitionCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 
         private PlayerController hiddenPlayer;
-        private CharacterController hiddenCharacterController;
         private PlayerHidingState hiddenState;
+        private Coroutine transitionRoutine;
+        private bool isTransitioning;
 
         public bool HasHiddenPlayer => hiddenPlayer != null;
+        public bool IsTransitioning => isTransitioning;
         public Vector3 SearchPosition => exitPoint != null ? exitPoint.position : transform.position;
         public static IReadOnlyList<ClosetHideSpot> HideSpots => ActiveHideSpots;
 
         private void OnEnable()
         {
+            doors = doors != null
+                ? doors
+                : GetComponentInParent<ClosetDoorPair>() ?? GetComponentInChildren<ClosetDoorPair>(true);
             if (!ActiveHideSpots.Contains(this))
             {
                 ActiveHideSpots.Add(this);
@@ -34,10 +42,23 @@ namespace Neighbor.Main.Features.Interaction
         private void OnDisable()
         {
             ActiveHideSpots.Remove(this);
+            CancelTransition();
+            if (hiddenPlayer != null)
+            {
+                hiddenPlayer.ResumeAfterHiding();
+                hiddenState?.SetHidden(false);
+                hiddenPlayer = null;
+                hiddenState = null;
+            }
         }
 
         public bool CanInteract(PlayerInteractor interactor)
         {
+            if (isTransitioning)
+            {
+                return false;
+            }
+
             if (HasHiddenPlayer)
             {
                 return IsHiddenPlayer(interactor);
@@ -52,16 +73,16 @@ namespace Neighbor.Main.Features.Interaction
             {
                 if (IsHiddenPlayer(interactor))
                 {
-                    Exit();
+                    BeginExit();
                 }
 
                 return;
             }
 
-            Hide(interactor);
+            BeginHide(interactor);
         }
 
-        private void Hide(PlayerInteractor interactor)
+        private void BeginHide(PlayerInteractor interactor)
         {
             PlayerController player = interactor != null ? interactor.GetComponentInParent<PlayerController>() : null;
             if (player == null)
@@ -70,55 +91,59 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             hiddenPlayer = player;
-            hiddenCharacterController = player.GetComponent<CharacterController>();
             hiddenState = player.GetComponent<PlayerHidingState>();
             if (hiddenState == null)
             {
                 hiddenState = player.gameObject.AddComponent<PlayerHidingState>();
             }
 
-            Transform target = hidePoint != null ? hidePoint : transform;
-            if (hiddenCharacterController != null)
-            {
-                hiddenCharacterController.enabled = false;
-            }
-
-            player.transform.SetPositionAndRotation(target.position, target.rotation);
-            player.enabled = false;
-            hiddenState.SetHidden(true);
-
-            if (closeDoorsWhenHidden)
-            {
-                doors?.SetOpen(false);
-            }
+            transitionRoutine = StartCoroutine(HideTransition());
         }
 
-        private void Exit()
+        private void BeginExit()
         {
             if (hiddenPlayer == null)
             {
                 return;
             }
 
-            Transform target = exitPoint != null ? exitPoint : transform;
-            hiddenPlayer.transform.SetPositionAndRotation(target.position, target.rotation);
+            transitionRoutine = StartCoroutine(ExitTransition());
+        }
 
-            if (hiddenCharacterController != null)
-            {
-                hiddenCharacterController.enabled = true;
-            }
+        private IEnumerator HideTransition()
+        {
+            isTransitioning = true;
+            doors?.SetOpen(true);
+            yield return WaitForSeconds(doorLeadTime);
 
-            hiddenPlayer.enabled = true;
+            hiddenPlayer.PrepareForHiding();
+
+            Transform target = hidePoint != null ? hidePoint : transform;
+            yield return MovePlayer(hiddenPlayer.transform, target);
+            hiddenState?.SetHidden(true);
+            yield return WaitForSeconds(doorCloseDelay);
+            doors?.SetOpen(false);
+            isTransitioning = false;
+            transitionRoutine = null;
+        }
+
+        private IEnumerator ExitTransition()
+        {
+            isTransitioning = true;
             hiddenState?.SetHidden(false);
+            doors?.SetOpen(true);
+            yield return WaitForSeconds(doorLeadTime);
 
+            Transform target = exitPoint != null ? exitPoint : transform;
+            yield return MovePlayer(hiddenPlayer.transform, target);
+            hiddenPlayer.ResumeAfterHiding();
             hiddenPlayer = null;
-            hiddenCharacterController = null;
             hiddenState = null;
 
-            if (openDoorsWhenExiting)
-            {
-                doors?.SetOpen(true);
-            }
+            yield return WaitForSeconds(doorCloseDelay);
+            doors?.SetOpen(false);
+            isTransitioning = false;
+            transitionRoutine = null;
         }
 
         public void ReleasePlayerForRespawn(PlayerController player)
@@ -128,14 +153,11 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            if (hiddenCharacterController != null)
-            {
-                hiddenCharacterController.enabled = true;
-            }
-
+            CancelTransition();
+            hiddenPlayer.ResumeAfterHiding();
             hiddenState?.SetHidden(false);
+            doors?.SetOpen(false);
             hiddenPlayer = null;
-            hiddenCharacterController = null;
             hiddenState = null;
         }
 
@@ -145,7 +167,9 @@ namespace Neighbor.Main.Features.Interaction
             PlayerController foundPlayer = hiddenPlayer;
             if (foundPlayer != null)
             {
-                Exit();
+                CancelTransition();
+                hiddenPlayer.PrepareForHiding();
+                transitionRoutine = StartCoroutine(ExitTransition());
             }
 
             return foundPlayer;
@@ -156,6 +180,54 @@ namespace Neighbor.Main.Features.Interaction
             return interactor != null
                 && hiddenPlayer != null
                 && interactor.GetComponentInParent<PlayerController>() == hiddenPlayer;
+        }
+
+        private IEnumerator MovePlayer(Transform playerTransform, Transform target)
+        {
+            if (playerTransform == null || target == null)
+            {
+                yield break;
+            }
+
+            Vector3 startPosition = playerTransform.position;
+            Quaternion startRotation = playerTransform.rotation;
+            float timer = 0f;
+            float duration = Mathf.Max(0.05f, transitionDuration);
+            while (timer < duration)
+            {
+                timer += Time.deltaTime;
+                float progress = Mathf.Clamp01(timer / duration);
+                float eased = transitionCurve != null && transitionCurve.length > 0
+                    ? transitionCurve.Evaluate(progress)
+                    : Mathf.SmoothStep(0f, 1f, progress);
+                playerTransform.SetPositionAndRotation(
+                    Vector3.LerpUnclamped(startPosition, target.position, eased),
+                    Quaternion.SlerpUnclamped(startRotation, target.rotation, eased));
+                yield return null;
+            }
+
+            playerTransform.SetPositionAndRotation(target.position, target.rotation);
+        }
+
+        private static IEnumerator WaitForSeconds(float duration)
+        {
+            float timer = 0f;
+            while (timer < duration)
+            {
+                timer += Time.deltaTime;
+                yield return null;
+            }
+        }
+
+        private void CancelTransition()
+        {
+            if (transitionRoutine != null)
+            {
+                StopCoroutine(transitionRoutine);
+                transitionRoutine = null;
+            }
+
+            isTransitioning = false;
         }
     }
 }

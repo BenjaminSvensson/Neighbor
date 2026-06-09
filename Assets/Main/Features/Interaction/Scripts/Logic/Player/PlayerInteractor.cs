@@ -1322,9 +1322,11 @@ namespace Neighbor.Main.Features.Interaction
                 return closet.HasHiddenPlayer ? "Exit hiding spot" : "Hide";
             }
 
-            if (tooltipSource is ClosetDoorPair)
+            if (tooltipSource is ClosetDoorPair closetDoors)
             {
-                return "Open/close closet";
+                return closetDoors.HideSpot != null && closetDoors.HideSpot.HasHiddenPlayer
+                    ? "Exit hiding spot"
+                    : "Hide";
             }
 
             if (tooltipSource is SlidingCupboardCompartment)

@@ -557,6 +557,43 @@ namespace Neighbor.Main.Features.Player
             enabled = false;
         }
 
+        public void PrepareForHiding()
+        {
+            horizontalVelocity = Vector3.zero;
+            verticalVelocity = 0f;
+            slideTimer = 0f;
+            slideBonusSpeed = 0f;
+            IsSliding = false;
+            IsRunning = false;
+            IsLedgeClimbing = false;
+            MoveAmount = 0f;
+            Speed01 = 0f;
+            LastInput = default;
+
+            if (characterController != null)
+            {
+                characterController.enabled = false;
+            }
+
+            enabled = false;
+        }
+
+        public void ResumeAfterHiding()
+        {
+            horizontalVelocity = Vector3.zero;
+            verticalVelocity = 0f;
+            MoveAmount = 0f;
+            Speed01 = 0f;
+            LastInput = default;
+
+            if (characterController != null)
+            {
+                characterController.enabled = true;
+            }
+
+            enabled = true;
+        }
+
         public void ResetForRespawn(Vector3 position, Quaternion rotation)
         {
             horizontalVelocity = Vector3.zero;
