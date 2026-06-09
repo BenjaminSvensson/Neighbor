@@ -19,6 +19,8 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float selectionPriority = 1f;
         [SerializeField] private bool canRepeatImmediately;
         [SerializeField] private NeighborTaskLocation forcedNextTask;
+        [SerializeField, Min(0.1f)] private float arrivalDistance = 0.75f;
+        [SerializeField, Min(0f)] private float navigationSampleRadius = 1.5f;
         [SerializeField, Min(0.1f)] private float lookArrowLength = 1.2f;
         [SerializeField, Min(0.05f)] private float lookArrowHeadSize = 0.25f;
         [SerializeField] private Color lookArrowColor = new Color(0.1f, 0.85f, 1f, 0.9f);
@@ -44,6 +46,8 @@ namespace Neighbor.Main.Features.Neighbor
         public bool CanRepeatImmediately => canRepeatImmediately;
         public float SelectionPriority => selectionPriority;
         public NeighborTaskLocation ForcedNextTask => forcedNextTask;
+        public float ArrivalDistance => arrivalDistance;
+        public float NavigationSampleRadius => navigationSampleRadius;
         public static IReadOnlyList<NeighborTaskLocation> Locations => ActiveLocations;
 
         private void Awake()
@@ -123,6 +127,7 @@ namespace Neighbor.Main.Features.Neighbor
         private void OnValidate()
         {
             maximumWaitTime = Mathf.Max(minimumWaitTime, maximumWaitTime);
+            arrivalDistance = Mathf.Max(0.1f, arrivalDistance);
             audioMaxDistance = Mathf.Max(0.1f, audioMaxDistance);
             audioMinDistance = Mathf.Min(audioMinDistance, audioMaxDistance);
         }

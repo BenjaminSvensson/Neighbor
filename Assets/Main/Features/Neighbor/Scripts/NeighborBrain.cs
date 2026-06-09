@@ -564,7 +564,26 @@ namespace Neighbor.Main.Features.Neighbor
             motor.SetMoveMode(CurrentSuspicionLevel >= SuspicionLevel.Suspicious
                 ? NeighborMotor.MoveMode.Cautious
                 : NeighborMotor.MoveMode.Walk);
-            if (!motor.HasArrived)
+            if (currentState == BehaviorState.Task
+                && (currentTaskLocation == null || !currentTaskLocation.isActiveAndEnabled))
+            {
+                StopActiveTaskAudio();
+                ChooseNextRoutineGoal();
+                return;
+            }
+
+            if (currentState == BehaviorState.Task && !HasReachedCurrentTask())
+            {
+                if (waitingAtGoal)
+                {
+                    waitingAtGoal = false;
+                    StopActiveTaskAudio();
+                }
+
+                return;
+            }
+
+            if (currentState != BehaviorState.Task && !motor.HasArrived)
             {
                 return;
             }
@@ -728,18 +747,43 @@ namespace Neighbor.Main.Features.Neighbor
 
             lastTaskLocation = taskLocation;
             currentTaskLocation = taskLocation;
-            currentGoal = taskLocation.Position;
             goalWaitDuration = taskLocation.RandomWaitTime;
             waitingAtGoal = false;
 
-            if (!motor.SetDestination(currentGoal))
+            if (!motor.TrySetDestinationNear(
+                    taskLocation.Position,
+                    taskLocation.NavigationSampleRadius,
+                    out Vector3 sampledTaskPosition))
             {
                 currentTaskLocation = null;
                 return false;
             }
 
+            Vector3 sampleOffset = sampledTaskPosition - taskLocation.Position;
+            sampleOffset.y = 0f;
+            if (sampleOffset.sqrMagnitude > taskLocation.ArrivalDistance * taskLocation.ArrivalDistance)
+            {
+                motor.Stop();
+                currentTaskLocation = null;
+                return false;
+            }
+
+            currentGoal = sampledTaskPosition;
             SetState(BehaviorState.Task);
             return true;
+        }
+
+        private bool HasReachedCurrentTask()
+        {
+            if (motor == null || currentTaskLocation == null || !motor.HasArrived)
+            {
+                return false;
+            }
+
+            Vector3 toTaskLocation = currentTaskLocation.Position - transform.position;
+            toTaskLocation.y = 0f;
+            return toTaskLocation.sqrMagnitude
+                <= currentTaskLocation.ArrivalDistance * currentTaskLocation.ArrivalDistance;
         }
 
         private NeighborTaskLocation GetRandomTaskLocation()
