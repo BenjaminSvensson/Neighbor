@@ -11,17 +11,26 @@ namespace Neighbor.Main.Features.Player
     public sealed class PlayerDeathController : MonoBehaviour
     {
         [Header("Timing")]
-        [SerializeField, Min(0.1f)] private float fallDuration = 0.85f;
-        [SerializeField, Min(0f)] private float groundHoldDuration = 0.65f;
+        [SerializeField, Min(0.1f)] private float fallDuration = 0.38f;
+        [SerializeField, Min(0f)] private float groundHoldDuration = 0.48f;
         [SerializeField, Min(0.05f)] private float fadeOutDuration = 0.45f;
 
         [Header("Camera Fall")]
-        [SerializeField, Min(0f)] private float fallenCameraHeight = 0.25f;
-        [SerializeField] private float fallRollDegrees = 78f;
-        [SerializeField] private float fallPitchDegrees = 18f;
-        [SerializeField, Min(1f)] private float deathFieldOfView = 42f;
-        [SerializeField, Min(0f)] private float deathShakeAmount = 0.035f;
-        [SerializeField, Min(0f)] private float deathShakeFrequency = 22f;
+        [SerializeField, Min(0f)] private float fallenCameraHeight = 0.14f;
+        [SerializeField] private float fallRollDegrees = 62f;
+        [SerializeField] private float fallPitchDegrees = 32f;
+        [SerializeField, Min(1f)] private float deathFieldOfView = 52f;
+        [SerializeField, Min(0f)] private float deathShakeAmount = 0.055f;
+        [SerializeField, Min(0f)] private float deathShakeFrequency = 28f;
+
+        [Header("Floor Impact")]
+        [SerializeField, Min(0.05f)] private float impactDuration = 0.2f;
+        [SerializeField, Min(0f)] private float impactDrop = 0.11f;
+        [SerializeField] private float impactPitchKick = 14f;
+        [SerializeField] private float impactRollKick = 9f;
+        [SerializeField, Min(0f)] private float impactShakeAmount = 0.065f;
+        [SerializeField, Min(0f)] private float impactFieldOfViewKick = 7f;
+        [SerializeField, Range(0f, 1f)] private float impactBlackFlash = 0.18f;
 
         [Header("Reset")]
         [SerializeField, Min(0)] private int reinforcementBudgetPerDeath = 5;
@@ -117,28 +126,46 @@ namespace Neighbor.Main.Features.Player
             float startFieldOfView = playerCamera != null ? playerCamera.fieldOfView : cameraRestFieldOfView;
             float fallSide = GetFallSide(sourcePosition);
             Vector3 fallenWorldPosition = cameraTransform != null ? cameraTransform.position : transform.position;
-            fallenWorldPosition.y = transform.position.y + fallenCameraHeight;
+            fallenWorldPosition.y = transform.position.y + Mathf.Min(fallenCameraHeight, 0.14f);
             Vector3 fallenLocalPosition = cameraTransform != null && cameraTransform.parent != null
                 ? cameraTransform.parent.InverseTransformPoint(fallenWorldPosition)
                 : fallenWorldPosition;
             fallenLocalPosition.x += fallSide * 0.16f;
-            Quaternion fallenLocalRotation = startLocalRotation * Quaternion.Euler(fallPitchDegrees, 0f, fallSide * fallRollDegrees);
+            float effectivePitch = Mathf.Max(fallPitchDegrees, 28f);
+            float effectiveRoll = Mathf.Min(Mathf.Abs(fallRollDegrees), 62f);
+            Quaternion fallenLocalRotation = startLocalRotation * Quaternion.Euler(effectivePitch, 0f, fallSide * effectiveRoll);
 
+            float effectiveFallDuration = Mathf.Min(fallDuration, 0.38f);
             float timer = 0f;
-            while (timer < fallDuration)
+            while (timer < effectiveFallDuration)
             {
                 timer += Time.deltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(timer / Mathf.Max(0.01f, fallDuration)));
+                float normalizedTime = Mathf.Clamp01(timer / Mathf.Max(0.01f, effectiveFallDuration));
+                float t = 1f - Mathf.Pow(1f - normalizedTime, 2.6f);
                 ApplyDeathCamera(startLocalPosition, fallenLocalPosition, startLocalRotation, fallenLocalRotation, startFieldOfView, t);
                 yield return null;
             }
 
             timer = 0f;
-            while (timer < groundHoldDuration)
+            while (timer < impactDuration)
             {
                 timer += Time.deltaTime;
-                float fadeStart = groundHoldDuration * 0.35f;
-                float fade = Mathf.InverseLerp(fadeStart, Mathf.Max(fadeStart + 0.01f, groundHoldDuration), timer);
+                float t = Mathf.Clamp01(timer / Mathf.Max(0.01f, impactDuration));
+                ApplyFloorImpact(fallenLocalPosition, fallenLocalRotation, t);
+                SetFade(impactBlackFlash * (1f - t));
+                yield return null;
+            }
+
+            ApplyFloorImpact(fallenLocalPosition, fallenLocalRotation, 1f);
+            SetFade(0f);
+
+            float effectiveGroundHoldDuration = Mathf.Min(groundHoldDuration, 0.48f);
+            timer = 0f;
+            while (timer < effectiveGroundHoldDuration)
+            {
+                timer += Time.deltaTime;
+                float fadeStart = effectiveGroundHoldDuration * 0.2f;
+                float fade = Mathf.InverseLerp(fadeStart, Mathf.Max(fadeStart + 0.01f, effectiveGroundHoldDuration), timer);
                 SetFade(fade);
                 yield return null;
             }
@@ -182,7 +209,32 @@ namespace Neighbor.Main.Features.Player
 
             if (playerCamera != null)
             {
-                playerCamera.fieldOfView = Mathf.Lerp(startFieldOfView, deathFieldOfView, t);
+                playerCamera.fieldOfView = Mathf.Lerp(startFieldOfView, Mathf.Max(deathFieldOfView, 52f), t);
+            }
+        }
+
+        private void ApplyFloorImpact(Vector3 groundPosition, Quaternion groundRotation, float t)
+        {
+            float decay = 1f - t;
+            float kick = Mathf.Sin(t * Mathf.PI) * decay;
+            float aftershock = Mathf.Sin(t * Mathf.PI * 4f) * decay;
+
+            if (cameraTransform != null)
+            {
+                Vector3 shakeOffset = new Vector3(
+                    Mathf.Sin(Time.time * deathShakeFrequency * 1.7f),
+                    Mathf.Cos(Time.time * deathShakeFrequency * 1.31f),
+                    0f) * (impactShakeAmount * decay);
+                cameraTransform.localPosition = groundPosition + Vector3.down * (impactDrop * kick) + shakeOffset;
+                cameraTransform.localRotation = groundRotation * Quaternion.Euler(
+                    impactPitchKick * kick,
+                    0f,
+                    impactRollKick * aftershock);
+            }
+
+            if (playerCamera != null)
+            {
+                playerCamera.fieldOfView = Mathf.Max(deathFieldOfView, 52f) + impactFieldOfViewKick * kick;
             }
         }
 
