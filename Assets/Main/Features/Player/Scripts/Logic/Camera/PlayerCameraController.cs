@@ -99,6 +99,7 @@ namespace Neighbor.Main.Features.Player
         private float targetImpactFovOffset;
         private float targetImpactShake;
         private float stairStepSide = 1f;
+        private bool playZoomAudioThroughSmoothing;
 
         public int ZoomDirection { get; private set; }
 
@@ -145,6 +146,7 @@ namespace Neighbor.Main.Features.Player
 
             if (InteractionOverlayState.IsGameplayInputBlocked)
             {
+                playZoomAudioThroughSmoothing = false;
                 ZoomDirection = 0;
                 return;
             }
@@ -174,8 +176,10 @@ namespace Neighbor.Main.Features.Player
         private void UpdateZoom(PlayerFrameInput input)
         {
             float previousFieldOfView = scrolledFieldOfView;
+            bool hasScrollInput = Mathf.Abs(input.ZoomScroll) > 0.01f;
+            bool hasDragInput = input.ZoomHeld && Mathf.Abs(input.ZoomDrag) > 0.01f;
 
-            if (Mathf.Abs(input.ZoomScroll) > 0.01f)
+            if (hasScrollInput)
             {
                 float scrollSteps = Mathf.Abs(input.ZoomScroll) > 10f
                     ? input.ZoomScroll / 120f
@@ -187,7 +191,7 @@ namespace Neighbor.Main.Features.Player
                     maximumFieldOfView);
             }
 
-            if (input.ZoomHeld && Mathf.Abs(input.ZoomDrag) > 0.01f)
+            if (hasDragInput)
             {
                 scrolledFieldOfView = Mathf.Clamp(
                     scrolledFieldOfView - input.ZoomDrag * zoomDragSpeed,
@@ -197,7 +201,25 @@ namespace Neighbor.Main.Features.Player
 
             float targetFieldOfView = Mathf.Clamp(scrolledFieldOfView, minimumFieldOfView, maximumFieldOfView);
             float zoomInputDelta = targetFieldOfView - previousFieldOfView;
-            ZoomDirection = Mathf.Abs(zoomInputDelta) > 0.001f ? (zoomInputDelta < 0f ? 1 : -1) : 0;
+            if (Mathf.Abs(zoomInputDelta) > 0.001f)
+            {
+                playZoomAudioThroughSmoothing = hasScrollInput && !hasDragInput;
+                ZoomDirection = zoomInputDelta < 0f ? 1 : -1;
+            }
+            else if (hasDragInput)
+            {
+                playZoomAudioThroughSmoothing = false;
+                ZoomDirection = 0;
+            }
+            else if (playZoomAudioThroughSmoothing && Mathf.Abs(targetFieldOfView - currentFieldOfView) > 0.01f)
+            {
+                ZoomDirection = targetFieldOfView < currentFieldOfView ? 1 : -1;
+            }
+            else
+            {
+                playZoomAudioThroughSmoothing = false;
+                ZoomDirection = 0;
+            }
 
             currentFieldOfView = Damp(currentFieldOfView, targetFieldOfView, zoomSmoothing);
             playerCamera.fieldOfView = Mathf.Clamp(currentFieldOfView + impactFovOffset, minimumFieldOfView, maximumFieldOfView);
@@ -393,6 +415,7 @@ namespace Neighbor.Main.Features.Player
             targetImpactRollOffset = 0f;
             targetImpactFovOffset = 0f;
             targetImpactShake = 0f;
+            playZoomAudioThroughSmoothing = false;
             ZoomDirection = 0;
 
             if (playerCamera != null)
