@@ -102,6 +102,7 @@ namespace Neighbor.Main.Features.Player
             ConfigureSource(zoomLoopSource, true);
             zoomLoopSource.spatialBlend = 0f;
             zoomLoopSource.dopplerLevel = 0f;
+            SubscribeToCameraZoom();
             wasCrouching = playerController != null && playerController.IsCrouching;
             wasSliding = playerController != null && playerController.IsSliding;
             wasLedgeClimbing = playerController != null && playerController.IsLedgeClimbing;
@@ -114,10 +115,7 @@ namespace Neighbor.Main.Features.Player
                 cameraController = GetComponentInChildren<PlayerCameraController>();
             }
 
-            if (cameraController != null)
-            {
-                cameraController.ZoomDirectionChanged += UpdateZoomLoop;
-            }
+            SubscribeToCameraZoom();
         }
 
         private void Update()
@@ -131,6 +129,14 @@ namespace Neighbor.Main.Features.Player
             UpdateFootsteps();
             UpdateSlideLoop();
             UpdatePreviousState();
+        }
+
+        private void LateUpdate()
+        {
+            if (cameraController != null)
+            {
+                UpdateZoomLoop(cameraController.ZoomDirection);
+            }
         }
 
         private void UpdateOneShotMovementSounds()
@@ -304,6 +310,17 @@ namespace Neighbor.Main.Features.Player
             pausedZoomClip = null;
             pausedZoomSample = 0;
             zoomPausedAt = float.NegativeInfinity;
+        }
+
+        private void SubscribeToCameraZoom()
+        {
+            if (cameraController == null)
+            {
+                return;
+            }
+
+            cameraController.ZoomDirectionChanged -= UpdateZoomLoop;
+            cameraController.ZoomDirectionChanged += UpdateZoomLoop;
         }
 
         private void UpdatePreviousState()
