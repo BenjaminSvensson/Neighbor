@@ -34,6 +34,12 @@ namespace Neighbor.Main.Features.Interaction
         public Vector3 SearchPosition => exitPoint != null ? exitPoint.position : transform.position;
         public static IReadOnlyList<ClosetHideSpot> HideSpots => ActiveHideSpots;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetActiveHideSpots()
+        {
+            ActiveHideSpots.Clear();
+        }
+
         private void OnEnable()
         {
             doors = doors != null

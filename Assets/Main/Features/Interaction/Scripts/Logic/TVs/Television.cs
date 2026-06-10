@@ -41,6 +41,12 @@ namespace Neighbor.Main.Features.Interaction
         public bool IsOn => isOn;
         public Vector3 RemoteTargetPosition => screenRenderer != null ? screenRenderer.bounds.center : transform.position;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetActiveTelevisions()
+        {
+            ActiveTelevisions.Clear();
+        }
+
         private void Awake()
         {
             if (screenRenderer == null)

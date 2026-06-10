@@ -210,36 +210,63 @@ namespace Neighbor.Main.Features.Interaction
         {
             int screenWidth = Mathf.Max(1, Screen.width);
             int screenHeight = Mathf.Max(1, Screen.height);
-            Texture2D screenTexture = new Texture2D(screenWidth, screenHeight, TextureFormat.RGBA32, false)
-            {
-                name = $"{name}_PhotoScreenRead"
-            };
-
+            Texture2D screenTexture = null;
             RenderTexture previousActive = RenderTexture.active;
-            RenderTexture.active = null;
-            screenTexture.ReadPixels(new Rect(0f, 0f, screenWidth, screenHeight), 0, 0);
-            screenTexture.Apply(false, false);
-            RenderTexture.active = previousActive;
+            try
+            {
+                screenTexture = new Texture2D(screenWidth, screenHeight, TextureFormat.RGBA32, false)
+                {
+                    name = $"{name}_PhotoScreenRead"
+                };
 
-            Texture2D capturedTexture = ResizeTexture(screenTexture, captureWidth, captureHeight);
-            Destroy(screenTexture);
-            return capturedTexture;
+                RenderTexture.active = null;
+                screenTexture.ReadPixels(new Rect(0f, 0f, screenWidth, screenHeight), 0, 0);
+                screenTexture.Apply(false, false);
+                return ResizeTexture(screenTexture, captureWidth, captureHeight);
+            }
+            finally
+            {
+                RenderTexture.active = previousActive;
+                if (screenTexture != null)
+                {
+                    Destroy(screenTexture);
+                }
+            }
         }
 
         private static Texture2D ResizeTexture(Texture2D source, int width, int height)
         {
             RenderTexture previousActive = RenderTexture.active;
-            RenderTexture renderTexture = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32);
-            Graphics.Blit(source, renderTexture);
+            RenderTexture renderTexture = null;
+            Texture2D resizedTexture = null;
+            try
+            {
+                renderTexture = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32);
+                Graphics.Blit(source, renderTexture);
 
-            RenderTexture.active = renderTexture;
-            Texture2D resizedTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
-            resizedTexture.ReadPixels(new Rect(0f, 0f, width, height), 0, 0);
-            resizedTexture.Apply(false, false);
+                RenderTexture.active = renderTexture;
+                resizedTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+                resizedTexture.ReadPixels(new Rect(0f, 0f, width, height), 0, 0);
+                resizedTexture.Apply(false, false);
+                return resizedTexture;
+            }
+            catch
+            {
+                if (resizedTexture != null)
+                {
+                    Destroy(resizedTexture);
+                }
 
-            RenderTexture.active = previousActive;
-            RenderTexture.ReleaseTemporary(renderTexture);
-            return resizedTexture;
+                throw;
+            }
+            finally
+            {
+                RenderTexture.active = previousActive;
+                if (renderTexture != null)
+                {
+                    RenderTexture.ReleaseTemporary(renderTexture);
+                }
+            }
         }
 
         private void SpawnPhoto(PlayerInteractor interactor, Texture2D capturedTexture)

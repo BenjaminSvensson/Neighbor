@@ -21,6 +21,12 @@ namespace Neighbor.Main.Features.Interaction
         public string CircuitId => circuitId;
         public bool IsOn => isOn;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetCircuitLights()
+        {
+            LightsByCircuit.Clear();
+        }
+
         private void Awake()
         {
             if (controlledLight == null)

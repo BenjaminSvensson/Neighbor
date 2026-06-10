@@ -31,6 +31,8 @@ namespace Neighbor.Main.Features.Interaction
 
         public static void Open(string bookTitle, string[] bookPages)
         {
+            NotebookWriterOverlay.CloseActive();
+
             if (activeOverlay != null)
             {
                 activeOverlay.Close();
@@ -40,6 +42,14 @@ namespace Neighbor.Main.Features.Interaction
             DontDestroyOnLoad(overlayObject);
             activeOverlay = overlayObject.AddComponent<BookReaderOverlay>();
             activeOverlay.Initialize(bookTitle, bookPages);
+        }
+
+        internal static void CloseActive()
+        {
+            if (activeOverlay != null)
+            {
+                activeOverlay.Close();
+            }
         }
 
         private void Initialize(string bookTitle, string[] bookPages)

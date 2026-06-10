@@ -20,6 +20,12 @@ namespace Neighbor.Main.Features.Neighbor
         public float SelectionPriority => selectionPriority;
         public static IReadOnlyList<NeighborSearchPoint> Points => ActivePoints;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetActivePoints()
+        {
+            ActivePoints.Clear();
+        }
+
         private void OnEnable()
         {
             if (!ActivePoints.Contains(this))

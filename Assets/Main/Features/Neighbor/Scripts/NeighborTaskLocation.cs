@@ -50,6 +50,12 @@ namespace Neighbor.Main.Features.Neighbor
         public float NavigationSampleRadius => navigationSampleRadius;
         public static IReadOnlyList<NeighborTaskLocation> Locations => ActiveLocations;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetActiveLocations()
+        {
+            ActiveLocations.Clear();
+        }
+
         private void Awake()
         {
             ResolveAudioSource();

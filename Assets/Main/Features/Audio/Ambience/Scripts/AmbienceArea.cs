@@ -18,6 +18,12 @@ namespace Neighbor.Main.Features.Audio
         public int Priority => priority;
         internal static IReadOnlyList<AmbienceArea> Areas => ActiveAreas;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetActiveAreas()
+        {
+            ActiveAreas.Clear();
+        }
+
         private void OnEnable()
         {
             if (!ActiveAreas.Contains(this))

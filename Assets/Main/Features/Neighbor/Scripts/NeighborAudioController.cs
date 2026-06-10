@@ -160,6 +160,25 @@ namespace Neighbor.Main.Features.Neighbor
             UpdateOcclusion();
         }
 
+        private void OnDestroy()
+        {
+            DestroyGeneratedClips(generatedDownstairsWalkFootsteps);
+            DestroyGeneratedClips(generatedDownstairsRunFootsteps);
+            DestroyGeneratedClips(generatedUpstairsWalkFootsteps);
+            DestroyGeneratedClips(generatedUpstairsRunFootsteps);
+            DestroyGeneratedClips(generatedClimbStartClips);
+            DestroyGeneratedClips(generatedClimbEndClips);
+            DestroyGeneratedClips(generatedDropLandingClips);
+            DestroyGeneratedClips(generatedAlertedClips);
+            DestroyGeneratedClips(generatedChaseStartClips);
+            DestroyGeneratedClips(generatedSearchLostClips);
+            DestroyGeneratedClips(generatedStunnedClips);
+            DestroyGeneratedClips(generatedIdleMutterClips);
+            DestroyGeneratedClip(generatedBreathingLoopClip);
+            DestroyGeneratedClip(generatedChaseLoopClip);
+            DestroyGeneratedClip(generatedMovementFoleyLoopClip);
+        }
+
         private void ResolveAnchors()
         {
             bodyAnchor = bodyAnchor != null ? bodyAnchor : CreateAnchor("Neighbor Body Audio Anchor", new Vector3(0f, 1f, 0f));
@@ -902,6 +921,27 @@ namespace Neighbor.Main.Features.Neighbor
             AudioClip clip = AudioClip.Create(clipName, samples.Length, 1, generatedSampleRate, false);
             clip.SetData(samples, 0);
             return clip;
+        }
+
+        private static void DestroyGeneratedClips(AudioClip[] clips)
+        {
+            if (clips == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < clips.Length; i++)
+            {
+                DestroyGeneratedClip(clips[i]);
+            }
+        }
+
+        private static void DestroyGeneratedClip(AudioClip clip)
+        {
+            if (clip != null)
+            {
+                Destroy(clip);
+            }
         }
 
         private sealed class SpatialAudioEmitter

@@ -97,6 +97,12 @@ namespace Neighbor.Main.Features.Neighbor
         private float runScore;
         private int spawnedReinforcementCount;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetActiveTriggers()
+        {
+            ActiveTriggers.Clear();
+        }
+
         private void Awake()
         {
             Collider trigger = GetComponent<Collider>();

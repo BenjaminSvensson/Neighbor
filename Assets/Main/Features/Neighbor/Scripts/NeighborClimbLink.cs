@@ -21,6 +21,12 @@ namespace Neighbor.Main.Features.Neighbor
         public float JumpArcHeight => jumpArcHeight;
         public static IReadOnlyList<NeighborClimbLink> Links => ActiveLinks;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetActiveLinks()
+        {
+            ActiveLinks.Clear();
+        }
+
         public bool CanUse(Vector3 neighborPosition, Vector3 targetPosition)
         {
             if (!canUseForChase || topPoint == null)
