@@ -103,6 +103,7 @@ namespace Neighbor.Main.Features.Interaction
 
             hiddenPlayer = player;
             sidePeekOffset = 0f;
+            NotifyNeighborsPlayerEntering(player);
             hiddenState = player.GetComponent<PlayerHidingState>();
             if (hiddenState == null)
             {
@@ -133,6 +134,7 @@ namespace Neighbor.Main.Features.Interaction
             Transform target = hidePoint != null ? hidePoint : transform;
             yield return MovePlayer(hiddenPlayer.transform, target);
             hiddenState?.SetHidden(true);
+            NotifyNeighborsPlayerFinishedHiding(hiddenPlayer);
             yield return WaitForSeconds(doorCloseDelay);
             doors?.SetOpen(false);
             isTransitioning = false;
@@ -194,6 +196,24 @@ namespace Neighbor.Main.Features.Interaction
             return interactor != null
                 && hiddenPlayer != null
                 && interactor.GetComponentInParent<PlayerController>() == hiddenPlayer;
+        }
+
+        private void NotifyNeighborsPlayerEntering(PlayerController player)
+        {
+            NeighborBrain[] neighbors = FindObjectsByType<NeighborBrain>();
+            for (int i = 0; i < neighbors.Length; i++)
+            {
+                neighbors[i]?.ObservePlayerEnteringHideSpot(this, player);
+            }
+        }
+
+        private void NotifyNeighborsPlayerFinishedHiding(PlayerController player)
+        {
+            NeighborBrain[] neighbors = FindObjectsByType<NeighborBrain>();
+            for (int i = 0; i < neighbors.Length; i++)
+            {
+                neighbors[i]?.HandlePlayerFinishedHiding(this, player);
+            }
         }
 
         private void UpdateSidePeek()

@@ -116,6 +116,7 @@ namespace Neighbor.Main.Features.Neighbor
         private NeighborTaskLocation lastTaskLocation;
         private NeighborSearchPoint currentSearchPoint;
         private ClosetHideSpot currentHideSpot;
+        private ClosetHideSpot witnessedPlayerHideSpot;
         private NeighborClimbLink currentClimbLink;
         private Vector3 currentGoal;
         private Vector3 lastKnownPlayerPosition;
@@ -134,6 +135,7 @@ namespace Neighbor.Main.Features.Neighbor
         private bool hasObservedPlayerPosition;
         private bool hasPlayerMoveDirectionForCurrentChase;
         private bool waitingAtGoal;
+        private bool currentHideSpotKnownOccupied;
         private NeighborTaskLocation currentTaskLocation;
         private NeighborTaskLocation activeTaskAudioLocation;
         private NeighborTaskLocation interruptedTaskLocation;
@@ -212,6 +214,37 @@ namespace Neighbor.Main.Features.Neighbor
             currentClimbLink = null;
             motor?.Stop();
             SetState(BehaviorState.Stunned);
+        }
+
+        public void ObservePlayerEnteringHideSpot(ClosetHideSpot hideSpot, PlayerController hidingPlayer)
+        {
+            if (hideSpot == null || hidingPlayer == null || vision == null
+                || !vision.TrySeeTarget(out Transform seenTarget, out Vector3 seenPosition)
+                || seenTarget == null
+                || seenTarget.root != hidingPlayer.transform.root)
+            {
+                return;
+            }
+
+            RememberInterruptedTask();
+            player = hidingPlayer.transform;
+            witnessedPlayerHideSpot = hideSpot;
+            lastKnownPlayerPosition = seenPosition;
+            lastPlayerSeenTime = Time.time;
+            suspicion = 1f;
+        }
+
+        public void HandlePlayerFinishedHiding(ClosetHideSpot hideSpot, PlayerController hidingPlayer)
+        {
+            if (hideSpot == null || hidingPlayer == null || witnessedPlayerHideSpot != hideSpot)
+            {
+                return;
+            }
+
+            player = hidingPlayer.transform;
+            lastKnownPlayerPosition = hideSpot.SearchPosition;
+            suspicion = 1f;
+            BeginHuntMode(lastKnownPlayerPosition);
         }
 
         private bool IsStunned => Time.time < stunnedUntilTime;
@@ -346,6 +379,8 @@ namespace Neighbor.Main.Features.Neighbor
             currentClimbLink = null;
             currentSearchPoint = null;
             currentHideSpot = null;
+            currentHideSpotKnownOccupied = false;
+            witnessedPlayerHideSpot = null;
             currentTaskLocation = null;
             visitedSearchPoints.Clear();
             searchedHideSpots.Clear();
@@ -499,9 +534,11 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            motor.SetMoveMode(currentHideSpot != null || motor.HasArrived
-                ? NeighborMotor.MoveMode.Cautious
-                : NeighborMotor.MoveMode.Run);
+            motor.SetMoveMode(currentHideSpotKnownOccupied && !motor.HasArrived
+                ? NeighborMotor.MoveMode.Run
+                : currentHideSpot != null || motor.HasArrived
+                    ? NeighborMotor.MoveMode.Cautious
+                    : NeighborMotor.MoveMode.Run);
             if (Time.time >= huntUntilTime)
             {
                 EndHuntMode();
@@ -533,6 +570,12 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 ClosetHideSpot searchedSpot = currentHideSpot;
                 currentHideSpot = null;
+                currentHideSpotKnownOccupied = false;
+                if (witnessedPlayerHideSpot == searchedSpot)
+                {
+                    witnessedPlayerHideSpot = null;
+                }
+
                 searchedHideSpots.Add(searchedSpot);
                 PlayerController foundPlayer = searchedSpot.SearchByNeighbor(this);
                 if (foundPlayer != null)
@@ -847,11 +890,13 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void BeginHuntMode(Vector3 lostPlayerPosition)
         {
+            ClosetHideSpot priorityHideSpot = witnessedPlayerHideSpot;
             lastKnownPlayerPosition = lostPlayerPosition;
             currentClimbLink = null;
             currentTaskLocation = null;
             currentSearchPoint = null;
             currentHideSpot = null;
+            currentHideSpotKnownOccupied = false;
             StopActiveTaskAudio();
             visitedSearchPoints.Clear();
             searchedHideSpots.Clear();
@@ -867,6 +912,11 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             SetState(BehaviorState.HuntMode);
+            if (priorityHideSpot != null && TrySetKnownHideSpotSearch(priorityHideSpot))
+            {
+                return;
+            }
+
             if (!TrySetNextHuntDestination())
             {
                 motor?.Stop();
@@ -992,6 +1042,7 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             currentHideSpot = bestSpot;
+            currentHideSpotKnownOccupied = false;
             currentSearchPoint = null;
             currentGoal = bestDestination;
             goalWaitDuration = closetSearchWaitTime;
@@ -1003,6 +1054,34 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             currentHideSpot = null;
+            currentHideSpotKnownOccupied = false;
+            return false;
+        }
+
+        private bool TrySetKnownHideSpotSearch(ClosetHideSpot hideSpot)
+        {
+            if (hideSpot == null || motor == null
+                || !motor.CanReach(hideSpot.SearchPosition, out _, out Vector3 sampledPosition))
+            {
+                witnessedPlayerHideSpot = null;
+                return false;
+            }
+
+            currentHideSpot = hideSpot;
+            currentHideSpotKnownOccupied = true;
+            currentSearchPoint = null;
+            currentGoal = sampledPosition;
+            goalWaitDuration = Mathf.Min(0.25f, closetSearchWaitTime);
+            waitingAtGoal = false;
+            motor.SetMoveMode(NeighborMotor.MoveMode.Run);
+            if (motor.SetDestination(sampledPosition))
+            {
+                return true;
+            }
+
+            currentHideSpot = null;
+            currentHideSpotKnownOccupied = false;
+            witnessedPlayerHideSpot = null;
             return false;
         }
 
@@ -1010,6 +1089,8 @@ namespace Neighbor.Main.Features.Neighbor
         {
             currentSearchPoint = null;
             currentHideSpot = null;
+            currentHideSpotKnownOccupied = false;
+            witnessedPlayerHideSpot = null;
             visitedSearchPoints.Clear();
             searchedHideSpots.Clear();
             suspicion = Mathf.Max(suspicion, suspiciousThreshold);
