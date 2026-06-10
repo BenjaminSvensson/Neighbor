@@ -456,9 +456,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Player.PlayerAudioController
   playerController: {fileID: 2801324474213207061}
+  cameraController: {fileID: 6036600553356544174}
   audioAnchor: {fileID: 1327355640084703705}
   oneShotSource: {fileID: 1667288762252372332}
   slideLoopSource: {fileID: 824441125532050216}
+  zoomLoopSource: {fileID: 0}
   walkFootsteps: []
   runFootsteps: []
   crouchFootsteps: []
@@ -481,6 +483,9 @@ MonoBehaviour:
   slideStartVolume: 0.75
   slideLoopVolume: 0.45
   slideEndVolume: 0.45
+  zoomInLoopClip: {fileID: 8300000, guid: 05e91b02b842e1942b72d703a4d45da5, type: 3}
+  zoomOutLoopClip: {fileID: 8300000, guid: abadd7657e7d8484ab6405cd943995fd, type: 3}
+  zoomLoopVolume: 0.45
   ledgeClimbStartClips:
   - {fileID: 8300000, guid: f359a0e978aec764d8b408a257b41784, type: 3}
   ledgeClimbEndClips: []

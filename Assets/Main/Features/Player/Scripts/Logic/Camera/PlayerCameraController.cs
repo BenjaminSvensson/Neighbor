@@ -100,6 +100,8 @@ namespace Neighbor.Main.Features.Player
         private float targetImpactShake;
         private float stairStepSide = 1f;
 
+        public int ZoomDirection { get; private set; }
+
         private void Awake()
         {
             playerCamera = GetComponent<Camera>();
@@ -143,6 +145,7 @@ namespace Neighbor.Main.Features.Player
 
             if (InteractionOverlayState.IsGameplayInputBlocked)
             {
+                ZoomDirection = 0;
                 return;
             }
 
@@ -191,6 +194,8 @@ namespace Neighbor.Main.Features.Player
             }
 
             float targetFieldOfView = Mathf.Clamp(scrolledFieldOfView, minimumFieldOfView, maximumFieldOfView);
+            float zoomDifference = targetFieldOfView - currentFieldOfView;
+            ZoomDirection = Mathf.Abs(zoomDifference) > 0.01f ? (zoomDifference < 0f ? 1 : -1) : 0;
 
             currentFieldOfView = Damp(currentFieldOfView, targetFieldOfView, zoomSmoothing);
             playerCamera.fieldOfView = Mathf.Clamp(currentFieldOfView + impactFovOffset, minimumFieldOfView, maximumFieldOfView);
@@ -386,6 +391,7 @@ namespace Neighbor.Main.Features.Player
             targetImpactRollOffset = 0f;
             targetImpactFovOffset = 0f;
             targetImpactShake = 0f;
+            ZoomDirection = 0;
 
             if (playerCamera != null)
             {

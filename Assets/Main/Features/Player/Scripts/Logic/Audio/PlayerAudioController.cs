@@ -6,9 +6,11 @@ namespace Neighbor.Main.Features.Player
     {
         [Header("References")]
         [SerializeField] private PlayerController playerController;
+        [SerializeField] private PlayerCameraController cameraController;
         [SerializeField] private Transform audioAnchor;
         [SerializeField] private AudioSource oneShotSource;
         [SerializeField] private AudioSource slideLoopSource;
+        [SerializeField] private AudioSource zoomLoopSource;
 
         [Header("Footsteps")]
         [SerializeField] private AudioClip[] walkFootsteps;
@@ -38,6 +40,11 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Range(0f, 1f)] private float slideLoopVolume = 0.45f;
         [SerializeField, Range(0f, 1f)] private float slideEndVolume = 0.45f;
 
+        [Header("Camera Zoom")]
+        [SerializeField] private AudioClip zoomInLoopClip;
+        [SerializeField] private AudioClip zoomOutLoopClip;
+        [SerializeField, Range(0f, 1f)] private float zoomLoopVolume = 0.45f;
+
         [Header("Ledge Climb")]
         [SerializeField] private AudioClip[] ledgeClimbStartClips;
         [SerializeField] private AudioClip[] ledgeClimbEndClips;
@@ -65,6 +72,11 @@ namespace Neighbor.Main.Features.Player
                 audioAnchor = transform;
             }
 
+            if (cameraController == null)
+            {
+                cameraController = GetComponentInChildren<PlayerCameraController>();
+            }
+
             if (oneShotSource == null)
             {
                 oneShotSource = audioAnchor.gameObject.AddComponent<AudioSource>();
@@ -75,8 +87,14 @@ namespace Neighbor.Main.Features.Player
                 slideLoopSource = audioAnchor.gameObject.AddComponent<AudioSource>();
             }
 
+            if (zoomLoopSource == null)
+            {
+                zoomLoopSource = audioAnchor.gameObject.AddComponent<AudioSource>();
+            }
+
             ConfigureSource(oneShotSource, false);
             ConfigureSource(slideLoopSource, true);
+            ConfigureSource(zoomLoopSource, true);
             wasCrouching = playerController != null && playerController.IsCrouching;
             wasSliding = playerController != null && playerController.IsSliding;
             wasLedgeClimbing = playerController != null && playerController.IsLedgeClimbing;
@@ -92,6 +110,7 @@ namespace Neighbor.Main.Features.Player
             UpdateOneShotMovementSounds();
             UpdateFootsteps();
             UpdateSlideLoop();
+            UpdateZoomLoop();
             UpdatePreviousState();
         }
 
@@ -203,6 +222,53 @@ namespace Neighbor.Main.Features.Player
                     slideLoopSource.Stop();
                     slideLoopSource.volume = slideLoopVolume;
                 }
+            }
+        }
+
+        private void UpdateZoomLoop()
+        {
+            if (zoomLoopSource == null)
+            {
+                return;
+            }
+
+            AudioClip targetClip = cameraController != null
+                ? cameraController.ZoomDirection > 0 ? zoomInLoopClip : cameraController.ZoomDirection < 0 ? zoomOutLoopClip : null
+                : null;
+
+            if (targetClip == null)
+            {
+                if (zoomLoopSource.isPlaying)
+                {
+                    zoomLoopSource.Stop();
+                }
+
+                return;
+            }
+
+            if (zoomLoopSource.clip != targetClip)
+            {
+                zoomLoopSource.Stop();
+                zoomLoopSource.clip = targetClip;
+            }
+
+            zoomLoopSource.volume = zoomLoopVolume;
+            if (!zoomLoopSource.isPlaying)
+            {
+                zoomLoopSource.Play();
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (slideLoopSource != null)
+            {
+                slideLoopSource.Stop();
+            }
+
+            if (zoomLoopSource != null)
+            {
+                zoomLoopSource.Stop();
             }
         }
 
