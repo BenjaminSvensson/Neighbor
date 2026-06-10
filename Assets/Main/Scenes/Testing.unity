@@ -59520,9 +59520,17 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2098546478872310776, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
+      propertyPath: zoomInLoopClip
+      value: 
+      objectReference: {fileID: 8300000, guid: a975865e2d7a7da49a7386d45abd3431, type: 3}
+    - target: {fileID: 2098546478872310776, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: zoomLoopSource
       value: 
       objectReference: {fileID: 1032749098}
+    - target: {fileID: 2098546478872310776, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
+      propertyPath: zoomOutLoopClip
+      value: 
+      objectReference: {fileID: 8300000, guid: be6ecb5b333464247af6cdd55744ffdb, type: 3}
     - target: {fileID: 2098546478872310776, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: cameraController
       value: 

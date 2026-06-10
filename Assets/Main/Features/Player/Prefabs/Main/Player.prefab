@@ -486,7 +486,7 @@ MonoBehaviour:
   zoomInLoopClip: {fileID: 8300000, guid: 05e91b02b842e1942b72d703a4d45da5, type: 3}
   zoomOutLoopClip: {fileID: 8300000, guid: abadd7657e7d8484ab6405cd943995fd, type: 3}
   zoomLoopVolume: 0.45
-  zoomStartOffset: 0.08
+  zoomStartOffset: 0
   zoomResumeWindow: 0.12
   ledgeClimbStartClips:
   - {fileID: 8300000, guid: f359a0e978aec764d8b408a257b41784, type: 3}

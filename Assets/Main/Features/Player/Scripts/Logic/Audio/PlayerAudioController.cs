@@ -45,7 +45,7 @@ namespace Neighbor.Main.Features.Player
         [SerializeField] private AudioClip zoomInLoopClip;
         [SerializeField] private AudioClip zoomOutLoopClip;
         [SerializeField, Range(0f, 1f)] private float zoomLoopVolume = 0.45f;
-        [SerializeField, Min(0f)] private float zoomStartOffset = 0.08f;
+        [SerializeField, Min(0f)] private float zoomStartOffset;
         [SerializeField, Min(0f)] private float zoomResumeWindow = 0.12f;
 
         [Header("Ledge Climb")]
@@ -63,6 +63,7 @@ namespace Neighbor.Main.Features.Player
         private bool wasSliding;
         private bool wasLedgeClimbing;
         private AudioClip pausedZoomClip;
+        private int pausedZoomSample;
         private float zoomPausedAt = float.NegativeInfinity;
 
         private void Awake()
@@ -100,6 +101,8 @@ namespace Neighbor.Main.Features.Player
             ConfigureSource(oneShotSource, false);
             ConfigureSource(slideLoopSource, true);
             ConfigureSource(zoomLoopSource, true);
+            zoomLoopSource.spatialBlend = 0f;
+            zoomLoopSource.dopplerLevel = 0f;
             wasCrouching = playerController != null && playerController.IsCrouching;
             wasSliding = playerController != null && playerController.IsSliding;
             wasLedgeClimbing = playerController != null && playerController.IsLedgeClimbing;
@@ -250,8 +253,9 @@ namespace Neighbor.Main.Features.Player
                 if (zoomLoopSource.isPlaying)
                 {
                     pausedZoomClip = zoomLoopSource.clip;
+                    pausedZoomSample = zoomLoopSource.timeSamples;
                     zoomPausedAt = Time.unscaledTime;
-                    zoomLoopSource.Pause();
+                    zoomLoopSource.Stop();
                 }
 
                 return;
@@ -263,19 +267,14 @@ namespace Neighbor.Main.Features.Player
             }
 
             bool resumePausedClip = pausedZoomClip == targetClip
-                && zoomLoopSource.clip == targetClip
                 && Time.unscaledTime - zoomPausedAt <= zoomResumeWindow;
 
             zoomLoopSource.volume = zoomLoopVolume;
-            if (resumePausedClip)
-            {
-                zoomLoopSource.UnPause();
-                return;
-            }
-
             zoomLoopSource.Stop();
             zoomLoopSource.clip = targetClip;
-            zoomLoopSource.time = Mathf.Min(zoomStartOffset, Mathf.Max(0f, targetClip.length - 0.01f));
+            zoomLoopSource.timeSamples = resumePausedClip
+                ? Mathf.Clamp(pausedZoomSample, 0, targetClip.samples - 1)
+                : Mathf.Clamp(Mathf.RoundToInt(zoomStartOffset * targetClip.frequency), 0, targetClip.samples - 1);
             pausedZoomClip = null;
             zoomLoopSource.Play();
         }
@@ -293,6 +292,7 @@ namespace Neighbor.Main.Features.Player
             }
 
             pausedZoomClip = null;
+            pausedZoomSample = 0;
             zoomPausedAt = float.NegativeInfinity;
         }
 
