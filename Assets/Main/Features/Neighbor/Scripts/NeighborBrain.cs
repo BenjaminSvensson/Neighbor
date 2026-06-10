@@ -577,7 +577,14 @@ namespace Neighbor.Main.Features.Neighbor
                 }
 
                 searchedHideSpots.Add(searchedSpot);
-                PlayerController foundPlayer = searchedSpot.SearchByNeighbor(this);
+                PlayerController foundPlayer = searchedSpot.SearchByNeighbor(this, out bool caughtPlayer);
+                if (caughtPlayer)
+                {
+                    hideSpotMemory[searchedSpot] = GetMemory(hideSpotMemory, searchedSpot) + 1f;
+                    motor.Stop();
+                    return;
+                }
+
                 if (foundPlayer != null)
                 {
                     player = foundPlayer.transform;
