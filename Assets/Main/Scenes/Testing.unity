@@ -29213,43 +29213,43 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: a651cf94bea543d38a85db97c829af60, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 26.184189
+      value: 26.18
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: a651cf94bea543d38a85db97c829af60, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -4.6667557
+      value: -4.73
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: a651cf94bea543d38a85db97c829af60, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -23.963007
+      value: -23.99
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: a651cf94bea543d38a85db97c829af60, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.34808597
+      value: 0.5053311
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: a651cf94bea543d38a85db97c829af60, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.102785446
+      value: 0.09164025
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: a651cf94bea543d38a85db97c829af60, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.9261119
+      value: 0.85019755
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: a651cf94bea543d38a85db97c829af60, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.102898404
+      value: -0.11578732
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: a651cf94bea543d38a85db97c829af60, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 15.198
+      value: 16.828
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: a651cf94bea543d38a85db97c829af60, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 139.746
+      value: 118.892
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: a651cf94bea543d38a85db97c829af60, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 7.068
+      value: 2.323
       objectReference: {fileID: 0}
     - target: {fileID: 100005, guid: a651cf94bea543d38a85db97c829af60, type: 3}
       propertyPath: shakeFrequency
