@@ -1028,6 +1028,10 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  allowSidePeek: 1
+  maximumSidePeek: 0.32
+  sidePeekSpeed: 0.48
+  sidePeekReturnSpeed: 0.7
 --- !u!1 &510000
 GameObject:
   m_ObjectHideFlags: 0

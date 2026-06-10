@@ -18,10 +18,17 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float doorCloseDelay = 0.08f;
         [SerializeField] private AnimationCurve transitionCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 
+        [Header("Closet Peeking")]
+        [SerializeField] private bool allowSidePeek = true;
+        [SerializeField, Min(0f)] private float maximumSidePeek = 0.32f;
+        [SerializeField, Min(0f)] private float sidePeekSpeed = 0.48f;
+        [SerializeField, Min(0f)] private float sidePeekReturnSpeed = 0.7f;
+
         private PlayerController hiddenPlayer;
         private PlayerHidingState hiddenState;
         private Coroutine transitionRoutine;
         private bool isTransitioning;
+        private float sidePeekOffset;
 
         public bool HasHiddenPlayer => hiddenPlayer != null;
         public bool IsTransitioning => isTransitioning;
@@ -50,6 +57,11 @@ namespace Neighbor.Main.Features.Interaction
                 hiddenPlayer = null;
                 hiddenState = null;
             }
+        }
+
+        private void Update()
+        {
+            UpdateSidePeek();
         }
 
         public bool CanInteract(PlayerInteractor interactor)
@@ -91,6 +103,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             hiddenPlayer = player;
+            sidePeekOffset = 0f;
             hiddenState = player.GetComponent<PlayerHidingState>();
             if (hiddenState == null)
             {
@@ -139,6 +152,7 @@ namespace Neighbor.Main.Features.Interaction
             hiddenPlayer.ResumeAfterHiding();
             hiddenPlayer = null;
             hiddenState = null;
+            sidePeekOffset = 0f;
 
             yield return WaitForSeconds(doorCloseDelay);
             doors?.SetOpen(false);
@@ -159,6 +173,7 @@ namespace Neighbor.Main.Features.Interaction
             doors?.SetOpen(false);
             hiddenPlayer = null;
             hiddenState = null;
+            sidePeekOffset = 0f;
         }
 
         public PlayerController SearchByNeighbor(NeighborBrain neighbor)
@@ -180,6 +195,28 @@ namespace Neighbor.Main.Features.Interaction
             return interactor != null
                 && hiddenPlayer != null
                 && interactor.GetComponentInParent<PlayerController>() == hiddenPlayer;
+        }
+
+        private void UpdateSidePeek()
+        {
+            if (!allowSidePeek
+                || doors == null
+                || hiddenPlayer == null
+                || hiddenState == null
+                || !hiddenState.IsHidden
+                || isTransitioning)
+            {
+                return;
+            }
+
+            Transform center = hidePoint != null ? hidePoint : transform;
+            float input = PlayerInputReader.ReadFrameInput().Move.x;
+            float targetOffset = Mathf.Clamp(input, -1f, 1f) * maximumSidePeek;
+            float speed = Mathf.Abs(input) > 0.01f ? sidePeekSpeed : sidePeekReturnSpeed;
+            sidePeekOffset = Mathf.MoveTowards(sidePeekOffset, targetOffset, speed * Time.deltaTime);
+            hiddenPlayer.transform.SetPositionAndRotation(
+                center.position + center.right * sidePeekOffset,
+                center.rotation);
         }
 
         private IEnumerator MovePlayer(Transform playerTransform, Transform target)
@@ -228,6 +265,17 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             isTransitioning = false;
+            sidePeekOffset = 0f;
+        }
+
+        private void OnValidate()
+        {
+            transitionDuration = Mathf.Max(0.05f, transitionDuration);
+            doorLeadTime = Mathf.Max(0f, doorLeadTime);
+            doorCloseDelay = Mathf.Max(0f, doorCloseDelay);
+            maximumSidePeek = Mathf.Max(0f, maximumSidePeek);
+            sidePeekSpeed = Mathf.Max(0f, sidePeekSpeed);
+            sidePeekReturnSpeed = Mathf.Max(0f, sidePeekReturnSpeed);
         }
     }
 }
