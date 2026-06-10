@@ -1030,8 +1030,7 @@ MonoBehaviour:
     m_RotationOrder: 4
   allowSidePeek: 1
   maximumSidePeek: 0.32
-  sidePeekSpeed: 0.48
-  sidePeekReturnSpeed: 0.7
+  sidePeekSpeed: 0.36
 --- !u!1 &510000
 GameObject:
   m_ObjectHideFlags: 0

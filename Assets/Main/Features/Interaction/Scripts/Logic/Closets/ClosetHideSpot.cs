@@ -21,8 +21,7 @@ namespace Neighbor.Main.Features.Interaction
         [Header("Closet Peeking")]
         [SerializeField] private bool allowSidePeek = true;
         [SerializeField, Min(0f)] private float maximumSidePeek = 0.32f;
-        [SerializeField, Min(0f)] private float sidePeekSpeed = 0.48f;
-        [SerializeField, Min(0f)] private float sidePeekReturnSpeed = 0.7f;
+        [SerializeField, Min(0f)] private float sidePeekSpeed = 0.36f;
 
         private PlayerController hiddenPlayer;
         private PlayerHidingState hiddenState;
@@ -211,9 +210,10 @@ namespace Neighbor.Main.Features.Interaction
 
             Transform center = hidePoint != null ? hidePoint : transform;
             float input = PlayerInputReader.ReadFrameInput().Move.x;
-            float targetOffset = Mathf.Clamp(input, -1f, 1f) * maximumSidePeek;
-            float speed = Mathf.Abs(input) > 0.01f ? sidePeekSpeed : sidePeekReturnSpeed;
-            sidePeekOffset = Mathf.MoveTowards(sidePeekOffset, targetOffset, speed * Time.deltaTime);
+            sidePeekOffset = Mathf.Clamp(
+                sidePeekOffset + Mathf.Clamp(input, -1f, 1f) * sidePeekSpeed * Time.deltaTime,
+                -maximumSidePeek,
+                maximumSidePeek);
             hiddenPlayer.transform.SetPositionAndRotation(
                 center.position + center.right * sidePeekOffset,
                 center.rotation);
@@ -275,7 +275,6 @@ namespace Neighbor.Main.Features.Interaction
             doorCloseDelay = Mathf.Max(0f, doorCloseDelay);
             maximumSidePeek = Mathf.Max(0f, maximumSidePeek);
             sidePeekSpeed = Mathf.Max(0f, sidePeekSpeed);
-            sidePeekReturnSpeed = Mathf.Max(0f, sidePeekReturnSpeed);
         }
     }
 }
