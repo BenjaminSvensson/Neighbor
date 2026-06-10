@@ -25,6 +25,7 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float zoomScrollSpeed = 3.5f;
         [SerializeField, Min(0f)] private float zoomDragSpeed = 0.18f;
         [SerializeField, Min(0f)] private float zoomSmoothing = 12f;
+        [SerializeField, Min(0f)] private float zoomSnapThreshold = 0.08f;
         [SerializeField, Range(0f, 1f)] private float zoomWobbleBoost = 0.55f;
 
         [Header("Lean")]
@@ -100,8 +101,11 @@ namespace Neighbor.Main.Features.Player
         private float targetImpactShake;
         private float stairStepSide = 1f;
         private bool playZoomAudioThroughSmoothing;
+        private PlayerFrameInput frameInput;
+        private bool gameplayInputBlocked;
 
         public int ZoomDirection { get; private set; }
+        public event System.Action<int> ZoomDirectionChanged;
 
         private void Awake()
         {
@@ -140,18 +144,19 @@ namespace Neighbor.Main.Features.Player
             }
         }
 
-        private void LateUpdate()
+        private void Update()
         {
-            PlayerFrameInput input = PlayerInputReader.ReadFrameInput(mouseSensitivity, invertLookY);
+            frameInput = PlayerInputReader.ReadFrameInput(mouseSensitivity, invertLookY);
+            gameplayInputBlocked = InteractionOverlayState.IsGameplayInputBlocked;
 
-            if (InteractionOverlayState.IsGameplayInputBlocked)
+            if (gameplayInputBlocked)
             {
                 playZoomAudioThroughSmoothing = false;
-                ZoomDirection = 0;
+                SetZoomDirection(0);
                 return;
             }
 
-            if (input.CursorUnlockPressed)
+            if (frameInput.CursorUnlockPressed)
             {
                 SetCursorLocked(false);
             }
@@ -162,15 +167,22 @@ namespace Neighbor.Main.Features.Player
 
             if (Cursor.lockState == CursorLockMode.Locked)
             {
-                yaw += input.Look.x;
-                if (!input.ZoomHeld)
+                yaw += frameInput.Look.x;
+                if (!frameInput.ZoomHeld)
                 {
-                    pitch = Mathf.Clamp(pitch + input.Look.y, pitchLimits.x, pitchLimits.y);
+                    pitch = Mathf.Clamp(pitch + frameInput.Look.y, pitchLimits.x, pitchLimits.y);
                 }
             }
 
-            UpdateZoom(input);
-            UpdateCameraPose(input);
+            UpdateZoom(frameInput);
+        }
+
+        private void LateUpdate()
+        {
+            if (!gameplayInputBlocked)
+            {
+                UpdateCameraPose(frameInput);
+            }
         }
 
         private void UpdateZoom(PlayerFrameInput input)
@@ -204,24 +216,31 @@ namespace Neighbor.Main.Features.Player
             if (Mathf.Abs(zoomInputDelta) > 0.001f)
             {
                 playZoomAudioThroughSmoothing = hasScrollInput && !hasDragInput;
-                ZoomDirection = zoomInputDelta < 0f ? 1 : -1;
+                SetZoomDirection(zoomInputDelta < 0f ? 1 : -1);
             }
             else if (hasDragInput)
             {
                 playZoomAudioThroughSmoothing = false;
-                ZoomDirection = 0;
+                SetZoomDirection(0);
             }
             else if (playZoomAudioThroughSmoothing && Mathf.Abs(targetFieldOfView - currentFieldOfView) > 0.01f)
             {
-                ZoomDirection = targetFieldOfView < currentFieldOfView ? 1 : -1;
+                SetZoomDirection(targetFieldOfView < currentFieldOfView ? 1 : -1);
             }
             else
             {
                 playZoomAudioThroughSmoothing = false;
-                ZoomDirection = 0;
+                SetZoomDirection(0);
             }
 
             currentFieldOfView = Damp(currentFieldOfView, targetFieldOfView, zoomSmoothing);
+            if (Mathf.Abs(targetFieldOfView - currentFieldOfView) <= zoomSnapThreshold)
+            {
+                currentFieldOfView = targetFieldOfView;
+                playZoomAudioThroughSmoothing = false;
+                SetZoomDirection(0);
+            }
+
             playerCamera.fieldOfView = Mathf.Clamp(currentFieldOfView + impactFovOffset, minimumFieldOfView, maximumFieldOfView);
         }
 
@@ -416,7 +435,7 @@ namespace Neighbor.Main.Features.Player
             targetImpactFovOffset = 0f;
             targetImpactShake = 0f;
             playZoomAudioThroughSmoothing = false;
-            ZoomDirection = 0;
+            SetZoomDirection(0);
 
             if (playerCamera != null)
             {
@@ -429,6 +448,17 @@ namespace Neighbor.Main.Features.Player
         {
             playerController = GetComponentInParent<PlayerController>();
             yawRoot = playerController != null ? playerController.transform : transform.root;
+        }
+
+        private void SetZoomDirection(int direction)
+        {
+            if (ZoomDirection == direction)
+            {
+                return;
+            }
+
+            ZoomDirection = direction;
+            ZoomDirectionChanged?.Invoke(direction);
         }
     }
 }

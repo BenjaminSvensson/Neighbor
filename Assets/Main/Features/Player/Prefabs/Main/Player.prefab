@@ -937,6 +937,7 @@ MonoBehaviour:
   zoomDragSpeed: 0.18
   zoomSmoothing: 12
   zoomWobbleBoost: 0.55
+  zoomSnapThreshold: 0.08
   leanDistance: 0.4
   leanAngle: 12
   leanSmoothing: 20

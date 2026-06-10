@@ -2,7 +2,6 @@ using UnityEngine;
 
 namespace Neighbor.Main.Features.Player
 {
-    [DefaultExecutionOrder(100)]
     public sealed class PlayerAudioController : MonoBehaviour
     {
         [Header("References")]
@@ -108,6 +107,19 @@ namespace Neighbor.Main.Features.Player
             wasLedgeClimbing = playerController != null && playerController.IsLedgeClimbing;
         }
 
+        private void OnEnable()
+        {
+            if (cameraController == null)
+            {
+                cameraController = GetComponentInChildren<PlayerCameraController>();
+            }
+
+            if (cameraController != null)
+            {
+                cameraController.ZoomDirectionChanged += UpdateZoomLoop;
+            }
+        }
+
         private void Update()
         {
             if (playerController == null)
@@ -119,11 +131,6 @@ namespace Neighbor.Main.Features.Player
             UpdateFootsteps();
             UpdateSlideLoop();
             UpdatePreviousState();
-        }
-
-        private void LateUpdate()
-        {
-            UpdateZoomLoop();
         }
 
         private void UpdateOneShotMovementSounds()
@@ -237,16 +244,14 @@ namespace Neighbor.Main.Features.Player
             }
         }
 
-        private void UpdateZoomLoop()
+        private void UpdateZoomLoop(int zoomDirection)
         {
             if (zoomLoopSource == null)
             {
                 return;
             }
 
-            AudioClip targetClip = cameraController != null
-                ? cameraController.ZoomDirection > 0 ? zoomInLoopClip : cameraController.ZoomDirection < 0 ? zoomOutLoopClip : null
-                : null;
+            AudioClip targetClip = zoomDirection > 0 ? zoomInLoopClip : zoomDirection < 0 ? zoomOutLoopClip : null;
 
             if (targetClip == null)
             {
@@ -281,6 +286,11 @@ namespace Neighbor.Main.Features.Player
 
         private void OnDisable()
         {
+            if (cameraController != null)
+            {
+                cameraController.ZoomDirectionChanged -= UpdateZoomLoop;
+            }
+
             if (slideLoopSource != null)
             {
                 slideLoopSource.Stop();
