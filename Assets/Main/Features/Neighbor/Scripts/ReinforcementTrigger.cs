@@ -73,6 +73,9 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField] private bool randomizeYaw;
 
         [Header("Security Camera Placement")]
+        [SerializeField] private GameObject securityCameraPrefab;
+        [SerializeField, Min(1)] private int securityCameraCost = 2;
+        [SerializeField, Range(0f, 1f)] private float securityCameraPlacementChance = 0.5f;
         [SerializeField] private bool attachSecurityCamerasToWalls = true;
         [SerializeField, Min(0.1f)] private float cameraWallSearchDistance = 4f;
         [SerializeField, Min(0f)] private float cameraMountHeight = 2.25f;
@@ -227,6 +230,15 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
+            if (allowSecurityCamera
+                && (SecurityCamera.NeighborPlacedCameraCount == 0 || Random.value <= securityCameraPlacementChance)
+                && CanUsePrefab(securityCameraPrefab, true)
+                && budget.CanAfford(securityCameraCost))
+            {
+                selection = new ReinforcementPrefabSelection(securityCameraPrefab, securityCameraCost);
+                return true;
+            }
+
             if (reinforcementOptions != null && reinforcementOptions.Length > 0)
             {
                 int startIndex = Random.Range(0, reinforcementOptions.Length);
@@ -260,6 +272,11 @@ namespace Neighbor.Main.Features.Neighbor
 
         private bool HasConfiguredReinforcement()
         {
+            if (securityCameraPrefab != null)
+            {
+                return true;
+            }
+
             if (reinforcementOptions != null)
             {
                 for (int i = 0; i < reinforcementOptions.Length; i++)
@@ -310,7 +327,6 @@ namespace Neighbor.Main.Features.Neighbor
                 coverageDirection = transform.forward;
             }
 
-            Vector3 origin = anchor.position + Vector3.up * cameraMountHeight;
             Vector3 right = Vector3.Cross(Vector3.up, coverageDirection).normalized;
             Vector3[] directions =
             {
@@ -321,22 +337,33 @@ namespace Neighbor.Main.Features.Neighbor
                 (-coverageDirection - right).normalized,
                 (-coverageDirection + right).normalized
             };
+            float[] heightOffsets =
+            {
+                0f,
+                cameraMountHeight * 0.5f,
+                cameraMountHeight
+            };
 
             float bestScore = float.NegativeInfinity;
-            for (int i = 0; i < directions.Length; i++)
+            for (int heightIndex = 0; heightIndex < heightOffsets.Length; heightIndex++)
             {
-                if (!Physics.Raycast(origin, directions[i], out RaycastHit hit, cameraWallSearchDistance, cameraWallMask, QueryTriggerInteraction.Ignore)
-                    || Mathf.Abs(Vector3.Dot(hit.normal.normalized, Vector3.up)) > cameraMaximumWallUpDot)
+                Vector3 origin = anchor.position + Vector3.up * heightOffsets[heightIndex];
+                for (int directionIndex = 0; directionIndex < directions.Length; directionIndex++)
                 {
-                    continue;
-                }
+                    if (!Physics.Raycast(origin, directions[directionIndex], out RaycastHit hit, cameraWallSearchDistance, cameraWallMask, QueryTriggerInteraction.Ignore)
+                        || Mathf.Abs(Vector3.Dot(hit.normal.normalized, Vector3.up)) > cameraMaximumWallUpDot)
+                    {
+                        continue;
+                    }
 
-                float coverageAlignment = Vector3.Dot(hit.normal.normalized, coverageDirection);
-                float score = coverageAlignment * 3f - hit.distance * 0.1f;
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    bestHit = hit;
+                    float coverageAlignment = Vector3.Dot(hit.normal.normalized, coverageDirection);
+                    float heightPreference = 1f - Mathf.Abs(heightOffsets[heightIndex] - cameraMountHeight) / Mathf.Max(0.1f, cameraMountHeight);
+                    float score = coverageAlignment * 3f + heightPreference * 0.35f - hit.distance * 0.1f;
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bestHit = hit;
+                    }
                 }
             }
 
