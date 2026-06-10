@@ -173,6 +173,8 @@ namespace Neighbor.Main.Features.Player
 
         private void UpdateZoom(PlayerFrameInput input)
         {
+            float previousFieldOfView = scrolledFieldOfView;
+
             if (Mathf.Abs(input.ZoomScroll) > 0.01f)
             {
                 float scrollSteps = Mathf.Abs(input.ZoomScroll) > 10f
@@ -194,8 +196,8 @@ namespace Neighbor.Main.Features.Player
             }
 
             float targetFieldOfView = Mathf.Clamp(scrolledFieldOfView, minimumFieldOfView, maximumFieldOfView);
-            float zoomDifference = targetFieldOfView - currentFieldOfView;
-            ZoomDirection = Mathf.Abs(zoomDifference) > 0.01f ? (zoomDifference < 0f ? 1 : -1) : 0;
+            float zoomInputDelta = targetFieldOfView - previousFieldOfView;
+            ZoomDirection = Mathf.Abs(zoomInputDelta) > 0.001f ? (zoomInputDelta < 0f ? 1 : -1) : 0;
 
             currentFieldOfView = Damp(currentFieldOfView, targetFieldOfView, zoomSmoothing);
             playerCamera.fieldOfView = Mathf.Clamp(currentFieldOfView + impactFovOffset, minimumFieldOfView, maximumFieldOfView);

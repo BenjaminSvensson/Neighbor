@@ -2,6 +2,7 @@ using UnityEngine;
 
 namespace Neighbor.Main.Features.Player
 {
+    [DefaultExecutionOrder(100)]
     public sealed class PlayerAudioController : MonoBehaviour
     {
         [Header("References")]
@@ -44,6 +45,8 @@ namespace Neighbor.Main.Features.Player
         [SerializeField] private AudioClip zoomInLoopClip;
         [SerializeField] private AudioClip zoomOutLoopClip;
         [SerializeField, Range(0f, 1f)] private float zoomLoopVolume = 0.45f;
+        [SerializeField, Min(0f)] private float zoomStartOffset = 0.08f;
+        [SerializeField, Min(0f)] private float zoomResumeWindow = 0.12f;
 
         [Header("Ledge Climb")]
         [SerializeField] private AudioClip[] ledgeClimbStartClips;
@@ -59,6 +62,8 @@ namespace Neighbor.Main.Features.Player
         private bool wasCrouching;
         private bool wasSliding;
         private bool wasLedgeClimbing;
+        private AudioClip pausedZoomClip;
+        private float zoomPausedAt = float.NegativeInfinity;
 
         private void Awake()
         {
@@ -110,8 +115,12 @@ namespace Neighbor.Main.Features.Player
             UpdateOneShotMovementSounds();
             UpdateFootsteps();
             UpdateSlideLoop();
-            UpdateZoomLoop();
             UpdatePreviousState();
+        }
+
+        private void LateUpdate()
+        {
+            UpdateZoomLoop();
         }
 
         private void UpdateOneShotMovementSounds()
@@ -240,23 +249,35 @@ namespace Neighbor.Main.Features.Player
             {
                 if (zoomLoopSource.isPlaying)
                 {
-                    zoomLoopSource.Stop();
+                    pausedZoomClip = zoomLoopSource.clip;
+                    zoomPausedAt = Time.unscaledTime;
+                    zoomLoopSource.Pause();
                 }
 
                 return;
             }
 
-            if (zoomLoopSource.clip != targetClip)
+            if (zoomLoopSource.isPlaying && zoomLoopSource.clip == targetClip)
             {
-                zoomLoopSource.Stop();
-                zoomLoopSource.clip = targetClip;
+                return;
             }
 
+            bool resumePausedClip = pausedZoomClip == targetClip
+                && zoomLoopSource.clip == targetClip
+                && Time.unscaledTime - zoomPausedAt <= zoomResumeWindow;
+
             zoomLoopSource.volume = zoomLoopVolume;
-            if (!zoomLoopSource.isPlaying)
+            if (resumePausedClip)
             {
-                zoomLoopSource.Play();
+                zoomLoopSource.UnPause();
+                return;
             }
+
+            zoomLoopSource.Stop();
+            zoomLoopSource.clip = targetClip;
+            zoomLoopSource.time = Mathf.Min(zoomStartOffset, Mathf.Max(0f, targetClip.length - 0.01f));
+            pausedZoomClip = null;
+            zoomLoopSource.Play();
         }
 
         private void OnDisable()
@@ -270,6 +291,9 @@ namespace Neighbor.Main.Features.Player
             {
                 zoomLoopSource.Stop();
             }
+
+            pausedZoomClip = null;
+            zoomPausedAt = float.NegativeInfinity;
         }
 
         private void UpdatePreviousState()
