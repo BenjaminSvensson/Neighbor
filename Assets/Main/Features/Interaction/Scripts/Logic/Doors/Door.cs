@@ -80,6 +80,7 @@ namespace Neighbor.Main.Features.Interaction
         public bool IsOpen => isOpen;
         public bool NeighborCanUnlock => neighborCanUnlock;
         public bool NeighborCanKickBlockedDoor => neighborCanKickBlockedDoor;
+        public DoorBlockerChair ActiveBlocker => activeBlocker;
         public string RequiredKeyId => requiredKeyId;
         public Vector3 DefaultOpeningSideNormal => -transform.forward * Mathf.Sign(openAngle == 0f ? 1f : openAngle);
 

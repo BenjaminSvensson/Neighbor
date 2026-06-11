@@ -206,6 +206,12 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             GameObject reinforcement = Instantiate(selection.Prefab, anchor.position, rotation);
+            DoorBlockerChair[] doorBlockers = reinforcement.GetComponentsInChildren<DoorBlockerChair>(true);
+            for (int i = 0; i < doorBlockers.Length; i++)
+            {
+                doorBlockers[i]?.MarkAsReinforcement();
+            }
+
             if (cameraPrefab != null)
             {
                 SecurityCamera spawnedCamera = reinforcement.GetComponentInChildren<SecurityCamera>(true);

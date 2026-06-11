@@ -84,6 +84,7 @@ namespace Neighbor.Main.Features.Neighbor
         public bool IsDetachedFromNavMesh => agent != null && (!agent.updatePosition || !agent.isOnNavMesh);
         public float CurrentSpeed => agent != null ? agent.velocity.magnitude : 0f;
         public bool HasPath => agent != null && (agent.hasPath || agent.pathPending);
+        public float ConfiguredSpeed => agent != null ? agent.speed : walkSpeed;
         public float RemainingDistance => agent == null || agent.pathPending ? float.PositiveInfinity : agent.remainingDistance;
         public bool HasArrived => agent != null
             && !isAvoidingDynamicObstacle
@@ -216,6 +217,83 @@ namespace Neighbor.Main.Features.Neighbor
             sampledPosition = hit.position;
             pathDistance = GetPathDistance(path);
             return true;
+        }
+
+        public bool TryRepathAvoidingDoorway(
+            Vector3 doorwayPosition,
+            Vector3 doorwayPlaneNormal,
+            float doorwayAvoidanceRadius,
+            out float pathDistance,
+            out float directDistance)
+        {
+            pathDistance = float.PositiveInfinity;
+            directDistance = float.PositiveInfinity;
+            if (!hasRequestedDestination
+                || agent == null
+                || !agent.enabled
+                || !agent.isOnNavMesh
+                || isAvoidingDynamicObstacle)
+            {
+                return false;
+            }
+
+            NavMeshPath path = new NavMeshPath();
+            if (!agent.CalculatePath(requestedDestination, path) || path.status != NavMeshPathStatus.PathComplete)
+            {
+                return false;
+            }
+
+            if (PathCrossesDoorway(path, doorwayPosition, doorwayPlaneNormal, doorwayAvoidanceRadius))
+            {
+                return false;
+            }
+
+            pathDistance = GetPathDistance(path);
+            directDistance = Vector3.Distance(transform.position, requestedDestination);
+            agent.isStopped = false;
+            return agent.SetPath(path);
+        }
+
+        private static bool PathCrossesDoorway(
+            NavMeshPath path,
+            Vector3 doorwayPosition,
+            Vector3 doorwayPlaneNormal,
+            float doorwayAvoidanceRadius)
+        {
+            if (path == null || path.corners == null || path.corners.Length < 2)
+            {
+                return false;
+            }
+
+            Vector3 planeNormal = Vector3.ProjectOnPlane(doorwayPlaneNormal, Vector3.up).normalized;
+            if (planeNormal.sqrMagnitude <= 0.001f)
+            {
+                return false;
+            }
+
+            float avoidanceRadius = Mathf.Max(0.1f, doorwayAvoidanceRadius);
+            for (int i = 1; i < path.corners.Length; i++)
+            {
+                Vector3 from = path.corners[i - 1];
+                Vector3 to = path.corners[i];
+                float fromSide = Vector3.Dot(from - doorwayPosition, planeNormal);
+                float toSide = Vector3.Dot(to - doorwayPosition, planeNormal);
+                if (Mathf.Sign(fromSide) == Mathf.Sign(toSide) && !Mathf.Approximately(fromSide, 0f))
+                {
+                    continue;
+                }
+
+                float denominator = fromSide - toSide;
+                float segmentT = Mathf.Abs(denominator) > 0.0001f ? Mathf.Clamp01(fromSide / denominator) : 0f;
+                Vector3 crossingPoint = Vector3.Lerp(from, to, segmentT);
+                Vector3 flatOffset = Vector3.ProjectOnPlane(crossingPoint - doorwayPosition, Vector3.up);
+                if (flatOffset.sqrMagnitude <= avoidanceRadius * avoidanceRadius)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public bool TryClimbToward(Transform target)

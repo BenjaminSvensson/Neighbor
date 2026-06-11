@@ -15,6 +15,9 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0.1f)] private float blockedDoorKickDuration = 2.25f;
         [SerializeField, Min(0.05f)] private float blockedDoorKickInterval = 0.48f;
         [SerializeField, Min(0f)] private float blockedDoorKickAbortDistance = 2.2f;
+        [SerializeField, Min(0f)] private float blockedDoorRouteDecisionCooldown = 1.25f;
+        [SerializeField, Min(0f)] private float alternativeRouteTimeBias;
+        [SerializeField, Min(0.1f)] private float blockedDoorwayAvoidanceRadius = 1.1f;
         [SerializeField, Min(0.05f)] private float lockedDoorRetryInterval = 0.7f;
         [SerializeField, Min(0f)] private float lockedDoorAbortDistance = 2.2f;
         [SerializeField, Min(0f)] private float kickTurnSharpness = 12f;
@@ -37,6 +40,8 @@ namespace Neighbor.Main.Features.Interaction
         private float nextLockedDoorFeedbackTime;
         private float cautiousDoorOpenAtTime;
         private bool cautiousDoorPauseActive;
+        private Door recentlyAvoidedBlockedDoor;
+        private float recentlyAvoidedBlockedDoorUntilTime;
 
         public bool IsKickingBlockedDoor => kickingDoor != null;
         public bool IsInteractingWithDoor => kickingDoor != null || lockedOutDoor != null || cautiousDoorPauseActive;
@@ -86,7 +91,7 @@ namespace Neighbor.Main.Features.Interaction
 
                 if (door.IsBlocked)
                 {
-                    BeginBlockedDoorKick(door);
+                    HandleBlockedDoor(door);
                     return;
                 }
 
@@ -158,6 +163,57 @@ namespace Neighbor.Main.Features.Interaction
             nextKickFeedbackTime = Time.time;
             motor?.Stop();
             UpdateBlockedDoorKick();
+        }
+
+        private void HandleBlockedDoor(Door door)
+        {
+            if (door == null)
+            {
+                return;
+            }
+
+            if (door == recentlyAvoidedBlockedDoor && Time.time < recentlyAvoidedBlockedDoorUntilTime)
+            {
+                nextInteractionTime = Time.time + interactionCooldown;
+                return;
+            }
+
+            DoorBlockerChair blocker = door.ActiveBlocker;
+            bool isReinforcement = blocker != null && blocker.IsReinforcementPlaced;
+            if (TryUseAlternativeRoute(door, isReinforcement))
+            {
+                recentlyAvoidedBlockedDoor = door;
+                recentlyAvoidedBlockedDoorUntilTime = Time.time + blockedDoorRouteDecisionCooldown;
+                nextInteractionTime = Time.time + interactionCooldown;
+                return;
+            }
+
+            BeginBlockedDoorKick(door);
+        }
+
+        private bool TryUseAlternativeRoute(Door door, bool alwaysPreferAlternative)
+        {
+            if (door == null
+                || motor == null
+                || !motor.TryRepathAvoidingDoorway(
+                    door.transform.position,
+                    door.transform.forward,
+                    blockedDoorwayAvoidanceRadius,
+                    out float pathDistance,
+                    out float directDistance))
+            {
+                return false;
+            }
+
+            if (alwaysPreferAlternative)
+            {
+                return true;
+            }
+
+            float movementSpeed = Mathf.Max(0.1f, motor.ConfiguredSpeed);
+            float alternativeRouteTime = pathDistance / movementSpeed;
+            float kickRouteTime = blockedDoorKickDuration + directDistance / movementSpeed;
+            return alternativeRouteTime + alternativeRouteTimeBias < kickRouteTime;
         }
 
         private void BeginLockedDoorWait(Door door)
@@ -236,7 +292,7 @@ namespace Neighbor.Main.Features.Interaction
             {
                 Door blockedDoor = lockedOutDoor;
                 lockedOutDoor = null;
-                BeginBlockedDoorKick(blockedDoor);
+                HandleBlockedDoor(blockedDoor);
                 return;
             }
 

@@ -6,6 +6,12 @@ namespace Neighbor.Main.Features.Interaction
     [RequireComponent(typeof(Pickupable))]
     public sealed class DoorBlockerChair : MonoBehaviour, IPickupLifecycleReceiver
     {
+        public enum BlockerPlacementOrigin
+        {
+            Player,
+            Reinforcement
+        }
+
         [SerializeField, Min(0f)] private float doorOffset = 0.85f;
         [SerializeField, Min(0f)] private float placementSurfacePadding = 0.02f;
         [SerializeField, Min(0f)] private float groundProbeHeight = 1.5f;
@@ -25,10 +31,19 @@ namespace Neighbor.Main.Features.Interaction
         private RigidbodyConstraints originalConstraints;
         private bool hasFrozenBlockedBody;
         private bool blockDisabledUntilPlaced;
+        [SerializeField, Tooltip("Who placed this blocker. Reinforcement spawns set this automatically.")]
+        private BlockerPlacementOrigin placementOrigin = BlockerPlacementOrigin.Player;
         private readonly Collider[] nearbyDoorHits = new Collider[8];
         private readonly RaycastHit[] groundHits = new RaycastHit[12];
 
         public bool IsBlockingDoor => blockedDoor != null;
+        public BlockerPlacementOrigin PlacementOrigin => placementOrigin;
+        public bool IsReinforcementPlaced => placementOrigin == BlockerPlacementOrigin.Reinforcement;
+
+        public void MarkAsReinforcement()
+        {
+            placementOrigin = BlockerPlacementOrigin.Reinforcement;
+        }
 
         private void Awake()
         {
@@ -69,6 +84,7 @@ namespace Neighbor.Main.Features.Interaction
                 return false;
             }
 
+            placementOrigin = BlockerPlacementOrigin.Player;
             ApplyBlockedPose(door);
             return true;
         }
@@ -87,6 +103,7 @@ namespace Neighbor.Main.Features.Interaction
                 return false;
             }
 
+            placementOrigin = BlockerPlacementOrigin.Reinforcement;
             ApplyBlockedPose(door);
             return true;
         }
@@ -102,6 +119,7 @@ namespace Neighbor.Main.Features.Interaction
             NeighborEnvironmentalAwareness.Report(transform.position, 0.55f, gameObject);
             ClearBlockedDoor();
             blockDisabledUntilPlaced = false;
+            placementOrigin = BlockerPlacementOrigin.Player;
         }
 
         public void HandlePriedLoose()
