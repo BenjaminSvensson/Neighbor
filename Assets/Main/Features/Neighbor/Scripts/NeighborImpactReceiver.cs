@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Neighbor.Main.Features.Neighbor
@@ -15,6 +16,8 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float impactCooldown = 0.35f;
 
         private float lastImpactTime;
+
+        public event Action ImpactReceived;
 
         private void Awake()
         {
@@ -35,6 +38,7 @@ namespace Neighbor.Main.Features.Neighbor
             float stunDuration = Mathf.Lerp(minimumStunDuration, maximumStunDuration, impact01);
             float knockbackDistance = Mathf.Lerp(minimumKnockbackDistance, maximumKnockbackDistance, impact01);
 
+            ImpactReceived?.Invoke();
             brain?.Stun(stunDuration);
             motor?.ApplyKnockback(knockbackDirection, knockbackDistance, knockbackDuration);
         }

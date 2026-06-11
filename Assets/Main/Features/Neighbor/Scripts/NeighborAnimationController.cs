@@ -12,18 +12,22 @@ namespace Neighbor.Main.Features.Neighbor
         private static readonly int CautiousState = Animator.StringToHash("Base Layer.Cautious");
         private static readonly int RunState = Animator.StringToHash("Base Layer.Run");
         private static readonly int TraverseState = Animator.StringToHash("Base Layer.Traverse");
-        private static readonly int StunnedState = Animator.StringToHash("Base Layer.Stunned");
+        private static readonly int HurtState = Animator.StringToHash("Base Layer.Hurt");
         private static readonly int DoorKickState = Animator.StringToHash("Base Layer.DoorKick");
 
         [SerializeField] private Animator animator;
         [SerializeField] private NeighborBrain brain;
         [SerializeField] private NeighborMotor motor;
         [SerializeField] private NeighborDoorInteractor doorInteractor;
+        [SerializeField] private NeighborImpactReceiver impactReceiver;
         [SerializeField, Min(0f)] private float movingThreshold = 0.08f;
         [SerializeField, Min(0f)] private float runningThreshold = 3.4f;
         [SerializeField, Min(0f)] private float transitionDuration = 0.16f;
         [SerializeField, Min(0.1f)] private float minimumLocomotionPlaybackSpeed = 0.7f;
         [SerializeField, Min(0.1f)] private float maximumLocomotionPlaybackSpeed = 1.4f;
+
+        [Header("Hurt Reaction")]
+        [SerializeField, Min(0f)] private float hurtTransitionDuration = 0.045f;
 
         [Header("Leg IK")]
         [SerializeField] private NeighborFootIK.Settings legIKSettings = new NeighborFootIK.Settings();
@@ -37,6 +41,7 @@ namespace Neighbor.Main.Features.Neighbor
             brain = brain != null ? brain : GetComponent<NeighborBrain>();
             motor = motor != null ? motor : GetComponent<NeighborMotor>();
             doorInteractor = doorInteractor != null ? doorInteractor : GetComponent<NeighborDoorInteractor>();
+            impactReceiver = impactReceiver != null ? impactReceiver : GetComponent<NeighborImpactReceiver>();
             if (animator != null)
             {
                 animator.applyRootMotion = false;
@@ -49,6 +54,14 @@ namespace Neighbor.Main.Features.Neighbor
                 }
 
                 footIK.Configure(animator, transform, motor, legIKSettings);
+            }
+        }
+
+        private void OnEnable()
+        {
+            if (impactReceiver != null)
+            {
+                impactReceiver.ImpactReceived += PlayHurtReaction;
             }
         }
 
@@ -77,7 +90,7 @@ namespace Neighbor.Main.Features.Neighbor
         {
             if (brain != null && brain.CurrentState == NeighborBrain.BehaviorState.Stunned)
             {
-                return StunnedState;
+                return HurtState;
             }
 
             if (doorInteractor != null && doorInteractor.IsKickingBlockedDoor)
@@ -123,8 +136,24 @@ namespace Neighbor.Main.Features.Neighbor
             return state == CautiousState ? 1.65f : 2.4f;
         }
 
+        private void PlayHurtReaction()
+        {
+            if (animator == null)
+            {
+                return;
+            }
+
+            animator.CrossFadeInFixedTime(HurtState, hurtTransitionDuration, 0, 0f);
+            currentState = HurtState;
+        }
+
         private void OnDisable()
         {
+            if (impactReceiver != null)
+            {
+                impactReceiver.ImpactReceived -= PlayHurtReaction;
+            }
+
             if (animator != null)
             {
                 animator.speed = 1f;
