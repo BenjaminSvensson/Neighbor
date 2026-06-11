@@ -20,6 +20,7 @@ namespace Neighbor.Main.Features.Interaction
 
         private Pickupable pickupable;
         private Rigidbody body;
+        private bool isWoodBoard;
         private Door blockedDoor;
         private RigidbodyConstraints originalConstraints;
         private bool hasFrozenBlockedBody;
@@ -33,6 +34,7 @@ namespace Neighbor.Main.Features.Interaction
         {
             pickupable = GetComponent<Pickupable>();
             body = GetComponent<Rigidbody>();
+            isWoodBoard = GetComponent<WoodBoardPryTarget>() != null;
         }
 
         private void OnDisable()
@@ -61,7 +63,8 @@ namespace Neighbor.Main.Features.Interaction
                 return false;
             }
 
-            if (!door.TryAddBlocker(this, interactor.transform.position))
+            Vector3 blockerSidePosition = isWoodBoard ? transform.position : interactor.transform.position;
+            if (!door.TryAddBlocker(this, blockerSidePosition))
             {
                 return false;
             }
