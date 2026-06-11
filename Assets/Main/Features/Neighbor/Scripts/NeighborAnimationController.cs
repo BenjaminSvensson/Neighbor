@@ -14,6 +14,7 @@ namespace Neighbor.Main.Features.Neighbor
         private static readonly int TraverseState = Animator.StringToHash("Base Layer.Traverse");
         private static readonly int HurtState = Animator.StringToHash("Base Layer.Hurt");
         private static readonly int DoorKickState = Animator.StringToHash("Base Layer.DoorKick");
+        private const string DefaultTaskClipName = "Idle_Talking_Loop";
 
         [SerializeField] private Animator animator;
         [SerializeField] private NeighborBrain brain;
@@ -34,6 +35,9 @@ namespace Neighbor.Main.Features.Neighbor
 
         private int currentState;
         private NeighborFootIK footIK;
+        private AnimatorOverrideController taskAnimationOverrides;
+        private AnimationClip defaultTaskAnimation;
+        private NeighborTaskLocation activeAnimatedTask;
 
         private void Awake()
         {
@@ -46,6 +50,7 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 animator.applyRootMotion = false;
                 animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+                ConfigureTaskAnimationOverrides();
                 legIKSettings ??= new NeighborFootIK.Settings();
                 footIK = animator.GetComponent<NeighborFootIK>();
                 if (footIK == null)
@@ -72,10 +77,15 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            bool taskAnimationChanged = UpdateTaskAnimationOverride();
             int desiredState = ChooseState();
-            if (desiredState != currentState)
+            if (desiredState != currentState || taskAnimationChanged && desiredState == TaskState)
             {
-                animator.CrossFadeInFixedTime(desiredState, transitionDuration);
+                animator.CrossFadeInFixedTime(
+                    desiredState,
+                    transitionDuration,
+                    0,
+                    taskAnimationChanged && desiredState == TaskState ? 0f : float.NegativeInfinity);
                 currentState = desiredState;
             }
 
@@ -83,7 +93,9 @@ namespace Neighbor.Main.Features.Neighbor
             bool locomotion = desiredState == WalkState || desiredState == CautiousState || desiredState == RunState;
             animator.speed = locomotion
                 ? Mathf.Clamp(speed / GetReferenceSpeed(desiredState), minimumLocomotionPlaybackSpeed, maximumLocomotionPlaybackSpeed)
-                : 1f;
+                : desiredState == TaskState && activeAnimatedTask != null
+                    ? activeAnimatedTask.AnimationPlaybackSpeed
+                    : 1f;
         }
 
         private int ChooseState()
@@ -136,6 +148,58 @@ namespace Neighbor.Main.Features.Neighbor
             return state == CautiousState ? 1.65f : 2.4f;
         }
 
+        private void ConfigureTaskAnimationOverrides()
+        {
+            RuntimeAnimatorController baseController = animator.runtimeAnimatorController;
+            if (baseController == null)
+            {
+                return;
+            }
+
+            AnimationClip[] clips = baseController.animationClips;
+            for (int i = 0; i < clips.Length; i++)
+            {
+                if (clips[i] != null && clips[i].name == DefaultTaskClipName)
+                {
+                    defaultTaskAnimation = clips[i];
+                    break;
+                }
+            }
+
+            if (defaultTaskAnimation == null)
+            {
+                Debug.LogWarning(
+                    $"Neighbor task animations could not be configured because '{DefaultTaskClipName}' was not found.",
+                    this);
+                return;
+            }
+
+            taskAnimationOverrides = new AnimatorOverrideController(baseController);
+            taskAnimationOverrides.name = $"{baseController.name} (Task Overrides)";
+            animator.runtimeAnimatorController = taskAnimationOverrides;
+        }
+
+        private bool UpdateTaskAnimationOverride()
+        {
+            NeighborTaskLocation task = brain != null ? brain.ActiveTaskLocation : null;
+            if (task == activeAnimatedTask)
+            {
+                return false;
+            }
+
+            activeAnimatedTask = task;
+            if (taskAnimationOverrides == null || defaultTaskAnimation == null)
+            {
+                return false;
+            }
+
+            AnimationClip assignedAnimation = task != null && task.TaskAnimation != null
+                ? task.TaskAnimation
+                : defaultTaskAnimation;
+            taskAnimationOverrides[defaultTaskAnimation] = assignedAnimation;
+            return true;
+        }
+
         private void PlayHurtReaction()
         {
             if (animator == null)
@@ -157,6 +221,14 @@ namespace Neighbor.Main.Features.Neighbor
             if (animator != null)
             {
                 animator.speed = 1f;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (taskAnimationOverrides != null)
+            {
+                Destroy(taskAnimationOverrides);
             }
         }
     }

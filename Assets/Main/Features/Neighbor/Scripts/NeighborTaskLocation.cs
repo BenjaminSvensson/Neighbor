@@ -25,6 +25,11 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0.05f)] private float lookArrowHeadSize = 0.25f;
         [SerializeField] private Color lookArrowColor = new Color(0.1f, 0.85f, 1f, 0.9f);
 
+        [Header("Task Animation")]
+        [Tooltip("Optional animation played by the Neighbor while performing this task. Leave blank to use the generic task animation.")]
+        [SerializeField] private AnimationClip taskAnimation;
+        [SerializeField, Min(0.05f)] private float animationPlaybackSpeed = 1f;
+
         [Header("Task Audio")]
         [SerializeField] private AudioSource audioSource;
         [SerializeField] private AudioClip[] taskStartClips;
@@ -48,6 +53,8 @@ namespace Neighbor.Main.Features.Neighbor
         public NeighborTaskLocation ForcedNextTask => forcedNextTask;
         public float ArrivalDistance => arrivalDistance;
         public float NavigationSampleRadius => navigationSampleRadius;
+        public AnimationClip TaskAnimation => taskAnimation;
+        public float AnimationPlaybackSpeed => animationPlaybackSpeed;
         public static IReadOnlyList<NeighborTaskLocation> Locations => ActiveLocations;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -134,6 +141,7 @@ namespace Neighbor.Main.Features.Neighbor
         {
             maximumWaitTime = Mathf.Max(minimumWaitTime, maximumWaitTime);
             arrivalDistance = Mathf.Max(0.1f, arrivalDistance);
+            animationPlaybackSpeed = Mathf.Max(0.05f, animationPlaybackSpeed);
             audioMaxDistance = Mathf.Max(0.1f, audioMaxDistance);
             audioMinDistance = Mathf.Min(audioMinDistance, audioMaxDistance);
         }

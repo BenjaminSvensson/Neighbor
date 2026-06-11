@@ -151,6 +151,9 @@ namespace Neighbor.Main.Features.Neighbor
         public Vector3 LastKnownPlayerPosition => lastKnownPlayerPosition;
         public float Suspicion => suspicion;
         public SuspicionLevel CurrentSuspicionLevel => GetSuspicionLevel();
+        public NeighborTaskLocation ActiveTaskLocation => currentState == BehaviorState.Task && waitingAtGoal
+            ? currentTaskLocation
+            : null;
 
         private void Awake()
         {
