@@ -25,7 +25,11 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0.1f)] private float minimumLocomotionPlaybackSpeed = 0.7f;
         [SerializeField, Min(0.1f)] private float maximumLocomotionPlaybackSpeed = 1.4f;
 
+        [Header("Leg IK")]
+        [SerializeField] private NeighborFootIK.Settings legIKSettings = new NeighborFootIK.Settings();
+
         private int currentState;
+        private NeighborFootIK footIK;
 
         private void Awake()
         {
@@ -37,6 +41,14 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 animator.applyRootMotion = false;
                 animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+                legIKSettings ??= new NeighborFootIK.Settings();
+                footIK = animator.GetComponent<NeighborFootIK>();
+                if (footIK == null)
+                {
+                    footIK = animator.gameObject.AddComponent<NeighborFootIK>();
+                }
+
+                footIK.Configure(animator, transform, motor, legIKSettings);
             }
         }
 
