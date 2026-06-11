@@ -5,6 +5,14 @@ namespace Neighbor.Main.Features.Neighbor
 {
     public sealed class NeighborTaskLocation : MonoBehaviour
     {
+        public enum TaskAnimationPhase
+        {
+            None,
+            Starting,
+            Performing,
+            Finishing
+        }
+
         public enum TaskAudioPlaybackMode
         {
             OneShot,
@@ -26,9 +34,15 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField] private Color lookArrowColor = new Color(0.1f, 0.85f, 1f, 0.9f);
 
         [Header("Task Animation")]
-        [Tooltip("Optional animation played by the Neighbor while performing this task. Leave blank to use the generic task animation.")]
+        [Tooltip("Optional one-shot animation played after arriving, before the task begins.")]
+        [SerializeField] private AnimationClip startTaskAnimation;
+        [SerializeField, Min(0.05f)] private float startAnimationPlaybackSpeed = 1f;
+        [Tooltip("Optional animation played while performing this task. Leave blank to use the generic task animation.")]
         [SerializeField] private AnimationClip taskAnimation;
         [SerializeField, Min(0.05f)] private float animationPlaybackSpeed = 1f;
+        [Tooltip("Optional one-shot animation played after the task finishes, before the Neighbor leaves.")]
+        [SerializeField] private AnimationClip endTaskAnimation;
+        [SerializeField, Min(0.05f)] private float endAnimationPlaybackSpeed = 1f;
 
         [Header("Task Audio")]
         [SerializeField] private AudioSource audioSource;
@@ -53,9 +67,35 @@ namespace Neighbor.Main.Features.Neighbor
         public NeighborTaskLocation ForcedNextTask => forcedNextTask;
         public float ArrivalDistance => arrivalDistance;
         public float NavigationSampleRadius => navigationSampleRadius;
-        public AnimationClip TaskAnimation => taskAnimation;
-        public float AnimationPlaybackSpeed => animationPlaybackSpeed;
         public static IReadOnlyList<NeighborTaskLocation> Locations => ActiveLocations;
+
+        public AnimationClip GetAnimation(TaskAnimationPhase phase)
+        {
+            return phase switch
+            {
+                TaskAnimationPhase.Starting => startTaskAnimation,
+                TaskAnimationPhase.Performing => taskAnimation,
+                TaskAnimationPhase.Finishing => endTaskAnimation,
+                _ => null
+            };
+        }
+
+        public float GetAnimationPlaybackSpeed(TaskAnimationPhase phase)
+        {
+            return phase switch
+            {
+                TaskAnimationPhase.Starting => startAnimationPlaybackSpeed,
+                TaskAnimationPhase.Performing => animationPlaybackSpeed,
+                TaskAnimationPhase.Finishing => endAnimationPlaybackSpeed,
+                _ => 1f
+            };
+        }
+
+        public float GetAnimationDuration(TaskAnimationPhase phase)
+        {
+            AnimationClip clip = GetAnimation(phase);
+            return clip != null ? clip.length / Mathf.Max(0.05f, GetAnimationPlaybackSpeed(phase)) : 0f;
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetActiveLocations()
@@ -141,7 +181,9 @@ namespace Neighbor.Main.Features.Neighbor
         {
             maximumWaitTime = Mathf.Max(minimumWaitTime, maximumWaitTime);
             arrivalDistance = Mathf.Max(0.1f, arrivalDistance);
+            startAnimationPlaybackSpeed = Mathf.Max(0.05f, startAnimationPlaybackSpeed);
             animationPlaybackSpeed = Mathf.Max(0.05f, animationPlaybackSpeed);
+            endAnimationPlaybackSpeed = Mathf.Max(0.05f, endAnimationPlaybackSpeed);
             audioMaxDistance = Mathf.Max(0.1f, audioMaxDistance);
             audioMinDistance = Mathf.Min(audioMinDistance, audioMaxDistance);
         }

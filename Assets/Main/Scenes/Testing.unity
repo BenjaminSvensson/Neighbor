@@ -2367,7 +2367,7 @@ MeshCollider:
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
-  m_Mesh: {fileID: 1672874271}
+  m_Mesh: {fileID: 2115717244}
 --- !u!33 &130623439
 MeshFilter:
   m_ObjectHideFlags: 10
@@ -12325,6 +12325,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: ToiletTask
       objectReference: {fileID: 0}
+    - target: {fileID: 2885571860335029127, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
+      propertyPath: taskAnimation
+      value: 
+      objectReference: {fileID: 8800687838965813479, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
     - target: {fileID: 2885571860335029127, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
       propertyPath: forcedNextTask
       value: 
@@ -38567,6 +38571,10 @@ PrefabInstance:
       value: EatingTask
       objectReference: {fileID: 0}
     - target: {fileID: 2885571860335029127, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
+      propertyPath: taskAnimation
+      value: 
+      objectReference: {fileID: 2931362099718132477, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+    - target: {fileID: 2885571860335029127, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
       propertyPath: maximumWaitTime
       value: 13
       objectReference: {fileID: 0}
@@ -38588,7 +38596,7 @@ PrefabInstance:
       objectReference: {fileID: 8300000, guid: 74508fcaee6b3cf4b95d832187cbc5c1, type: 3}
     - target: {fileID: 7852011858470016110, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -3.84
+      value: -5.35
       objectReference: {fileID: 0}
     - target: {fileID: 7852011858470016110, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
       propertyPath: m_LocalPosition.y
@@ -38596,7 +38604,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7852011858470016110, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -22.63765
+      value: -20.436
       objectReference: {fileID: 0}
     - target: {fileID: 7852011858470016110, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
       propertyPath: m_LocalRotation.w
@@ -48795,6 +48803,10 @@ PrefabInstance:
       value: SleepTask
       objectReference: {fileID: 0}
     - target: {fileID: 2885571860335029127, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
+      propertyPath: taskAnimation
+      value: 
+      objectReference: {fileID: 3532616527226485280, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+    - target: {fileID: 2885571860335029127, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
       propertyPath: maximumWaitTime
       value: 15
       objectReference: {fileID: 0}
@@ -56955,6 +56967,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: WashHandsTask
       objectReference: {fileID: 0}
+    - target: {fileID: 2885571860335029127, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
+      propertyPath: taskAnimation
+      value: 
+      objectReference: {fileID: 6476497563760123848, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
     - target: {fileID: 2885571860335029127, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
       propertyPath: audioPlaybackMode
       value: 1

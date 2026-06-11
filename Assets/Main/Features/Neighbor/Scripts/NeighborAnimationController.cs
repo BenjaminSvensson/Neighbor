@@ -38,6 +38,7 @@ namespace Neighbor.Main.Features.Neighbor
         private AnimatorOverrideController taskAnimationOverrides;
         private AnimationClip defaultTaskAnimation;
         private NeighborTaskLocation activeAnimatedTask;
+        private NeighborTaskLocation.TaskAnimationPhase activeTaskAnimationPhase;
 
         private void Awake()
         {
@@ -94,7 +95,7 @@ namespace Neighbor.Main.Features.Neighbor
             animator.speed = locomotion
                 ? Mathf.Clamp(speed / GetReferenceSpeed(desiredState), minimumLocomotionPlaybackSpeed, maximumLocomotionPlaybackSpeed)
                 : desiredState == TaskState && activeAnimatedTask != null
-                    ? activeAnimatedTask.AnimationPlaybackSpeed
+                    ? activeAnimatedTask.GetAnimationPlaybackSpeed(activeTaskAnimationPhase)
                     : 1f;
         }
 
@@ -182,19 +183,24 @@ namespace Neighbor.Main.Features.Neighbor
         private bool UpdateTaskAnimationOverride()
         {
             NeighborTaskLocation task = brain != null ? brain.ActiveTaskLocation : null;
-            if (task == activeAnimatedTask)
+            NeighborTaskLocation.TaskAnimationPhase phase = brain != null
+                ? brain.ActiveTaskAnimationPhase
+                : NeighborTaskLocation.TaskAnimationPhase.None;
+            if (task == activeAnimatedTask && phase == activeTaskAnimationPhase)
             {
                 return false;
             }
 
             activeAnimatedTask = task;
+            activeTaskAnimationPhase = phase;
             if (taskAnimationOverrides == null || defaultTaskAnimation == null)
             {
                 return false;
             }
 
-            AnimationClip assignedAnimation = task != null && task.TaskAnimation != null
-                ? task.TaskAnimation
+            AnimationClip taskAnimation = task != null ? task.GetAnimation(phase) : null;
+            AnimationClip assignedAnimation = taskAnimation != null
+                ? taskAnimation
                 : defaultTaskAnimation;
             taskAnimationOverrides[defaultTaskAnimation] = assignedAnimation;
             return true;

@@ -136,6 +136,7 @@ namespace Neighbor.Main.Features.Neighbor
         private bool hasPlayerMoveDirectionForCurrentChase;
         private bool waitingAtGoal;
         private bool currentHideSpotKnownOccupied;
+        private NeighborTaskLocation.TaskAnimationPhase currentTaskAnimationPhase;
         private NeighborTaskLocation currentTaskLocation;
         private NeighborTaskLocation activeTaskAudioLocation;
         private NeighborTaskLocation interruptedTaskLocation;
@@ -151,9 +152,13 @@ namespace Neighbor.Main.Features.Neighbor
         public Vector3 LastKnownPlayerPosition => lastKnownPlayerPosition;
         public float Suspicion => suspicion;
         public SuspicionLevel CurrentSuspicionLevel => GetSuspicionLevel();
-        public NeighborTaskLocation ActiveTaskLocation => currentState == BehaviorState.Task && waitingAtGoal
+        public NeighborTaskLocation ActiveTaskLocation => currentState == BehaviorState.Task
+            && currentTaskAnimationPhase != NeighborTaskLocation.TaskAnimationPhase.None
             ? currentTaskLocation
             : null;
+        public NeighborTaskLocation.TaskAnimationPhase ActiveTaskAnimationPhase => ActiveTaskLocation != null
+            ? currentTaskAnimationPhase
+            : NeighborTaskLocation.TaskAnimationPhase.None;
 
         private void Awake()
         {
@@ -630,6 +635,7 @@ namespace Neighbor.Main.Features.Neighbor
                 if (waitingAtGoal)
                 {
                     waitingAtGoal = false;
+                    currentTaskAnimationPhase = NeighborTaskLocation.TaskAnimationPhase.None;
                     StopActiveTaskAudio();
                 }
 
@@ -757,15 +763,34 @@ namespace Neighbor.Main.Features.Neighbor
             if (!waitingAtGoal)
             {
                 waitingAtGoal = true;
-                waitUntilTime = Time.time + goalWaitDuration;
                 if (currentState == BehaviorState.Task)
                 {
                     BeginCurrentTaskAudio();
+                    BeginTaskAnimationPhase(NeighborTaskLocation.TaskAnimationPhase.Starting);
+                }
+                else
+                {
+                    waitUntilTime = Time.time + goalWaitDuration;
                 }
             }
 
-            bool waitComplete = Time.time >= waitUntilTime;
-            if (waitComplete && currentState == BehaviorState.Task)
+            if (Time.time < waitUntilTime)
+            {
+                return false;
+            }
+
+            if (currentState != BehaviorState.Task)
+            {
+                return true;
+            }
+
+            if (currentTaskAnimationPhase == NeighborTaskLocation.TaskAnimationPhase.Starting)
+            {
+                BeginTaskAnimationPhase(NeighborTaskLocation.TaskAnimationPhase.Performing, goalWaitDuration);
+                return false;
+            }
+
+            if (currentTaskAnimationPhase == NeighborTaskLocation.TaskAnimationPhase.Performing)
             {
                 if (currentTaskLocation != null)
                 {
@@ -774,9 +799,28 @@ namespace Neighbor.Main.Features.Neighbor
                 }
 
                 StopActiveTaskAudio(true);
+                BeginTaskAnimationPhase(NeighborTaskLocation.TaskAnimationPhase.Finishing);
+                if (Time.time < waitUntilTime)
+                {
+                    return false;
+                }
             }
 
-            return waitComplete;
+            currentTaskAnimationPhase = NeighborTaskLocation.TaskAnimationPhase.None;
+            return true;
+        }
+
+        private void BeginTaskAnimationPhase(
+            NeighborTaskLocation.TaskAnimationPhase phase,
+            float overrideDuration = -1f)
+        {
+            currentTaskAnimationPhase = phase;
+            float duration = overrideDuration >= 0f
+                ? overrideDuration
+                : currentTaskLocation != null
+                    ? currentTaskLocation.GetAnimationDuration(phase)
+                    : 0f;
+            waitUntilTime = Time.time + Mathf.Max(0f, duration);
         }
 
         private bool TryStartForcedNextTask()
@@ -802,6 +846,7 @@ namespace Neighbor.Main.Features.Neighbor
             currentTaskLocation = taskLocation;
             goalWaitDuration = taskLocation.RandomWaitTime;
             waitingAtGoal = false;
+            currentTaskAnimationPhase = NeighborTaskLocation.TaskAnimationPhase.None;
 
             if (!motor.TrySetDestinationNear(
                     taskLocation.Position,
@@ -1116,6 +1161,7 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (currentState == BehaviorState.Task && state != BehaviorState.Task)
             {
+                currentTaskAnimationPhase = NeighborTaskLocation.TaskAnimationPhase.None;
                 StopActiveTaskAudio();
             }
 
