@@ -82,6 +82,7 @@ namespace Neighbor.Main.Features.Neighbor
         public bool IsTraversingSpecialMove => traversalRoutine != null;
         public bool IsOffMeshChasing => Time.time < offMeshChaseUntilTime;
         public bool IsDetachedFromNavMesh => agent != null && (!agent.updatePosition || !agent.isOnNavMesh);
+        public float CurrentSpeed => agent != null ? agent.velocity.magnitude : 0f;
         public bool HasPath => agent != null && (agent.hasPath || agent.pathPending);
         public float RemainingDistance => agent == null || agent.pathPending ? float.PositiveInfinity : agent.remainingDistance;
         public bool HasArrived => agent != null

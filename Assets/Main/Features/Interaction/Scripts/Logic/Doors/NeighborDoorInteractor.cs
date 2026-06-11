@@ -38,6 +38,9 @@ namespace Neighbor.Main.Features.Interaction
         private float cautiousDoorOpenAtTime;
         private bool cautiousDoorPauseActive;
 
+        public bool IsKickingBlockedDoor => kickingDoor != null;
+        public bool IsInteractingWithDoor => kickingDoor != null || lockedOutDoor != null || cautiousDoorPauseActive;
+
         private void Awake()
         {
             motor = motor != null ? motor : GetComponent<NeighborMotor>();
