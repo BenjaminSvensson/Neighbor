@@ -15,6 +15,7 @@ namespace Neighbor.Main.Features.Neighbor
         private static readonly int HurtState = Animator.StringToHash("Base Layer.Hurt");
         private static readonly int DoorKickState = Animator.StringToHash("Base Layer.DoorKick");
         private const string DefaultTaskClipName = "Idle_Talking_Loop";
+        private const string DefaultHurtClipName = "Hit_Chest";
 
         private enum ActionAnimation
         {
@@ -22,7 +23,10 @@ namespace Neighbor.Main.Features.Neighbor
             Task,
             CatchPlayer,
             SearchCloset,
-            WanderIdle
+            WanderIdle,
+            Traversal,
+            InvestigationArrival,
+            LockedDoor
         }
 
         [SerializeField] private Animator animator;
@@ -38,6 +42,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         [Header("Hurt Reaction")]
         [SerializeField, Min(0f)] private float hurtTransitionDuration = 0.045f;
+        [SerializeField] private AnimationClip[] hurtAnimations;
 
         [Header("Action Animations")]
         [SerializeField] private AnimationClip catchPlayerAnimation;
@@ -46,6 +51,17 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0.05f)] private float searchClosetAnimationSpeed = 1f;
         [SerializeField] private AnimationClip[] wanderIdleAnimations;
         [SerializeField, Min(0.05f)] private float wanderIdleAnimationSpeed = 1f;
+        [SerializeField] private AnimationClip investigationArrivalAnimation;
+        [SerializeField, Min(0.05f)] private float investigationArrivalAnimationSpeed = 1f;
+        [SerializeField] private AnimationClip lockedDoorReactionAnimation;
+        [SerializeField, Min(0.05f)] private float lockedDoorReactionAnimationSpeed = 1f;
+
+        [Header("Traversal Animations")]
+        [SerializeField] private AnimationClip traversalStartAnimation;
+        [SerializeField] private AnimationClip traversalLoopAnimation;
+        [SerializeField] private AnimationClip traversalLandingAnimation;
+        [SerializeField] private AnimationClip climbAnimation;
+        [SerializeField, Min(0.05f)] private float traversalAnimationSpeed = 1f;
 
         [Header("Leg IK")]
         [SerializeField] private NeighborFootIK.Settings legIKSettings = new NeighborFootIK.Settings();
@@ -54,11 +70,13 @@ namespace Neighbor.Main.Features.Neighbor
         private NeighborFootIK footIK;
         private AnimatorOverrideController taskAnimationOverrides;
         private AnimationClip defaultTaskAnimation;
+        private AnimationClip defaultHurtAnimation;
         private NeighborTaskLocation activeAnimatedTask;
         private NeighborTaskLocation.TaskAnimationPhase activeTaskAnimationPhase;
         private ActionAnimation activeActionAnimation;
         private AnimationClip activeOverrideAnimation;
         private float activeActionPlaybackSpeed = 1f;
+        private bool restartActionAnimation;
 
         public float CatchAnimationDuration => catchPlayerAnimation != null
             ? catchPlayerAnimation.length / Mathf.Max(0.05f, catchPlayerAnimationSpeed)
@@ -75,7 +93,7 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 animator.applyRootMotion = false;
                 animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
-                ConfigureTaskAnimationOverrides();
+                ConfigureAnimationOverrides();
                 legIKSettings ??= new NeighborFootIK.Settings();
                 footIK = animator.GetComponent<NeighborFootIK>();
                 if (footIK == null)
@@ -93,6 +111,11 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 impactReceiver.ImpactReceived += PlayHurtReaction;
             }
+
+            if (doorInteractor != null)
+            {
+                doorInteractor.LockedDoorFeedback += RestartActionAnimation;
+            }
         }
 
         private void Update()
@@ -104,16 +127,18 @@ namespace Neighbor.Main.Features.Neighbor
 
             bool actionAnimationChanged = UpdateActionAnimationOverride();
             int desiredState = ChooseState();
-            if (desiredState != currentState || actionAnimationChanged && desiredState == TaskState)
+            bool restartTaskAnimation = desiredState == TaskState && (actionAnimationChanged || restartActionAnimation);
+            if (desiredState != currentState || restartTaskAnimation)
             {
                 animator.CrossFadeInFixedTime(
                     desiredState,
                     transitionDuration,
                     0,
-                    actionAnimationChanged && desiredState == TaskState ? 0f : float.NegativeInfinity);
+                    restartTaskAnimation ? 0f : float.NegativeInfinity);
                 currentState = desiredState;
             }
 
+            restartActionAnimation = false;
             float speed = motor != null ? motor.CurrentSpeed : 0f;
             bool locomotion = desiredState == WalkState || desiredState == CautiousState || desiredState == RunState;
             animator.speed = locomotion
@@ -135,7 +160,7 @@ namespace Neighbor.Main.Features.Neighbor
                 return DoorKickState;
             }
 
-            if (motor != null && motor.IsTraversingSpecialMove)
+            if (motor != null && motor.IsTraversingSpecialMove && activeActionAnimation != ActionAnimation.Traversal)
             {
                 return TraverseState;
             }
@@ -179,7 +204,7 @@ namespace Neighbor.Main.Features.Neighbor
             return state == CautiousState ? 1.65f : 2.4f;
         }
 
-        private void ConfigureTaskAnimationOverrides()
+        private void ConfigureAnimationOverrides()
         {
             RuntimeAnimatorController baseController = animator.runtimeAnimatorController;
             if (baseController == null)
@@ -193,7 +218,11 @@ namespace Neighbor.Main.Features.Neighbor
                 if (clips[i] != null && clips[i].name == DefaultTaskClipName)
                 {
                     defaultTaskAnimation = clips[i];
-                    break;
+                }
+
+                if (clips[i] != null && clips[i].name == DefaultHurtClipName)
+                {
+                    defaultHurtAnimation = clips[i];
                 }
             }
 
@@ -240,6 +269,28 @@ namespace Neighbor.Main.Features.Neighbor
                     : GetRandomWanderIdleAnimation();
                 desiredAnimation = desiredAnimation != null ? desiredAnimation : defaultTaskAnimation;
                 desiredPlaybackSpeed = wanderIdleAnimationSpeed;
+            }
+            else if (motor != null && motor.IsTraversingSpecialMove)
+            {
+                AnimationClip traversalAnimation = GetTraversalAnimation(motor.CurrentTraversalAnimationPhase);
+                if (traversalAnimation != null)
+                {
+                    desiredAction = ActionAnimation.Traversal;
+                    desiredAnimation = traversalAnimation;
+                    desiredPlaybackSpeed = traversalAnimationSpeed;
+                }
+            }
+            else if (doorInteractor != null && doorInteractor.IsReactingToLockedDoor && lockedDoorReactionAnimation != null)
+            {
+                desiredAction = ActionAnimation.LockedDoor;
+                desiredAnimation = lockedDoorReactionAnimation;
+                desiredPlaybackSpeed = lockedDoorReactionAnimationSpeed;
+            }
+            else if (brain != null && brain.IsAtInvestigationGoal && investigationArrivalAnimation != null)
+            {
+                desiredAction = ActionAnimation.InvestigationArrival;
+                desiredAnimation = investigationArrivalAnimation;
+                desiredPlaybackSpeed = investigationArrivalAnimationSpeed;
             }
             else if (task != null)
             {
@@ -293,6 +344,18 @@ namespace Neighbor.Main.Features.Neighbor
             return null;
         }
 
+        private AnimationClip GetTraversalAnimation(NeighborMotor.TraversalAnimationPhase phase)
+        {
+            return phase switch
+            {
+                NeighborMotor.TraversalAnimationPhase.Start => traversalStartAnimation,
+                NeighborMotor.TraversalAnimationPhase.Loop => traversalLoopAnimation,
+                NeighborMotor.TraversalAnimationPhase.Landing => traversalLandingAnimation,
+                NeighborMotor.TraversalAnimationPhase.Climb => climbAnimation,
+                _ => null
+            };
+        }
+
         private void PlayHurtReaction()
         {
             if (animator == null)
@@ -300,8 +363,41 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            AnimationClip hurtAnimation = GetRandomAnimation(hurtAnimations);
+            if (taskAnimationOverrides != null && defaultHurtAnimation != null)
+            {
+                taskAnimationOverrides[defaultHurtAnimation] = hurtAnimation != null
+                    ? hurtAnimation
+                    : defaultHurtAnimation;
+            }
+
             animator.CrossFadeInFixedTime(HurtState, hurtTransitionDuration, 0, 0f);
             currentState = HurtState;
+        }
+
+        private void RestartActionAnimation()
+        {
+            restartActionAnimation = true;
+        }
+
+        private static AnimationClip GetRandomAnimation(AnimationClip[] animations)
+        {
+            if (animations == null || animations.Length == 0)
+            {
+                return null;
+            }
+
+            int startIndex = Random.Range(0, animations.Length);
+            for (int offset = 0; offset < animations.Length; offset++)
+            {
+                AnimationClip animation = animations[(startIndex + offset) % animations.Length];
+                if (animation != null)
+                {
+                    return animation;
+                }
+            }
+
+            return null;
         }
 
         private void OnDisable()
@@ -309,6 +405,11 @@ namespace Neighbor.Main.Features.Neighbor
             if (impactReceiver != null)
             {
                 impactReceiver.ImpactReceived -= PlayHurtReaction;
+            }
+
+            if (doorInteractor != null)
+            {
+                doorInteractor.LockedDoorFeedback -= RestartActionAnimation;
             }
 
             if (animator != null)

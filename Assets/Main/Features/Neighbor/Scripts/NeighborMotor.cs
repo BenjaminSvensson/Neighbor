@@ -14,6 +14,15 @@ namespace Neighbor.Main.Features.Neighbor
             Run
         }
 
+        public enum TraversalAnimationPhase
+        {
+            None,
+            Start,
+            Loop,
+            Landing,
+            Climb
+        }
+
         [Header("Movement")]
         [SerializeField, Min(0f)] private float walkSpeed = 2.4f;
         [SerializeField, Min(0f)] private float cautiousSpeed = 1.65f;
@@ -39,6 +48,8 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField] private bool traverseOffMeshLinks = true;
         [SerializeField, Min(0.01f)] private float offMeshTraverseDuration = 0.34f;
         [SerializeField, Min(0f)] private float offMeshJumpHeight = 0.75f;
+        [SerializeField, Range(0f, 0.8f)] private float traversalStartPortion = 0.24f;
+        [SerializeField, Min(0f)] private float traversalLandingReactionDuration = 0.28f;
         [SerializeField] private bool enableLedgeClimb = true;
         [SerializeField, Min(0.1f)] private float ledgeCheckDistance = 0.75f;
         [SerializeField, Min(0f)] private float ledgeMinimumHeight = 0.45f;
@@ -78,8 +89,10 @@ namespace Neighbor.Main.Features.Neighbor
         private Vector3 dynamicObstacleDetour;
         private float dynamicObstacleDetourUntilTime;
         private float nextDynamicObstacleProbeTime;
+        private TraversalAnimationPhase traversalAnimationPhase;
 
         public bool IsTraversingSpecialMove => traversalRoutine != null;
+        public TraversalAnimationPhase CurrentTraversalAnimationPhase => traversalAnimationPhase;
         public bool IsOffMeshChasing => Time.time < offMeshChaseUntilTime;
         public bool IsDetachedFromNavMesh => agent != null && (!agent.updatePosition || !agent.isOnNavMesh);
         public float CurrentSpeed => agent != null ? agent.velocity.magnitude : 0f;
@@ -386,6 +399,11 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 StopCoroutine(traversalRoutine);
                 traversalRoutine = null;
+                traversalAnimationPhase = TraversalAnimationPhase.None;
+                if (agent != null && agent.enabled && agent.isOnNavMesh)
+                {
+                    agent.isStopped = false;
+                }
             }
 
             isAvoidingDynamicObstacle = false;
@@ -435,6 +453,11 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 StopCoroutine(traversalRoutine);
                 traversalRoutine = null;
+                traversalAnimationPhase = TraversalAnimationPhase.None;
+                if (agent != null && agent.enabled && agent.isOnNavMesh)
+                {
+                    agent.isStopped = false;
+                }
             }
 
             if (knockbackRoutine != null)
@@ -799,11 +822,17 @@ namespace Neighbor.Main.Features.Neighbor
 
             agent.updatePosition = false;
             agent.updateRotation = false;
+            traversalAnimationPhase = TraversalAnimationPhase.Start;
 
             while (timer < offMeshTraverseDuration)
             {
                 timer += Time.deltaTime;
                 float t = Mathf.Clamp01(timer / offMeshTraverseDuration);
+                if (t >= traversalStartPortion)
+                {
+                    traversalAnimationPhase = TraversalAnimationPhase.Loop;
+                }
+
                 float arc = Mathf.Sin(t * Mathf.PI) * offMeshJumpHeight;
                 transform.position = Vector3.Lerp(start, end, t) + Vector3.up * arc;
                 FaceTowards(end, 16f);
@@ -815,7 +844,9 @@ namespace Neighbor.Main.Features.Neighbor
             agent.updateRotation = true;
             agent.Warp(end);
             agent.CompleteOffMeshLink();
+            yield return PlayLandingReaction();
             traversalRoutine = null;
+            traversalAnimationPhase = TraversalAnimationPhase.None;
         }
 
         private bool TryStartLedgeClimb()
@@ -886,6 +917,7 @@ namespace Neighbor.Main.Features.Neighbor
 
             agent.updatePosition = false;
             agent.updateRotation = false;
+            traversalAnimationPhase = TraversalAnimationPhase.Climb;
 
             float moveDuration = Mathf.Max(0.01f, duration);
             while (timer < moveDuration)
@@ -926,7 +958,9 @@ namespace Neighbor.Main.Features.Neighbor
                 }
             }
 
+            yield return PlayLandingReaction();
             traversalRoutine = null;
+            traversalAnimationPhase = TraversalAnimationPhase.None;
         }
 
         private IEnumerator JumpToPoint(Vector3 target, float duration, float arcHeight)
@@ -940,12 +974,18 @@ namespace Neighbor.Main.Features.Neighbor
 
             agent.updatePosition = false;
             agent.updateRotation = false;
+            traversalAnimationPhase = TraversalAnimationPhase.Start;
 
             float moveDuration = Mathf.Max(0.01f, duration);
             while (timer < moveDuration)
             {
                 timer += Time.deltaTime;
                 float t = Mathf.Clamp01(timer / moveDuration);
+                if (t >= traversalStartPortion)
+                {
+                    traversalAnimationPhase = TraversalAnimationPhase.Loop;
+                }
+
                 float arc = Mathf.Sin(t * Mathf.PI) * arcHeight;
                 transform.position = Vector3.Lerp(start, target, t) + Vector3.up * arc;
                 FaceTowards(target, 18f);
@@ -967,7 +1007,31 @@ namespace Neighbor.Main.Features.Neighbor
                 offMeshChaseUntilTime = Time.time + postClimbOffMeshChaseTime;
             }
 
+            yield return PlayLandingReaction();
             traversalRoutine = null;
+            traversalAnimationPhase = TraversalAnimationPhase.None;
+        }
+
+        private IEnumerator PlayLandingReaction()
+        {
+            traversalAnimationPhase = TraversalAnimationPhase.Landing;
+            bool restoreMovement = agent != null && agent.enabled && agent.isOnNavMesh && !agent.isStopped;
+            if (restoreMovement)
+            {
+                agent.isStopped = true;
+            }
+
+            float timer = 0f;
+            while (timer < traversalLandingReactionDuration)
+            {
+                timer += Time.deltaTime;
+                yield return null;
+            }
+
+            if (restoreMovement && agent != null && agent.enabled && agent.isOnNavMesh)
+            {
+                agent.isStopped = false;
+            }
         }
 
         private IEnumerator Knockback(Vector3 direction, float distance, float duration)

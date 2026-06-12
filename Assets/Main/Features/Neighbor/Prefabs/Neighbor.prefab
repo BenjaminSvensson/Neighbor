@@ -722,6 +722,8 @@ MonoBehaviour:
   traverseOffMeshLinks: 1
   offMeshTraverseDuration: 0.34
   offMeshJumpHeight: 1.1
+  traversalStartPortion: 0.24
+  traversalLandingReactionDuration: 0.28
   enableLedgeClimb: 1
   ledgeCheckDistance: 0.75
   ledgeMinimumHeight: 0.45
@@ -1044,6 +1046,11 @@ MonoBehaviour:
   transitionDuration: 0.16
   minimumLocomotionPlaybackSpeed: 0.7
   maximumLocomotionPlaybackSpeed: 1.4
+  hurtTransitionDuration: 0.045
+  hurtAnimations:
+  - {fileID: -245273357908900549, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  - {fileID: -8534173349268677819, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  - {fileID: 937510309337268382, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
   catchPlayerAnimation: {fileID: -8061687084165900903, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
   catchPlayerAnimationSpeed: 1
   searchClosetAnimation: {fileID: 6621786791131625799, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
@@ -1053,6 +1060,15 @@ MonoBehaviour:
   - {fileID: 4980751744999542695, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
   - {fileID: 5000254507835852519, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
   wanderIdleAnimationSpeed: 1
+  investigationArrivalAnimation: {fileID: 5000254507835852519, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
+  investigationArrivalAnimationSpeed: 1
+  lockedDoorReactionAnimation: {fileID: -2328835098782832033, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  lockedDoorReactionAnimationSpeed: 1
+  traversalStartAnimation: {fileID: -1862932125039169580, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  traversalLoopAnimation: {fileID: -3659967873887649963, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  traversalLandingAnimation: {fileID: 4832780573735333345, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  climbAnimation: {fileID: -8073916434604345353, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
+  traversalAnimationSpeed: 1
 --- !u!1 &5797687532467202263
 GameObject:
   m_ObjectHideFlags: 0

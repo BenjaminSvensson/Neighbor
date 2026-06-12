@@ -1,4 +1,5 @@
 using Neighbor.Main.Features.Neighbor;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -44,7 +45,9 @@ namespace Neighbor.Main.Features.Interaction
         private float recentlyAvoidedBlockedDoorUntilTime;
 
         public bool IsKickingBlockedDoor => kickingDoor != null;
+        public bool IsReactingToLockedDoor => lockedOutDoor != null;
         public bool IsInteractingWithDoor => kickingDoor != null || lockedOutDoor != null || cautiousDoorPauseActive;
+        public event Action LockedDoorFeedback;
 
         private void Awake()
         {
@@ -309,6 +312,7 @@ namespace Neighbor.Main.Features.Interaction
 
             if (Time.time >= nextLockedDoorFeedbackTime)
             {
+                LockedDoorFeedback?.Invoke();
                 lockedOutDoor.TryOpenForNeighbor(transform);
                 nextLockedDoorFeedbackTime = Time.time + lockedDoorRetryInterval;
             }

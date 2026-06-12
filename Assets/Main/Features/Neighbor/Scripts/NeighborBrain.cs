@@ -177,6 +177,10 @@ namespace Neighbor.Main.Features.Neighbor
             && waitingAtGoal
             && motor != null
             && motor.HasArrived;
+        public bool IsAtInvestigationGoal => currentState == BehaviorState.Investigate
+            && waitingAtGoal
+            && motor != null
+            && motor.HasArrived;
 
         private void Awake()
         {
