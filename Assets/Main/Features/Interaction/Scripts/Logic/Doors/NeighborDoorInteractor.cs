@@ -49,6 +49,11 @@ namespace Neighbor.Main.Features.Interaction
         public bool IsKickingBlockedDoor => kickingDoor != null;
         public bool IsReactingToLockedDoor => lockedOutDoor != null;
         public bool IsOpeningDoor => cautiousDoorPauseActive;
+        public Door ActiveDoor => kickingDoor != null
+            ? kickingDoor
+            : lockedOutDoor != null
+                ? lockedOutDoor
+                : cautiouslyOpeningDoor;
         public bool IsInteractingWithDoor => kickingDoor != null || lockedOutDoor != null || cautiousDoorPauseActive;
         public event Action LockedDoorFeedback;
 

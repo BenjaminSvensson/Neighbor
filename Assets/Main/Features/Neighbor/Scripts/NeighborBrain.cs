@@ -157,7 +157,21 @@ namespace Neighbor.Main.Features.Neighbor
         private float nextPredictionDecisionTime;
 
         public BehaviorState CurrentState => currentState;
+        public Transform Player => player;
+        public Vector3 CurrentGoal => currentGoal;
         public Vector3 LastKnownPlayerPosition => lastKnownPlayerPosition;
+        public Vector3 LastSeenPlayerMoveDirection => lastSeenPlayerMoveDirection;
+        public bool HasSeenPlayer => !float.IsNegativeInfinity(lastPlayerSeenTime);
+        public bool IsPlayerVisible => isPlayerVisible;
+        public bool IsWaitingAtGoal => waitingAtGoal;
+        public float WaitTimeRemaining => waitingAtGoal ? Mathf.Max(0f, waitUntilTime - Time.time) : 0f;
+        public float HuntTimeRemaining => currentState == BehaviorState.HuntMode ? Mathf.Max(0f, huntUntilTime - Time.time) : 0f;
+        public int VisitedSearchPointCount => visitedSearchPoints.Count;
+        public int RequiredSearchPointVisits => requiredSearchPointVisits;
+        public NeighborTaskLocation CurrentTaskLocation => currentTaskLocation;
+        public NeighborSearchPoint CurrentSearchPoint => currentSearchPoint;
+        public ClosetHideSpot CurrentHideSpot => currentHideSpot;
+        public GameObject CurrentInvestigationSource => currentInvestigationSource;
         public float Suspicion => suspicion;
         public SuspicionLevel CurrentSuspicionLevel => GetSuspicionLevel();
         public NeighborTaskLocation ActiveTaskLocation => currentState == BehaviorState.Task

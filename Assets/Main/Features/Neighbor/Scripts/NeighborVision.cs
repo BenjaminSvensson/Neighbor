@@ -18,6 +18,12 @@ namespace Neighbor.Main.Features.Neighbor
 
         public Transform VisibleTarget { get; private set; }
         public Vector3 LastSeenPosition { get; private set; }
+        public Vector3 EyePosition => eye != null
+            ? eye.position + Vector3.up * eyeHeight
+            : transform.position + Vector3.up * eyeHeight;
+        public float ViewDistance => viewDistance;
+        public float ViewAngle => viewAngle;
+        public float CloseDetectionDistance => closeDetectionDistance;
 
         private void Awake()
         {
@@ -77,10 +83,6 @@ namespace Neighbor.Main.Features.Neighbor
             seenPosition = LastSeenPosition;
             return true;
         }
-
-        private Vector3 EyePosition => eye != null
-            ? eye.position + Vector3.up * eyeHeight
-            : transform.position + Vector3.up * eyeHeight;
 
         private static Vector3 GetTargetAimPoint(Transform targetTransform)
         {

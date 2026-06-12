@@ -96,6 +96,10 @@ namespace Neighbor.Main.Features.Neighbor
         public TraversalAnimationPhase CurrentTraversalAnimationPhase => traversalAnimationPhase;
         public bool IsOffMeshChasing => Time.time < offMeshChaseUntilTime;
         public bool IsDetachedFromNavMesh => agent != null && (!agent.updatePosition || !agent.isOnNavMesh);
+        public bool IsPaused => isPaused;
+        public bool IsAvoidingDynamicObstacle => isAvoidingDynamicObstacle;
+        public Vector3 DynamicObstacleDetour => dynamicObstacleDetour;
+        public Vector3 RequestedDestination => requestedDestination;
         public float CurrentSpeed => agent != null ? agent.velocity.magnitude : 0f;
         public bool HasPath => agent != null && (agent.hasPath || agent.pathPending);
         public float ConfiguredSpeed => agent != null ? agent.speed : walkSpeed;

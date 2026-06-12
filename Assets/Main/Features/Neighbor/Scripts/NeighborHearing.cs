@@ -33,6 +33,11 @@ namespace Neighbor.Main.Features.Neighbor
         private float lastHeardTime = float.NegativeInfinity;
 
         public static IReadOnlyList<NeighborHearing> Listeners => ActiveListeners;
+        public Vector3 LastHeardPosition { get; private set; }
+        public float LastHeardLoudness { get; private set; }
+        public float LastHeardUrgency { get; private set; }
+        public float LastHeardAge => Time.time - lastHeardTime;
+        public GameObject LastHeardSource { get; private set; }
         public event Action<NeighborNoiseStimulus> NoiseHeard;
 
         private void OnEnable()
@@ -71,6 +76,10 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             lastHeardTime = Time.time;
+            LastHeardPosition = noiseEvent.Origin;
+            LastHeardLoudness = noiseEvent.Loudness01;
+            LastHeardUrgency = noiseEvent.Urgency01;
+            LastHeardSource = noiseEvent.SourceObject;
             NoiseHeard?.Invoke(new NeighborNoiseStimulus(
                 noiseEvent.Origin,
                 noiseEvent.Loudness01,
