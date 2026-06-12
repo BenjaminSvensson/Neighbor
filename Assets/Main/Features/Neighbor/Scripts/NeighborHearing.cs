@@ -30,7 +30,7 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Range(0f, 1f)] private float minimumLoudness = 0.05f;
         [SerializeField, Min(0f)] private float hearingCooldown = 0.2f;
 
-        private float lastHeardTime;
+        private float lastHeardTime = float.NegativeInfinity;
 
         public static IReadOnlyList<NeighborHearing> Listeners => ActiveListeners;
         public event Action<NeighborNoiseStimulus> NoiseHeard;

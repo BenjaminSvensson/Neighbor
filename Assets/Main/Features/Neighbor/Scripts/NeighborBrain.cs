@@ -221,7 +221,7 @@ namespace Neighbor.Main.Features.Neighbor
         private void Update()
         {
             ResolvePlayer();
-            UpdateSuspicion();
+            UpdateSuspicion(Time.deltaTime);
             if (IsStunned)
             {
                 return;
@@ -1396,7 +1396,7 @@ namespace Neighbor.Main.Features.Neighbor
             }
         }
 
-        private void UpdateSuspicion()
+        private void UpdateSuspicion(float deltaTime)
         {
             if (currentState == BehaviorState.Chase || currentState == BehaviorState.Catching)
             {
@@ -1405,7 +1405,7 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             float decayMultiplier = currentState == BehaviorState.HuntMode ? 0.2f : 1f;
-            suspicion = Mathf.MoveTowards(suspicion, 0f, suspicionDecayPerSecond * decayMultiplier * Time.deltaTime);
+            suspicion = Mathf.MoveTowards(suspicion, 0f, suspicionDecayPerSecond * decayMultiplier * deltaTime);
         }
 
         private void AddSuspicion(float amount, GameObject source)

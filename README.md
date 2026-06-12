@@ -19,6 +19,15 @@ Run the repository health check from PowerShell:
 .\Tools\Validate-Project.ps1
 ```
 
-The script checks Unity metadata pairs, duplicate GUIDs, Git LFS objects, and C# compilation. When no Unity editor has the project open, it also starts the matching editor in batch mode and scans every prefab and scene for missing scripts.
+The script checks Unity metadata pairs, duplicate GUIDs, Git LFS objects, and C# compilation. When no Unity editor has the project open, it also runs the EditMode smoke-test suite and starts the matching editor in batch mode to scan every prefab and scene for missing scripts. Test results are written to `Logs/EditModeTestResults.xml`.
 
 The same asset scan is available in Unity from `Tools > Neighbor > Validate Project`.
+
+To run only the automated smoke tests from PowerShell:
+
+```powershell
+$unity = "$env:ProgramFiles\Unity\Hub\Editor\6000.4.6f1\Editor\Unity.exe"
+& $unity -batchmode -projectPath $PWD -runTests -testPlatform EditMode -testResults Logs/EditModeTestResults.xml -logFile Logs/EditModeTests.log
+```
+
+The tests are also available in Unity from `Window > General > Test Runner` under the EditMode tab.

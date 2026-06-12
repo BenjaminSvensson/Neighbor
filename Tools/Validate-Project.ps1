@@ -105,6 +105,70 @@ function Test-GitLfs {
     }
 }
 
+function Get-UnityEditorPath {
+    $versionLine = Get-Content -LiteralPath "ProjectSettings\ProjectVersion.txt" |
+        Where-Object { $_ -like "m_EditorVersion:*" } |
+        Select-Object -First 1
+    $version = ($versionLine -split ":", 2)[1].Trim()
+    $unityPath = Join-Path $env:ProgramFiles "Unity\Hub\Editor\$version\Editor\Unity.exe"
+    if (-not (Test-Path -LiteralPath $unityPath)) {
+        Write-Issue "Unity $version was not found at $unityPath"
+        return $null
+    }
+
+    return $unityPath
+}
+
+function Test-UnityEditModeTests {
+    if ($SkipUnity) {
+        Write-Host "Skipping Unity EditMode tests by request." -ForegroundColor Yellow
+        return
+    }
+
+    if (Test-Path -LiteralPath "Temp\UnityLockfile") {
+        Write-Host "Skipping Unity EditMode tests because this project is open in the editor." -ForegroundColor Yellow
+        return
+    }
+
+    $unityPath = Get-UnityEditorPath
+    if ($null -eq $unityPath) {
+        return
+    }
+
+    Write-Host "Running Unity EditMode tests..."
+    $logPath = Join-Path $projectRoot "Logs\EditModeTests.log"
+    $resultsPath = Join-Path $projectRoot "Logs\EditModeTestResults.xml"
+    Remove-Item -LiteralPath $resultsPath -Force -ErrorAction SilentlyContinue
+    $arguments = @(
+        "-batchmode",
+        "-projectPath", "`"$projectRoot`"",
+        "-runTests",
+        "-testPlatform", "EditMode",
+        "-testResults", "`"$resultsPath`"",
+        "-logFile", "`"$logPath`""
+    )
+    $unityProcess = Start-Process -FilePath $unityPath -ArgumentList $arguments -Wait -PassThru -WindowStyle Hidden
+    $logText = ""
+    if (Test-Path -LiteralPath $logPath) {
+        $logText = Get-Content -LiteralPath $logPath -Raw
+    }
+
+    if ($logText -match "another Unity instance is running") {
+        Write-Host "Skipping Unity EditMode tests because this project is open in the editor." -ForegroundColor Yellow
+        return
+    }
+
+    if ($unityProcess.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $resultsPath)) {
+        Write-Issue "Unity EditMode tests failed. See $logPath and $resultsPath"
+        return
+    }
+
+    [xml]$testResults = Get-Content -LiteralPath $resultsPath -Raw
+    if ([int]$testResults."test-run".failed -gt 0) {
+        Write-Issue "Unity EditMode tests reported failures. See $logPath and $resultsPath"
+    }
+}
+
 function Test-UnityAssets {
     if ($SkipUnity) {
         Write-Host "Skipping Unity asset validation by request." -ForegroundColor Yellow
@@ -116,17 +180,12 @@ function Test-UnityAssets {
         return
     }
 
-    $versionLine = Get-Content -LiteralPath "ProjectSettings\ProjectVersion.txt" |
-        Where-Object { $_ -like "m_EditorVersion:*" } |
-        Select-Object -First 1
-    $version = ($versionLine -split ":", 2)[1].Trim()
-    $unityPath = Join-Path $env:ProgramFiles "Unity\Hub\Editor\$version\Editor\Unity.exe"
-    if (-not (Test-Path -LiteralPath $unityPath)) {
-        Write-Issue "Unity $version was not found at $unityPath"
+    $unityPath = Get-UnityEditorPath
+    if ($null -eq $unityPath) {
         return
     }
 
-    Write-Host "Validating prefabs and scenes with Unity $version..."
+    Write-Host "Validating prefabs and scenes with Unity..."
     $logPath = Join-Path $projectRoot "Logs\ProjectValidation.log"
     $arguments = @(
         "-batchmode",
@@ -157,6 +216,7 @@ try {
     Test-DuplicateGuids
     Test-GitLfs
     Test-CSharpCompilation
+    Test-UnityEditModeTests
     Test-UnityAssets
 
     if ($issueCount -gt 0) {
