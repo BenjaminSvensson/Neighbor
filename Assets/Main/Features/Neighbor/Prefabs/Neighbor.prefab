@@ -829,7 +829,9 @@ MonoBehaviour:
   lockedDoorRetryInterval: 0.7
   lockedDoorAbortDistance: 2.2
   kickTurnSharpness: 12
-  cautiousDoorOpenPause: 0.32
+  doorOpenPause: 0.42
+  cautiousDoorOpenPause: 0.52
+  chaseDoorOpenPause: 0.22
   closeDoorsBehindNeighbor: 1
   closeBehindDelay: 0.65
   closeBehindDistance: 1.35
@@ -1064,6 +1066,8 @@ MonoBehaviour:
   investigationArrivalAnimationSpeed: 1
   lockedDoorReactionAnimation: {fileID: -2328835098782832033, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
   lockedDoorReactionAnimationSpeed: 1
+  openDoorAnimation: {fileID: -2328835098782832033, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  openDoorAnimationSpeed: 1
   traversalStartAnimation: {fileID: -1862932125039169580, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
   traversalLoopAnimation: {fileID: -3659967873887649963, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
   traversalLandingAnimation: {fileID: 4832780573735333345, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}

@@ -26,7 +26,8 @@ namespace Neighbor.Main.Features.Neighbor
             WanderIdle,
             Traversal,
             InvestigationArrival,
-            LockedDoor
+            LockedDoor,
+            OpeningDoor
         }
 
         [SerializeField] private Animator animator;
@@ -55,6 +56,8 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0.05f)] private float investigationArrivalAnimationSpeed = 1f;
         [SerializeField] private AnimationClip lockedDoorReactionAnimation;
         [SerializeField, Min(0.05f)] private float lockedDoorReactionAnimationSpeed = 1f;
+        [SerializeField] private AnimationClip openDoorAnimation;
+        [SerializeField, Min(0.05f)] private float openDoorAnimationSpeed = 1f;
 
         [Header("Traversal Animations")]
         [SerializeField] private AnimationClip traversalStartAnimation;
@@ -285,6 +288,12 @@ namespace Neighbor.Main.Features.Neighbor
                 desiredAction = ActionAnimation.LockedDoor;
                 desiredAnimation = lockedDoorReactionAnimation;
                 desiredPlaybackSpeed = lockedDoorReactionAnimationSpeed;
+            }
+            else if (doorInteractor != null && doorInteractor.IsOpeningDoor && openDoorAnimation != null)
+            {
+                desiredAction = ActionAnimation.OpeningDoor;
+                desiredAnimation = openDoorAnimation;
+                desiredPlaybackSpeed = openDoorAnimationSpeed;
             }
             else if (brain != null && brain.IsAtInvestigationGoal && investigationArrivalAnimation != null)
             {

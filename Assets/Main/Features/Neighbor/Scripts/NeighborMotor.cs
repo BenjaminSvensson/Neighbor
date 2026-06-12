@@ -86,6 +86,7 @@ namespace Neighbor.Main.Features.Neighbor
         private readonly RaycastHit[] dynamicObstacleHits = new RaycastHit[12];
         private NavMeshPath dynamicObstaclePath;
         private bool isAvoidingDynamicObstacle;
+        private bool isPaused;
         private Vector3 dynamicObstacleDetour;
         private float dynamicObstacleDetourUntilTime;
         private float nextDynamicObstacleProbeTime;
@@ -198,7 +199,7 @@ namespace Neighbor.Main.Features.Neighbor
             requestedDestination = hit.position;
             hasRequestedDestination = true;
             sampledDestination = hit.position;
-            agent.isStopped = false;
+            agent.isStopped = isPaused;
             if (isAvoidingDynamicObstacle)
             {
                 return true;
@@ -439,6 +440,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         public void SetPaused(bool paused)
         {
+            isPaused = paused;
             if (agent == null || !agent.enabled || !agent.isOnNavMesh)
             {
                 return;
@@ -468,6 +470,7 @@ namespace Neighbor.Main.Features.Neighbor
 
             hasRequestedDestination = false;
             isAvoidingDynamicObstacle = false;
+            isPaused = false;
             offMeshChaseUntilTime = 0f;
 
             if (agent != null && agent.enabled)

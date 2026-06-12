@@ -22,7 +22,9 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0.05f)] private float lockedDoorRetryInterval = 0.7f;
         [SerializeField, Min(0f)] private float lockedDoorAbortDistance = 2.2f;
         [SerializeField, Min(0f)] private float kickTurnSharpness = 12f;
-        [SerializeField, Min(0f)] private float cautiousDoorOpenPause = 0.32f;
+        [SerializeField, Min(0f)] private float doorOpenPause = 0.42f;
+        [SerializeField, Min(0f)] private float cautiousDoorOpenPause = 0.52f;
+        [SerializeField, Min(0f)] private float chaseDoorOpenPause = 0.22f;
         [SerializeField] private bool closeDoorsBehindNeighbor = true;
         [SerializeField, Min(0f)] private float closeBehindDelay = 0.15f;
         [SerializeField, Min(0f)] private float closeBehindDistance = 1.5f;
@@ -46,6 +48,7 @@ namespace Neighbor.Main.Features.Interaction
 
         public bool IsKickingBlockedDoor => kickingDoor != null;
         public bool IsReactingToLockedDoor => lockedOutDoor != null;
+        public bool IsOpeningDoor => cautiousDoorPauseActive;
         public bool IsInteractingWithDoor => kickingDoor != null || lockedOutDoor != null || cautiousDoorPauseActive;
         public event Action LockedDoorFeedback;
 
@@ -104,12 +107,11 @@ namespace Neighbor.Main.Features.Interaction
                     return;
                 }
 
-                if (!door.IsOpen && cautiousDoorOpenPause > 0f && brain != null
-                    && (brain.CurrentState == NeighborBrain.BehaviorState.Investigate
-                        || brain.CurrentState == NeighborBrain.BehaviorState.HuntMode))
+                float openPause = GetDoorOpenPause();
+                if (!door.IsOpen && openPause > 0f)
                 {
                     cautiouslyOpeningDoor = door;
-                    cautiousDoorOpenAtTime = Time.time + cautiousDoorOpenPause;
+                    cautiousDoorOpenAtTime = Time.time + openPause;
                     cautiousDoorPauseActive = true;
                     motor?.SetPaused(true);
                     return;
@@ -151,6 +153,22 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             nextInteractionTime = Time.time + interactionCooldown;
+        }
+
+        private float GetDoorOpenPause()
+        {
+            if (brain == null)
+            {
+                return doorOpenPause;
+            }
+
+            return brain.CurrentState switch
+            {
+                NeighborBrain.BehaviorState.Chase => chaseDoorOpenPause,
+                NeighborBrain.BehaviorState.Investigate => cautiousDoorOpenPause,
+                NeighborBrain.BehaviorState.HuntMode => cautiousDoorOpenPause,
+                _ => doorOpenPause
+            };
         }
 
         private void BeginBlockedDoorKick(Door door)
