@@ -1044,6 +1044,15 @@ MonoBehaviour:
   transitionDuration: 0.16
   minimumLocomotionPlaybackSpeed: 0.7
   maximumLocomotionPlaybackSpeed: 1.4
+  catchPlayerAnimation: {fileID: -8061687084165900903, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
+  catchPlayerAnimationSpeed: 1
+  searchClosetAnimation: {fileID: 6621786791131625799, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
+  searchClosetAnimationSpeed: 1
+  wanderIdleAnimations:
+  - {fileID: -7062361950610221846, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
+  - {fileID: 4980751744999542695, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
+  - {fileID: 5000254507835852519, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
+  wanderIdleAnimationSpeed: 1
 --- !u!1 &5797687532467202263
 GameObject:
   m_ObjectHideFlags: 0

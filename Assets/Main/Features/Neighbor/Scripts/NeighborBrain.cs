@@ -38,6 +38,7 @@ namespace Neighbor.Main.Features.Neighbor
             Wander,
             Investigate,
             Chase,
+            Catching,
             HuntMode,
             Stunned
         }
@@ -91,6 +92,8 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float chaseMemoryTime = 3.5f;
         [SerializeField, Min(0f)] private float chaseRepathInterval = 0.12f;
         [SerializeField, Min(0f)] private float catchDistance = 0.72f;
+        [SerializeField, Min(0f)] private float catchAnimationFallbackDuration = 0.55f;
+        [SerializeField, Min(0f)] private float maximumCatchAnimationDuration = 2.5f;
         [SerializeField, Min(0f)] private float offMeshDirectChaseSpeed = 4.5f;
         [SerializeField, Min(0f)] private float climbCommitVerticalDifference = 0.45f;
         [SerializeField, Min(0f)] private float dropCommitVerticalDifference = 0.55f;
@@ -140,6 +143,9 @@ namespace Neighbor.Main.Features.Neighbor
         private NeighborTaskLocation currentTaskLocation;
         private NeighborTaskLocation activeTaskAudioLocation;
         private NeighborTaskLocation interruptedTaskLocation;
+        private NeighborAnimationController animationController;
+        private PlayerController caughtPlayer;
+        private float catchPlayerAtTime;
         private NeighborMotor.MoveMode investigationMoveMode = NeighborMotor.MoveMode.Walk;
         private Vector3 startingPosition;
         private Quaternion startingRotation;
@@ -159,6 +165,16 @@ namespace Neighbor.Main.Features.Neighbor
         public NeighborTaskLocation.TaskAnimationPhase ActiveTaskAnimationPhase => ActiveTaskLocation != null
             ? currentTaskAnimationPhase
             : NeighborTaskLocation.TaskAnimationPhase.None;
+        public bool IsCatchingPlayer => currentState == BehaviorState.Catching;
+        public bool IsSearchingHideSpot => currentState == BehaviorState.HuntMode
+            && currentHideSpot != null
+            && waitingAtGoal
+            && motor != null
+            && motor.HasArrived;
+        public bool IsWaitingDuringWander => currentState == BehaviorState.Wander
+            && waitingAtGoal
+            && motor != null
+            && motor.HasArrived;
 
         private void Awake()
         {
@@ -167,6 +183,7 @@ namespace Neighbor.Main.Features.Neighbor
             motor = motor != null ? motor : GetComponent<NeighborMotor>();
             vision = vision != null ? vision : GetComponent<NeighborVision>();
             hearing = hearing != null ? hearing : GetComponent<NeighborHearing>();
+            animationController = GetComponent<NeighborAnimationController>();
             ResolvePlayer();
         }
 
@@ -215,6 +232,11 @@ namespace Neighbor.Main.Features.Neighbor
 
         public void Stun(float duration)
         {
+            if (currentState == BehaviorState.Catching)
+            {
+                return;
+            }
+
             RememberInterruptedTask();
             suspicion = Mathf.Max(suspicion, certainThreshold);
             RememberPlayerActivity(transform.position);
@@ -264,6 +286,11 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            if (currentState == BehaviorState.Catching)
+            {
+                return;
+            }
+
             if (Time.time < ignorePlayerSightUntilTime)
             {
                 return;
@@ -294,6 +321,9 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 case BehaviorState.Chase:
                     UpdateChase();
+                    break;
+                case BehaviorState.Catching:
+                    UpdateCatching();
                     break;
                 case BehaviorState.Investigate:
                     UpdateInvestigate();
@@ -348,15 +378,53 @@ namespace Neighbor.Main.Features.Neighbor
             if (player != null && Vector3.Distance(transform.position, player.position) <= catchDistance)
             {
                 PlayerController playerController = player.GetComponent<PlayerController>() ?? player.GetComponentInParent<PlayerController>();
-                if (PlayerDeathController.Kill(playerController, transform.position))
-                {
-                    motor.Stop();
-                }
-
+                BeginCatchingPlayer(playerController);
                 return;
             }
 
             if (!canStillChase)
+            {
+                BeginHuntMode(lastKnownPlayerPosition);
+            }
+        }
+
+        private void BeginCatchingPlayer(PlayerController playerController)
+        {
+            if (playerController == null || currentState == BehaviorState.Catching)
+            {
+                return;
+            }
+
+            caughtPlayer = playerController;
+            player = playerController.transform;
+            caughtPlayer.PrepareForDeath();
+            currentClimbLink = null;
+            motor?.Stop();
+            SetState(BehaviorState.Catching);
+
+            float animationDuration = animationController != null
+                ? animationController.CatchAnimationDuration
+                : 0f;
+            float duration = animationDuration > 0f ? animationDuration : catchAnimationFallbackDuration;
+            catchPlayerAtTime = Time.time + Mathf.Min(duration, maximumCatchAnimationDuration);
+        }
+
+        private void UpdateCatching()
+        {
+            motor?.Stop();
+            if (caughtPlayer != null)
+            {
+                motor?.FaceTowards(caughtPlayer.transform.position, 18f);
+            }
+
+            if (Time.time < catchPlayerAtTime)
+            {
+                return;
+            }
+
+            PlayerController playerToKill = caughtPlayer;
+            caughtPlayer = null;
+            if (!PlayerDeathController.Kill(playerToKill, transform.position))
             {
                 BeginHuntMode(lastKnownPlayerPosition);
             }
@@ -389,6 +457,8 @@ namespace Neighbor.Main.Features.Neighbor
             currentHideSpot = null;
             currentHideSpotKnownOccupied = false;
             witnessedPlayerHideSpot = null;
+            caughtPlayer = null;
+            catchPlayerAtTime = 0f;
             currentTaskLocation = null;
             visitedSearchPoints.Clear();
             searchedHideSpots.Clear();
@@ -585,22 +655,15 @@ namespace Neighbor.Main.Features.Neighbor
                 }
 
                 searchedHideSpots.Add(searchedSpot);
-                PlayerController foundPlayer = searchedSpot.SearchByNeighbor(this, out bool caughtPlayer);
-                if (caughtPlayer)
-                {
-                    hideSpotMemory[searchedSpot] = GetMemory(hideSpotMemory, searchedSpot) + 1f;
-                    motor.Stop();
-                    return;
-                }
-
+                PlayerController foundPlayer = searchedSpot.SearchByNeighbor();
                 if (foundPlayer != null)
                 {
-                    player = foundPlayer.transform;
                     hideSpotMemory[searchedSpot] = GetMemory(hideSpotMemory, searchedSpot) + 1f;
+                    player = foundPlayer.transform;
                     lastKnownPlayerPosition = foundPlayer.transform.position;
                     lastPlayerSeenTime = Time.time;
                     suspicion = 1f;
-                    SetState(BehaviorState.Chase);
+                    BeginCatchingPlayer(foundPlayer);
                     return;
                 }
             }
@@ -699,7 +762,9 @@ namespace Neighbor.Main.Features.Neighbor
 
         private bool ShouldIgnoreNoiseBecausePlayerIsKnown()
         {
-            if (currentState == BehaviorState.Chase || currentState == BehaviorState.HuntMode)
+            if (currentState == BehaviorState.Chase
+                || currentState == BehaviorState.Catching
+                || currentState == BehaviorState.HuntMode)
             {
                 return true;
             }
@@ -1215,7 +1280,10 @@ namespace Neighbor.Main.Features.Neighbor
             RememberPlayerActivity(position);
             currentInvestigationSource = source;
 
-            if (currentState == BehaviorState.Chase || currentState == BehaviorState.HuntMode || motor == null)
+            if (currentState == BehaviorState.Chase
+                || currentState == BehaviorState.Catching
+                || currentState == BehaviorState.HuntMode
+                || motor == null)
             {
                 return;
             }
@@ -1237,7 +1305,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void UpdateSuspicion()
         {
-            if (currentState == BehaviorState.Chase)
+            if (currentState == BehaviorState.Chase || currentState == BehaviorState.Catching)
             {
                 suspicion = 1f;
                 return;

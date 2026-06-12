@@ -183,23 +183,13 @@ namespace Neighbor.Main.Features.Interaction
             sidePeekOffset = 0f;
         }
 
-        public PlayerController SearchByNeighbor(NeighborBrain neighbor, out bool caughtPlayer)
+        public PlayerController SearchByNeighbor()
         {
-            caughtPlayer = false;
             doors?.SetOpen(true);
             PlayerController foundPlayer = hiddenPlayer;
             if (foundPlayer != null)
             {
                 CancelTransition();
-                caughtPlayer = PlayerDeathController.Kill(
-                    foundPlayer,
-                    neighbor != null ? neighbor.transform.position : transform.position);
-
-                if (!caughtPlayer)
-                {
-                    hiddenPlayer.PrepareForHiding();
-                    transitionRoutine = StartCoroutine(ExitTransition());
-                }
             }
 
             return foundPlayer;

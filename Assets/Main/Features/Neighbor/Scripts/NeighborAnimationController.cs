@@ -16,6 +16,15 @@ namespace Neighbor.Main.Features.Neighbor
         private static readonly int DoorKickState = Animator.StringToHash("Base Layer.DoorKick");
         private const string DefaultTaskClipName = "Idle_Talking_Loop";
 
+        private enum ActionAnimation
+        {
+            None,
+            Task,
+            CatchPlayer,
+            SearchCloset,
+            WanderIdle
+        }
+
         [SerializeField] private Animator animator;
         [SerializeField] private NeighborBrain brain;
         [SerializeField] private NeighborMotor motor;
@@ -30,6 +39,14 @@ namespace Neighbor.Main.Features.Neighbor
         [Header("Hurt Reaction")]
         [SerializeField, Min(0f)] private float hurtTransitionDuration = 0.045f;
 
+        [Header("Action Animations")]
+        [SerializeField] private AnimationClip catchPlayerAnimation;
+        [SerializeField, Min(0.05f)] private float catchPlayerAnimationSpeed = 1f;
+        [SerializeField] private AnimationClip searchClosetAnimation;
+        [SerializeField, Min(0.05f)] private float searchClosetAnimationSpeed = 1f;
+        [SerializeField] private AnimationClip[] wanderIdleAnimations;
+        [SerializeField, Min(0.05f)] private float wanderIdleAnimationSpeed = 1f;
+
         [Header("Leg IK")]
         [SerializeField] private NeighborFootIK.Settings legIKSettings = new NeighborFootIK.Settings();
 
@@ -39,6 +56,13 @@ namespace Neighbor.Main.Features.Neighbor
         private AnimationClip defaultTaskAnimation;
         private NeighborTaskLocation activeAnimatedTask;
         private NeighborTaskLocation.TaskAnimationPhase activeTaskAnimationPhase;
+        private ActionAnimation activeActionAnimation;
+        private AnimationClip activeOverrideAnimation;
+        private float activeActionPlaybackSpeed = 1f;
+
+        public float CatchAnimationDuration => catchPlayerAnimation != null
+            ? catchPlayerAnimation.length / Mathf.Max(0.05f, catchPlayerAnimationSpeed)
+            : 0f;
 
         private void Awake()
         {
@@ -78,15 +102,15 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            bool taskAnimationChanged = UpdateTaskAnimationOverride();
+            bool actionAnimationChanged = UpdateActionAnimationOverride();
             int desiredState = ChooseState();
-            if (desiredState != currentState || taskAnimationChanged && desiredState == TaskState)
+            if (desiredState != currentState || actionAnimationChanged && desiredState == TaskState)
             {
                 animator.CrossFadeInFixedTime(
                     desiredState,
                     transitionDuration,
                     0,
-                    taskAnimationChanged && desiredState == TaskState ? 0f : float.NegativeInfinity);
+                    actionAnimationChanged && desiredState == TaskState ? 0f : float.NegativeInfinity);
                 currentState = desiredState;
             }
 
@@ -94,8 +118,8 @@ namespace Neighbor.Main.Features.Neighbor
             bool locomotion = desiredState == WalkState || desiredState == CautiousState || desiredState == RunState;
             animator.speed = locomotion
                 ? Mathf.Clamp(speed / GetReferenceSpeed(desiredState), minimumLocomotionPlaybackSpeed, maximumLocomotionPlaybackSpeed)
-                : desiredState == TaskState && activeAnimatedTask != null
-                    ? activeAnimatedTask.GetAnimationPlaybackSpeed(activeTaskAnimationPhase)
+                : desiredState == TaskState
+                    ? activeActionPlaybackSpeed
                     : 1f;
         }
 
@@ -114,6 +138,12 @@ namespace Neighbor.Main.Features.Neighbor
             if (motor != null && motor.IsTraversingSpecialMove)
             {
                 return TraverseState;
+            }
+
+            if (activeActionAnimation != ActionAnimation.None
+                && (activeActionAnimation == ActionAnimation.Task || activeOverrideAnimation != defaultTaskAnimation))
+            {
+                return TaskState;
             }
 
             float speed = motor != null ? motor.CurrentSpeed : 0f;
@@ -180,17 +210,56 @@ namespace Neighbor.Main.Features.Neighbor
             animator.runtimeAnimatorController = taskAnimationOverrides;
         }
 
-        private bool UpdateTaskAnimationOverride()
+        private bool UpdateActionAnimationOverride()
         {
             NeighborTaskLocation task = brain != null ? brain.ActiveTaskLocation : null;
             NeighborTaskLocation.TaskAnimationPhase phase = brain != null
                 ? brain.ActiveTaskAnimationPhase
                 : NeighborTaskLocation.TaskAnimationPhase.None;
-            if (task == activeAnimatedTask && phase == activeTaskAnimationPhase)
+
+            ActionAnimation desiredAction = ActionAnimation.None;
+            AnimationClip desiredAnimation = defaultTaskAnimation;
+            float desiredPlaybackSpeed = 1f;
+            if (brain != null && brain.IsCatchingPlayer)
+            {
+                desiredAction = ActionAnimation.CatchPlayer;
+                desiredAnimation = catchPlayerAnimation != null ? catchPlayerAnimation : defaultTaskAnimation;
+                desiredPlaybackSpeed = catchPlayerAnimationSpeed;
+            }
+            else if (brain != null && brain.IsSearchingHideSpot)
+            {
+                desiredAction = ActionAnimation.SearchCloset;
+                desiredAnimation = searchClosetAnimation != null ? searchClosetAnimation : defaultTaskAnimation;
+                desiredPlaybackSpeed = searchClosetAnimationSpeed;
+            }
+            else if (brain != null && brain.IsWaitingDuringWander)
+            {
+                desiredAction = ActionAnimation.WanderIdle;
+                desiredAnimation = activeActionAnimation == ActionAnimation.WanderIdle
+                    ? activeOverrideAnimation
+                    : GetRandomWanderIdleAnimation();
+                desiredAnimation = desiredAnimation != null ? desiredAnimation : defaultTaskAnimation;
+                desiredPlaybackSpeed = wanderIdleAnimationSpeed;
+            }
+            else if (task != null)
+            {
+                desiredAction = ActionAnimation.Task;
+                AnimationClip taskAnimation = task.GetAnimation(phase);
+                desiredAnimation = taskAnimation != null ? taskAnimation : defaultTaskAnimation;
+                desiredPlaybackSpeed = task.GetAnimationPlaybackSpeed(phase);
+            }
+
+            if (desiredAction == activeActionAnimation
+                && desiredAnimation == activeOverrideAnimation
+                && task == activeAnimatedTask
+                && phase == activeTaskAnimationPhase)
             {
                 return false;
             }
 
+            activeActionAnimation = desiredAction;
+            activeOverrideAnimation = desiredAnimation;
+            activeActionPlaybackSpeed = Mathf.Max(0.05f, desiredPlaybackSpeed);
             activeAnimatedTask = task;
             activeTaskAnimationPhase = phase;
             if (taskAnimationOverrides == null || defaultTaskAnimation == null)
@@ -198,12 +267,30 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
-            AnimationClip taskAnimation = task != null ? task.GetAnimation(phase) : null;
-            AnimationClip assignedAnimation = taskAnimation != null
-                ? taskAnimation
+            taskAnimationOverrides[defaultTaskAnimation] = desiredAnimation != null
+                ? desiredAnimation
                 : defaultTaskAnimation;
-            taskAnimationOverrides[defaultTaskAnimation] = assignedAnimation;
             return true;
+        }
+
+        private AnimationClip GetRandomWanderIdleAnimation()
+        {
+            if (wanderIdleAnimations == null || wanderIdleAnimations.Length == 0)
+            {
+                return null;
+            }
+
+            int startIndex = Random.Range(0, wanderIdleAnimations.Length);
+            for (int offset = 0; offset < wanderIdleAnimations.Length; offset++)
+            {
+                AnimationClip clip = wanderIdleAnimations[(startIndex + offset) % wanderIdleAnimations.Length];
+                if (clip != null)
+                {
+                    return clip;
+                }
+            }
+
+            return null;
         }
 
         private void PlayHurtReaction()
