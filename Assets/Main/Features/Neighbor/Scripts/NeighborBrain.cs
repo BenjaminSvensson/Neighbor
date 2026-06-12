@@ -101,7 +101,6 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float climbLinkArrivalDistance = 0.75f;
         [SerializeField, Min(0f)] private float unreachableGiveUpTime = 8f;
         [SerializeField, Min(0f)] private float chaseProgressDistance = 0.45f;
-        [SerializeField, Min(0f)] private float giveUpSightIgnoreTime = 3f;
         [SerializeField, Min(0f)] private float predictionMaximumDistance = 3.5f;
         [SerializeField, Range(0f, 1f)] private float predictionChance = 0.72f;
         [SerializeField, Range(0f, 1f)] private float predictionMistakeChance = 0.16f;
@@ -137,6 +136,7 @@ namespace Neighbor.Main.Features.Neighbor
         private float ignorePlayerSightUntilTime;
         private bool hasObservedPlayerPosition;
         private bool hasPlayerMoveDirectionForCurrentChase;
+        private bool isPlayerVisible;
         private bool waitingAtGoal;
         private bool currentHideSpotKnownOccupied;
         private NeighborTaskLocation.TaskAnimationPhase currentTaskAnimationPhase;
@@ -281,6 +281,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void UpdatePerception()
         {
+            isPlayerVisible = false;
             if (vision == null)
             {
                 return;
@@ -298,6 +299,7 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (vision.TrySeeTarget(out Transform seenTarget, out Vector3 seenPosition))
             {
+                isPlayerVisible = true;
                 RememberInterruptedTask();
                 player = seenTarget;
                 if (currentState != BehaviorState.Chase)
@@ -348,9 +350,11 @@ namespace Neighbor.Main.Features.Neighbor
 
             motor.SetMoveMode(NeighborMotor.MoveMode.Run);
             bool canStillChase = player != null && Time.time - lastPlayerSeenTime <= chaseMemoryTime;
-            Vector3 chasePosition = player != null && canStillChase ? GetPredictedChasePosition() : lastKnownPlayerPosition;
+            Vector3 chasePosition = player != null && canStillChase
+                ? (isPlayerVisible ? player.position : GetPredictedChasePosition())
+                : lastKnownPlayerPosition;
 
-            if (player != null && canStillChase && ShouldGiveUpChase(chasePosition))
+            if (player != null && canStillChase && !isPlayerVisible && ShouldGiveUpChase(chasePosition))
             {
                 GiveUpChase(chasePosition);
                 return;
@@ -373,7 +377,16 @@ namespace Neighbor.Main.Features.Neighbor
                 nextChaseRepathTime = Time.time + chaseRepathInterval;
             }
 
-            motor.FaceMovementDirection(12f);
+            if (isPlayerVisible && player != null)
+            {
+                motor.FaceTowards(player.position, 16f);
+                bestChaseDistance = Vector3.Distance(transform.position, player.position);
+                lastChaseProgressTime = Time.time;
+            }
+            else
+            {
+                motor.FaceMovementDirection(12f);
+            }
 
             if (player != null && Vector3.Distance(transform.position, player.position) <= catchDistance)
             {
@@ -468,6 +481,7 @@ namespace Neighbor.Main.Features.Neighbor
             ignorePlayerSightUntilTime = Time.time + Mathf.Max(0f, sightGraceTime);
             hasObservedPlayerPosition = false;
             hasPlayerMoveDirectionForCurrentChase = false;
+            isPlayerVisible = false;
             waitingAtGoal = false;
             suspicion = 0f;
             interruptedTaskLocation = null;
@@ -478,7 +492,6 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void GiveUpChase(Vector3 chasePosition)
         {
-            ignorePlayerSightUntilTime = Time.time + giveUpSightIgnoreTime;
             BeginHuntMode(chasePosition);
         }
 

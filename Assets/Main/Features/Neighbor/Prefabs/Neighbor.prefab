@@ -683,7 +683,6 @@ MonoBehaviour:
   climbLinkArrivalDistance: 0.75
   unreachableGiveUpTime: 8
   chaseProgressDistance: 0.45
-  giveUpSightIgnoreTime: 3
   predictionMaximumDistance: 3.5
   predictionChance: 0.72
   predictionMistakeChance: 0.16
