@@ -667,6 +667,7 @@ MonoBehaviour:
   closetSearchWaitTime: 1.1
   favoriteHideSpotWeight: 5
   huntDuration: 15
+  minimumSearchPointsAfterChase: 3
   huntPointWaitTime: 0.65
   huntDirectionWeight: 8
   huntDistancePenalty: 0.08

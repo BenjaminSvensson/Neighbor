@@ -81,6 +81,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         [Header("Hunt Mode")]
         [SerializeField, Min(0f)] private float huntDuration = 15f;
+        [SerializeField, Min(0)] private int minimumSearchPointsAfterChase = 3;
         [SerializeField, Min(0f)] private float huntPointWaitTime = 0.65f;
         [SerializeField, Min(0f)] private float huntDirectionWeight = 8f;
         [SerializeField, Min(0f)] private float huntDistancePenalty = 0.08f;
@@ -127,6 +128,7 @@ namespace Neighbor.Main.Features.Neighbor
         private float waitUntilTime;
         private float goalWaitDuration;
         private float huntUntilTime;
+        private int requiredSearchPointVisits;
         private float lastPlayerSeenTime = float.NegativeInfinity;
         private float nextChaseRepathTime;
         private float nextClimbLinkSearchTime;
@@ -630,7 +632,7 @@ namespace Neighbor.Main.Features.Neighbor
                 : currentHideSpot != null || motor.HasArrived
                     ? NeighborMotor.MoveMode.Cautious
                     : NeighborMotor.MoveMode.Run);
-            if (Time.time >= huntUntilTime)
+            if (Time.time >= huntUntilTime && HasCompletedRequiredSearchPoints())
             {
                 EndHuntMode();
                 return;
@@ -640,7 +642,7 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 if (!TrySetNextHuntDestination())
                 {
-                    motor.Stop();
+                    HandleNoHuntDestination();
                 }
 
                 return;
@@ -681,10 +683,28 @@ namespace Neighbor.Main.Features.Neighbor
                 }
             }
 
+            if (currentSearchPoint != null)
+            {
+                visitedSearchPoints.Add(currentSearchPoint);
+            }
+
             currentSearchPoint = null;
             if (!TrySetNextHuntDestination())
             {
-                motor.Stop();
+                HandleNoHuntDestination();
+            }
+        }
+
+        private void HandleNoHuntDestination()
+        {
+            ReduceRequiredSearchPointsToReachableTotal();
+            if (HasCompletedRequiredSearchPoints())
+            {
+                EndHuntMode();
+            }
+            else
+            {
+                motor?.Stop();
             }
         }
 
@@ -1034,6 +1054,7 @@ namespace Neighbor.Main.Features.Neighbor
             visitedSearchPoints.Clear();
             searchedHideSpots.Clear();
             huntUntilTime = Time.time + huntDuration;
+            requiredSearchPointVisits = GetReachableSearchPointCount(minimumSearchPointsAfterChase);
             RememberPlayerActivity(lostPlayerPosition);
 
             Vector3 fallbackDirection = lostPlayerPosition - transform.position;
@@ -1058,12 +1079,12 @@ namespace Neighbor.Main.Features.Neighbor
 
         private bool TrySetNextHuntDestination()
         {
-            if (motor == null || Time.time >= huntUntilTime)
+            if (motor == null || Time.time >= huntUntilTime && HasCompletedRequiredSearchPoints())
             {
                 return false;
             }
 
-            if (TrySetNextHideSpotSearch())
+            if (Time.time < huntUntilTime && TrySetNextHideSpotSearch())
             {
                 return true;
             }
@@ -1085,7 +1106,7 @@ namespace Neighbor.Main.Features.Neighbor
                 }
 
                 float estimatedVisitTime = pathDistance / runSpeed + huntPointWaitTime + huntDestinationTimePadding;
-                if (estimatedVisitTime > remainingHuntTime)
+                if (HasCompletedRequiredSearchPoints() && estimatedVisitTime > remainingHuntTime)
                 {
                     continue;
                 }
@@ -1116,7 +1137,6 @@ namespace Neighbor.Main.Features.Neighbor
 
             currentSearchPoint = bestPoint;
             currentHideSpot = null;
-            visitedSearchPoints.Add(bestPoint);
             currentGoal = bestDestination;
             goalWaitDuration = huntPointWaitTime;
             waitingAtGoal = false;
@@ -1126,9 +1146,64 @@ namespace Neighbor.Main.Features.Neighbor
                 return true;
             }
 
-            visitedSearchPoints.Remove(bestPoint);
             currentSearchPoint = null;
             return false;
+        }
+
+        private bool HasCompletedRequiredSearchPoints()
+        {
+            return visitedSearchPoints.Count >= requiredSearchPointVisits;
+        }
+
+        private int GetReachableSearchPointCount(int maximumCount)
+        {
+            if (motor == null || maximumCount <= 0)
+            {
+                return 0;
+            }
+
+            int reachableCount = 0;
+            IReadOnlyList<NeighborSearchPoint> points = NeighborSearchPoint.Points;
+            for (int i = 0; i < points.Count; i++)
+            {
+                NeighborSearchPoint point = points[i];
+                if (point != null && motor.CanReach(point.Position, out _, out _))
+                {
+                    reachableCount++;
+                    if (reachableCount >= maximumCount)
+                    {
+                        return maximumCount;
+                    }
+                }
+            }
+
+            return reachableCount;
+        }
+
+        private void ReduceRequiredSearchPointsToReachableTotal()
+        {
+            if (motor == null)
+            {
+                requiredSearchPointVisits = visitedSearchPoints.Count;
+                return;
+            }
+
+            int reachableUnvisitedCount = 0;
+            IReadOnlyList<NeighborSearchPoint> points = NeighborSearchPoint.Points;
+            for (int i = 0; i < points.Count; i++)
+            {
+                NeighborSearchPoint point = points[i];
+                if (point != null
+                    && !visitedSearchPoints.Contains(point)
+                    && motor.CanReach(point.Position, out _, out _))
+                {
+                    reachableUnvisitedCount++;
+                }
+            }
+
+            requiredSearchPointVisits = Mathf.Min(
+                requiredSearchPointVisits,
+                visitedSearchPoints.Count + reachableUnvisitedCount);
         }
 
         private bool TrySetNextHideSpotSearch()
@@ -1226,6 +1301,7 @@ namespace Neighbor.Main.Features.Neighbor
             witnessedPlayerHideSpot = null;
             visitedSearchPoints.Clear();
             searchedHideSpots.Clear();
+            requiredSearchPointVisits = 0;
             suspicion = Mathf.Max(suspicion, suspiciousThreshold);
             ChooseNextRoutineGoal();
         }
