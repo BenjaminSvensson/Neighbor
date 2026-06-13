@@ -183,6 +183,12 @@ namespace Neighbor.Main.Features.Neighbor
                     text.Append("  |  Sweep ").Append(brain.LastSeenVerificationTimeRemaining.ToString("0.0")).Append('s');
                 }
             }
+            else if (brain.IsPostEncounterVigilant)
+            {
+                text.Append("\nPost-encounter vigilance: ");
+                text.Append(brain.PostEncounterVigilanceTimeRemaining.ToString("0.0")).Append("s");
+                text.Append("  |  TASKS SUPPRESSED");
+            }
 
             if (doorInteractor != null && doorInteractor.IsInteractingWithDoor)
             {
@@ -209,6 +215,11 @@ namespace Neighbor.Main.Features.Neighbor
             if (brain.IsVerifyingLastSeenPosition)
             {
                 return "Verify last seen player position";
+            }
+
+            if (brain.IsPostEncounterVigilant && brain.CurrentState == NeighborBrain.BehaviorState.Wander)
+            {
+                return "Cautious post-encounter patrol";
             }
 
             if (brain.CurrentTaskLocation != null)

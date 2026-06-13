@@ -83,6 +83,12 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Range(0f, 1f)] private float resumeInterruptedTaskChance = 0.72f;
         [SerializeField, Min(0f)] private float blockedTaskRetryDelay = 18f;
 
+        [Header("Post-Encounter Vigilance")]
+        [SerializeField, Min(0f)] private float postEncounterTaskCooldown = 25f;
+        [SerializeField, Min(0f)] private float vigilancePatrolRadius = 10f;
+        [SerializeField, Min(0f)] private float vigilanceWaitMinimum = 1.4f;
+        [SerializeField, Min(0f)] private float vigilanceWaitMaximum = 3f;
+
         [Header("Readable Searching")]
         [SerializeField, Min(0f)] private float searchLookAngle = 70f;
         [SerializeField, Min(0.1f)] private float searchLookSpeed = 1.4f;
@@ -175,6 +181,7 @@ namespace Neighbor.Main.Features.Neighbor
         private bool isVerifyingLastSeenPosition;
         private Vector3 lastSeenVerificationPosition;
         private float lastSeenVerificationUntilTime;
+        private float tasksSuppressedUntilTime;
 
         public BehaviorState CurrentState => currentState;
         public Transform Player => player;
@@ -200,6 +207,8 @@ namespace Neighbor.Main.Features.Neighbor
         public float LastSeenVerificationTimeRemaining => IsVerifyingLastSeenPosition && lastSeenVerificationUntilTime > 0f
             ? Mathf.Max(0f, lastSeenVerificationUntilTime - Time.time)
             : 0f;
+        public bool IsPostEncounterVigilant => Time.time < tasksSuppressedUntilTime;
+        public float PostEncounterVigilanceTimeRemaining => Mathf.Max(0f, tasksSuppressedUntilTime - Time.time);
         public SuspicionLevel CurrentSuspicionLevel => GetSuspicionLevel();
         public NeighborTaskLocation ActiveTaskLocation => currentState == BehaviorState.Task
             && currentTaskAnimationPhase != NeighborTaskLocation.TaskAnimationPhase.None
@@ -380,6 +389,7 @@ namespace Neighbor.Main.Features.Neighbor
                 lastKnownPlayerPosition = seenPosition;
                 lastPlayerSeenTime = Time.time;
                 suspicion = 1f;
+                RefreshPostEncounterVigilance();
                 RememberPlayerActivity(seenPosition);
                 SetState(BehaviorState.Chase);
             }
@@ -621,6 +631,7 @@ namespace Neighbor.Main.Features.Neighbor
             currentDoorRoomCheckPosition = default;
             isVerifyingLastSeenPosition = false;
             lastSeenVerificationUntilTime = 0f;
+            tasksSuppressedUntilTime = 0f;
             DecayPersistentMemory();
             ChooseNextRoutineGoal();
         }
@@ -851,7 +862,7 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            motor.SetMoveMode(CurrentSuspicionLevel >= SuspicionLevel.Suspicious
+            motor.SetMoveMode(IsPostEncounterVigilant || CurrentSuspicionLevel >= SuspicionLevel.Suspicious
                 ? NeighborMotor.MoveMode.Cautious
                 : NeighborMotor.MoveMode.Walk);
             if (currentState == BehaviorState.Task
@@ -885,7 +896,7 @@ namespace Neighbor.Main.Features.Neighbor
                 {
                     motor.FaceTowards(transform.position + currentTaskLocation.LookDirection, 5f);
                 }
-                else if (CurrentSuspicionLevel >= SuspicionLevel.Curious)
+                else if (IsPostEncounterVigilant || CurrentSuspicionLevel >= SuspicionLevel.Curious)
                 {
                     FaceSearchSweep();
                 }
@@ -1020,6 +1031,20 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            if (IsPostEncounterVigilant)
+            {
+                if (TryStartVigilancePatrol())
+                {
+                    return;
+                }
+
+                currentTaskLocation = null;
+                goalWaitDuration = vigilanceWaitMinimum;
+                waitingAtGoal = false;
+                SetState(BehaviorState.Idle);
+                return;
+            }
+
             if (interruptedTaskLocation != null
                 && interruptedTaskLocation.isActiveAndEnabled
                 && Random.value <= resumeInterruptedTaskChance
@@ -1060,6 +1085,36 @@ namespace Neighbor.Main.Features.Neighbor
 
             currentTaskLocation = null;
             SetState(BehaviorState.Idle);
+        }
+
+        private bool TryStartVigilancePatrol()
+        {
+            if (motor == null || vigilancePatrolRadius <= 0f)
+            {
+                return false;
+            }
+
+            Vector3 patrolOrigin = HasSeenPlayer ? lastKnownPlayerPosition : transform.position;
+            if (!motor.TryGetRandomReachablePoint(patrolOrigin, vigilancePatrolRadius, out Vector3 patrolPoint)
+                && !motor.TryGetRandomReachablePoint(transform.position, vigilancePatrolRadius, out patrolPoint))
+            {
+                return false;
+            }
+
+            currentGoal = patrolPoint;
+            goalWaitDuration = Random.Range(
+                vigilanceWaitMinimum,
+                Mathf.Max(vigilanceWaitMinimum, vigilanceWaitMaximum));
+            waitingAtGoal = false;
+            currentTaskLocation = null;
+            motor.SetMoveMode(NeighborMotor.MoveMode.Cautious);
+            if (!motor.SetDestination(currentGoal))
+            {
+                return false;
+            }
+
+            SetState(BehaviorState.Wander);
+            return true;
         }
 
         private bool GoalWaitComplete()
@@ -1129,6 +1184,11 @@ namespace Neighbor.Main.Features.Neighbor
 
         private bool TryStartForcedNextTask()
         {
+            if (IsPostEncounterVigilant)
+            {
+                return false;
+            }
+
             NeighborTaskLocation completedTask = currentTaskLocation;
             NeighborTaskLocation forcedNextTask = completedTask != null ? completedTask.ForcedNextTask : null;
             if (forcedNextTask == null || !forcedNextTask.isActiveAndEnabled)
@@ -1141,7 +1201,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         private bool TryStartTask(NeighborTaskLocation taskLocation)
         {
-            if (taskLocation == null || motor == null)
+            if (taskLocation == null || motor == null || IsPostEncounterVigilant)
             {
                 return false;
             }
@@ -1513,6 +1573,7 @@ namespace Neighbor.Main.Features.Neighbor
             searchedHideSpots.Clear();
             requiredSearchPointVisits = 0;
             suspicion = Mathf.Max(suspicion, suspiciousThreshold);
+            RefreshPostEncounterVigilance();
             ChooseNextRoutineGoal();
         }
 
@@ -1751,8 +1812,24 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            if (IsPostEncounterVigilant)
+            {
+                suspicion = Mathf.MoveTowards(
+                    suspicion,
+                    suspiciousThreshold,
+                    suspicionDecayPerSecond * 0.5f * deltaTime);
+                return;
+            }
+
             float decayMultiplier = currentState == BehaviorState.HuntMode ? 0.2f : 1f;
             suspicion = Mathf.MoveTowards(suspicion, 0f, suspicionDecayPerSecond * decayMultiplier * deltaTime);
+        }
+
+        private void RefreshPostEncounterVigilance()
+        {
+            tasksSuppressedUntilTime = Mathf.Max(
+                tasksSuppressedUntilTime,
+                Time.time + postEncounterTaskCooldown);
         }
 
         private void AddSuspicion(float amount, GameObject source)

@@ -104,6 +104,18 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void HuntEnding_StartsPostEncounterTaskSuppression()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>();
+
+            GameplaySmokeTestReflection.Invoke(brain, "EndHuntMode");
+
+            Assert.That(brain.IsPostEncounterVigilant, Is.True);
+            Assert.That(brain.PostEncounterVigilanceTimeRemaining, Is.GreaterThan(0f));
+            Assert.That(brain.CurrentState, Is.Not.EqualTo(NeighborBrain.BehaviorState.Task));
+        }
+
+        [Test]
         public void NoiseEvent_InRange_PrimesNeighborInvestigation()
         {
             GameObject neighborObject = context.CreateObject("Neighbor");

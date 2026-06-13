@@ -8383,7 +8383,7 @@ MeshCollider:
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
-  m_Mesh: {fileID: 576910557}
+  m_Mesh: {fileID: 849556117}
 --- !u!33 &233278500
 MeshFilter:
   m_ObjectHideFlags: 10
@@ -32000,7 +32000,7 @@ MeshCollider:
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
-  m_Mesh: {fileID: 576910557}
+  m_Mesh: {fileID: 1252108522}
 --- !u!33 &938892146
 MeshFilter:
   m_ObjectHideFlags: 10
@@ -34050,7 +34050,7 @@ MeshCollider:
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
-  m_Mesh: {fileID: 797874723}
+  m_Mesh: {fileID: 412588747}
 --- !u!33 &959553659
 MeshFilter:
   m_ObjectHideFlags: 10
@@ -39332,6 +39332,40 @@ Mesh:
       - serializedVersion: 1
         m_IndexStart: 0
         m_IndexCount: 0
+--- !u!1 &1116160751 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 500000, guid: 3d0d4f539803e4043bca043f1dffe76a, type: 3}
+  m_PrefabInstance: {fileID: 1639472032}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1116160754
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1116160751}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalLightData
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_CustomShadowLayers: 0
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
+  m_RenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_ShadowRenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_Version: 4
+  m_LightLayerMask: 1
+  m_ShadowLayerMask: 1
+  m_RenderingLayers: 1
+  m_ShadowRenderingLayers: 1
 --- !u!1 &1117493997
 GameObject:
   m_ObjectHideFlags: 0
@@ -46772,7 +46806,7 @@ MeshCollider:
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
-  m_Mesh: {fileID: 468735869}
+  m_Mesh: {fileID: 576910557}
 --- !u!33 &1352357317
 MeshFilter:
   m_ObjectHideFlags: 10
@@ -58426,7 +58460,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 500000, guid: 3d0d4f539803e4043bca043f1dffe76a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1116160754}
   m_SourcePrefab: {fileID: 100100000, guid: 3d0d4f539803e4043bca043f1dffe76a, type: 3}
 --- !u!43 &1645201652
 Mesh:
