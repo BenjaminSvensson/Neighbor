@@ -1,4 +1,5 @@
 using Neighbor.Main.Features.Interaction;
+using Neighbor.Main.Features.Player;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -95,6 +96,30 @@ namespace Neighbor.Main.Tests
             Assert.That(body.isKinematic, Is.False);
             Assert.That(lifecycle.PickupStartedCount, Is.EqualTo(1));
             Assert.That(lifecycle.PickupPlacedCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void NoiseEvent_ReportsReadablePlayerFeedback()
+        {
+            PlayerFeedbackEvents.NoiseFeedback received = default;
+            bool reported = false;
+            PlayerFeedbackEvents.NoiseEmitted += HandleNoise;
+
+            GameObject noiseObject = context.CreateObject("NoiseEvent");
+            noiseObject.AddComponent<SphereCollider>();
+            NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
+            noiseEvent.Initialize(Vector3.one, 12f, 0.75f, noiseObject, 1f);
+
+            PlayerFeedbackEvents.NoiseEmitted -= HandleNoise;
+            Assert.That(reported, Is.True);
+            Assert.That(received.Loudness, Is.EqualTo(0.75f));
+            Assert.That(received.Radius, Is.EqualTo(12f));
+
+            void HandleNoise(PlayerFeedbackEvents.NoiseFeedback feedback)
+            {
+                received = feedback;
+                reported = true;
+            }
         }
     }
 }

@@ -11,7 +11,13 @@ namespace Neighbor.Main.Features.Neighbor
 
         public static void Report(Vector3 position, float suspicion, GameObject source)
         {
-            EnvironmentChanged?.Invoke(position, Mathf.Clamp01(suspicion), source);
+            float normalizedSuspicion = Mathf.Clamp01(suspicion);
+            if (source == null || source.GetComponentInParent<NeighborBrain>() == null)
+            {
+                AdaptiveSecurityDirector.ReportDisturbance(normalizedSuspicion);
+            }
+
+            EnvironmentChanged?.Invoke(position, normalizedSuspicion, source);
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -1445,6 +1451,7 @@ namespace Neighbor.Main.Features.Neighbor
             currentState = state;
             if (state == BehaviorState.Chase)
             {
+                AdaptiveSecurityDirector.ReportChaseStarted();
                 bestChaseDistance = player != null
                     ? Vector3.Distance(transform.position, player.position)
                     : float.PositiveInfinity;

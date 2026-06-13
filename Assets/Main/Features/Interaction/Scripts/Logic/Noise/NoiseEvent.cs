@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Neighbor.Main.Features.Neighbor;
+using Neighbor.Main.Features.Player;
 using UnityEngine;
 
 namespace Neighbor.Main.Features.Interaction
@@ -46,6 +47,14 @@ namespace Neighbor.Main.Features.Interaction
 
             noiseTrigger.isTrigger = true;
             noiseTrigger.radius = radius;
+
+            if (sourceObject == null
+                || sourceObject.GetComponentInParent<NeighborBrain>() == null
+                && sourceObject.GetComponentInParent<SecurityCamera>() == null)
+            {
+                PlayerFeedbackEvents.ReportNoise(origin, Loudness01, radius);
+                AdaptiveSecurityDirector.ReportDisturbance(Loudness01);
+            }
 
             NotifyListenersInRange();
         }

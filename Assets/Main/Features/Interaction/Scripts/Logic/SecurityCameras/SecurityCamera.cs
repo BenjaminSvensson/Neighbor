@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
 
@@ -424,6 +425,8 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             nextAlertTime = Time.time + alertCooldown;
+            PlayerFeedbackEvents.ReportCameraDetection();
+            AdaptiveSecurityDirector.ReportCameraDetection();
             PlayAlertSound();
 
             GameObject noiseObject = new GameObject("SecurityCameraAlertNoiseEvent");

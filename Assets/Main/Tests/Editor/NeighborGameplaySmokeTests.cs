@@ -13,12 +13,47 @@ namespace Neighbor.Main.Tests
         public void SetUp()
         {
             context = new GameplaySmokeTestContext();
+            AdaptiveSecurityDirector.ResetProgression();
         }
 
         [TearDown]
         public void TearDown()
         {
             context.Dispose();
+            AdaptiveSecurityDirector.ResetProgression();
+        }
+
+        [Test]
+        public void AdaptiveSecurity_LoudRunRaisesReinforcementPlan()
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                AdaptiveSecurityDirector.ReportDisturbance(1f);
+            }
+
+            AdaptiveSecurityPlan plan = AdaptiveSecurityDirector.CompleteRun(5, 2, 2);
+
+            Assert.That(plan.Level, Is.EqualTo(2));
+            Assert.That(plan.Budget, Is.EqualTo(9));
+            Assert.That(plan.LocationCount, Is.EqualTo(3));
+            Assert.That(plan.DoorCount, Is.EqualTo(3));
+            Assert.That(AdaptiveSecurityDirector.RunPressure, Is.Zero);
+            Assert.That(AdaptiveSecurityDirector.PersistentPressure, Is.GreaterThan(0f));
+        }
+
+        [Test]
+        public void AdaptiveSecurity_RepeatedDeathsIncreasePersistentResponse()
+        {
+            AdaptiveSecurityPlan firstPlan = AdaptiveSecurityDirector.CompleteRun(5, 2, 2);
+            AdaptiveSecurityPlan latestPlan = firstPlan;
+            for (int i = 0; i < 4; i++)
+            {
+                latestPlan = AdaptiveSecurityDirector.CompleteRun(5, 2, 2);
+            }
+
+            Assert.That(firstPlan.Level, Is.Zero);
+            Assert.That(latestPlan.Level, Is.GreaterThan(firstPlan.Level));
+            Assert.That(latestPlan.Budget, Is.GreaterThan(firstPlan.Budget));
         }
 
         [Test]

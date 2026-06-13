@@ -171,9 +171,13 @@ namespace Neighbor.Main.Features.Player
             }
 
             Door.ResetAllToStartingState();
-            ReinforcementBudget reinforcementBudget = new ReinforcementBudget(reinforcementBudgetPerDeath);
-            Door.ApplyRunReinforcements(reinforcedDoorsPerDeath, reinforcementBudget);
-            ReinforcementTrigger.ApplyRunReinforcements(reinforcementLocationsPerDeath, reinforcementBudget);
+            AdaptiveSecurityPlan securityPlan = AdaptiveSecurityDirector.CompleteRun(
+                reinforcementBudgetPerDeath,
+                reinforcementLocationsPerDeath,
+                reinforcedDoorsPerDeath);
+            ReinforcementBudget reinforcementBudget = new ReinforcementBudget(securityPlan.Budget);
+            Door.ApplyRunReinforcements(securityPlan.DoorCount, reinforcementBudget);
+            ReinforcementTrigger.ApplyRunReinforcements(securityPlan.LocationCount, reinforcementBudget);
             ResetRun();
 
             timer = 0f;
