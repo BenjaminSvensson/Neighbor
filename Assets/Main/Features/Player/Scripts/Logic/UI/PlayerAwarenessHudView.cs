@@ -20,15 +20,6 @@ namespace Neighbor.Main.Features.Player
         private float cameraWarningUntil;
         private float messageUntil;
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void CreateRuntimeHud()
-        {
-            if (FindAnyObjectByType<PlayerAwarenessHudView>() == null)
-            {
-                new GameObject("PlayerAwarenessHud", typeof(RectTransform)).AddComponent<PlayerAwarenessHudView>();
-            }
-        }
-
         private void Awake()
         {
             BuildHud();
