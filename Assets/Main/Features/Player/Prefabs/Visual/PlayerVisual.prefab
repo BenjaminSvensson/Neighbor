@@ -53,7 +53,10 @@ MonoBehaviour:
   jumpStartHoldDuration: 0.14
   landingHoldDuration: 0.18
   grabHoldDuration: 0.42
+  dropHoldDuration: 0.42
   throwHoldDuration: 0.32
+  openDoorHoldDuration: 0.7
+  climbPlaybackSpeed: 3
   minimumLocomotionPlaybackSpeed: 0.75
   maximumLocomotionPlaybackSpeed: 1.35
 --- !u!1001 &3073574833328878488

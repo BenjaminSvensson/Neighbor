@@ -90,7 +90,9 @@ namespace Neighbor.Main.Features.Interaction
         private Material throwArcMaterial;
 
         public event Action PickupStarted;
+        public event Action DropStarted;
         public event Action ThrowStarted;
+        public event Action DoorOpened;
 
         public bool IsHoldingPickup => heldPickup != null;
         public Pickupable HeldPickup => heldPickup;
@@ -308,6 +310,12 @@ namespace Neighbor.Main.Features.Interaction
 
             if (interactable != null && interactable.CanInteract(this))
             {
+                if (interactable is Door door)
+                {
+                    InteractWithDoor(door);
+                    return;
+                }
+
                 interactable.Interact(this);
             }
         }
@@ -327,8 +335,18 @@ namespace Neighbor.Main.Features.Interaction
                 return false;
             }
 
-            door.Interact(this);
+            InteractWithDoor(door);
             return true;
+        }
+
+        private void InteractWithDoor(Door door)
+        {
+            bool wasOpen = door.IsOpen;
+            door.Interact(this);
+            if (!wasOpen && door.IsOpen)
+            {
+                DoorOpened?.Invoke();
+            }
         }
 
         private bool TryPrimaryUseHeldPickup()
@@ -412,6 +430,7 @@ namespace Neighbor.Main.Features.Interaction
 
             if (TryGetPlacementPose(releasedPickup, out Vector3 placementPosition, out Quaternion placementRotation, out bool foundPlacementSurface, out bool shouldSleepAfterPlacement))
             {
+                DropStarted?.Invoke();
                 releasedPickup.Place(placementPosition, placementRotation, shouldSleepAfterPlacement);
                 TrySelectMatchingInventoryPickup(releasedPickup);
             }
@@ -422,6 +441,7 @@ namespace Neighbor.Main.Features.Interaction
             }
             else
             {
+                DropStarted?.Invoke();
                 releasedPickup.Drop();
                 TrySelectMatchingInventoryPickup(releasedPickup);
             }

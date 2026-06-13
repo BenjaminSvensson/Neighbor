@@ -16,11 +16,17 @@ namespace Neighbor.Main.Features.Player
         private Animator animator;
         private PlayerInteractor interactor;
         private float currentWeight;
+        private bool suppressed;
 
         public void Configure(Animator targetAnimator, PlayerInteractor targetInteractor)
         {
             animator = targetAnimator != null ? targetAnimator : GetComponent<Animator>();
             interactor = targetInteractor;
+        }
+
+        public void SetSuppressed(bool value)
+        {
+            suppressed = value;
         }
 
         private void Awake()
@@ -37,7 +43,7 @@ namespace Neighbor.Main.Features.Player
             }
 
             Pickupable heldPickup = interactor != null ? interactor.HeldPickup : null;
-            float targetWeight = heldPickup != null ? positionWeight : 0f;
+            float targetWeight = heldPickup != null && !suppressed ? positionWeight : 0f;
             currentWeight = Mathf.MoveTowards(currentWeight, targetWeight, blendSpeed * Time.deltaTime);
 
             animator.SetIKPositionWeight(AvatarIKGoal.LeftHand, currentWeight);

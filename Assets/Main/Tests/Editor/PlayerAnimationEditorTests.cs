@@ -29,7 +29,8 @@ namespace Neighbor.Main.Tests
             Assert.That(controller.layers[0].iKPass, Is.True);
             Assert.That(animator.GetComponent<PlayerHandIK>(), Is.Not.Null);
 
-            string[] stateNames = controller.layers[0].stateMachine.states
+            ChildAnimatorState[] states = controller.layers[0].stateMachine.states;
+            string[] stateNames = states
                 .Select(childState => childState.state.name)
                 .ToArray();
             CollectionAssert.IsSubsetOf(
@@ -45,9 +46,16 @@ namespace Neighbor.Main.Tests
                     "Airborne",
                     "Land",
                     "Grab",
-                    "Throw"
+                    "Drop",
+                    "Throw",
+                    "OpenDoor",
+                    "Climb"
                 },
                 stateNames);
+
+            Assert.That(states.Single(state => state.state.name == "Climb").state.motion.name, Is.EqualTo("ClimbUp_1m_RM"));
+            Assert.That(states.Single(state => state.state.name == "Drop").state.motion.name, Is.EqualTo("PickUp_Table"));
+            Assert.That(states.Single(state => state.state.name == "OpenDoor").state.motion.name, Is.EqualTo("Interact"));
         }
 
         [Test]

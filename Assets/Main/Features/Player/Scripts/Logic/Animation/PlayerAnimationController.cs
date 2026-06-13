@@ -16,7 +16,10 @@ namespace Neighbor.Main.Features.Player
         private static readonly int AirborneState = Animator.StringToHash("Base Layer.Airborne");
         private static readonly int LandState = Animator.StringToHash("Base Layer.Land");
         private static readonly int GrabState = Animator.StringToHash("Base Layer.Grab");
+        private static readonly int DropState = Animator.StringToHash("Base Layer.Drop");
         private static readonly int ThrowState = Animator.StringToHash("Base Layer.Throw");
+        private static readonly int OpenDoorState = Animator.StringToHash("Base Layer.OpenDoor");
+        private static readonly int ClimbState = Animator.StringToHash("Base Layer.Climb");
 
         [SerializeField] private PlayerController playerController;
         [SerializeField] private PlayerInteractor playerInteractor;
@@ -26,13 +29,17 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float jumpStartHoldDuration = 0.14f;
         [SerializeField, Min(0f)] private float landingHoldDuration = 0.18f;
         [SerializeField, Min(0f)] private float grabHoldDuration = 0.42f;
+        [SerializeField, Min(0f)] private float dropHoldDuration = 0.42f;
         [SerializeField, Min(0f)] private float throwHoldDuration = 0.32f;
+        [SerializeField, Min(0f)] private float openDoorHoldDuration = 0.7f;
+        [SerializeField, Min(0.1f)] private float climbPlaybackSpeed = 3f;
         [SerializeField, Min(0.1f)] private float minimumLocomotionPlaybackSpeed = 0.75f;
         [SerializeField, Min(0.1f)] private float maximumLocomotionPlaybackSpeed = 1.35f;
 
         private int currentState;
         private int heldActionState;
         private float heldActionUntil;
+        private PlayerHandIK handIK;
 
         private void Awake()
         {
@@ -49,7 +56,7 @@ namespace Neighbor.Main.Features.Player
                 animator.applyRootMotion = false;
                 animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
 
-                PlayerHandIK handIK = animator.GetComponent<PlayerHandIK>();
+                handIK = animator.GetComponent<PlayerHandIK>();
                 if (handIK == null)
                 {
                     handIK = animator.gameObject.AddComponent<PlayerHandIK>();
@@ -64,7 +71,9 @@ namespace Neighbor.Main.Features.Player
             if (playerInteractor != null)
             {
                 playerInteractor.PickupStarted += PlayGrab;
+                playerInteractor.DropStarted += PlayDrop;
                 playerInteractor.ThrowStarted += PlayThrow;
+                playerInteractor.DoorOpened += PlayOpenDoor;
             }
         }
 
@@ -76,13 +85,18 @@ namespace Neighbor.Main.Features.Player
             }
 
             UpdateHeldAction();
-            int desiredState = Time.time < heldActionUntil ? heldActionState : ChooseLocomotionState();
+            int desiredState = playerController.IsLedgeClimbing
+                ? ClimbState
+                : Time.time < heldActionUntil
+                    ? heldActionState
+                    : ChooseLocomotionState();
             if (desiredState != currentState)
             {
                 animator.CrossFadeInFixedTime(desiredState, transitionDuration);
                 currentState = desiredState;
             }
 
+            handIK?.SetSuppressed(desiredState == ClimbState || desiredState == DropState || desiredState == OpenDoorState);
             animator.speed = GetPlaybackSpeed(desiredState);
         }
 
@@ -104,7 +118,7 @@ namespace Neighbor.Main.Features.Player
 
         private int ChooseLocomotionState()
         {
-            if (playerController.IsLedgeClimbing || !playerController.IsGrounded)
+            if (!playerController.IsGrounded)
             {
                 return AirborneState;
             }
@@ -130,6 +144,11 @@ namespace Neighbor.Main.Features.Player
 
         private float GetPlaybackSpeed(int state)
         {
+            if (state == ClimbState)
+            {
+                return climbPlaybackSpeed;
+            }
+
             float referenceSpeed01 = state == RunState
                 ? 1f
                 : state == CrouchWalkState || state == SlideState
@@ -154,9 +173,12 @@ namespace Neighbor.Main.Features.Player
             if (playerInteractor != null)
             {
                 playerInteractor.PickupStarted -= PlayGrab;
+                playerInteractor.DropStarted -= PlayDrop;
                 playerInteractor.ThrowStarted -= PlayThrow;
+                playerInteractor.DoorOpened -= PlayOpenDoor;
             }
 
+            handIK?.SetSuppressed(false);
             if (animator != null)
             {
                 animator.speed = 1f;
@@ -171,6 +193,16 @@ namespace Neighbor.Main.Features.Player
         private void PlayThrow()
         {
             HoldAction(ThrowState, throwHoldDuration);
+        }
+
+        private void PlayDrop()
+        {
+            HoldAction(DropState, dropHoldDuration);
+        }
+
+        private void PlayOpenDoor()
+        {
+            HoldAction(OpenDoorState, openDoorHoldDuration);
         }
 
         private void HoldAction(int state, float duration)
