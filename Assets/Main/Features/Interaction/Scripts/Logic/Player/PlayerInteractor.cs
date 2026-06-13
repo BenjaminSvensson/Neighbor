@@ -89,8 +89,12 @@ namespace Neighbor.Main.Features.Interaction
         private bool releaseButtonWasHeld;
         private Material throwArcMaterial;
 
+        public event Action PickupStarted;
+        public event Action ThrowStarted;
+
         public bool IsHoldingPickup => heldPickup != null;
         public Pickupable HeldPickup => heldPickup;
+        public float ThrowCharge => ThrowCharge01;
         public int ActiveInventorySlot => activeInventorySlot;
         public int InventorySlotCount => inventorySlotCount;
         public Pickupable GetInventorySlotPickup(int slotIndex)
@@ -279,6 +283,7 @@ namespace Neighbor.Main.Features.Interaction
             inventorySlots[activeInventorySlot] = pickupable;
             heldPickup = pickupable;
             heldPickup.Pickup(this);
+            PickupStarted?.Invoke();
         }
 
         public bool ForgetHeldPickup(Pickupable pickupable)
@@ -397,6 +402,7 @@ namespace Neighbor.Main.Features.Interaction
 
             if (throwPickup)
             {
+                ThrowStarted?.Invoke();
                 Vector3 throwVelocity = CalculateThrowVelocity(1f);
                 releasedPickup.Throw(throwVelocity, playerColliders);
                 HideThrowArc();
@@ -497,6 +503,7 @@ namespace Neighbor.Main.Features.Interaction
 
             selectedPickup.EquipFromInventory(this, GetHoldPosition(selectedPickup), ViewTransform.rotation);
             heldPickup = selectedPickup;
+            PickupStarted?.Invoke();
         }
 
         private bool StashHeldPickupInSlot(int slotIndex)

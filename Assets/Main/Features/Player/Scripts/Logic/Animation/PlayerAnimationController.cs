@@ -1,3 +1,4 @@
+using Neighbor.Main.Features.Interaction;
 using UnityEngine;
 
 namespace Neighbor.Main.Features.Player
@@ -14,13 +15,18 @@ namespace Neighbor.Main.Features.Player
         private static readonly int JumpStartState = Animator.StringToHash("Base Layer.JumpStart");
         private static readonly int AirborneState = Animator.StringToHash("Base Layer.Airborne");
         private static readonly int LandState = Animator.StringToHash("Base Layer.Land");
+        private static readonly int GrabState = Animator.StringToHash("Base Layer.Grab");
+        private static readonly int ThrowState = Animator.StringToHash("Base Layer.Throw");
 
         [SerializeField] private PlayerController playerController;
+        [SerializeField] private PlayerInteractor playerInteractor;
         [SerializeField] private Animator animator;
         [SerializeField, Min(0f)] private float movingThreshold = 0.08f;
         [SerializeField, Min(0f)] private float transitionDuration = 0.12f;
         [SerializeField, Min(0f)] private float jumpStartHoldDuration = 0.14f;
         [SerializeField, Min(0f)] private float landingHoldDuration = 0.18f;
+        [SerializeField, Min(0f)] private float grabHoldDuration = 0.42f;
+        [SerializeField, Min(0f)] private float throwHoldDuration = 0.32f;
         [SerializeField, Min(0.1f)] private float minimumLocomotionPlaybackSpeed = 0.75f;
         [SerializeField, Min(0.1f)] private float maximumLocomotionPlaybackSpeed = 1.35f;
 
@@ -33,12 +39,32 @@ namespace Neighbor.Main.Features.Player
             playerController = playerController != null
                 ? playerController
                 : GetComponentInParent<PlayerController>();
+            playerInteractor = playerInteractor != null
+                ? playerInteractor
+                : GetComponentInParent<PlayerController>()?.GetComponentInChildren<PlayerInteractor>(true);
             animator = animator != null ? animator : GetComponentInChildren<Animator>(true);
 
             if (animator != null)
             {
                 animator.applyRootMotion = false;
                 animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+
+                PlayerHandIK handIK = animator.GetComponent<PlayerHandIK>();
+                if (handIK == null)
+                {
+                    handIK = animator.gameObject.AddComponent<PlayerHandIK>();
+                }
+
+                handIK.Configure(animator, playerInteractor);
+            }
+        }
+
+        private void OnEnable()
+        {
+            if (playerInteractor != null)
+            {
+                playerInteractor.PickupStarted += PlayGrab;
+                playerInteractor.ThrowStarted += PlayThrow;
             }
         }
 
@@ -125,10 +151,32 @@ namespace Neighbor.Main.Features.Player
 
         private void OnDisable()
         {
+            if (playerInteractor != null)
+            {
+                playerInteractor.PickupStarted -= PlayGrab;
+                playerInteractor.ThrowStarted -= PlayThrow;
+            }
+
             if (animator != null)
             {
                 animator.speed = 1f;
             }
+        }
+
+        private void PlayGrab()
+        {
+            HoldAction(GrabState, grabHoldDuration);
+        }
+
+        private void PlayThrow()
+        {
+            HoldAction(ThrowState, throwHoldDuration);
+        }
+
+        private void HoldAction(int state, float duration)
+        {
+            heldActionState = state;
+            heldActionUntil = Time.time + duration;
         }
     }
 }

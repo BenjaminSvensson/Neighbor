@@ -26,6 +26,8 @@ namespace Neighbor.Main.Tests
             Assert.That(animator.avatar.isHuman, Is.True);
             Assert.That(animator.applyRootMotion, Is.False);
             Assert.That(controller, Is.Not.Null);
+            Assert.That(controller.layers[0].iKPass, Is.True);
+            Assert.That(animator.GetComponent<PlayerHandIK>(), Is.Not.Null);
 
             string[] stateNames = controller.layers[0].stateMachine.states
                 .Select(childState => childState.state.name)
@@ -41,13 +43,15 @@ namespace Neighbor.Main.Tests
                     "Slide",
                     "JumpStart",
                     "Airborne",
-                    "Land"
+                    "Land",
+                    "Grab",
+                    "Throw"
                 },
                 stateNames);
         }
 
         [Test]
-        public void PlayerCamera_DoesNotRenderPlayerLayer()
+        public void PlayerCamera_RendersPlayerLayerForFirstPersonBody()
         {
             GameObject playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
             Camera playerCamera = playerPrefab.GetComponentInChildren<Camera>(true);
@@ -55,7 +59,7 @@ namespace Neighbor.Main.Tests
 
             Assert.That(playerCamera, Is.Not.Null);
             Assert.That(playerLayer, Is.GreaterThanOrEqualTo(0));
-            Assert.That(playerCamera.cullingMask & (1 << playerLayer), Is.Zero);
+            Assert.That(playerCamera.cullingMask & (1 << playerLayer), Is.Not.Zero);
         }
     }
 }

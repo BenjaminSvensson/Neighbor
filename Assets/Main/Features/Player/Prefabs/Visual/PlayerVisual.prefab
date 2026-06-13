@@ -46,11 +46,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Player.PlayerAnimationController
   playerController: {fileID: 0}
+  playerInteractor: {fileID: 0}
   animator: {fileID: 0}
   movingThreshold: 0.08
   transitionDuration: 0.12
   jumpStartHoldDuration: 0.14
   landingHoldDuration: 0.18
+  grabHoldDuration: 0.42
+  throwHoldDuration: 0.32
   minimumLocomotionPlaybackSpeed: 0.75
   maximumLocomotionPlaybackSpeed: 1.35
 --- !u!1001 &3073574833328878488
@@ -404,8 +407,34 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 672221911163862632}
   m_SourcePrefab: {fileID: 100100000, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+--- !u!1 &2767147335256952521 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  m_PrefabInstance: {fileID: 3073574833328878488}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &672221911163862632
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2767147335256952521}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b24886effc783440ad34d2650638140, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Player.PlayerHandIK
+  blendSpeed: 8
+  positionWeight: 0.92
+  minimumGripSpacing: 0.1
+  maximumGripSpacing: 0.34
+  handDepthOffset: 0.08
+  chargeHandDrop: 0.12
 --- !u!4 &3255312513190368371 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
