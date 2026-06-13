@@ -75,6 +75,7 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float learnedFalseAlarmPenalty = 0.08f;
         [SerializeField, Min(0f)] private float memoryDecayPerDeath = 0.82f;
         [SerializeField, Range(0f, 1f)] private float resumeInterruptedTaskChance = 0.72f;
+        [SerializeField, Min(0f)] private float blockedTaskRetryDelay = 18f;
 
         [Header("Readable Searching")]
         [SerializeField, Min(0f)] private float searchLookAngle = 70f;
@@ -121,6 +122,7 @@ namespace Neighbor.Main.Features.Neighbor
         private readonly Dictionary<GameObject, float> falseAlarmMemory = new();
         private readonly Dictionary<Door, int> observedUnexpectedDoorOpenSequences = new();
         private readonly Dictionary<NeighborTaskLocation, float> lastTaskCompletionTimes = new();
+        private readonly Dictionary<NeighborTaskLocation, float> blockedTaskUntilTimes = new();
         private NeighborTaskLocation lastTaskLocation;
         private NeighborSearchPoint currentSearchPoint;
         private ClosetHideSpot currentHideSpot;
@@ -220,6 +222,11 @@ namespace Neighbor.Main.Features.Neighbor
         {
             NeighborEnvironmentalAwareness.EnvironmentChanged += HandleEnvironmentChanged;
             Door.UnexpectedlyOpened += HandleUnexpectedDoorOpened;
+            if (motor != null)
+            {
+                motor.DestinationAbandoned += HandleDestinationAbandoned;
+            }
+
             if (hearing != null)
             {
                 hearing.NoiseHeard += HandleNoiseHeard;
@@ -230,6 +237,11 @@ namespace Neighbor.Main.Features.Neighbor
         {
             NeighborEnvironmentalAwareness.EnvironmentChanged -= HandleEnvironmentChanged;
             Door.UnexpectedlyOpened -= HandleUnexpectedDoorOpened;
+            if (motor != null)
+            {
+                motor.DestinationAbandoned -= HandleDestinationAbandoned;
+            }
+
             if (hearing != null)
             {
                 hearing.NoiseHeard -= HandleNoiseHeard;
@@ -512,6 +524,7 @@ namespace Neighbor.Main.Features.Neighbor
             visitedSearchPoints.Clear();
             searchedHideSpots.Clear();
             observedUnexpectedDoorOpenSequences.Clear();
+            blockedTaskUntilTimes.Clear();
             StopActiveTaskAudio();
             motor?.ResetToPosition(startingPosition, startingRotation);
             lastPlayerSeenTime = float.NegativeInfinity;
@@ -835,6 +848,65 @@ namespace Neighbor.Main.Features.Neighbor
             }
         }
 
+        private void HandleDestinationAbandoned(Vector3 _)
+        {
+            waitingAtGoal = false;
+
+            switch (currentState)
+            {
+                case BehaviorState.Chase:
+                    if (!isPlayerVisible)
+                    {
+                        BeginHuntMode(lastKnownPlayerPosition);
+                    }
+
+                    return;
+                case BehaviorState.HuntMode:
+                    if (currentSearchPoint != null)
+                    {
+                        visitedSearchPoints.Add(currentSearchPoint);
+                    }
+
+                    if (currentHideSpot != null)
+                    {
+                        searchedHideSpots.Add(currentHideSpot);
+                    }
+
+                    currentSearchPoint = null;
+                    currentHideSpot = null;
+                    currentHideSpotKnownOccupied = false;
+                    if (!TrySetNextHuntDestination())
+                    {
+                        HandleNoHuntDestination();
+                    }
+
+                    return;
+                case BehaviorState.Investigate:
+                    RememberFalseAlarm();
+                    currentSearchPoint = null;
+                    currentUnexpectedOpenDoor = null;
+                    currentDoorRoomCheckPosition = default;
+                    suspicion = Mathf.Max(0f, suspicion - 0.08f);
+                    ChooseNextRoutineGoal();
+                    return;
+                case BehaviorState.Task:
+                    StopActiveTaskAudio();
+                    if (currentTaskLocation != null)
+                    {
+                        blockedTaskUntilTimes[currentTaskLocation] = Time.time + blockedTaskRetryDelay;
+                    }
+
+                    currentTaskLocation = null;
+                    interruptedTaskLocation = null;
+                    ChooseNextRoutineGoal();
+                    return;
+                case BehaviorState.Wander:
+                case BehaviorState.Idle:
+                    ChooseNextRoutineGoal();
+                    return;
+            }
+        }
+
         private bool ShouldIgnoreNoiseBecausePlayerIsKnown()
         {
             if (currentState == BehaviorState.Chase
@@ -1037,7 +1109,9 @@ namespace Neighbor.Main.Features.Neighbor
             for (int i = 0; i < locations.Count; i++)
             {
                 NeighborTaskLocation candidate = locations[i];
-                if (candidate == null)
+                if (candidate == null
+                    || blockedTaskUntilTimes.TryGetValue(candidate, out float blockedUntilTime)
+                    && Time.time < blockedUntilTime)
                 {
                     continue;
                 }
@@ -1063,7 +1137,7 @@ namespace Neighbor.Main.Features.Neighbor
                 }
             }
 
-            return bestLocation != null ? bestLocation : locations[Random.Range(0, locations.Count)];
+            return bestLocation;
         }
 
         private void UpdateLastSeenPlayerDirection(Vector3 seenPosition)

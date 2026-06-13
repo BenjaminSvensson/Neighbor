@@ -44,6 +44,12 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0.05f)] private float dynamicObstacleProbeInterval = 0.15f;
         [SerializeField, Min(0.1f)] private float dynamicObstacleDetourTimeout = 1.25f;
 
+        [Header("Blocked Destination")]
+        [SerializeField, Min(1)] private int maximumNoProgressAttempts = 3;
+        [SerializeField, Min(0.25f)] private float noProgressCheckInterval = 1.5f;
+        [SerializeField, Min(0.01f)] private float minimumProgressPerAttempt = 0.3f;
+        [SerializeField, Min(0f)] private float destinationChangeResetDistance = 0.75f;
+
         [Header("Jump And Climb")]
         [SerializeField] private bool traverseOffMeshLinks = true;
         [SerializeField, Min(0.01f)] private float offMeshTraverseDuration = 0.34f;
@@ -90,6 +96,10 @@ namespace Neighbor.Main.Features.Neighbor
         private Vector3 dynamicObstacleDetour;
         private float dynamicObstacleDetourUntilTime;
         private float nextDynamicObstacleProbeTime;
+        private float nextProgressCheckTime;
+        private Vector3 progressCheckPosition;
+        private bool hasProgressCheckPosition;
+        private int noProgressAttemptCount;
         private TraversalAnimationPhase traversalAnimationPhase;
 
         public bool IsTraversingSpecialMove => traversalRoutine != null;
@@ -104,6 +114,9 @@ namespace Neighbor.Main.Features.Neighbor
         public bool HasPath => agent != null && (agent.hasPath || agent.pathPending);
         public float ConfiguredSpeed => agent != null ? agent.speed : walkSpeed;
         public float RemainingDistance => agent == null || agent.pathPending ? float.PositiveInfinity : agent.remainingDistance;
+        public int NoProgressAttemptCount => noProgressAttemptCount;
+        public int MaximumNoProgressAttempts => maximumNoProgressAttempts;
+        public event System.Action<Vector3> DestinationAbandoned;
         public bool HasArrived => agent != null
             && !isAvoidingDynamicObstacle
             && !agent.pathPending
@@ -138,6 +151,7 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             UpdateDynamicObstacleAvoidance();
+            UpdateDestinationProgress();
 
             if (enableLedgeClimb && traversalRoutine == null && !isAvoidingDynamicObstacle && hasRequestedDestination)
             {
@@ -200,8 +214,15 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
+            bool destinationChanged = !hasRequestedDestination
+                || Vector3.Distance(requestedDestination, hit.position) > destinationChangeResetDistance;
             requestedDestination = hit.position;
             hasRequestedDestination = true;
+            if (destinationChanged)
+            {
+                ResetDestinationProgressTracking();
+            }
+
             sampledDestination = hit.position;
             agent.isStopped = isPaused;
             if (isAvoidingDynamicObstacle)
@@ -433,6 +454,7 @@ namespace Neighbor.Main.Features.Neighbor
         {
             hasRequestedDestination = false;
             isAvoidingDynamicObstacle = false;
+            ResetDestinationProgressTracking();
             if (agent == null || !agent.enabled || !agent.isOnNavMesh)
             {
                 return;
@@ -444,6 +466,11 @@ namespace Neighbor.Main.Features.Neighbor
 
         public void SetPaused(bool paused)
         {
+            if (isPaused != paused)
+            {
+                ResetDestinationProgressTracking();
+            }
+
             isPaused = paused;
             if (agent == null || !agent.enabled || !agent.isOnNavMesh)
             {
@@ -475,6 +502,7 @@ namespace Neighbor.Main.Features.Neighbor
             hasRequestedDestination = false;
             isAvoidingDynamicObstacle = false;
             isPaused = false;
+            ResetDestinationProgressTracking();
             offMeshChaseUntilTime = 0f;
 
             if (agent != null && agent.enabled)
@@ -651,6 +679,65 @@ namespace Neighbor.Main.Features.Neighbor
             dynamicObstacleDetour = detour;
             dynamicObstacleDetourUntilTime = Time.time + dynamicObstacleDetourTimeout;
             isAvoidingDynamicObstacle = agent.SetDestination(detour);
+        }
+
+        private void UpdateDestinationProgress()
+        {
+            if (!hasRequestedDestination
+                || isPaused
+                || traversalRoutine != null
+                || knockbackRoutine != null
+                || IsOffMeshChasing
+                || agent == null
+                || !agent.enabled
+                || !agent.isOnNavMesh
+                || agent.pathPending
+                || HasArrived)
+            {
+                return;
+            }
+
+            if (!hasProgressCheckPosition)
+            {
+                progressCheckPosition = transform.position;
+                hasProgressCheckPosition = true;
+                nextProgressCheckTime = Time.time + noProgressCheckInterval;
+                return;
+            }
+
+            if (Time.time < nextProgressCheckTime)
+            {
+                return;
+            }
+
+            Vector3 movement = transform.position - progressCheckPosition;
+            movement.y = 0f;
+            progressCheckPosition = transform.position;
+            nextProgressCheckTime = Time.time + noProgressCheckInterval;
+            if (movement.sqrMagnitude >= minimumProgressPerAttempt * minimumProgressPerAttempt)
+            {
+                noProgressAttemptCount = 0;
+                return;
+            }
+
+            noProgressAttemptCount++;
+            if (noProgressAttemptCount < maximumNoProgressAttempts)
+            {
+                isAvoidingDynamicObstacle = false;
+                agent.SetDestination(requestedDestination);
+                return;
+            }
+
+            Vector3 abandonedDestination = requestedDestination;
+            Stop();
+            DestinationAbandoned?.Invoke(abandonedDestination);
+        }
+
+        private void ResetDestinationProgressTracking()
+        {
+            noProgressAttemptCount = 0;
+            hasProgressCheckPosition = false;
+            nextProgressCheckTime = Time.time + noProgressCheckInterval;
         }
 
         private bool TryFindDynamicObstacleDetour(out Vector3 detour)

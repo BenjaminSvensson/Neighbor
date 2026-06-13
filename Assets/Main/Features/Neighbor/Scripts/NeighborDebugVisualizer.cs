@@ -140,6 +140,12 @@ namespace Neighbor.Main.Features.Neighbor
                     text.Append("  |  DETOUR");
                 }
 
+                if (motor.NoProgressAttemptCount > 0)
+                {
+                    text.Append("  |  Blocked tries ").Append(motor.NoProgressAttemptCount);
+                    text.Append('/').Append(motor.MaximumNoProgressAttempts);
+                }
+
                 if (motor.IsTraversingSpecialMove)
                 {
                     text.Append("  |  Traverse: ").Append(motor.CurrentTraversalAnimationPhase);
