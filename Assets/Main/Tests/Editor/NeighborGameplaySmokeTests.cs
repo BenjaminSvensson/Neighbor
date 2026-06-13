@@ -89,6 +89,21 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void OrdinaryPickup_DoesNotAlertNeighbor()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>();
+            PlayerInteractor interactor = context.CreateObject("PlayerInteractor").AddComponent<PlayerInteractor>();
+            GameObject pickupObject = context.CreateObject("Pickup");
+            pickupObject.AddComponent<Rigidbody>();
+            pickupObject.AddComponent<BoxCollider>();
+            Pickupable pickup = context.AddInitializedComponent<Pickupable>(pickupObject);
+
+            pickup.Pickup(interactor);
+
+            Assert.That(brain.Suspicion, Is.Zero);
+        }
+
+        [Test]
         public void NoiseEvent_InRange_PrimesNeighborInvestigation()
         {
             GameObject neighborObject = context.CreateObject("Neighbor");

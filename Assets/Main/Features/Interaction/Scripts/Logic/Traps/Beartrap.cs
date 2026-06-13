@@ -98,7 +98,6 @@ namespace Neighbor.Main.Features.Interaction
 
         public void OnPickupStarted(Pickupable pickupable, PlayerInteractor interactor)
         {
-            NeighborEnvironmentalAwareness.Report(transform.position, 0.35f, gameObject);
             isPlaced = false;
             SetState(TrapState.Closed);
             ReleaseStuckTarget();

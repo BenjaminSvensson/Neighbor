@@ -116,7 +116,11 @@ namespace Neighbor.Main.Features.Interaction
 
         public void OnPickupStarted(Pickupable pickupable, PlayerInteractor interactor)
         {
-            NeighborEnvironmentalAwareness.Report(transform.position, 0.55f, gameObject);
+            if (blockedDoor != null)
+            {
+                NeighborEnvironmentalAwareness.Report(transform.position, 0.55f, gameObject);
+            }
+
             ClearBlockedDoor();
             blockDisabledUntilPlaced = false;
             placementOrigin = BlockerPlacementOrigin.Player;
