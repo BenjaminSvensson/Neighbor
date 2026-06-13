@@ -12,6 +12,7 @@ namespace Neighbor.Main.Features.Interaction
     {
         private static readonly List<Door> ActiveDoors = new();
         public static event System.Action<Door, Vector3> UnexpectedlyOpened;
+        public static event System.Action<Door, float> Disturbed;
 
         [Header("Door")]
         [SerializeField] private Transform hinge;
@@ -20,6 +21,12 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0.01f)] private float openCloseDuration = 0.28f;
         [SerializeField, Min(0f)] private float autoCloseDelay = 0f;
         [SerializeField] private bool startsOpen;
+
+        [Header("Neighbor Alert")]
+        [SerializeField, Min(0f)] private float neighborAlertDistance = 6f;
+        [SerializeField, Range(0f, 1f)] private float neighborInteractionSuspicion = 0.22f;
+        [SerializeField] private bool alertNeighborWhenClosedByPlayer = true;
+        [SerializeField] private bool alertNeighborWhenLockedOrBlocked = true;
 
         [Header("Lock")]
         [SerializeField] private bool startsLocked = true;
@@ -85,6 +92,7 @@ namespace Neighbor.Main.Features.Interaction
         public bool NeighborCanKickBlockedDoor => neighborCanKickBlockedDoor;
         public bool LastOpenedByNeighbor => lastOpenedByNeighbor;
         public int OpenSequence => openSequence;
+        public float NeighborAlertDistance => neighborAlertDistance;
         public DoorBlockerChair ActiveBlocker => activeBlocker;
         public string RequiredKeyId => requiredKeyId;
         public Vector3 DefaultOpeningSideNormal => -transform.forward * Mathf.Sign(openAngle == 0f ? 1f : openAngle);
@@ -94,6 +102,7 @@ namespace Neighbor.Main.Features.Interaction
         {
             ActiveDoors.Clear();
             UnexpectedlyOpened = null;
+            Disturbed = null;
         }
 
         private void Awake()
@@ -146,9 +155,9 @@ namespace Neighbor.Main.Features.Interaction
 
         public void Interact(PlayerInteractor interactor)
         {
-            NeighborEnvironmentalAwareness.Report(transform.position, 0.22f, gameObject);
             if (IsBlocked)
             {
+                ReportDisturbance(alertNeighborWhenLockedOrBlocked);
                 PlayLockedNudge();
                 return;
             }
@@ -165,13 +174,19 @@ namespace Neighbor.Main.Features.Interaction
                 }
                 else
                 {
+                    ReportDisturbance(alertNeighborWhenLockedOrBlocked);
                     PlayLockedNudge();
                     return;
                 }
             }
 
+            bool wasOpen = isOpen;
             TrackPlayerOpening(interactor);
             Toggle(interactor);
+            if (wasOpen)
+            {
+                ReportDisturbance(alertNeighborWhenClosedByPlayer);
+            }
         }
 
         public bool TryOpenFor(Transform opener)
@@ -437,6 +452,14 @@ namespace Neighbor.Main.Features.Interaction
             if (!wasOpen)
             {
                 UnexpectedlyOpened?.Invoke(this, opener != null ? opener.position : transform.position + DefaultOpeningSideNormal);
+            }
+        }
+
+        private void ReportDisturbance(bool shouldAlert)
+        {
+            if (shouldAlert && neighborAlertDistance > 0f)
+            {
+                Disturbed?.Invoke(this, neighborInteractionSuspicion);
             }
         }
 
@@ -862,6 +885,19 @@ namespace Neighbor.Main.Features.Interaction
             audioSource.minDistance = audioMinDistance;
             audioSource.maxDistance = audioMaxDistance;
             audioSource.dopplerLevel = 0.1f;
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            if (neighborAlertDistance <= 0f)
+            {
+                return;
+            }
+
+            Color previousColor = Gizmos.color;
+            Gizmos.color = new Color(1f, 0.55f, 0.08f, 0.65f);
+            Gizmos.DrawWireSphere(transform.position, neighborAlertDistance);
+            Gizmos.color = previousColor;
         }
     }
 }

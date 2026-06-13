@@ -23896,6 +23896,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 307906212}
     - target: {fileID: 7647593652331711903, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
+      propertyPath: hurtAnimations.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7647593652331711903, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
       propertyPath: legIKSettings.pelvisWeight
       value: 0.1
       objectReference: {fileID: 0}
@@ -23903,6 +23907,14 @@ PrefabInstance:
       propertyPath: legIKSettings.runningWeight
       value: 0.2
       objectReference: {fileID: 0}
+    - target: {fileID: 7647593652331711903, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
+      propertyPath: 'hurtAnimations.Array.data[0]'
+      value: 
+      objectReference: {fileID: 937510309337268382, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
+    - target: {fileID: 7647593652331711903, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
+      propertyPath: 'hurtAnimations.Array.data[1]'
+      value: 
+      objectReference: {fileID: -245273357908900549, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
     - target: {fileID: 7647593652331711903, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
       propertyPath: legIKSettings.groundMask.m_Bits
       value: 321

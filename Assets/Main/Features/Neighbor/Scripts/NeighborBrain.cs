@@ -228,6 +228,7 @@ namespace Neighbor.Main.Features.Neighbor
         {
             NeighborEnvironmentalAwareness.EnvironmentChanged += HandleEnvironmentChanged;
             Door.UnexpectedlyOpened += HandleUnexpectedDoorOpened;
+            Door.Disturbed += HandleDoorDisturbed;
             if (motor != null)
             {
                 motor.DestinationAbandoned += HandleDestinationAbandoned;
@@ -243,6 +244,7 @@ namespace Neighbor.Main.Features.Neighbor
         {
             NeighborEnvironmentalAwareness.EnvironmentChanged -= HandleEnvironmentChanged;
             Door.UnexpectedlyOpened -= HandleUnexpectedDoorOpened;
+            Door.Disturbed -= HandleDoorDisturbed;
             if (motor != null)
             {
                 motor.DestinationAbandoned -= HandleDestinationAbandoned;
@@ -1494,6 +1496,22 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            HandleEnvironmentalClue(position, changeSuspicion, source);
+        }
+
+        private void HandleDoorDisturbed(Door door, float changeSuspicion)
+        {
+            if (door == null || door.NeighborAlertDistance <= 0f
+                || Vector3.Distance(transform.position, door.transform.position) > door.NeighborAlertDistance)
+            {
+                return;
+            }
+
+            HandleEnvironmentalClue(door.transform.position, changeSuspicion, door.gameObject);
+        }
+
+        private void HandleEnvironmentalClue(Vector3 position, float changeSuspicion, GameObject source)
+        {
             RememberInterruptedTask();
             AddSuspicion(changeSuspicion, source);
             RememberPlayerActivity(position);
@@ -1533,7 +1551,8 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            if (Vector3.Distance(transform.position, door.transform.position) > environmentAwarenessRadius)
+            if (door.NeighborAlertDistance <= 0f
+                || Vector3.Distance(transform.position, door.transform.position) > door.NeighborAlertDistance)
             {
                 return;
             }
