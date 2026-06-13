@@ -49,6 +49,12 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0.25f)] private float noProgressCheckInterval = 1.5f;
         [SerializeField, Min(0.01f)] private float minimumProgressPerAttempt = 0.3f;
         [SerializeField, Min(0f)] private float destinationChangeResetDistance = 0.75f;
+        [SerializeField, Min(1)] private int recoveryStartAttempt = 2;
+        [SerializeField, Min(1)] private int maximumRecoveryAttempts = 2;
+        [SerializeField, Min(0.1f)] private float recoverySearchRadius = 2.5f;
+        [SerializeField, Min(0.1f)] private float recoveryNavMeshSampleRadius = 3.5f;
+        [SerializeField, Min(0.05f)] private float minimumRecoveryRelocationDistance = 0.65f;
+        [SerializeField, Range(4, 32)] private int recoveryCandidateCount = 16;
 
         [Header("Jump And Climb")]
         [SerializeField] private bool traverseOffMeshLinks = true;
@@ -90,7 +96,9 @@ namespace Neighbor.Main.Features.Neighbor
         private float offMeshChaseUntilTime;
         private readonly RaycastHit[] climbProbeHits = new RaycastHit[10];
         private readonly RaycastHit[] dynamicObstacleHits = new RaycastHit[12];
+        private readonly Collider[] recoveryOverlapHits = new Collider[16];
         private NavMeshPath dynamicObstaclePath;
+        private NavMeshPath recoveryPath;
         private bool isAvoidingDynamicObstacle;
         private bool isPaused;
         private Vector3 dynamicObstacleDetour;
@@ -100,6 +108,9 @@ namespace Neighbor.Main.Features.Neighbor
         private Vector3 progressCheckPosition;
         private bool hasProgressCheckPosition;
         private int noProgressAttemptCount;
+        private int recoveryAttemptCount;
+        private Vector3 lastRecoveryPosition;
+        private float lastRecoveryTime = float.NegativeInfinity;
         private TraversalAnimationPhase traversalAnimationPhase;
 
         public bool IsTraversingSpecialMove => traversalRoutine != null;
@@ -115,7 +126,9 @@ namespace Neighbor.Main.Features.Neighbor
         public float ConfiguredSpeed => agent != null ? agent.speed : walkSpeed;
         public float RemainingDistance => agent == null || agent.pathPending ? float.PositiveInfinity : agent.remainingDistance;
         public int NoProgressAttemptCount => noProgressAttemptCount;
-        public int MaximumNoProgressAttempts => maximumNoProgressAttempts;
+        public int MaximumNoProgressAttempts => Mathf.Max(maximumNoProgressAttempts, recoveryStartAttempt + maximumRecoveryAttempts);
+        public Vector3 LastRecoveryPosition => lastRecoveryPosition;
+        public float LastRecoveryAge => Time.time - lastRecoveryTime;
         public event System.Action<Vector3> DestinationAbandoned;
         public bool HasArrived => agent != null
             && !isAvoidingDynamicObstacle
@@ -126,6 +139,7 @@ namespace Neighbor.Main.Features.Neighbor
         private void Awake()
         {
             dynamicObstaclePath = new NavMeshPath();
+            recoveryPath = new NavMeshPath();
             agent = GetComponent<NavMeshAgent>();
             ConfigureAgent();
             SnapToNavMeshIfNeeded();
@@ -138,9 +152,9 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            if (IsOffMeshChasing || !agent.updatePosition)
+            if (!IsOffMeshChasing && !agent.updatePosition && traversalRoutine == null)
             {
-                SnapToNavMeshIfNeeded();
+                RecoverDetachedAgent();
             }
 
             if (traverseOffMeshLinks && agent.isOnOffMeshLink && traversalRoutine == null)
@@ -218,7 +232,11 @@ namespace Neighbor.Main.Features.Neighbor
                 || Vector3.Distance(requestedDestination, hit.position) > destinationChangeResetDistance;
             requestedDestination = hit.position;
             hasRequestedDestination = true;
-            if (destinationChanged)
+            Vector3 movementSinceProgressCheck = transform.position - progressCheckPosition;
+            movementSinceProgressCheck.y = 0f;
+            if (destinationChanged
+                && (!hasProgressCheckPosition
+                    || movementSinceProgressCheck.sqrMagnitude >= minimumProgressPerAttempt * minimumProgressPerAttempt))
             {
                 ResetDestinationProgressTracking();
             }
@@ -717,11 +735,20 @@ namespace Neighbor.Main.Features.Neighbor
             if (movement.sqrMagnitude >= minimumProgressPerAttempt * minimumProgressPerAttempt)
             {
                 noProgressAttemptCount = 0;
+                recoveryAttemptCount = 0;
                 return;
             }
 
             noProgressAttemptCount++;
-            if (noProgressAttemptCount < maximumNoProgressAttempts)
+            if (noProgressAttemptCount >= recoveryStartAttempt
+                && recoveryAttemptCount < maximumRecoveryAttempts
+                && TryRecoverToNearbyNavMesh())
+            {
+                recoveryAttemptCount++;
+                return;
+            }
+
+            if (noProgressAttemptCount < MaximumNoProgressAttempts)
             {
                 isAvoidingDynamicObstacle = false;
                 agent.SetDestination(requestedDestination);
@@ -733,9 +760,161 @@ namespace Neighbor.Main.Features.Neighbor
             DestinationAbandoned?.Invoke(abandonedDestination);
         }
 
+        private bool TryRecoverToNearbyNavMesh()
+        {
+            if (agent == null || !agent.enabled || !hasRequestedDestination)
+            {
+                return false;
+            }
+
+            Vector3 origin = transform.position;
+            Vector3 toDestination = requestedDestination - origin;
+            toDestination.y = 0f;
+            Vector3 forward = toDestination.sqrMagnitude > 0.01f ? toDestination.normalized : transform.forward;
+            forward.y = 0f;
+            forward = forward.sqrMagnitude > 0.01f ? forward.normalized : Vector3.forward;
+
+            Vector3 bestPoint = default;
+            float bestScore = float.PositiveInfinity;
+            bool found = false;
+            int candidateCount = Mathf.Max(4, recoveryCandidateCount);
+            for (int i = 0; i < candidateCount; i++)
+            {
+                float angle = i * (360f / candidateCount);
+                float radius = Mathf.Lerp(
+                    minimumRecoveryRelocationDistance,
+                    recoverySearchRadius,
+                    (i % 4 + 1f) / 4f);
+                Vector3 direction = Quaternion.AngleAxis(angle, Vector3.up) * forward;
+                Vector3 candidate = origin + direction * radius;
+                if (!NavMesh.SamplePosition(candidate, out NavMeshHit hit, recoveryNavMeshSampleRadius, agent.areaMask)
+                    || Vector3.Distance(origin, hit.position) < minimumRecoveryRelocationDistance
+                    || !IsRecoveryPositionClear(hit.position)
+                    || !NavMesh.CalculatePath(hit.position, requestedDestination, agent.areaMask, recoveryPath)
+                    || recoveryPath.status != NavMeshPathStatus.PathComplete)
+                {
+                    continue;
+                }
+
+                float score = GetPathDistance(recoveryPath)
+                    + Vector3.Distance(origin, hit.position) * 0.25f
+                    + Mathf.Max(0f, hit.position.y - origin.y) * 1.5f;
+                if (score >= bestScore)
+                {
+                    continue;
+                }
+
+                bestScore = score;
+                bestPoint = hit.position;
+                found = true;
+            }
+
+            if (!found)
+            {
+                return false;
+            }
+
+            CancelActiveTraversalForRecovery();
+            agent.updatePosition = true;
+            agent.updateRotation = true;
+            agent.isStopped = false;
+            if (agent.isOnNavMesh)
+            {
+                agent.ResetPath();
+            }
+
+            if (!agent.Warp(bestPoint))
+            {
+                return false;
+            }
+
+            lastRecoveryPosition = bestPoint;
+            lastRecoveryTime = Time.time;
+            isAvoidingDynamicObstacle = false;
+            hasProgressCheckPosition = false;
+            nextProgressCheckTime = Time.time + noProgressCheckInterval;
+            return agent.SetDestination(requestedDestination);
+        }
+
+        private bool IsRecoveryPositionClear(Vector3 position)
+        {
+            float radius = Mathf.Max(0.05f, agent.radius * 0.9f);
+            float height = Mathf.Max(radius * 2f, agent.height);
+            Vector3 bottom = position + Vector3.up * (radius + 0.08f);
+            Vector3 top = position + Vector3.up * (height - radius);
+            int hitCount = Physics.OverlapCapsuleNonAlloc(
+                bottom,
+                top,
+                radius,
+                recoveryOverlapHits,
+                ~0,
+                QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < hitCount; i++)
+            {
+                Collider hit = recoveryOverlapHits[i];
+                if (hit != null && !hit.transform.IsChildOf(transform) && !transform.IsChildOf(hit.transform))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private void RecoverDetachedAgent()
+        {
+            if (agent == null || !agent.enabled)
+            {
+                return;
+            }
+
+            if (agent.isOnNavMesh)
+            {
+                Vector3 recoveredPosition = agent.nextPosition;
+                transform.position = recoveredPosition;
+                agent.updatePosition = true;
+                agent.updateRotation = true;
+                lastRecoveryPosition = recoveredPosition;
+                lastRecoveryTime = Time.time;
+                if (hasRequestedDestination)
+                {
+                    agent.SetDestination(requestedDestination);
+                }
+
+                return;
+            }
+
+            if (NavMesh.SamplePosition(transform.position, out NavMeshHit hit, recoveryNavMeshSampleRadius, agent.areaMask)
+                && IsRecoveryPositionClear(hit.position))
+            {
+                agent.updatePosition = true;
+                agent.updateRotation = true;
+                agent.Warp(hit.position);
+                lastRecoveryPosition = hit.position;
+                lastRecoveryTime = Time.time;
+                if (hasRequestedDestination)
+                {
+                    agent.SetDestination(requestedDestination);
+                }
+            }
+        }
+
+        private void CancelActiveTraversalForRecovery()
+        {
+            if (traversalRoutine != null)
+            {
+                StopCoroutine(traversalRoutine);
+                traversalRoutine = null;
+            }
+
+            traversalAnimationPhase = TraversalAnimationPhase.None;
+            offMeshChaseUntilTime = 0f;
+        }
+
         private void ResetDestinationProgressTracking()
         {
             noProgressAttemptCount = 0;
+            recoveryAttemptCount = 0;
             hasProgressCheckPosition = false;
             nextProgressCheckTime = Time.time + noProgressCheckInterval;
         }

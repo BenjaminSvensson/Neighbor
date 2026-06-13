@@ -31,6 +31,7 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0.5f)] private float overheadHeight = 3.1f;
         [SerializeField, Min(0.1f)] private float markerSize = 0.3f;
         [SerializeField, Min(0.1f)] private float recentSoundDisplayTime = 5f;
+        [SerializeField, Min(0.1f)] private float recoveryDisplayTime = 5f;
 
         private GUIStyle statusStyle;
         private GUIStyle markerStyle;
@@ -144,6 +145,11 @@ namespace Neighbor.Main.Features.Neighbor
                 {
                     text.Append("  |  Blocked tries ").Append(motor.NoProgressAttemptCount);
                     text.Append('/').Append(motor.MaximumNoProgressAttempts);
+                }
+
+                if (motor.LastRecoveryAge <= recoveryDisplayTime)
+                {
+                    text.Append("  |  RECOVERED ").Append(motor.LastRecoveryAge.ToString("0.0")).Append("s ago");
                 }
 
                 if (motor.IsTraversingSpecialMove)
@@ -299,6 +305,11 @@ namespace Neighbor.Main.Features.Neighbor
             if (motor != null && motor.IsAvoidingDynamicObstacle)
             {
                 DrawMarker(motor.DynamicObstacleDetour, new Color(1f, 0.25f, 0.75f), "DETOUR");
+            }
+
+            if (motor != null && motor.LastRecoveryAge <= recoveryDisplayTime)
+            {
+                DrawMarker(motor.LastRecoveryPosition, new Color(0.2f, 1f, 0.55f), "ANTI-STUCK RECOVERY");
             }
         }
 
