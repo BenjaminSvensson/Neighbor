@@ -117,6 +117,8 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Range(0f, 1f)] private float predictionChance = 0.72f;
         [SerializeField, Range(0f, 1f)] private float predictionMistakeChance = 0.16f;
         [SerializeField, Min(0.1f)] private float predictionDecisionInterval = 0.85f;
+        [SerializeField, Min(0f)] private float lastSeenVerificationDuration = 1.8f;
+        [SerializeField, Min(0.1f)] private float lastSeenVerificationSampleRadius = 1.25f;
 
         private BehaviorState currentState;
         private readonly HashSet<NeighborSearchPoint> visitedSearchPoints = new();
@@ -170,6 +172,9 @@ namespace Neighbor.Main.Features.Neighbor
         private Vector3 currentDoorRoomCheckPosition;
         private Vector3 cachedPredictionDirection;
         private float nextPredictionDecisionTime;
+        private bool isVerifyingLastSeenPosition;
+        private Vector3 lastSeenVerificationPosition;
+        private float lastSeenVerificationUntilTime;
 
         public BehaviorState CurrentState => currentState;
         public Transform Player => player;
@@ -190,6 +195,11 @@ namespace Neighbor.Main.Features.Neighbor
         public Door CurrentUnexpectedOpenDoor => currentUnexpectedOpenDoor;
         public Vector3 CurrentDoorRoomCheckPosition => currentDoorRoomCheckPosition;
         public float Suspicion => suspicion;
+        public bool IsVerifyingLastSeenPosition => currentState == BehaviorState.Chase && isVerifyingLastSeenPosition;
+        public Vector3 LastSeenVerificationPosition => lastSeenVerificationPosition;
+        public float LastSeenVerificationTimeRemaining => IsVerifyingLastSeenPosition && lastSeenVerificationUntilTime > 0f
+            ? Mathf.Max(0f, lastSeenVerificationUntilTime - Time.time)
+            : 0f;
         public SuspicionLevel CurrentSuspicionLevel => GetSuspicionLevel();
         public NeighborTaskLocation ActiveTaskLocation => currentState == BehaviorState.Task
             && currentTaskAnimationPhase != NeighborTaskLocation.TaskAnimationPhase.None
@@ -356,6 +366,8 @@ namespace Neighbor.Main.Features.Neighbor
             if (vision.TrySeeTarget(out Transform seenTarget, out Vector3 seenPosition))
             {
                 isPlayerVisible = true;
+                isVerifyingLastSeenPosition = false;
+                lastSeenVerificationUntilTime = 0f;
                 RememberInterruptedTask();
                 player = seenTarget;
                 if (currentState != BehaviorState.Chase)
@@ -405,6 +417,12 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             motor.SetMoveMode(NeighborMotor.MoveMode.Run);
+            if (isVerifyingLastSeenPosition)
+            {
+                UpdateLastSeenVerification();
+                return;
+            }
+
             bool canStillChase = player != null && Time.time - lastPlayerSeenTime <= chaseMemoryTime;
             Vector3 chasePosition = player != null && canStillChase
                 ? (isPlayerVisible ? player.position : GetPredictedChasePosition())
@@ -453,8 +471,63 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (!canStillChase)
             {
-                BeginHuntMode(lastKnownPlayerPosition);
+                BeginLastSeenVerification();
             }
+        }
+
+        private void BeginLastSeenVerification()
+        {
+            if (motor == null || isVerifyingLastSeenPosition)
+            {
+                return;
+            }
+
+            currentClimbLink = null;
+            isVerifyingLastSeenPosition = true;
+            lastSeenVerificationUntilTime = 0f;
+            if (!motor.TrySetDestinationNear(
+                    lastKnownPlayerPosition,
+                    lastSeenVerificationSampleRadius,
+                    out lastSeenVerificationPosition))
+            {
+                isVerifyingLastSeenPosition = false;
+                BeginHuntMode(lastKnownPlayerPosition);
+                return;
+            }
+
+            currentGoal = lastSeenVerificationPosition;
+            motor.SetMoveMode(NeighborMotor.MoveMode.Run);
+        }
+
+        private void UpdateLastSeenVerification()
+        {
+            if (motor == null)
+            {
+                return;
+            }
+
+            motor.SetMoveMode(NeighborMotor.MoveMode.Run);
+            if (!motor.HasArrived)
+            {
+                motor.FaceMovementDirection(14f);
+                return;
+            }
+
+            if (lastSeenVerificationUntilTime <= 0f)
+            {
+                motor.Stop();
+                lastSeenVerificationUntilTime = Time.time + lastSeenVerificationDuration;
+            }
+
+            if (Time.time < lastSeenVerificationUntilTime)
+            {
+                FaceSearchSweep();
+                return;
+            }
+
+            isVerifyingLastSeenPosition = false;
+            lastSeenVerificationUntilTime = 0f;
+            BeginHuntMode(lastKnownPlayerPosition);
         }
 
         private void BeginCatchingPlayer(PlayerController playerController)
@@ -546,13 +619,15 @@ namespace Neighbor.Main.Features.Neighbor
             currentInvestigationSource = null;
             currentUnexpectedOpenDoor = null;
             currentDoorRoomCheckPosition = default;
+            isVerifyingLastSeenPosition = false;
+            lastSeenVerificationUntilTime = 0f;
             DecayPersistentMemory();
             ChooseNextRoutineGoal();
         }
 
-        private void GiveUpChase(Vector3 chasePosition)
+        private void GiveUpChase(Vector3 _)
         {
-            BeginHuntMode(chasePosition);
+            BeginLastSeenVerification();
         }
 
         private bool TryHandleVerticalChase(Vector3 chasePosition)
@@ -865,7 +940,16 @@ namespace Neighbor.Main.Features.Neighbor
                 case BehaviorState.Chase:
                     if (!isPlayerVisible)
                     {
-                        BeginHuntMode(lastKnownPlayerPosition);
+                        if (isVerifyingLastSeenPosition)
+                        {
+                            isVerifyingLastSeenPosition = false;
+                            lastSeenVerificationUntilTime = 0f;
+                            BeginHuntMode(lastKnownPlayerPosition);
+                        }
+                        else
+                        {
+                            BeginLastSeenVerification();
+                        }
                     }
 
                     return;
@@ -1169,6 +1253,8 @@ namespace Neighbor.Main.Features.Neighbor
         {
             ClosetHideSpot priorityHideSpot = witnessedPlayerHideSpot;
             lastKnownPlayerPosition = lostPlayerPosition;
+            isVerifyingLastSeenPosition = false;
+            lastSeenVerificationUntilTime = 0f;
             currentClimbLink = null;
             currentTaskLocation = null;
             currentSearchPoint = null;
@@ -1448,6 +1534,12 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 currentTaskAnimationPhase = NeighborTaskLocation.TaskAnimationPhase.None;
                 StopActiveTaskAudio();
+            }
+
+            if (currentState == BehaviorState.Chase && state != BehaviorState.Chase)
+            {
+                isVerifyingLastSeenPosition = false;
+                lastSeenVerificationUntilTime = 0f;
             }
 
             currentState = state;

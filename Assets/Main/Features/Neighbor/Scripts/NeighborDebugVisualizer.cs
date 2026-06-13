@@ -175,6 +175,14 @@ namespace Neighbor.Main.Features.Neighbor
                 text.Append("  |  Search points ").Append(brain.VisitedSearchPointCount);
                 text.Append('/').Append(brain.RequiredSearchPointVisits);
             }
+            else if (brain.IsVerifyingLastSeenPosition)
+            {
+                text.Append("\nChase loss: VERIFYING LAST SEEN");
+                if (brain.LastSeenVerificationTimeRemaining > 0f)
+                {
+                    text.Append("  |  Sweep ").Append(brain.LastSeenVerificationTimeRemaining.ToString("0.0")).Append('s');
+                }
+            }
 
             if (doorInteractor != null && doorInteractor.IsInteractingWithDoor)
             {
@@ -198,6 +206,11 @@ namespace Neighbor.Main.Features.Neighbor
 
         private string GetFocusDescription()
         {
+            if (brain.IsVerifyingLastSeenPosition)
+            {
+                return "Verify last seen player position";
+            }
+
             if (brain.CurrentTaskLocation != null)
             {
                 return $"Task {brain.CurrentTaskLocation.name} ({brain.ActiveTaskAnimationPhase})";
@@ -370,6 +383,10 @@ namespace Neighbor.Main.Features.Neighbor
             Handles.color = color;
             Handles.DrawDottedLine(transform.position + Vector3.up, brain.LastKnownPlayerPosition + Vector3.up, 4f);
             DrawArrow(brain.LastKnownPlayerPosition, brain.LastSeenPlayerMoveDirection, color, 1.8f);
+            if (brain.IsVerifyingLastSeenPosition)
+            {
+                DrawMarker(brain.LastSeenVerificationPosition, new Color(1f, 0.8f, 0.08f), "MUST VERIFY");
+            }
         }
 
         private void DrawRecentSound()
