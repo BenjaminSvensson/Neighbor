@@ -5,11 +5,16 @@ using UnityEngine.InputSystem;
 namespace Neighbor.Main.Features.Player
 {
     [RequireComponent(typeof(Camera))]
+    [DefaultExecutionOrder(1000)]
     public sealed class PlayerCameraController : MonoBehaviour
     {
         [Header("References")]
         [SerializeField] private PlayerController playerController;
         [SerializeField] private Transform yawRoot;
+
+        [Header("First Person Body")]
+        [SerializeField] private Animator bodyAnimator;
+        [SerializeField] private Vector3 headViewOffset = new Vector3(0f, 0.08f, 0.08f);
 
         [Header("Look")]
         [SerializeField, Min(0f)] private float mouseSensitivity = 0.08f;
@@ -77,6 +82,7 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float impactReturnSpeed = 18f;
 
         private Camera playerCamera;
+        private Transform animatedHead;
         private Vector3 baseLocalPosition;
         private float yaw;
         private float pitch;
@@ -100,6 +106,7 @@ namespace Neighbor.Main.Features.Player
         private float targetImpactFovOffset;
         private float targetImpactShake;
         private float stairStepSide = 1f;
+        private Vector3 currentProceduralOffset;
         private bool playZoomAudioThroughSmoothing;
         private PlayerFrameInput frameInput;
         private bool gameplayInputBlocked;
@@ -122,6 +129,8 @@ namespace Neighbor.Main.Features.Player
             {
                 yawRoot = playerController != null ? playerController.transform : transform.root;
             }
+
+            ResolveAnimatedHead();
 
             Vector3 yawEuler = yawRoot.rotation.eulerAngles;
             yaw = yawEuler.y;
@@ -182,7 +191,10 @@ namespace Neighbor.Main.Features.Player
             if (!gameplayInputBlocked)
             {
                 UpdateCameraPose(frameInput);
+                return;
             }
+
+            UpdateCameraPosition(currentProceduralOffset);
         }
 
         private void UpdateZoom(PlayerFrameInput input)
@@ -279,10 +291,40 @@ namespace Neighbor.Main.Features.Player
 
             Vector3 leanOffset = Vector3.right * (smoothedLean * leanDistance);
             Vector3 impactOffset = new Vector3(shakeX * 0.01f, impactVerticalOffset + climbVerticalOffset + shakeY * 0.01f, 0f);
-            transform.localPosition = baseLocalPosition + leanOffset + bobOffset + impactOffset + new Vector3(wobbleX, wobbleY, 0f) * 0.01f;
+            currentProceduralOffset = leanOffset + bobOffset + impactOffset + new Vector3(wobbleX, wobbleY, 0f) * 0.01f;
 
             float roll = -smoothedLean * leanAngle + wobbleRoll + shakeRoll + impactRollOffset + climbRollOffset + bobStep * bobRollAmount * moveAmount;
             transform.localRotation = Quaternion.Euler(smoothedPitch + wobbleY + impactPitchOffset + climbPitchOffset, wobbleX, roll);
+            UpdateCameraPosition(currentProceduralOffset);
+        }
+
+        private void ResolveAnimatedHead()
+        {
+            if (bodyAnimator == null && playerController != null)
+            {
+                bodyAnimator = playerController.GetComponentInChildren<Animator>(true);
+            }
+
+            animatedHead = bodyAnimator != null && bodyAnimator.isHuman
+                ? bodyAnimator.GetBoneTransform(HumanBodyBones.Head)
+                : null;
+        }
+
+        private void UpdateCameraPosition(Vector3 proceduralOffset)
+        {
+            if (animatedHead == null)
+            {
+                ResolveAnimatedHead();
+            }
+
+            if (animatedHead == null || yawRoot == null)
+            {
+                transform.localPosition = baseLocalPosition + proceduralOffset;
+                return;
+            }
+
+            transform.position = animatedHead.position
+                + yawRoot.TransformVector(headViewOffset + proceduralOffset);
         }
 
         private void UpdateImpactFeedback()
@@ -429,6 +471,7 @@ namespace Neighbor.Main.Features.Player
             climbVerticalOffset = 0f;
             climbPitchOffset = 0f;
             climbRollOffset = 0f;
+            currentProceduralOffset = Vector3.zero;
             targetImpactVerticalOffset = 0f;
             targetImpactPitchOffset = 0f;
             targetImpactRollOffset = 0f;

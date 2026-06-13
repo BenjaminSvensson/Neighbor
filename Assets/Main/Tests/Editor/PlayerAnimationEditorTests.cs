@@ -61,5 +61,17 @@ namespace Neighbor.Main.Tests
             Assert.That(playerLayer, Is.GreaterThanOrEqualTo(0));
             Assert.That(playerCamera.cullingMask & (1 << playerLayer), Is.Not.Zero);
         }
+
+        [Test]
+        public void PlayerCamera_HasAnimatedHumanoidHeadAnchor()
+        {
+            GameObject playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
+            PlayerCameraController cameraController = playerPrefab.GetComponentInChildren<PlayerCameraController>(true);
+            Animator animator = playerPrefab.GetComponentInChildren<Animator>(true);
+
+            Assert.That(cameraController, Is.Not.Null);
+            Assert.That(animator, Is.Not.Null);
+            Assert.That(animator.GetBoneTransform(HumanBodyBones.Head), Is.Not.Null);
+        }
     }
 }
