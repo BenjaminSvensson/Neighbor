@@ -193,7 +193,9 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (brain.CurrentSearchPoint != null)
             {
-                return $"Search point {brain.CurrentSearchPoint.name}";
+                return brain.CurrentUnexpectedOpenDoor != null
+                    ? $"Room beyond {brain.CurrentUnexpectedOpenDoor.name} via {brain.CurrentSearchPoint.name}"
+                    : $"Search point {brain.CurrentSearchPoint.name}";
             }
 
             if (brain.CurrentHideSpot != null)
@@ -203,7 +205,9 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (brain.CurrentInvestigationSource != null)
             {
-                return $"Noise source {brain.CurrentInvestigationSource.name}";
+                return brain.CurrentUnexpectedOpenDoor != null
+                    ? $"Unexpected open door {brain.CurrentUnexpectedOpenDoor.name}"
+                    : $"Noise source {brain.CurrentInvestigationSource.name}";
             }
 
             return brain.CurrentState == NeighborBrain.BehaviorState.Chase && brain.Player != null
@@ -319,6 +323,21 @@ namespace Neighbor.Main.Features.Neighbor
                     brain.CurrentTaskLocation.LookDirection,
                     new Color(0.1f, 0.85f, 1f),
                     1.5f);
+            }
+
+            if (brain.CurrentUnexpectedOpenDoor != null)
+            {
+                Color doorEvidenceColor = new Color(1f, 0.35f, 0.08f);
+                Vector3 doorPosition = brain.CurrentUnexpectedOpenDoor.transform.position;
+                Handles.color = doorEvidenceColor;
+                Handles.DrawDottedLine(doorPosition + Vector3.up * 0.2f, brain.CurrentDoorRoomCheckPosition + Vector3.up * 0.2f, 4f);
+                DrawMarker(doorPosition, doorEvidenceColor, "UNEXPECTED OPEN DOOR");
+                DrawMarker(brain.CurrentDoorRoomCheckPosition, doorEvidenceColor, "CHECK ROOM");
+                DrawArrow(
+                    doorPosition + Vector3.up * 0.25f,
+                    brain.CurrentDoorRoomCheckPosition - doorPosition,
+                    doorEvidenceColor,
+                    Mathf.Min(2f, Vector3.Distance(doorPosition, brain.CurrentDoorRoomCheckPosition)));
             }
         }
 

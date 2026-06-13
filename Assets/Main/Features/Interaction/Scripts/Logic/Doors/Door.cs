@@ -11,6 +11,7 @@ namespace Neighbor.Main.Features.Interaction
     public sealed class Door : MonoBehaviour, IInteractable
     {
         private static readonly List<Door> ActiveDoors = new();
+        public static event System.Action<Door, Vector3> UnexpectedlyOpened;
 
         [Header("Door")]
         [SerializeField] private Transform hinge;
@@ -65,6 +66,8 @@ namespace Neighbor.Main.Features.Interaction
         private Quaternion closedRotation;
         private bool isOpen;
         private bool isLocked;
+        private bool lastOpenedByNeighbor;
+        private int openSequence;
         private float currentAngle;
         private float closeAtTime;
         private DoorBlockerChair activeBlocker;
@@ -80,6 +83,8 @@ namespace Neighbor.Main.Features.Interaction
         public bool IsOpen => isOpen;
         public bool NeighborCanUnlock => neighborCanUnlock;
         public bool NeighborCanKickBlockedDoor => neighborCanKickBlockedDoor;
+        public bool LastOpenedByNeighbor => lastOpenedByNeighbor;
+        public int OpenSequence => openSequence;
         public DoorBlockerChair ActiveBlocker => activeBlocker;
         public string RequiredKeyId => requiredKeyId;
         public Vector3 DefaultOpeningSideNormal => -transform.forward * Mathf.Sign(openAngle == 0f ? 1f : openAngle);
@@ -88,6 +93,7 @@ namespace Neighbor.Main.Features.Interaction
         private static void ResetActiveDoors()
         {
             ActiveDoors.Clear();
+            UnexpectedlyOpened = null;
         }
 
         private void Awake()
@@ -168,7 +174,7 @@ namespace Neighbor.Main.Features.Interaction
             Toggle(interactor);
         }
 
-        public bool TryOpenFor(Transform _)
+        public bool TryOpenFor(Transform opener)
         {
             if (IsBlocked)
             {
@@ -182,7 +188,7 @@ namespace Neighbor.Main.Features.Interaction
                 return false;
             }
 
-            Open();
+            OpenFromUnexpectedSource(opener);
             return true;
         }
 
@@ -210,7 +216,7 @@ namespace Neighbor.Main.Features.Interaction
                 return true;
             }
 
-            OpenIgnoring(neighbor);
+            OpenIgnoring(neighbor, true);
             return true;
         }
 
@@ -230,7 +236,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             SetLocked(false, false, false);
-            OpenIgnoring(neighbor);
+            OpenIgnoring(neighbor, true);
             return true;
         }
 
@@ -283,6 +289,29 @@ namespace Neighbor.Main.Features.Interaction
         public bool IsOnDefaultOpeningSide(Vector3 worldPosition)
         {
             return Vector3.Dot(DefaultOpeningSideNormal, worldPosition - transform.position) > 0f;
+        }
+
+        public Vector3 GetPositionBeyond(Vector3 openerPosition, float distance)
+        {
+            return transform.position + GetDirectionBeyond(openerPosition) * Mathf.Max(0f, distance);
+        }
+
+        public Vector3 GetDirectionBeyond(Vector3 openerPosition)
+        {
+            Vector3 forward = transform.forward;
+            forward.y = 0f;
+            if (forward.sqrMagnitude <= 0.001f)
+            {
+                forward = Vector3.forward;
+            }
+
+            float openerSide = Vector3.Dot(forward, openerPosition - transform.position);
+            if (Mathf.Abs(openerSide) <= 0.01f)
+            {
+                openerSide = Vector3.Dot(forward, DefaultOpeningSideNormal);
+            }
+
+            return -forward.normalized * Mathf.Sign(openerSide == 0f ? 1f : openerSide);
         }
 
         public bool TryAddBlocker(DoorBlockerChair blocker, Vector3 blockerPosition, bool playFailureFeedback = true)
@@ -367,20 +396,48 @@ namespace Neighbor.Main.Features.Interaction
 
         public void Open(PlayerInteractor interactor = null)
         {
+            bool wasOpen = isOpen;
             isOpen = true;
+            if (!wasOpen)
+            {
+                lastOpenedByNeighbor = false;
+                openSequence++;
+            }
+
             closeAtTime = Time.time + autoCloseDelay;
             UpdateNavigationObstacles();
             PlayRandomSound(openClips);
             AnimateTo(openAngle, openCloseDuration, interactor != null ? interactor.GetComponentsInParent<Collider>() : null);
+            if (!wasOpen && interactor != null)
+            {
+                UnexpectedlyOpened?.Invoke(this, interactor.transform.position);
+            }
         }
 
-        private void OpenIgnoring(Transform opener)
+        private void OpenIgnoring(Transform opener, bool openedByNeighbor)
         {
+            bool wasOpen = isOpen;
             isOpen = true;
+            if (!wasOpen)
+            {
+                lastOpenedByNeighbor = openedByNeighbor;
+                openSequence++;
+            }
+
             closeAtTime = Time.time + autoCloseDelay;
             UpdateNavigationObstacles();
             PlayRandomSound(openClips);
             AnimateTo(openAngle, openCloseDuration, opener != null ? opener.GetComponentsInParent<Collider>() : null);
+        }
+
+        private void OpenFromUnexpectedSource(Transform opener)
+        {
+            bool wasOpen = isOpen;
+            OpenIgnoring(opener, false);
+            if (!wasOpen)
+            {
+                UnexpectedlyOpened?.Invoke(this, opener != null ? opener.position : transform.position + DefaultOpeningSideNormal);
+            }
         }
 
         public void Close()
@@ -541,6 +598,8 @@ namespace Neighbor.Main.Features.Interaction
 
             isLocked = startsLocked;
             isOpen = startsOpen;
+            lastOpenedByNeighbor = false;
+            openSequence = 0;
             SetAngle(startsOpen ? openAngle : 0f);
             closeAtTime = startsOpen && autoCloseDelay > 0f ? Time.time + autoCloseDelay : 0f;
             trackedOpeningPlayer = null;

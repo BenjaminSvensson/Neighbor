@@ -112,6 +112,11 @@ namespace Neighbor.Main.Features.Interaction
                     return;
                 }
 
+                if (door.IsOpen)
+                {
+                    brain?.ObserveOpenDoor(door, transform.position);
+                }
+
                 float openPause = GetDoorOpenPause();
                 if (!door.IsOpen && openPause > 0f)
                 {
