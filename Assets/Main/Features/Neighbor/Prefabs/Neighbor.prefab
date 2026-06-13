@@ -907,7 +907,7 @@ MonoBehaviour:
   idleMutterMinimumDelay: 7
   idleMutterMaximumDelay: 15
   breathingLoopClip: {fileID: 8300000, guid: 9d034dce680892a4cb1f0ae2f0ab48af, type: 3}
-  chaseLoopClip: {fileID: 8300000, guid: 7a698d46b8fe9bd46bd1937411afee9f, type: 3}
+  chaseLoopClip: {fileID: 8300000, guid: 4d6913b39a827014c85527baf14f97ff, type: 3}
   idleBreathingVolume: 0.08
   alertedBreathingVolume: 0.18
   chaseBreathingVolume: 0.34
@@ -1538,6 +1538,18 @@ PrefabInstance:
       value: 7
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.45
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.45
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.45
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
       objectReference: {fileID: 0}
@@ -1576,6 +1588,10 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8310842784339754763, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
       propertyPath: m_Layer

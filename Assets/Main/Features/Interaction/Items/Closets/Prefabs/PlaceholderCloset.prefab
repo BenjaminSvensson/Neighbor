@@ -59,7 +59,7 @@ MonoBehaviour:
   hideSpot: {fileID: 0}
   leftOpenEuler: {x: 0, y: -95, z: 0}
   rightOpenEuler: {x: 0, y: 95, z: 0}
-  moveDuration: 0.32
+  moveDuration: 0.16
   movementCurve:
     serializedVersion: 2
     m_Curve:

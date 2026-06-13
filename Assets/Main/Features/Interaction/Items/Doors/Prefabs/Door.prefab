@@ -51,6 +51,7 @@ MonoBehaviour:
   openAngle: 95
   openCloseDuration: 0.28
   autoCloseDelay: 0
+  startsOpen: 0
   startsLocked: 0
   requiredKeyId: test_key
   neighborCanUnlock: 1
@@ -61,6 +62,17 @@ MonoBehaviour:
   blockerKickUpwardImpulse: 0.45
   blockNeighborNavigationWhenUnavailable: 1
   navigationObstaclePadding: 0.08
+  trackPlayerUseForReinforcement: 1
+  playerOpenWeight: 0.5
+  playerPassageWeight: 1
+  reinforcementCanLockDoor: 0
+  reinforcementLockCost: 1
+  reinforcementCanBlockDoor: 1
+  blockerReinforcementOptions:
+  - prefab: {fileID: 0}
+    cost: 1
+  legacyBlockerReinforcementPrefabs: []
+  blockerReinforcementSpawnPoint: {fileID: 0}
   audioSource: {fileID: 6590882588213417013}
   openClips:
   - {fileID: 8300000, guid: e7e701bbd5c0c7042b8ad23e181ec26f, type: 3}

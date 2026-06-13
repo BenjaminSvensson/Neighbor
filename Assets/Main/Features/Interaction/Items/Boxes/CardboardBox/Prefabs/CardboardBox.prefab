@@ -191,7 +191,10 @@ MonoBehaviour:
   impactCooldown: 0.08
   minimumNoiseRadius: 1.5
   maximumNoiseRadius: 14
+  alertUrgency: 0.7
   noiseLifetime: 0.25
+  neighborAttributionTime: 1
+  neighborAttributionMaximumObjectSpeed: 0.75
   impactClips:
   - {fileID: 8300000, guid: 4353bccfc087e0c4098b4b8e329d1530, type: 3}
   minimumVolume: 0.02

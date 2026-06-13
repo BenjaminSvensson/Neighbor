@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1357196244085932726}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: PlayerHead
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -43,7 +43,7 @@ GameObject:
   - component: {fileID: 2285926682653444884}
   - component: {fileID: 4317548466201439825}
   - component: {fileID: 3667887726774940887}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: PlayerCrosshair
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -67,7 +67,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 10, y: 10}
+  m_SizeDelta: {x: 6, y: 6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &4317548466201439825
 CanvasRenderer:
@@ -113,7 +113,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4750545373015777063}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: SmallHoldPoint
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -129,7 +129,7 @@ Transform:
   m_GameObject: {fileID: 1397502244091283624}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.3, z: 1.1500001}
+  m_LocalPosition: {x: 0, y: -0.1, z: 0.9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -144,7 +144,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6488719506441061430}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: MediumHoldPoint
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -176,7 +176,7 @@ GameObject:
   m_Component:
   - component: {fileID: 774086184442362810}
   - component: {fileID: 1667288762252372332}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: OneShotAudio
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -309,7 +309,7 @@ GameObject:
   - component: {fileID: 2098546478872310776}
   - component: {fileID: 144846750235035850}
   - component: {fileID: 8082241173593974563}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Player
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -390,7 +390,7 @@ MonoBehaviour:
   enableLedgeClimb: 1
   ledgeCheckDistance: 0.75
   ledgeMinimumHeight: 0.45
-  ledgeMaximumHeight: 1.25
+  ledgeMaximumHeight: 1.6
   ledgeTopProbeForwardOffset: 0.35
   ledgeTopSurfaceProbeStartDistance: 0.32
   ledgeTopSurfaceProbeSpacing: 0.18
@@ -420,29 +420,6 @@ MonoBehaviour:
   minimumStepImpactHeight: 0.08
   stepImpactCooldown: 0.13
   mouseSensitivity: 0.08
---- !u!114 &8082241173593974563
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4793360982295166136}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a2c7b0749b5448efb9f77e2ebd8a8a9f, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Player.PlayerDeathController
-  fallDuration: 0.85
-  groundHoldDuration: 0.65
-  fadeOutDuration: 0.45
-  fallenCameraHeight: 0.25
-  fallRollDegrees: 78
-  fallPitchDegrees: 18
-  deathFieldOfView: 42
-  deathShakeAmount: 0.035
-  deathShakeFrequency: 22
-  reinforcementLocationsPerDeath: 2
-  neighborRespawnSightGraceTime: 2.5
 --- !u!114 &2098546478872310776
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -468,8 +445,10 @@ MonoBehaviour:
   runStepInterval: 0.32
   crouchStepInterval: 0.62
   footstepVolume: 0.55
-  jumpClips: []
-  landingClips: []
+  jumpClips:
+  - {fileID: 8300000, guid: e98892ba1fed3054abcbc9fe394a232b, type: 3}
+  landingClips:
+  - {fileID: 0}
   stairStepClips: []
   crouchDownClips: []
   standUpClips: []
@@ -520,6 +499,38 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 1, z: 0}
+--- !u!114 &8082241173593974563
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4793360982295166136}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2c7b0749b5448efb9f77e2ebd8a8a9f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Player.PlayerDeathController
+  fallDuration: 0.85
+  groundHoldDuration: 0.65
+  fadeOutDuration: 0.45
+  fallenCameraHeight: 0.25
+  fallRollDegrees: 78
+  fallPitchDegrees: 18
+  deathFieldOfView: 42
+  deathShakeAmount: 0.035
+  deathShakeFrequency: 22
+  impactDuration: 0.2
+  impactDrop: 0.11
+  impactPitchKick: 14
+  impactRollKick: 9
+  impactShakeAmount: 0.065
+  impactFieldOfViewKick: 7
+  impactBlackFlash: 0.18
+  reinforcementBudgetPerDeath: 5
+  reinforcementLocationsPerDeath: 2
+  reinforcedDoorsPerDeath: 2
+  neighborRespawnSightGraceTime: 2.5
 --- !u!1 &5136887905619727889
 GameObject:
   m_ObjectHideFlags: 0
@@ -533,7 +544,7 @@ GameObject:
   - component: {fileID: 6877058444644336970}
   - component: {fileID: 5627469938139778044}
   - component: {fileID: 9061394525602816401}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: PlayerUI
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -650,7 +661,7 @@ GameObject:
   m_Component:
   - component: {fileID: 49795564161169278}
   - component: {fileID: 824441125532050216}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: LoopAudio
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -783,7 +794,7 @@ GameObject:
   - component: {fileID: 6036600553356544174}
   - component: {fileID: 6230172472076133448}
   - component: {fileID: 7301234288172884471}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Camera
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -936,8 +947,8 @@ MonoBehaviour:
   zoomScrollSpeed: 5
   zoomDragSpeed: 0.18
   zoomSmoothing: 12
-  zoomWobbleBoost: 0.55
   zoomSnapThreshold: 0.08
+  zoomWobbleBoost: 0.55
   leanDistance: 0.4
   leanAngle: 12
   leanSmoothing: 20
@@ -995,9 +1006,10 @@ MonoBehaviour:
   interactAlignmentTieTolerance: 0.002
   interactMask:
     serializedVersion: 2
-    m_Bits: 64
+    m_Bits: 320
   triggerInteraction: 1
   tooltipView: {fileID: 0}
+  inventoryHudView: {fileID: 0}
   smallHoldPoint: {fileID: 4750545373015777063}
   mediumHoldPoint: {fileID: 6488719506441061430}
   largeHoldPoint: {fileID: 7098320009907703960}
@@ -1010,7 +1022,9 @@ MonoBehaviour:
   holdObstructionPadding: 0.18
   holdObstructionMask:
     serializedVersion: 2
-    m_Bits: 1
+    m_Bits: 321
+  inventorySlotCount: 6
+  inventoryStashRoot: {fileID: 0}
   placementRange: 6
   placementProbeRadius: 0.14
   placementMinimumUpDot: 0.25
@@ -1050,7 +1064,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7380132252857314632}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Audio
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1083,7 +1097,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7098320009907703960}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: LargeHoldPoint
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1099,7 +1113,7 @@ Transform:
   m_GameObject: {fileID: 8887157694786461502}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.3, z: 2.4}
+  m_LocalPosition: {x: 0, y: -0.8, z: 2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1113,9 +1127,17 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1327355640084703705}
     m_Modifications:
+    - target: {fileID: 6496619562469592758, guid: ccc415abeb3e3734ea058bf3e7a9b01f, type: 3}
+      propertyPath: m_Layer
+      value: 9
+      objectReference: {fileID: 0}
     - target: {fileID: 7687317527158378928, guid: ccc415abeb3e3734ea058bf3e7a9b01f, type: 3}
       propertyPath: m_Name
       value: PlayerVisual
+      objectReference: {fileID: 0}
+    - target: {fileID: 7687317527158378928, guid: ccc415abeb3e3734ea058bf3e7a9b01f, type: 3}
+      propertyPath: m_Layer
+      value: 9
       objectReference: {fileID: 0}
     - target: {fileID: 7986972161794252262, guid: ccc415abeb3e3734ea058bf3e7a9b01f, type: 3}
       propertyPath: m_LocalPosition.x
