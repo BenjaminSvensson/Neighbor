@@ -292,11 +292,19 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 || alignment != HouseSurfaceAlignment.None
                 || (surfaces & HouseSurfaceType.Ground) == 0;
             placement.FindPropertyRelative("validateCollisions").boolValue = true;
-            SetBoundsFromPrefab(placement, prefab);
+            SetBoundsFromPrefab(placement, prefab, out Bounds placementBounds, out bool hasVisualBounds);
             if (boundsSize.sqrMagnitude > 0f)
             {
                 placement.FindPropertyRelative("boundsSize").vector3Value = boundsSize;
                 placement.FindPropertyRelative("boundsCenter").vector3Value = Vector3.zero;
+            }
+
+            if (placementOffset.sqrMagnitude <= Mathf.Epsilon
+                && hasVisualBounds
+                && alignment == HouseSurfaceAlignment.None
+                && (surfaces & HouseSurfaceType.Ground) != 0)
+            {
+                placementOffset = Vector3.up * Mathf.Max(0f, -placementBounds.min.y);
             }
 
             placement.FindPropertyRelative("placementOffset").vector3Value = placementOffset;
@@ -313,17 +321,23 @@ namespace Neighbor.Main.HouseBuilder.Editor
             output.Add(definition);
         }
 
-        private static void SetBoundsFromPrefab(SerializedProperty placement, GameObject prefab)
+        private static void SetBoundsFromPrefab(
+            SerializedProperty placement,
+            GameObject prefab,
+            out Bounds placementBounds,
+            out bool hasVisualBounds)
         {
             Renderer[] renderers = prefab.GetComponentsInChildren<Renderer>(true);
             Collider[] colliders = prefab.GetComponentsInChildren<Collider>(true);
             Bounds bounds = new(Vector3.zero, Vector3.one);
             bool hasBounds = false;
+            hasVisualBounds = false;
             for (int i = 0; i < renderers.Length; i++)
             {
                 Bounds local = ToLocalBounds(prefab.transform, renderers[i].bounds);
                 bounds = hasBounds ? Encapsulate(bounds, local) : local;
                 hasBounds = true;
+                hasVisualBounds = true;
             }
 
             for (int i = 0; i < colliders.Length; i++)
@@ -333,6 +347,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 hasBounds = true;
             }
 
+            placementBounds = bounds;
             placement.FindPropertyRelative("boundsCenter").vector3Value = bounds.center;
             placement.FindPropertyRelative("boundsSize").vector3Value = Vector3.Max(bounds.size, Vector3.one * 0.05f);
         }

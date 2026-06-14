@@ -25,7 +25,7 @@ MonoBehaviour:
     allowTriggerOverlap: 1
     boundsSize: {x: 0.95, y: 0.61640006, z: 1.37}
     boundsCenter: {x: 0, y: 0.22, z: 0.335}
-    placementOffset: {x: 0, y: 0, z: 0}
+    placementOffset: {x: 0, y: 0.0882, z: 0}
   wallOpening:
     enabled: 0
     size: {x: 1.2, y: 2.1, z: 0.5}

@@ -353,6 +353,25 @@ namespace Neighbor.Main.Tests
             Assert.That(door.Placement.RequireSurface, Is.True);
         }
 
+        [TestCase("BoxingGloveTrap")]
+        [TestCase("CardboardBox")]
+        [TestCase("Chair")]
+        [TestCase("Closet")]
+        [TestCase("Cupboard")]
+        [TestCase("SawBladeTrap")]
+        public void VisibleGroundPlaceable_PlacementBoundsRestOnSurface(string definitionName)
+        {
+            HousePlaceableDefinition definition = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                $"Assets/Main/HouseBuilder/Data/Placeables/{definitionName}.asset");
+
+            Assert.That(definition, Is.Not.Null);
+            float placedMinimum = definition.Placement.BoundsCenter.y
+                - definition.Placement.BoundsSize.y * 0.5f
+                + definition.Placement.PlacementOffset.y;
+
+            Assert.That(placedMinimum, Is.GreaterThanOrEqualTo(-0.001f), definition.DisplayName);
+        }
+
         [Test]
         public void ReinforcementLocation_RoundTripsStableTriggerLinkAndSelections()
         {
