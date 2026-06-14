@@ -99,6 +99,34 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void MatchingInventoryPickup_AutoEquipsSilentlyAfterActionDelay()
+        {
+            GameObject interactorObject = context.CreateObject("PlayerInteractor");
+            PlayerInteractor interactor = interactorObject.AddComponent<PlayerInteractor>();
+            Pickupable releasedPickup = CreatePickup("Tomato");
+            Pickupable nextPickup = CreatePickup("Tomato (1)");
+            nextPickup.StoreInInventory(null);
+
+            GameplaySmokeTestReflection.SetField(interactor, "inventorySlots", new Pickupable[] { null, nextPickup });
+            GameplaySmokeTestReflection.SetField(interactor, "activeInventorySlot", 0);
+            int pickupAnimationCount = 0;
+            interactor.PickupStarted += () => pickupAnimationCount++;
+
+            GameplaySmokeTestReflection.Invoke(interactor, "QueueMatchingInventoryPickup", releasedPickup, 1f);
+
+            Assert.That(interactor.HeldPickup, Is.Null);
+            Assert.That(nextPickup.IsInventoryStored, Is.True);
+
+            GameplaySmokeTestReflection.SetField(interactor, "pendingAutoEquipAt", -1f);
+            GameplaySmokeTestReflection.Invoke(interactor, "UpdatePendingAutoEquip");
+
+            Assert.That(interactor.HeldPickup, Is.SameAs(nextPickup));
+            Assert.That(interactor.ActiveInventorySlot, Is.EqualTo(1));
+            Assert.That(nextPickup.IsInventoryStored, Is.False);
+            Assert.That(pickupAnimationCount, Is.Zero);
+        }
+
+        [Test]
         public void NoiseEvent_ReportsReadablePlayerFeedback()
         {
             PlayerFeedbackEvents.NoiseFeedback received = default;
@@ -120,6 +148,14 @@ namespace Neighbor.Main.Tests
                 received = feedback;
                 reported = true;
             }
+        }
+
+        private Pickupable CreatePickup(string name)
+        {
+            GameObject pickupObject = context.CreateObject(name);
+            pickupObject.AddComponent<Rigidbody>();
+            pickupObject.AddComponent<BoxCollider>();
+            return context.AddInitializedComponent<Pickupable>(pickupObject);
         }
     }
 }

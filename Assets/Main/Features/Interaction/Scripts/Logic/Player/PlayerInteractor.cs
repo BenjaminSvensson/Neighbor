@@ -41,6 +41,8 @@ namespace Neighbor.Main.Features.Interaction
         [Header("Inventory")]
         [SerializeField, Range(1, MaximumInventorySlots)] private int inventorySlotCount = MaximumInventorySlots;
         [SerializeField] private Transform inventoryStashRoot;
+        [SerializeField, Min(0f)] private float autoEquipAfterThrowDelay = 0.32f;
+        [SerializeField, Min(0f)] private float autoEquipAfterDropDelay = 0.42f;
 
         [Header("Placement")]
         [SerializeField, Min(0.2f)] private float placementRange = 3.25f;
@@ -87,6 +89,8 @@ namespace Neighbor.Main.Features.Interaction
         private int activeInventorySlot;
         private float releaseButtonDownTime;
         private bool releaseButtonWasHeld;
+        private string pendingAutoEquipMatchKey;
+        private float pendingAutoEquipAt;
         private Material throwArcMaterial;
 
         public event Action PickupStarted;
@@ -133,6 +137,7 @@ namespace Neighbor.Main.Features.Interaction
 
         private void OnDisable()
         {
+            CancelPendingAutoEquip();
             interactAction?.Disable();
             EndActiveHoldInteraction(false);
             DropInventoryForDisable();
@@ -155,6 +160,8 @@ namespace Neighbor.Main.Features.Interaction
 
         private void Update()
         {
+            UpdatePendingAutoEquip();
+
             Keyboard keyboard = Keyboard.current;
             Mouse mouse = Mouse.current;
 
@@ -261,6 +268,7 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
+            CancelPendingAutoEquip();
             EnsureInventorySlots();
             int existingSlot = FindInventorySlot(pickupable);
             if (existingSlot >= 0)
@@ -424,7 +432,7 @@ namespace Neighbor.Main.Features.Interaction
                 Vector3 throwVelocity = CalculateThrowVelocity(1f);
                 releasedPickup.Throw(throwVelocity, playerColliders);
                 HideThrowArc();
-                TrySelectMatchingInventoryPickup(releasedPickup);
+                QueueMatchingInventoryPickup(releasedPickup, autoEquipAfterThrowDelay);
                 return;
             }
 
@@ -432,7 +440,7 @@ namespace Neighbor.Main.Features.Interaction
             {
                 DropStarted?.Invoke();
                 releasedPickup.Place(placementPosition, placementRotation, shouldSleepAfterPlacement);
-                TrySelectMatchingInventoryPickup(releasedPickup);
+                QueueMatchingInventoryPickup(releasedPickup, autoEquipAfterDropDelay);
             }
             else if (foundPlacementSurface)
             {
@@ -443,7 +451,7 @@ namespace Neighbor.Main.Features.Interaction
             {
                 DropStarted?.Invoke();
                 releasedPickup.Drop();
-                TrySelectMatchingInventoryPickup(releasedPickup);
+                QueueMatchingInventoryPickup(releasedPickup, autoEquipAfterDropDelay);
             }
 
             HideThrowArc();
@@ -496,6 +504,12 @@ namespace Neighbor.Main.Features.Interaction
 
         private void SelectInventorySlot(int slotIndex)
         {
+            CancelPendingAutoEquip();
+            SelectInventorySlot(slotIndex, true);
+        }
+
+        private void SelectInventorySlot(int slotIndex, bool playPickupAnimation)
+        {
             EnsureInventorySlots();
             if (slotIndex < 0 || slotIndex >= inventorySlots.Length || slotIndex == activeInventorySlot)
             {
@@ -523,7 +537,10 @@ namespace Neighbor.Main.Features.Interaction
 
             selectedPickup.EquipFromInventory(this, GetHoldPosition(selectedPickup), ViewTransform.rotation);
             heldPickup = selectedPickup;
-            PickupStarted?.Invoke();
+            if (playPickupAnimation)
+            {
+                PickupStarted?.Invoke();
+            }
         }
 
         private bool StashHeldPickupInSlot(int slotIndex)
@@ -631,11 +648,55 @@ namespace Neighbor.Main.Features.Interaction
             }
         }
 
+        private void QueueMatchingInventoryPickup(Pickupable releasedPickup, float delay)
+        {
+            pendingAutoEquipMatchKey = GetPickupMatchKey(releasedPickup);
+            if (string.IsNullOrWhiteSpace(pendingAutoEquipMatchKey)
+                || FindFirstMatchingInventorySlot(pendingAutoEquipMatchKey) < 0)
+            {
+                CancelPendingAutoEquip();
+                return;
+            }
+
+            pendingAutoEquipAt = Time.time + Mathf.Max(0f, delay);
+        }
+
+        private void UpdatePendingAutoEquip()
+        {
+            if (string.IsNullOrWhiteSpace(pendingAutoEquipMatchKey) || Time.time < pendingAutoEquipAt)
+            {
+                return;
+            }
+
+            string matchKey = pendingAutoEquipMatchKey;
+            CancelPendingAutoEquip();
+            if (heldPickup != null)
+            {
+                return;
+            }
+
+            int matchingSlot = FindFirstMatchingInventorySlot(matchKey);
+            if (matchingSlot >= 0)
+            {
+                SelectInventorySlot(matchingSlot, false);
+            }
+        }
+
+        private void CancelPendingAutoEquip()
+        {
+            pendingAutoEquipMatchKey = null;
+            pendingAutoEquipAt = 0f;
+        }
+
         private int FindFirstMatchingInventorySlot(Pickupable pickupable)
         {
+            return FindFirstMatchingInventorySlot(GetPickupMatchKey(pickupable));
+        }
+
+        private int FindFirstMatchingInventorySlot(string matchKey)
+        {
             EnsureInventorySlots();
-            string releasedKey = GetPickupMatchKey(pickupable);
-            if (string.IsNullOrWhiteSpace(releasedKey))
+            if (string.IsNullOrWhiteSpace(matchKey))
             {
                 return -1;
             }
@@ -648,7 +709,7 @@ namespace Neighbor.Main.Features.Interaction
                     continue;
                 }
 
-                if (string.Equals(GetPickupMatchKey(inventoryPickup), releasedKey, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(GetPickupMatchKey(inventoryPickup), matchKey, StringComparison.OrdinalIgnoreCase))
                 {
                     return i;
                 }
