@@ -25,14 +25,21 @@ namespace Neighbor.Main.HouseBuilder
         public void RefreshOpening()
         {
             HouseBuilderObject owner = GetComponent<HouseBuilderObject>();
-            if (wall != null && owner != null && profile != null)
+            HouseWallOpeningProfile currentProfile = ResolveCurrentProfile(owner);
+            if (wall != null && owner != null && currentProfile != null)
             {
-                wall.AddOrUpdateWallOpening(owner, transform, profile);
+                profile = currentProfile;
+                wall.AddOrUpdateWallOpening(owner, transform, currentProfile);
             }
 
             lastPosition = transform.position;
             lastRotation = transform.rotation;
             lastScale = transform.lossyScale;
+        }
+
+        private void OnEnable()
+        {
+            RefreshOpening();
         }
 
         private void Update()
@@ -51,6 +58,22 @@ namespace Neighbor.Main.HouseBuilder
             {
                 wall.RemoveWallOpening(owner.InstanceId);
             }
+        }
+
+        private HouseWallOpeningProfile ResolveCurrentProfile(HouseBuilderObject owner)
+        {
+            HouseBuilderWorld world = GetComponentInParent<HouseBuilderWorld>();
+            if (owner != null
+                && world != null
+                && world.Catalog != null
+                && world.Catalog.TryGetPlaceable(owner.DefinitionId, out HousePlaceableDefinition definition)
+                && definition.WallOpening != null
+                && definition.WallOpening.Enabled)
+            {
+                return definition.WallOpening;
+            }
+
+            return profile;
         }
     }
 }

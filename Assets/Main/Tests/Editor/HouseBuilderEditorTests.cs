@@ -482,6 +482,47 @@ namespace Neighbor.Main.Tests
             Assert.That(placedMinimum, Is.EqualTo(wall.GetComponent<Collider>().bounds.min.y).Within(0.001f));
         }
 
+        [TestCase("Door")]
+        [TestCase("LockedDoor")]
+        [TestCase("WindowBlinds")]
+        public void WallOpening_MatchesVisiblePrefabBounds(string definitionName)
+        {
+            HousePlaceableDefinition definition = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                $"Assets/Main/HouseBuilder/Data/Placeables/{definitionName}.asset");
+
+            Assert.That(definition, Is.Not.Null);
+            Assert.That(definition.WallOpening.Enabled, Is.True);
+            Assert.That(definition.WallOpening.Size.x, Is.EqualTo(definition.Placement.BoundsSize.x).Within(0.001f));
+            Assert.That(definition.WallOpening.Size.y, Is.EqualTo(definition.Placement.BoundsSize.y).Within(0.001f));
+            Assert.That(definition.WallOpening.Center.x, Is.EqualTo(definition.Placement.BoundsCenter.x).Within(0.001f));
+            Assert.That(definition.WallOpening.Center.y, Is.EqualTo(definition.Placement.BoundsCenter.y).Within(0.001f));
+        }
+
+        [Test]
+        public void WallOpeningLink_RefreshUsesLatestCatalogProfile()
+        {
+            HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(HouseBuilderAssetInstaller.DefaultCatalogPath);
+            Assert.That(catalog.TryGetPlaceable("neighbor.window.windowblinds", out HousePlaceableDefinition window), Is.True);
+
+            GameObject worldObject = Track(new GameObject("World"));
+            HouseBuilderWorld world = worldObject.AddComponent<HouseBuilderWorld>();
+            world.Configure(catalog);
+            GameObject wallObject = Track(HouseGeometryFactory.Create(
+                new HouseGeometryDescriptor(HouseGeometryKind.Wall, new Vector3(5f, 3f, 0.25f))));
+            wallObject.transform.SetParent(worldObject.transform);
+            HouseGeometryObject wall = wallObject.GetComponent<HouseGeometryObject>();
+            GameObject windowObject = world.CreatePlaceable(window, Vector3.zero, Quaternion.identity);
+            HouseWallOpeningLink link = windowObject.AddComponent<HouseWallOpeningLink>();
+
+            link.Initialize(wall, new HouseWallOpeningProfile(Vector3.one, Vector3.zero));
+            link.RefreshOpening();
+
+            HouseWallOpeningData opening = wall.Descriptor.WallOpenings[0];
+            Assert.That(opening.Size.x, Is.EqualTo(window.WallOpening.Size.x + window.WallOpening.Margin * 2f).Within(0.001f));
+            Assert.That(opening.Size.y, Is.EqualTo(window.WallOpening.Size.y + window.WallOpening.Margin * 2f).Within(0.001f));
+            Assert.That(opening.Center.y, Is.EqualTo(window.WallOpening.Center.y).Within(0.001f));
+        }
+
         [Test]
         public void MaterialBindings_ReapplyAfterGeometryRebuild()
         {

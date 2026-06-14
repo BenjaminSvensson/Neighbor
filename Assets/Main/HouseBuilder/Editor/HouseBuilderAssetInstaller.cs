@@ -11,7 +11,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
         public const string RootPath = "Assets/Main/HouseBuilder";
         public const string DataPath = RootPath + "/Data";
         public const string DefaultCatalogPath = DataPath + "/DefaultHouseBuilderCatalog.asset";
-        private const int InstallerVersion = 10;
+        private const int InstallerVersion = 11;
         private const string InstallerVersionKey = "Neighbor.HouseBuilder.DefaultAssetsVersion";
         private const string CategoryPath = DataPath + "/Categories";
         private const string DefinitionPath = DataPath + "/Placeables";
@@ -354,6 +354,14 @@ namespace Neighbor.Main.HouseBuilder.Editor
             wallOpening.FindPropertyRelative("enabled").boolValue = opening;
             if (opening)
             {
+                if (hasVisualBounds)
+                {
+                    openingSize.x = placementBounds.size.x;
+                    openingSize.y = placementBounds.size.y;
+                    openingCenter.x = placementBounds.center.x;
+                    openingCenter.y = placementBounds.center.y;
+                }
+
                 wallOpening.FindPropertyRelative("size").vector3Value = openingSize;
                 wallOpening.FindPropertyRelative("center").vector3Value = openingCenter;
             }
