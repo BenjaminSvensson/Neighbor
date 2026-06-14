@@ -18,7 +18,7 @@ namespace Neighbor.Main.Features.Player
         private static readonly int GrabState = Animator.StringToHash("Base Layer.Grab");
         private static readonly int DropState = Animator.StringToHash("Base Layer.Drop");
         private static readonly int ThrowState = Animator.StringToHash("Base Layer.Throw");
-        private static readonly int OpenDoorState = Animator.StringToHash("Base Layer.OpenDoor");
+        private static readonly int InteractState = Animator.StringToHash("Base Layer.Interact");
         private static readonly int ClimbState = Animator.StringToHash("Base Layer.Climb");
 
         [SerializeField] private PlayerController playerController;
@@ -31,7 +31,7 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float grabHoldDuration = 0.22f;
         [SerializeField, Min(0f)] private float dropHoldDuration = 0.22f;
         [SerializeField, Min(0f)] private float throwHoldDuration = 0.32f;
-        [SerializeField, Min(0f)] private float openDoorHoldDuration = 0.7f;
+        [SerializeField, Min(0f)] private float interactHoldDuration = 0.7f;
         [SerializeField, Min(0.1f)] private float grabPlaybackSpeed = 2.5f;
         [SerializeField, Min(0.1f)] private float dropPlaybackSpeed = 2.5f;
         [SerializeField, Min(0.1f)] private float climbPlaybackSpeed = 3f;
@@ -75,7 +75,7 @@ namespace Neighbor.Main.Features.Player
                 playerInteractor.PickupStarted += PlayGrab;
                 playerInteractor.DropStarted += PlayDrop;
                 playerInteractor.ThrowStarted += PlayThrow;
-                playerInteractor.DoorOpened += PlayOpenDoor;
+                playerInteractor.InteractionStarted += PlayInteract;
             }
         }
 
@@ -98,7 +98,7 @@ namespace Neighbor.Main.Features.Player
                 currentState = desiredState;
             }
 
-            handIK?.SetSuppressed(desiredState == ClimbState || desiredState == DropState || desiredState == OpenDoorState);
+            handIK?.SetSuppressed(desiredState == ClimbState || desiredState == DropState || desiredState == InteractState);
             animator.speed = GetPlaybackSpeed(desiredState);
         }
 
@@ -187,7 +187,7 @@ namespace Neighbor.Main.Features.Player
                 playerInteractor.PickupStarted -= PlayGrab;
                 playerInteractor.DropStarted -= PlayDrop;
                 playerInteractor.ThrowStarted -= PlayThrow;
-                playerInteractor.DoorOpened -= PlayOpenDoor;
+                playerInteractor.InteractionStarted -= PlayInteract;
             }
 
             handIK?.SetSuppressed(false);
@@ -212,9 +212,9 @@ namespace Neighbor.Main.Features.Player
             HoldAction(DropState, dropHoldDuration);
         }
 
-        private void PlayOpenDoor()
+        private void PlayInteract()
         {
-            HoldAction(OpenDoorState, openDoorHoldDuration);
+            HoldAction(InteractState, interactHoldDuration);
         }
 
         private void HoldAction(int state, float duration)

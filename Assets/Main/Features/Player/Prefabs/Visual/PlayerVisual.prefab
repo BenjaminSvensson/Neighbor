@@ -55,7 +55,7 @@ MonoBehaviour:
   grabHoldDuration: 0.22
   dropHoldDuration: 0.22
   throwHoldDuration: 0.32
-  openDoorHoldDuration: 0.7
+  interactHoldDuration: 0.7
   grabPlaybackSpeed: 2.5
   dropPlaybackSpeed: 2.5
   climbPlaybackSpeed: 3

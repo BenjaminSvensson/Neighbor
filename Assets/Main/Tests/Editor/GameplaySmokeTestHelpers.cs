@@ -115,4 +115,22 @@ namespace Neighbor.Main.Tests
             PickupPlacedCount++;
         }
     }
+
+    internal sealed class InteractionOrderProbe : MonoBehaviour, IInteractable
+    {
+        public bool InteractionSignalReceived { get; set; }
+        public bool SignalWasReceivedBeforeInteract { get; private set; }
+        public int InteractCount { get; private set; }
+
+        public bool CanInteract(PlayerInteractor interactor)
+        {
+            return true;
+        }
+
+        public void Interact(PlayerInteractor interactor)
+        {
+            SignalWasReceivedBeforeInteract = InteractionSignalReceived;
+            InteractCount++;
+        }
+    }
 }

@@ -54,14 +54,14 @@ namespace Neighbor.Main.Tests
                     "Grab",
                     "Drop",
                     "Throw",
-                    "OpenDoor",
+                    "Interact",
                     "Climb"
                 },
                 stateNames);
 
             Assert.That(states.Single(state => state.state.name == "Climb").state.motion.name, Is.EqualTo("ClimbUp_1m_RM"));
             Assert.That(states.Single(state => state.state.name == "Drop").state.motion.name, Is.EqualTo("PickUp_Table"));
-            Assert.That(states.Single(state => state.state.name == "OpenDoor").state.motion.name, Is.EqualTo("Interact"));
+            Assert.That(states.Single(state => state.state.name == "Interact").state.motion.name, Is.EqualTo("Interact"));
         }
 
         [Test]

@@ -96,7 +96,7 @@ namespace Neighbor.Main.Features.Interaction
         public event Action PickupStarted;
         public event Action DropStarted;
         public event Action ThrowStarted;
-        public event Action DoorOpened;
+        public event Action InteractionStarted;
 
         public bool IsHoldingPickup => heldPickup != null;
         public Pickupable HeldPickup => heldPickup;
@@ -319,12 +319,7 @@ namespace Neighbor.Main.Features.Interaction
 
             if (interactable != null && interactable.CanInteract(this))
             {
-                if (interactable is Door door)
-                {
-                    InteractWithDoor(door);
-                    return;
-                }
-
+                InteractionStarted?.Invoke();
                 interactable.Interact(this);
             }
         }
@@ -344,18 +339,9 @@ namespace Neighbor.Main.Features.Interaction
                 return false;
             }
 
-            InteractWithDoor(door);
-            return true;
-        }
-
-        private void InteractWithDoor(Door door)
-        {
-            bool wasOpen = door.IsOpen;
+            InteractionStarted?.Invoke();
             door.Interact(this);
-            if (!wasOpen && door.IsOpen)
-            {
-                DoorOpened?.Invoke();
-            }
+            return true;
         }
 
         private bool TryPrimaryUseHeldPickup()
@@ -369,6 +355,7 @@ namespace Neighbor.Main.Features.Interaction
                 return false;
             }
 
+            InteractionStarted?.Invoke();
             primaryUseInteractable.PrimaryUse(this);
             return true;
         }
@@ -398,6 +385,7 @@ namespace Neighbor.Main.Features.Interaction
                 return false;
             }
 
+            InteractionStarted?.Invoke();
             if (heldPickup == pickup)
             {
                 heldPickup = null;
@@ -1252,6 +1240,7 @@ namespace Neighbor.Main.Features.Interaction
             {
                 EndActiveHoldInteraction(false);
                 activeHoldInteractable = holdInteractable;
+                InteractionStarted?.Invoke();
                 activeHoldInteractable.BeginHoldInteract(this);
             }
 

@@ -136,6 +136,23 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void PlayerInteraction_StartsAnimationBeforeInteractableRuns()
+        {
+            PlayerInteractor interactor = context.CreateObject("PlayerInteractor").AddComponent<PlayerInteractor>();
+            GameObject interactableObject = context.CreateObject("Interactable");
+            interactableObject.transform.position = Vector3.forward * 1.5f;
+            interactableObject.AddComponent<BoxCollider>();
+            InteractionOrderProbe interactable = interactableObject.AddComponent<InteractionOrderProbe>();
+            interactor.InteractionStarted += () => interactable.InteractionSignalReceived = true;
+            Physics.SyncTransforms();
+
+            GameplaySmokeTestReflection.Invoke(interactor, "TryInteract");
+
+            Assert.That(interactable.InteractCount, Is.EqualTo(1));
+            Assert.That(interactable.SignalWasReceivedBeforeInteract, Is.True);
+        }
+
+        [Test]
         public void MatchingInventoryPickup_AutoEquipsSilentlyAfterActionDelay()
         {
             GameObject interactorObject = context.CreateObject("PlayerInteractor");
