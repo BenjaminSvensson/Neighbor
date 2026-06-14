@@ -20,8 +20,8 @@ MonoBehaviour:
   hideFromCatalog: 0
   placement:
     allowedSurfaces: -1
-    surfaceAlignment: 0
-    requireSurface: 0
+    surfaceAlignment: 2
+    requireSurface: 1
     groundOnWall: 0
     validateCollisions: 0
     allowTriggerOverlap: 1

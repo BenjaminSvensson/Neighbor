@@ -729,7 +729,8 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 hit,
                 placingDefinition.Placement,
                 placementSettings,
-                GatherNearbyBounds());
+                GatherNearbyBounds(),
+                ray.direction);
             lastSurfaceCollider = hasSurface ? hit.collider : null;
             lastValidation = HouseBuilderPlacementValidator.Validate(
                 lastPlacement.Position,
@@ -1272,7 +1273,8 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 hit,
                 profile,
                 placementSettings,
-                GatherNearbyBounds());
+                GatherNearbyBounds(),
+                ray.direction);
             lastValidation = HouseBuilderPlacementValidator.Validate(
                 lastPlacement.Position,
                 lastPlacement.Rotation,

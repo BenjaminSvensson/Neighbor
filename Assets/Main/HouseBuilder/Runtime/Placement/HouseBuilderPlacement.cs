@@ -90,13 +90,16 @@ namespace Neighbor.Main.HouseBuilder
             RaycastHit surfaceHit,
             HousePlacementProfile profile,
             HouseBuilderPlacementSettings settings,
-            IEnumerable<Bounds> nearbyBounds)
+            IEnumerable<Bounds> nearbyBounds,
+            Vector3 surfaceApproachDirection = default)
         {
             profile ??= new HousePlacementProfile();
             settings ??= new HouseBuilderPlacementSettings();
 
             Vector3 position = hasSurface && settings.SurfaceSnapping ? surfaceHit.point : fallbackPosition;
-            Vector3 normal = hasSurface ? surfaceHit.normal.normalized : Vector3.up;
+            Vector3 normal = hasSurface
+                ? ResolveSurfaceNormal(surfaceHit.normal, surfaceApproachDirection)
+                : Vector3.up;
             HouseSurfaceType surfaceType = ClassifySurface(normal);
             HouseSnapKind snapKind = hasSurface && settings.SurfaceSnapping ? HouseSnapKind.Surface : HouseSnapKind.None;
             if (hasSurface && profile.GroundOnWall && surfaceType == HouseSurfaceType.Wall && surfaceHit.collider != null)
@@ -184,6 +187,19 @@ namespace Neighbor.Main.HouseBuilder
             }
 
             return up < -0.65f ? HouseSurfaceType.Ceiling : HouseSurfaceType.Wall;
+        }
+
+        public static Vector3 ResolveSurfaceNormal(Vector3 normal, Vector3 approachDirection)
+        {
+            Vector3 resolved = normal.sqrMagnitude > 0.001f ? normal.normalized : Vector3.up;
+            if (ClassifySurface(resolved) == HouseSurfaceType.Wall
+                && approachDirection.sqrMagnitude > 0.001f
+                && Vector3.Dot(resolved, approachDirection.normalized) > 0f)
+            {
+                resolved = -resolved;
+            }
+
+            return resolved;
         }
 
         private static bool TryFindFeature(

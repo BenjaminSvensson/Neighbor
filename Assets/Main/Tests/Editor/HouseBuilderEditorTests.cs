@@ -441,18 +441,51 @@ namespace Neighbor.Main.Tests
             GameObject wall = Track(GameObject.CreatePrimitive(PrimitiveType.Cube));
             wall.transform.localScale = new Vector3(5f, 5f, 0.1f);
             Physics.SyncTransforms();
-            Assert.That(Physics.Raycast(new Ray(Vector3.forward * 5f, Vector3.back), out RaycastHit hit), Is.True);
+            Ray[] rays =
+            {
+                new(Vector3.forward * 5f, Vector3.back),
+                new(Vector3.back * 5f, Vector3.forward)
+            };
 
-            HousePlacementResult placement = HouseBuilderSnapUtility.Calculate(
-                hit.point,
-                Quaternion.identity,
-                true,
-                hit,
-                lightSwitch.Placement,
-                new HouseBuilderPlacementSettings(),
-                null);
+            for (int i = 0; i < rays.Length; i++)
+            {
+                Assert.That(Physics.Raycast(rays[i], out RaycastHit hit), Is.True);
+                HousePlacementResult placement = HouseBuilderSnapUtility.Calculate(
+                    hit.point,
+                    Quaternion.identity,
+                    true,
+                    hit,
+                    lightSwitch.Placement,
+                    new HouseBuilderPlacementSettings(),
+                    null,
+                    rays[i].direction);
 
-            Assert.That(Vector3.Dot(placement.Rotation * Vector3.forward, hit.normal), Is.GreaterThan(0.99f));
+                Assert.That(Vector3.Dot(placement.Rotation * Vector3.forward, -rays[i].direction), Is.GreaterThan(0.99f));
+            }
+        }
+
+        [Test]
+        public void WallAlignment_FlipsBackFaceNormalTowardApproachedSide()
+        {
+            Assert.That(
+                HouseBuilderSnapUtility.ResolveSurfaceNormal(Vector3.forward, Vector3.forward),
+                Is.EqualTo(Vector3.back));
+            Assert.That(
+                HouseBuilderSnapUtility.ResolveSurfaceNormal(Vector3.forward, Vector3.back),
+                Is.EqualTo(Vector3.forward));
+        }
+
+        [TestCase("Mirror")]
+        [TestCase("Curtains")]
+        [TestCase("LaserGrid")]
+        [TestCase("TV")]
+        [TestCase("VentCover")]
+        public void WallDecoration_UsesOutwardWallAlignment(string definitionName)
+        {
+            HousePlaceableDefinition definition = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                $"Assets/Main/HouseBuilder/Data/Placeables/{definitionName}.asset");
+
+            Assert.That(definition.Placement.SurfaceAlignment, Is.EqualTo(HouseSurfaceAlignment.ForwardToNormal));
         }
 
         [Test]

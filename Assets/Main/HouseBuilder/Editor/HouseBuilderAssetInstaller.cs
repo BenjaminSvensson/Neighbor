@@ -11,7 +11,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
         public const string RootPath = "Assets/Main/HouseBuilder";
         public const string DataPath = RootPath + "/Data";
         public const string DefaultCatalogPath = DataPath + "/DefaultHouseBuilderCatalog.asset";
-        private const int InstallerVersion = 11;
+        private const int InstallerVersion = 12;
         private const string InstallerVersionKey = "Neighbor.HouseBuilder.DefaultAssetsVersion";
         private const string CategoryPath = DataPath + "/Categories";
         private const string DefinitionPath = DataPath + "/Placeables";
@@ -107,14 +107,14 @@ namespace Neighbor.Main.HouseBuilder.Editor
             AddFlexibleDefinition(placeables, "Notebook", "Notebook", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Books/Prefabs/PlaceholderNotebook.prefab");
             AddFlexibleDefinition(placeables, "ReadableBook", "Readable Book", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Books/Prefabs/PlaceholderReadableBook.prefab");
             AddFlexibleDefinition(placeables, "PhotoCamera", "Photo Camera", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Cameras/Prefabs/PlaceholderPhotoCamera.prefab");
-            AddFlexibleDefinition(placeables, "Curtains", "Curtains", HouseBuilderCategories.Furniture, "Assets/Main/Features/Interaction/Items/Curtains/Prefabs/PlaceholderHideableCurtains.prefab");
+            AddFlexibleDefinition(placeables, "Curtains", "Curtains", HouseBuilderCategories.Furniture, "Assets/Main/Features/Interaction/Items/Curtains/Prefabs/PlaceholderHideableCurtains.prefab", HouseSurfaceAlignment.ForwardToNormal);
             AddFlexibleDefinition(placeables, "Flashlight", "Flashlight", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Flashlights/Prefabs/PlaceholderFlashlight.prefab");
             AddFlexibleDefinition(placeables, "Tomato", "Tomato", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Food/Tomato/Prefabs/PlaceholderTomato.prefab");
             AddFlexibleDefinition(placeables, "Glass", "Glass", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Glass/Prefabs/PlaceholderGlass.prefab");
             AddFlexibleDefinition(placeables, "Key", "Key", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Keys/Prefabs/TestKey.prefab");
-            AddFlexibleDefinition(placeables, "Mirror", "Mirror", HouseBuilderCategories.Furniture, "Assets/Main/Features/Interaction/Items/Mirrors/Prefabs/PlaceholderMirror.prefab");
+            AddFlexibleDefinition(placeables, "Mirror", "Mirror", HouseBuilderCategories.Furniture, "Assets/Main/Features/Interaction/Items/Mirrors/Prefabs/PlaceholderMirror.prefab", HouseSurfaceAlignment.ForwardToNormal);
             AddFlexibleDefinition(placeables, "RemoteControl", "Remote Control", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/RemoteControls/Prefabs/PlaceholderRemoteControl.prefab");
-            AddFlexibleDefinition(placeables, "LaserGrid", "Laser Grid", HouseBuilderCategories.Wiring, "Assets/Main/Features/Interaction/Items/Security/LaserGrid/Prefabs/PlaceholderLaserGrid.prefab");
+            AddFlexibleDefinition(placeables, "LaserGrid", "Laser Grid", HouseBuilderCategories.Wiring, "Assets/Main/Features/Interaction/Items/Security/LaserGrid/Prefabs/PlaceholderLaserGrid.prefab", HouseSurfaceAlignment.ForwardToNormal);
             AddFlexibleDefinition(placeables, "Basketball", "Basketball", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Sports/Basketball/Prefabs/PlaceholderBasketball.prefab");
             AddFlexibleDefinition(placeables, "SprayCan", "Spray Can", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/SprayCans/Prefabs/PlaceholderSprayCan.prefab");
             AddFlexibleDefinition(placeables, "SwingingAxe", "Swinging Axe", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/SwingingAxes/Prefabs/HugeSwingingAxePlaceholder.prefab");
@@ -123,9 +123,9 @@ namespace Neighbor.Main.HouseBuilder.Editor
             AddFlexibleDefinition(placeables, "Screwdriver", "Screwdriver", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Tools/Screwdriver/Prefabs/PlaceholderScrewdriver.prefab");
             AddFlexibleDefinition(placeables, "WindUpToy", "Wind-up Toy", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Toys/WindUpToy/Prefabs/PlaceholderWindUpToy.prefab");
             AddFlexibleDefinition(placeables, "TrapDoor", "Trap Door", HouseBuilderCategories.Wiring, "Assets/Main/Features/Interaction/Items/TrapDoors/Prefabs/FakeFloorTrapDoorPlaceholder.prefab");
-            AddFlexibleDefinition(placeables, "TV", "TV", HouseBuilderCategories.Wiring, "Assets/Main/Features/Interaction/Items/TVs/Prefabs/PlaceholderTV.prefab");
+            AddFlexibleDefinition(placeables, "TV", "TV", HouseBuilderCategories.Wiring, "Assets/Main/Features/Interaction/Items/TVs/Prefabs/PlaceholderTV.prefab", HouseSurfaceAlignment.ForwardToNormal);
             AddFlexibleDefinition(placeables, "Umbrella", "Umbrella", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Umbrellas/Prefabs/PlaceholderUmbrella.prefab");
-            AddFlexibleDefinition(placeables, "VentCover", "Vent Cover", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Vents/Prefabs/PlaceholderVentCover.prefab");
+            AddFlexibleDefinition(placeables, "VentCover", "Vent Cover", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Vents/Prefabs/PlaceholderVentCover.prefab", HouseSurfaceAlignment.ForwardToNormal);
 
             GameObject spawnPrefab = CreateMarkerPrefab("NeighborSpawnPoint", typeof(HouseNeighborSpawnPoint));
             AddDefinition(placeables, "NeighborSpawnPoint", "Neighbor Spawn Point", HouseBuilderCategories.NeighborSpawnPoint, spawnPrefab,
@@ -375,9 +375,10 @@ namespace Neighbor.Main.HouseBuilder.Editor
             string fileName,
             string displayName,
             string categoryId,
-            string prefabPath)
+            string prefabPath,
+            HouseSurfaceAlignment alignment = HouseSurfaceAlignment.None)
         {
-            AddDefinition(output, fileName, displayName, categoryId, prefabPath, HouseSurfaceType.Any, HouseSurfaceAlignment.None);
+            AddDefinition(output, fileName, displayName, categoryId, prefabPath, HouseSurfaceType.Any, alignment);
         }
 
         private static void SetBoundsFromPrefab(
