@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using Neighbor.Main.HouseBuilder;
+using Neighbor.Main.HouseBuilder.Editor;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -151,6 +153,97 @@ namespace Neighbor.Main.Tests
                 Assert.That(mesh.vertexCount, Is.GreaterThan(0), kind.ToString());
                 Assert.That(mesh.subMeshCount, Is.EqualTo(HouseGeometryFactory.MaterialSlotCount), kind.ToString());
             }
+        }
+
+        [Test]
+        public void Geometry_ResizePreservesLinkedWallOpenings()
+        {
+            GameObject wallObject = Track(HouseGeometryFactory.Create(new HouseGeometryDescriptor(HouseGeometryKind.Wall, new Vector3(4f, 3f, 0.25f))));
+            HouseGeometryObject wall = wallObject.GetComponent<HouseGeometryObject>();
+            wall.Descriptor.AddOrUpdateWallOpening(new HouseWallOpeningData("door", Vector2.zero, new Vector2(1.2f, 2.1f)));
+
+            wall.Resize(new Vector3(8f, 4f, 0.35f));
+
+            Assert.That(wall.Descriptor.Size, Is.EqualTo(new Vector3(8f, 4f, 0.35f)));
+            Assert.That(wall.Descriptor.WallOpenings.Count, Is.EqualTo(1));
+            Assert.That(wall.GetComponent<MeshFilter>().sharedMesh.bounds.size.x, Is.EqualTo(8f).Within(0.01f));
+        }
+
+        [Test]
+        public void FacePicker_MapsGeneratedWallTriangleToMaterialRole()
+        {
+            GameObject wallObject = Track(HouseGeometryFactory.Create(new HouseGeometryDescriptor(HouseGeometryKind.Wall, new Vector3(4f, 3f, 0.25f))));
+            Physics.SyncTransforms();
+
+            bool found = HouseBuilderEditorInteractionUtility.TryPickFace(
+                new Ray(new Vector3(0f, 0f, 2f), Vector3.back),
+                ~0,
+                out HouseBuilderFaceHit face);
+
+            Assert.That(found, Is.True);
+            Assert.That(face.Owner, Is.EqualTo(wallObject.GetComponent<HouseBuilderObject>()));
+            Assert.That(face.FaceRole, Is.EqualTo(HouseFaceRole.Exterior));
+            Assert.That(face.MaterialIndex, Is.EqualTo((int)HouseFaceRole.Exterior));
+        }
+
+        [Test]
+        public void GeometrySuggestedSizes_AreUsefulPerShape()
+        {
+            Vector3 wall = HouseBuilderEditorInteractionUtility.SuggestedSize(HouseGeometryKind.Wall);
+            Vector3 floor = HouseBuilderEditorInteractionUtility.SuggestedSize(HouseGeometryKind.Floor);
+
+            Assert.That(wall.y, Is.GreaterThan(wall.z));
+            Assert.That(floor.z, Is.GreaterThan(floor.y));
+            Assert.That(wall, Is.Not.EqualTo(floor));
+        }
+
+        [Test]
+        public void SaveLoad_PreservesResizedStarterPrefabGeometry()
+        {
+            HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(HouseBuilderAssetInstaller.DefaultCatalogPath);
+            HousePlaceableDefinition definition = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                "Assets/Main/HouseBuilder/Data/Placeables/BasicWall.asset");
+            Assert.That(catalog, Is.Not.Null);
+            Assert.That(definition, Is.Not.Null);
+
+            GameObject worldObject = Track(new GameObject("World"));
+            HouseBuilderWorld world = worldObject.AddComponent<HouseBuilderWorld>();
+            world.Configure(catalog);
+            GameObject wall = world.CreatePlaceable(definition, Vector3.zero, Quaternion.identity);
+            wall.GetComponent<HouseGeometryObject>().Resize(new Vector3(7f, 3.5f, 0.3f));
+
+            world.LoadFromJson(world.SaveToJson());
+
+            HouseGeometryObject loaded = world.GetComponentInChildren<HouseGeometryObject>();
+            Assert.That(loaded.Descriptor.Size, Is.EqualTo(new Vector3(7f, 3.5f, 0.3f)));
+        }
+
+        [Test]
+        public void StarterPrefabGhost_RebuildsVisibleGeometryAndDisablesCollisions()
+        {
+            HousePlaceableDefinition definition = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                "Assets/Main/HouseBuilder/Data/Placeables/BasicFloor.asset");
+            Assert.That(definition, Is.Not.Null);
+
+            GameObject preview = Track(Object.Instantiate(definition.Prefab));
+            HouseBuilderGhost ghost = preview.AddComponent<HouseBuilderGhost>();
+            ghost.Initialize();
+
+            Assert.That(preview.GetComponent<MeshFilter>().sharedMesh, Is.Not.Null);
+            Assert.That(preview.GetComponent<MeshRenderer>().enabled, Is.True);
+            Assert.That(preview.GetComponent<MeshCollider>().enabled, Is.False);
+        }
+
+        [Test]
+        public void StarterPlacement_GroundAssetsCanUseGridButWallMountedAssetsRequireSurface()
+        {
+            HousePlaceableDefinition floor = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                "Assets/Main/HouseBuilder/Data/Placeables/BasicFloor.asset");
+            HousePlaceableDefinition door = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                "Assets/Main/HouseBuilder/Data/Placeables/Door.asset");
+
+            Assert.That(floor.Placement.RequireSurface, Is.False);
+            Assert.That(door.Placement.RequireSurface, Is.True);
         }
 
         private T Track<T>(T value) where T : Object

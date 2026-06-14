@@ -185,6 +185,17 @@ namespace Neighbor.Main.HouseBuilder
             instance.transform.localRotation = data.LocalRotation;
             instance.transform.localScale = data.LocalScale;
 
+            if (data.Geometry != null)
+            {
+                HouseGeometryObject geometry = instance.GetComponent<HouseGeometryObject>();
+                if (geometry == null)
+                {
+                    geometry = instance.AddComponent<HouseGeometryObject>();
+                }
+
+                geometry.Configure(data.Geometry);
+            }
+
             HouseBuilderObject builderObject = instance.GetComponent<HouseBuilderObject>();
             if (builderObject == null)
             {

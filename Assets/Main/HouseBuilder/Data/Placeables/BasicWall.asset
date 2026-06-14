@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: aaf599b07c382c34a8c3b01cb6755454, type: 3}
-  m_Name: CardboardBox
+  m_Name: BasicWall
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HousePlaceableDefinition
-  id: neighbor.prop.cardboardbox
-  displayName: Cardboard Box
-  categoryId: prop
-  prefab: {fileID: 100000, guid: 78a187d38ec7450a86106fde7dfb013a, type: 3}
+  id: neighbor.wall.basicwall
+  displayName: Basic Wall
+  categoryId: wall
+  prefab: {fileID: 6870863598427644100, guid: 95b343824e3dcce4f82a9abdc3dd1d76, type: 3}
   preview: {fileID: 0}
   placement:
     allowedSurfaces: 1
@@ -23,9 +23,9 @@ MonoBehaviour:
     requireSurface: 0
     validateCollisions: 1
     allowTriggerOverlap: 1
-    boundsSize: {x: 1, y: 1, z: 1}
+    boundsSize: {x: 4, y: 3, z: 0.25}
     boundsCenter: {x: 0, y: 0, z: 0}
-    placementOffset: {x: 0, y: 0, z: 0}
+    placementOffset: {x: 0, y: 1.5, z: 0}
   wallOpening:
     enabled: 0
     size: {x: 1.2, y: 2.1, z: 0.5}

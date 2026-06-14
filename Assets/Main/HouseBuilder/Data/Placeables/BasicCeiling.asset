@@ -10,22 +10,22 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: aaf599b07c382c34a8c3b01cb6755454, type: 3}
-  m_Name: CardboardBox
+  m_Name: BasicCeiling
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HousePlaceableDefinition
-  id: neighbor.prop.cardboardbox
-  displayName: Cardboard Box
-  categoryId: prop
-  prefab: {fileID: 100000, guid: 78a187d38ec7450a86106fde7dfb013a, type: 3}
+  id: neighbor.ceiling.basicceiling
+  displayName: Basic Ceiling
+  categoryId: ceiling
+  prefab: {fileID: 8165753516850672229, guid: 75bc12e3cc8ceda4ebb6840921262086, type: 3}
   preview: {fileID: 0}
   placement:
-    allowedSurfaces: 1
+    allowedSurfaces: 5
     surfaceAlignment: 0
     requireSurface: 0
     validateCollisions: 1
     allowTriggerOverlap: 1
-    boundsSize: {x: 1, y: 1, z: 1}
+    boundsSize: {x: 4, y: 0.15, z: 4}
     boundsCenter: {x: 0, y: 0, z: 0}
-    placementOffset: {x: 0, y: 0, z: 0}
+    placementOffset: {x: 0, y: 0.075, z: 0}
   wallOpening:
     enabled: 0
     size: {x: 1.2, y: 2.1, z: 0.5}

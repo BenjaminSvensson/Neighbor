@@ -11,12 +11,13 @@ namespace Neighbor.Main.HouseBuilder.Editor
         public const string RootPath = "Assets/Main/HouseBuilder";
         public const string DataPath = RootPath + "/Data";
         public const string DefaultCatalogPath = DataPath + "/DefaultHouseBuilderCatalog.asset";
-        private const int InstallerVersion = 3;
+        private const int InstallerVersion = 5;
         private const string InstallerVersionKey = "Neighbor.HouseBuilder.DefaultAssetsVersion";
         private const string CategoryPath = DataPath + "/Categories";
         private const string DefinitionPath = DataPath + "/Placeables";
         private const string MaterialPath = DataPath + "/Materials";
         private const string PrefabPath = RootPath + "/Prefabs";
+        private const string StructurePrefabPath = PrefabPath + "/Structures";
 
         static HouseBuilderAssetInstaller()
         {
@@ -47,7 +48,20 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 CreateCategory("Wiring", HouseBuilderCategories.Wiring, "Wiring", new Color(1f, 0.85f, 0.1f))
             };
 
+            Material defaultMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Main/Objects/ProBuilder/ProBuilderDefault_URP.mat");
             List<HousePlaceableDefinition> placeables = new();
+            Vector3 wallSize = HouseBuilderEditorInteractionUtility.SuggestedSize(HouseGeometryKind.Wall);
+            Vector3 floorSize = HouseBuilderEditorInteractionUtility.SuggestedSize(HouseGeometryKind.Floor);
+            Vector3 ceilingSize = HouseBuilderEditorInteractionUtility.SuggestedSize(HouseGeometryKind.Ceiling);
+            AddDefinition(placeables, "BasicWall", "Basic Wall", HouseBuilderCategories.Wall,
+                CreateStructurePrefab("BasicWall", HouseGeometryKind.Wall, wallSize, defaultMaterial), HouseSurfaceType.Ground, HouseSurfaceAlignment.None,
+                placementOffset: Vector3.up * wallSize.y * 0.5f, boundsSize: wallSize);
+            AddDefinition(placeables, "BasicFloor", "Basic Floor", HouseBuilderCategories.Floor,
+                CreateStructurePrefab("BasicFloor", HouseGeometryKind.Floor, floorSize, defaultMaterial), HouseSurfaceType.Ground, HouseSurfaceAlignment.None,
+                placementOffset: Vector3.up * floorSize.y * 0.5f, boundsSize: floorSize);
+            AddDefinition(placeables, "BasicCeiling", "Basic Ceiling", HouseBuilderCategories.Ceiling,
+                CreateStructurePrefab("BasicCeiling", HouseGeometryKind.Ceiling, ceilingSize, defaultMaterial), HouseSurfaceType.Ground | HouseSurfaceType.Ceiling, HouseSurfaceAlignment.None,
+                placementOffset: Vector3.up * ceilingSize.y * 0.5f, boundsSize: ceilingSize);
             AddDefinition(placeables, "Door", "Door", HouseBuilderCategories.Door,
                 "Assets/Main/Features/Interaction/Items/Doors/Prefabs/Door.prefab", HouseSurfaceType.Wall, HouseSurfaceAlignment.ForwardToNormal,
                 true, new Vector3(1.3f, 2.25f, 0.6f), new Vector3(0f, 1.125f, 0f));
@@ -103,11 +117,17 @@ namespace Neighbor.Main.HouseBuilder.Editor
             ConfigureWirePorts("SecurityCameraReinforcement", new WirePortSetup("activate", "Activate", HouseWirePortDirection.Input, HouseSignalKind.Pulse, Vector3.up * 0.25f));
 
             List<HouseMaterialDefinition> materials = new();
-            Material defaultMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Main/Objects/ProBuilder/ProBuilderDefault_URP.mat");
             if (defaultMaterial != null)
             {
                 materials.Add(CreateMaterial("Prototype", "Prototype", defaultMaterial));
             }
+
+            AddMaterialIfPresent(materials, "Brick", "Brick", "Assets/Main/Art/Materials/AmbientCG/Bricks104/Bricks104.mat");
+            AddMaterialIfPresent(materials, "WoodPlanks", "Wood Planks", "Assets/Main/Art/Materials/AmbientCG/Planks023B/Planks023B.mat");
+            AddMaterialIfPresent(materials, "Tiles", "Tiles", "Assets/Main/Art/Materials/AmbientCG/Tiles133A/Tiles133A.mat");
+            AddMaterialIfPresent(materials, "Marble", "Marble", "Assets/Main/Art/Materials/AmbientCG/Marble020/Marble020.mat");
+            AddMaterialIfPresent(materials, "Wallpaper", "Wallpaper", "Assets/Main/Art/Materials/AmbientCG/Paper005/Paper005.mat");
+            AddMaterialIfPresent(materials, "Ground", "Ground", "Assets/Main/Art/Materials/AmbientCG/Ground048/Ground048.mat");
 
             HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(DefaultCatalogPath);
             if (!HasValidScriptReference(catalog))
@@ -120,6 +140,17 @@ namespace Neighbor.Main.HouseBuilder.Editor
             {
                 catalog = ScriptableObject.CreateInstance<HouseBuilderCatalog>();
                 AssetDatabase.CreateAsset(catalog, DefaultCatalogPath);
+            }
+            else
+            {
+                for (int i = 0; i < catalog.Materials.Count; i++)
+                {
+                    HouseMaterialDefinition existingMaterial = catalog.Materials[i];
+                    if (existingMaterial != null && !materials.Contains(existingMaterial))
+                    {
+                        materials.Add(existingMaterial);
+                    }
+                }
             }
 
             SerializedObject serializedCatalog = new(catalog);
@@ -151,6 +182,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
             EnsureFolder(DataPath, "Placeables");
             EnsureFolder(DataPath, "Materials");
             EnsureFolder(RootPath, "Prefabs");
+            EnsureFolder(PrefabPath, "Structures");
         }
 
         private static void EnsureFolder(string parent, string child)
@@ -196,12 +228,14 @@ namespace Neighbor.Main.HouseBuilder.Editor
             HouseSurfaceAlignment alignment,
             bool opening = false,
             Vector3 openingSize = default,
-            Vector3 openingCenter = default)
+            Vector3 openingCenter = default,
+            Vector3 placementOffset = default,
+            Vector3 boundsSize = default)
         {
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
             if (prefab != null)
             {
-                AddDefinition(output, fileName, displayName, categoryId, prefab, surfaces, alignment, opening, openingSize, openingCenter);
+                AddDefinition(output, fileName, displayName, categoryId, prefab, surfaces, alignment, opening, openingSize, openingCenter, placementOffset, boundsSize);
             }
         }
 
@@ -215,7 +249,9 @@ namespace Neighbor.Main.HouseBuilder.Editor
             HouseSurfaceAlignment alignment,
             bool opening = false,
             Vector3 openingSize = default,
-            Vector3 openingCenter = default)
+            Vector3 openingCenter = default,
+            Vector3 placementOffset = default,
+            Vector3 boundsSize = default)
         {
             string path = $"{DefinitionPath}/{fileName}.asset";
             HousePlaceableDefinition definition = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(path);
@@ -240,9 +276,19 @@ namespace Neighbor.Main.HouseBuilder.Editor
             SerializedProperty placement = serialized.FindProperty("placement");
             placement.FindPropertyRelative("allowedSurfaces").intValue = (int)surfaces;
             placement.FindPropertyRelative("surfaceAlignment").enumValueIndex = (int)alignment;
-            placement.FindPropertyRelative("requireSurface").boolValue = true;
+            placement.FindPropertyRelative("requireSurface").boolValue =
+                opening
+                || alignment != HouseSurfaceAlignment.None
+                || (surfaces & HouseSurfaceType.Ground) == 0;
             placement.FindPropertyRelative("validateCollisions").boolValue = true;
             SetBoundsFromPrefab(placement, prefab);
+            if (boundsSize.sqrMagnitude > 0f)
+            {
+                placement.FindPropertyRelative("boundsSize").vector3Value = boundsSize;
+                placement.FindPropertyRelative("boundsCenter").vector3Value = Vector3.zero;
+            }
+
+            placement.FindPropertyRelative("placementOffset").vector3Value = placementOffset;
 
             SerializedProperty wallOpening = serialized.FindProperty("wallOpening");
             wallOpening.FindPropertyRelative("enabled").boolValue = opening;
@@ -314,6 +360,87 @@ namespace Neighbor.Main.HouseBuilder.Editor
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(temporary, path);
             Object.DestroyImmediate(temporary);
             return prefab;
+        }
+
+        private static GameObject CreateStructurePrefab(string name, HouseGeometryKind kind, Vector3 size, Material material)
+        {
+            string path = $"{StructurePrefabPath}/{name}.prefab";
+            GameObject existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            HouseGeometryObject existingGeometry = existing != null ? existing.GetComponent<HouseGeometryObject>() : null;
+            if (existingGeometry != null && existingGeometry.Descriptor.Kind == kind && existingGeometry.Descriptor.Size == size)
+            {
+                return existing;
+            }
+
+            if (existing != null)
+            {
+                AssetDatabase.DeleteAsset(path);
+            }
+
+            GameObject temporary = HouseGeometryFactory.Create(new HouseGeometryDescriptor(kind, size), material);
+            temporary.name = name;
+            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(temporary, path);
+            Object.DestroyImmediate(temporary);
+            return prefab;
+        }
+
+        private static void AddMaterialIfPresent(ICollection<HouseMaterialDefinition> output, string fileName, string displayName, string materialPath)
+        {
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
+            if (material != null)
+            {
+                output.Add(CreateMaterial(fileName, displayName, material));
+            }
+        }
+
+        public static HouseMaterialDefinition EnsureMaterialDefinition(Material material, HouseBuilderCatalog targetCatalog)
+        {
+            if (material == null || targetCatalog == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < targetCatalog.Materials.Count; i++)
+            {
+                HouseMaterialDefinition existing = targetCatalog.Materials[i];
+                if (existing != null && existing.Material == material)
+                {
+                    return existing;
+                }
+            }
+
+            EnsureFolders();
+            string materialAssetPath = AssetDatabase.GetAssetPath(material);
+            string guid = AssetDatabase.AssetPathToGUID(materialAssetPath);
+            if (string.IsNullOrWhiteSpace(guid))
+            {
+                return null;
+            }
+
+            string path = $"{MaterialPath}/Imported_{guid}.asset";
+            HouseMaterialDefinition definition = AssetDatabase.LoadAssetAtPath<HouseMaterialDefinition>(path);
+            if (definition == null)
+            {
+                definition = ScriptableObject.CreateInstance<HouseMaterialDefinition>();
+                AssetDatabase.CreateAsset(definition, path);
+            }
+
+            SerializedObject serializedDefinition = new(definition);
+            serializedDefinition.FindProperty("id").stringValue = $"neighbor.material.imported.{guid}";
+            serializedDefinition.FindProperty("displayName").stringValue = material.name;
+            serializedDefinition.FindProperty("material").objectReferenceValue = material;
+            serializedDefinition.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializedObject serializedCatalog = new(targetCatalog);
+            SerializedProperty catalogMaterials = serializedCatalog.FindProperty("materials");
+            int index = catalogMaterials.arraySize;
+            catalogMaterials.InsertArrayElementAtIndex(index);
+            catalogMaterials.GetArrayElementAtIndex(index).objectReferenceValue = definition;
+            serializedCatalog.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(definition);
+            EditorUtility.SetDirty(targetCatalog);
+            AssetDatabase.SaveAssets();
+            return definition;
         }
 
         private static HouseMaterialDefinition CreateMaterial(string fileName, string displayName, Material material)

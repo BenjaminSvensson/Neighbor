@@ -1,20 +1,30 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Neighbor.Main.HouseBuilder
 {
+    [ExecuteAlways]
     [DisallowMultipleComponent]
     [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider))]
     [AddComponentMenu("Neighbor/House Builder/Geometry Object")]
     public sealed class HouseGeometryObject : MonoBehaviour
     {
         [SerializeField] private HouseGeometryDescriptor descriptor = new(HouseGeometryKind.Cube, Vector3.one);
+        private readonly List<Mesh> staleMeshes = new();
 
         public HouseGeometryDescriptor Descriptor => descriptor;
 
         public void Configure(HouseGeometryDescriptor value)
         {
             descriptor = value ?? new HouseGeometryDescriptor(HouseGeometryKind.Cube, Vector3.one);
+            Rebuild();
+        }
+
+        public void Resize(Vector3 size)
+        {
+            descriptor ??= new HouseGeometryDescriptor(HouseGeometryKind.Cube, size);
+            descriptor.SetSize(size);
             Rebuild();
         }
 
@@ -43,7 +53,7 @@ namespace Neighbor.Main.HouseBuilder
                 }
                 else
                 {
-                    DestroyImmediate(previousMesh);
+                    staleMeshes.Add(previousMesh);
                 }
             }
 
@@ -105,6 +115,33 @@ namespace Neighbor.Main.HouseBuilder
             {
                 Rebuild();
             }
+        }
+
+        private void Start()
+        {
+            MeshFilter filter = GetComponent<MeshFilter>();
+            if (descriptor != null && filter != null && filter.sharedMesh == null && gameObject.scene.IsValid())
+            {
+                Rebuild();
+            }
+        }
+
+        private void Update()
+        {
+            if (Application.isPlaying || staleMeshes.Count == 0)
+            {
+                return;
+            }
+
+            for (int i = staleMeshes.Count - 1; i >= 0; i--)
+            {
+                if (staleMeshes[i] != null)
+                {
+                    DestroyImmediate(staleMeshes[i]);
+                }
+            }
+
+            staleMeshes.Clear();
         }
 
         private static Vector3 Abs(Vector3 value)

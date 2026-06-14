@@ -20,7 +20,7 @@ MonoBehaviour:
   placement:
     allowedSurfaces: 1
     surfaceAlignment: 0
-    requireSurface: 1
+    requireSurface: 0
     validateCollisions: 1
     allowTriggerOverlap: 1
     boundsSize: {x: 2.2199998, y: 2.0600002, z: 0.98100007}

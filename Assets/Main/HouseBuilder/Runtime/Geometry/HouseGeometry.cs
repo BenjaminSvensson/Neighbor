@@ -169,6 +169,14 @@ namespace Neighbor.Main.HouseBuilder
         {
             wallOpenings.RemoveAll(opening => opening != null && opening.OwnerObjectId == ownerObjectId);
         }
+
+        public void SetSize(Vector3 value)
+        {
+            size = new Vector3(
+                Mathf.Max(0.05f, value.x),
+                Mathf.Max(0.05f, value.y),
+                Mathf.Max(0.05f, value.z));
+        }
     }
 
     [Serializable]

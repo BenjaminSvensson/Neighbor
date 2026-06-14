@@ -6,7 +6,7 @@ Open it from:
 
 `Tools > Neighbor > House Builder > Level Editor`
 
-The default catalog and marker prefabs are created automatically in `Assets/Main/HouseBuilder/Data` and `Assets/Main/HouseBuilder/Prefabs`. They can also be refreshed from:
+The default catalog, starter structure prefabs, paint materials, and marker prefabs are created automatically in `Assets/Main/HouseBuilder/Data` and `Assets/Main/HouseBuilder/Prefabs`. They can also be refreshed from:
 
 `Tools > Neighbor > House Builder > Create or Refresh Default Assets`
 
@@ -25,14 +25,21 @@ Every placed object has a stable `HouseBuilderObject.InstanceId`. Definitions, m
 
 1. Open the House Builder Level Editor.
 2. Create or assign a `HouseBuilderWorld`.
-3. Use **Build** to place catalog prefabs and AI nodes.
-4. Use **Geometry** to create walls, floors, ceilings, doorway blocks, window blocks, ramps, stairs, and cubes.
-5. Use **Materials** to assign a catalog material to a selected face or side.
-6. Use **Wiring** to click an orange output port followed by a cyan input port.
-7. Use **Boolean** to run subtract, intersect, or union on two mesh objects.
-8. Use **Save** to write or load a versioned `.house.json` document.
+3. Use **Place** and click an asset card. Move into Scene view and left-click to place copies. Press `Q`/`E` to rotate and `Esc` to stop.
+4. Use **Draw** to create walls, floors, ceilings, doorway blocks, window blocks, ramps, stairs, and blocks. Click-drag to size the shape directly in Scene view.
+5. Select a generated shape while the **Draw** tab is open to resize it with direct Scene handles or friendly dimension fields.
+6. Use **Paint** to choose a material and click-drag over the actual faces in Scene view. Material cards and normal Unity Material assets can also be dragged directly onto a face.
+7. Use **Connect** to click an orange output port followed by a cyan input port.
+8. Use **Combine** to subtract, intersect, or union two mesh objects.
+9. Use **Save** to write or load a versioned `.house.json` document.
 
-Placement supports grid, surface, edge, corner, and rotation snapping. These options, collision masks, snap distances, and collision padding are exposed at the top of the editor window.
+Placement supports grid, surface, edge, corner, and rotation snapping. These options, collision masks, snap distances, and collision padding are under the collapsed **Setup & Snapping** section so everyday building controls remain uncluttered.
+
+Ground-based assets such as starter structures, furniture, props, and AI markers can be placed on the snapped build grid when no collider surface is available. Wall- and ceiling-mounted assets still require the appropriate real surface.
+
+### Starter Structures
+
+The default catalog includes ready-to-place `Basic Wall`, `Basic Floor`, and `Basic Ceiling` prefabs under `Assets/Main/HouseBuilder/Prefabs/Structures`. They use the same parametric geometry, face-painting, wall-opening, snapping, and serialization systems as shapes created with the Draw tool.
 
 ## Automatic Door And Window Holes
 
@@ -57,7 +64,9 @@ Generated geometry reserves stable submesh slots matching `HouseFaceRole`:
 - Front / Back
 - Trim / Default
 
-`HouseBuilderMaterialController` stores stable material-definition IDs plus renderer path and material index. Assignments are included in JSON and reapplied from the active catalog on load.
+The Paint tool resolves the triangle under the Scene-view cursor to one of these roles, highlights it, and assigns the active brush to that face. For ordinary prefabs it stores the clicked renderer path and material slot instead.
+
+`HouseBuilderMaterialController` stores stable material-definition IDs plus renderer path and material index. Assignments are included in JSON and reapplied from the active catalog on load. Dragging a normal Unity Material onto a face automatically creates a stable material definition and adds it to the active catalog.
 
 ## Visual Wiring
 
@@ -82,6 +91,8 @@ For a new interactable, add port templates to its `HousePlaceableDefinition`, th
 - doorway and window blocks;
 - ramps;
 - stairs.
+
+Each primitive has a useful suggested size rather than sharing one generic dimension. Draw mode creates walls from a line and horizontal structures from a rectangle. Resizing changes the serialized geometry descriptor and preserves linked door/window openings.
 
 Boolean operations use ProBuilder's CSG implementation in the editor. Results are baked into `HouseMeshData`, then wrapped as normal builder geometry with snapping, collision, materials, and save/load support. Inputs are left unchanged.
 
@@ -123,4 +134,4 @@ For multiplayer, send authoritative operations that reference stable object/defi
 
 ## Verification
 
-EditMode coverage is in `Assets/Main/Tests/Editor/HouseBuilderEditorTests.cs`. It covers geometry primitives, parametric wall holes, linked opening removal, typed wire routing, snapping, and JSON round trips.
+EditMode coverage is in `Assets/Main/Tests/Editor/HouseBuilderEditorTests.cs`. It covers geometry primitives and suggested dimensions, parametric wall holes, resize preservation, Scene face picking, linked opening removal, typed wire routing, snapping, and JSON round trips.
