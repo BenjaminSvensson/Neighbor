@@ -59,6 +59,14 @@ namespace Neighbor.Main.HouseBuilder
                     ? transform
                     : transform.Find(binding.RendererPath);
                 Renderer renderer = target != null ? target.GetComponent<Renderer>() : null;
+                if (renderer != null
+                    && !renderer.enabled
+                    && string.IsNullOrEmpty(binding.RendererPath)
+                    && transform.Find(HouseGeometryObject.PhysicalObjectName) is Transform physical)
+                {
+                    renderer = physical.GetComponent<Renderer>();
+                }
+
                 if (renderer == null)
                 {
                     continue;

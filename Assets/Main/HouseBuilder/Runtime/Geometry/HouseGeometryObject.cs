@@ -10,6 +10,8 @@ namespace Neighbor.Main.HouseBuilder
     [AddComponentMenu("Neighbor/House Builder/Geometry Object")]
     public sealed class HouseGeometryObject : MonoBehaviour
     {
+        public const string PhysicalObjectName = "Physical Geometry";
+
         [SerializeField] private HouseGeometryDescriptor descriptor = new(HouseGeometryKind.Cube, Vector3.one);
         private readonly List<Mesh> staleMeshes = new();
 
@@ -39,18 +41,19 @@ namespace Neighbor.Main.HouseBuilder
         {
             enabled = true;
             Rebuild();
+            PreparePhysicalObject();
+        }
 
+        public void PreparePhysicalObject()
+        {
+            MeshFilter filter = GetComponent<MeshFilter>();
             MeshRenderer renderer = GetComponent<MeshRenderer>();
-            renderer.enabled = true;
-            renderer.SetPropertyBlock(null);
-
-            MeshCollider collider = GetComponent<MeshCollider>();
-            collider.enabled = true;
+            SyncPhysicalObject(filter.sharedMesh, renderer.sharedMaterials);
         }
 
         public void Rebuild()
         {
-            Mesh mesh = descriptor.BakedMesh != null
+            Mesh mesh = descriptor.BakedMesh != null && descriptor.BakedMesh.HasGeometry
                 ? descriptor.BakedMesh.Build($"{name}_{descriptor.Kind}")
                 : HouseGeometryFactory.BuildMesh(descriptor);
             mesh.hideFlags = HideFlags.DontSave;
@@ -86,6 +89,10 @@ namespace Neighbor.Main.HouseBuilder
 
             collider.sharedMesh = null;
             collider.sharedMesh = mesh;
+            if (transform.Find(PhysicalObjectName) != null)
+            {
+                SyncPhysicalObject(mesh, renderer.sharedMaterials);
+            }
         }
 
         public bool AddOrUpdateWallOpening(HouseBuilderObject openingOwner, Transform openingTransform, HouseWallOpeningProfile profile)
@@ -142,6 +149,11 @@ namespace Neighbor.Main.HouseBuilder
 
         private void Update()
         {
+            if (!Application.isPlaying && gameObject.scene.IsValid() && transform.Find(PhysicalObjectName) == null)
+            {
+                PreparePhysicalObject();
+            }
+
             if (Application.isPlaying || staleMeshes.Count == 0)
             {
                 return;
@@ -167,6 +179,46 @@ namespace Neighbor.Main.HouseBuilder
             {
                 Rebuild();
             }
+        }
+
+        private void SyncPhysicalObject(Mesh mesh, Material[] materials)
+        {
+            Transform physicalTransform = transform.Find(PhysicalObjectName);
+            if (physicalTransform == null)
+            {
+                GameObject physicalObject = new(PhysicalObjectName);
+                physicalTransform = physicalObject.transform;
+                physicalTransform.SetParent(transform, false);
+            }
+
+            MeshFilter physicalFilter = physicalTransform.GetComponent<MeshFilter>();
+            if (physicalFilter == null)
+            {
+                physicalFilter = physicalTransform.gameObject.AddComponent<MeshFilter>();
+            }
+
+            MeshRenderer physicalRenderer = physicalTransform.GetComponent<MeshRenderer>();
+            if (physicalRenderer == null)
+            {
+                physicalRenderer = physicalTransform.gameObject.AddComponent<MeshRenderer>();
+            }
+
+            MeshCollider physicalCollider = physicalTransform.GetComponent<MeshCollider>();
+            if (physicalCollider == null)
+            {
+                physicalCollider = physicalTransform.gameObject.AddComponent<MeshCollider>();
+            }
+
+            physicalFilter.sharedMesh = mesh;
+            physicalRenderer.sharedMaterials = materials;
+            physicalRenderer.enabled = true;
+            physicalRenderer.SetPropertyBlock(null);
+            physicalCollider.sharedMesh = null;
+            physicalCollider.sharedMesh = mesh;
+            physicalCollider.enabled = true;
+
+            GetComponent<MeshRenderer>().enabled = false;
+            GetComponent<MeshCollider>().enabled = false;
         }
 
         private static Vector3 Abs(Vector3 value)

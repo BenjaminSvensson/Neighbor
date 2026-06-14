@@ -44,6 +44,7 @@ namespace Neighbor.Main.HouseBuilder
         public Vector3[] Normals => normals;
         public Vector2[] Uv => uv;
         public HouseSubmeshData[] Submeshes => submeshes;
+        public bool HasGeometry => vertices != null && vertices.Length > 0;
 
         public static HouseMeshData Capture(Mesh mesh)
         {
@@ -125,6 +126,8 @@ namespace Neighbor.Main.HouseBuilder
         public int StairCount => stairCount;
         public HouseMeshData BakedMesh => bakedMesh;
         public IReadOnlyList<HouseWallOpeningData> WallOpenings => wallOpenings;
+        public bool IsValid => (bakedMesh != null && bakedMesh.HasGeometry)
+            || (size.x >= 0.05f && size.y >= 0.05f && size.z >= 0.05f);
 
         public HouseGeometryDescriptor(
             HouseGeometryKind kind,

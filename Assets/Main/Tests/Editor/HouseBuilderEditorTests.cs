@@ -230,9 +230,11 @@ namespace Neighbor.Main.Tests
             HouseBuilderGhost ghost = preview.AddComponent<HouseBuilderGhost>();
             ghost.Initialize();
 
-            Assert.That(preview.GetComponent<MeshFilter>().sharedMesh, Is.Not.Null);
-            Assert.That(preview.GetComponent<MeshRenderer>().enabled, Is.True);
-            Assert.That(preview.GetComponent<MeshCollider>().enabled, Is.False);
+            Transform physical = preview.transform.Find(HouseGeometryObject.PhysicalObjectName);
+            Assert.That(physical, Is.Not.Null);
+            Assert.That(physical.GetComponent<MeshFilter>().sharedMesh, Is.Not.Null);
+            Assert.That(physical.GetComponent<MeshRenderer>().enabled, Is.True);
+            Assert.That(physical.GetComponent<MeshCollider>().enabled, Is.False);
         }
 
         [TestCase("BasicWall")]
@@ -247,6 +249,11 @@ namespace Neighbor.Main.Tests
             Assert.That(prefab.GetComponent<MeshFilter>().sharedMesh, Is.Not.Null);
             Assert.That(prefab.GetComponent<MeshCollider>().sharedMesh, Is.SameAs(prefab.GetComponent<MeshFilter>().sharedMesh));
             Assert.That(AssetDatabase.Contains(prefab.GetComponent<MeshFilter>().sharedMesh), Is.True);
+            Transform physical = prefab.transform.Find(HouseGeometryObject.PhysicalObjectName);
+            Assert.That(physical, Is.Not.Null);
+            Assert.That(physical.GetComponent<MeshRenderer>().enabled, Is.True);
+            Assert.That(physical.GetComponent<MeshCollider>().enabled, Is.True);
+            Assert.That(physical.GetComponent<MeshFilter>().sharedMesh, Is.SameAs(prefab.GetComponent<MeshFilter>().sharedMesh));
         }
 
         [TestCase("BasicWall")]
@@ -270,13 +277,18 @@ namespace Neighbor.Main.Tests
             MeshRenderer renderer = instance.GetComponent<MeshRenderer>();
             MeshFilter filter = instance.GetComponent<MeshFilter>();
             MeshCollider collider = instance.GetComponent<MeshCollider>();
+            Transform physical = instance.transform.Find(HouseGeometryObject.PhysicalObjectName);
             Assert.That(instance.activeInHierarchy, Is.True);
             Assert.That(instance.GetComponent<HouseGeometryObject>().enabled, Is.True);
-            Assert.That(renderer.enabled, Is.True);
+            Assert.That(physical, Is.Not.Null);
+            Assert.That(renderer.enabled, Is.False);
             Assert.That(filter.sharedMesh, Is.Not.Null);
             Assert.That(filter.sharedMesh.vertexCount, Is.GreaterThan(0));
-            Assert.That(collider.enabled, Is.True);
-            Assert.That(collider.sharedMesh, Is.SameAs(filter.sharedMesh));
+            Assert.That(collider.enabled, Is.False);
+            Assert.That(physical.GetComponent<MeshRenderer>().enabled, Is.True);
+            Assert.That(physical.GetComponent<MeshCollider>().enabled, Is.True);
+            Assert.That(physical.GetComponent<MeshFilter>().sharedMesh, Is.SameAs(filter.sharedMesh));
+            Assert.That(physical.GetComponent<MeshCollider>().sharedMesh, Is.SameAs(filter.sharedMesh));
         }
 
         [TestCase("BasicWall")]
@@ -298,10 +310,12 @@ namespace Neighbor.Main.Tests
             world.RegisterPlaceable(instance, definition);
 
             MeshFilter filter = instance.GetComponent<MeshFilter>();
+            Transform physical = instance.transform.Find(HouseGeometryObject.PhysicalObjectName);
             Assert.That(filter.sharedMesh, Is.Not.SameAs(emptyMesh));
             Assert.That(filter.sharedMesh.vertexCount, Is.GreaterThan(0));
-            Assert.That(instance.GetComponent<MeshRenderer>().enabled, Is.True);
-            Assert.That(instance.GetComponent<MeshCollider>().sharedMesh, Is.SameAs(filter.sharedMesh));
+            Assert.That(physical, Is.Not.Null);
+            Assert.That(physical.GetComponent<MeshRenderer>().enabled, Is.True);
+            Assert.That(physical.GetComponent<MeshCollider>().sharedMesh, Is.SameAs(filter.sharedMesh));
         }
 
         [Test]

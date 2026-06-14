@@ -62,7 +62,7 @@ namespace Neighbor.Main.HouseBuilder
         public Vector3 LocalPosition => localPosition;
         public Quaternion LocalRotation => localRotation;
         public Vector3 LocalScale => localScale;
-        public HouseGeometryDescriptor Geometry => geometry;
+        public HouseGeometryDescriptor Geometry => geometry != null && geometry.IsValid ? geometry : null;
         public IReadOnlyList<HouseMaterialBinding> Materials => materials;
         public IReadOnlyList<HouseBuilderProperty> Properties => properties;
         public IReadOnlyList<HouseBuilderComponentState> ComponentStates => componentStates;

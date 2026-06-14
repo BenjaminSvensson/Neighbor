@@ -200,6 +200,7 @@ namespace Neighbor.Main.HouseBuilder
                 }
 
                 geometry.Configure(data.Geometry);
+                geometry.PrepareForPlacement();
             }
 
             HouseBuilderObject builderObject = instance.GetComponent<HouseBuilderObject>();

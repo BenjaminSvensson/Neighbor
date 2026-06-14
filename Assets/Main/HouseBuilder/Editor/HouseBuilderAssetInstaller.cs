@@ -11,7 +11,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
         public const string RootPath = "Assets/Main/HouseBuilder";
         public const string DataPath = RootPath + "/Data";
         public const string DefaultCatalogPath = DataPath + "/DefaultHouseBuilderCatalog.asset";
-        private const int InstallerVersion = 8;
+        private const int InstallerVersion = 9;
         private const string InstallerVersionKey = "Neighbor.HouseBuilder.DefaultAssetsVersion";
         private const string CategoryPath = DataPath + "/Categories";
         private const string DefinitionPath = DataPath + "/Placeables";
@@ -414,6 +414,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 MeshCollider collider = prefabContents.GetComponent<MeshCollider>();
                 filter.sharedMesh = persistentMesh;
                 collider.sharedMesh = persistentMesh;
+                prefabContents.GetComponent<HouseGeometryObject>().PreparePhysicalObject();
                 PrefabUtility.SaveAsPrefabAsset(prefabContents, path);
             }
             finally
