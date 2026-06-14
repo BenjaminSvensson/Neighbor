@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aaf599b07c382c34a8c3b01cb6755454, type: 3}
+  m_Name: Doorbell
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HousePlaceableDefinition
+  id: neighbor.wiring.doorbell
+  displayName: Button / Doorbell
+  categoryId: wiring
+  prefab: {fileID: 100000, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
+  preview: {fileID: 0}
+  placement:
+    allowedSurfaces: 2
+    surfaceAlignment: 2
+    requireSurface: 1
+    validateCollisions: 1
+    allowTriggerOverlap: 1
+    boundsSize: {x: 0.32, y: 0.5, z: 0.1525}
+    boundsCenter: {x: 0, y: 0, z: -0.036250003}
+    placementOffset: {x: 0, y: 0, z: 0}
+  wallOpening:
+    enabled: 0
+    size: {x: 1.2, y: 2.1, z: 0.5}
+    center: {x: 0, y: 1.05, z: 0}
+    margin: 0.02
+  wirePorts:
+  - id: pressed
+    displayName: Pressed
+    direction: 1
+    signalKind: 1
+    maximumConnections: 0
+    visualOffset: {x: 0, y: 0.15, z: 0}
+  tags: []

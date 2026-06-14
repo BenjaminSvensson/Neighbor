@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aaf599b07c382c34a8c3b01cb6755454, type: 3}
+  m_Name: SawBladeTrap
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HousePlaceableDefinition
+  id: neighbor.prop.sawbladetrap
+  displayName: Saw Blade Trap
+  categoryId: prop
+  prefab: {fileID: 162510867789323087, guid: 58bcc8b62461a864aa89039d1fd4ab33, type: 3}
+  preview: {fileID: 0}
+  placement:
+    allowedSurfaces: 1
+    surfaceAlignment: 0
+    requireSurface: 1
+    validateCollisions: 1
+    allowTriggerOverlap: 1
+    boundsSize: {x: 0.95, y: 0.61640006, z: 1.37}
+    boundsCenter: {x: 0, y: 0.22, z: 0.335}
+    placementOffset: {x: 0, y: 0, z: 0}
+  wallOpening:
+    enabled: 0
+    size: {x: 1.2, y: 2.1, z: 0.5}
+    center: {x: 0, y: 1.05, z: 0}
+    margin: 0.02
+  wirePorts:
+  - id: active
+    displayName: Active
+    direction: 0
+    signalKind: 2
+    maximumConnections: 0
+    visualOffset: {x: 0, y: 0.25, z: 0}
+  tags: []
