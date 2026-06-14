@@ -104,6 +104,22 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void Vision_RejectsPlayerAboveUpwardViewLimit()
+        {
+            NeighborVision vision = context.AddInitializedComponent<NeighborVision>();
+            Transform target = context.CreateObject("PlayerTarget").transform;
+            GameplaySmokeTestReflection.SetField(vision, "target", target);
+            GameplaySmokeTestReflection.SetField(vision, "eyeHeight", 0f);
+            GameplaySmokeTestReflection.SetField(vision, "lineOfSightMask", (LayerMask)0);
+
+            target.position = Vector3.forward * 5f + Vector3.up * 5f;
+            Assert.That(vision.TrySeeTarget(out _, out _), Is.False);
+
+            target.position = Vector3.forward * 5f + Vector3.up;
+            Assert.That(vision.TrySeeTarget(out _, out _), Is.True);
+        }
+
+        [Test]
         public void NeighborPlacedCameraSpacing_PreventsOverlappingMounts()
         {
             GameObject cameraObject = context.CreateObject("NeighborPlacedCamera");

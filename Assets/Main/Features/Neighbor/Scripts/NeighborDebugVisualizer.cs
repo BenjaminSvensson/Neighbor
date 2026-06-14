@@ -286,6 +286,10 @@ namespace Neighbor.Main.Features.Neighbor
             Handles.DrawLine(origin, origin + right * vision.ViewDistance);
             Handles.DrawWireArc(origin, Vector3.up, left, vision.ViewAngle, vision.ViewDistance);
             Handles.DrawWireDisc(origin, Vector3.up, vision.CloseDetectionDistance);
+
+            Vector3 rightAxis = Vector3.Cross(Vector3.up, forward).normalized;
+            Vector3 upwardLimit = Quaternion.AngleAxis(-vision.MaximumUpwardViewAngle, rightAxis) * forward;
+            Handles.DrawDottedLine(origin, origin + upwardLimit * vision.ViewDistance, 4f);
         }
 
         private void DrawSuspicionHalo(Color stateColor)

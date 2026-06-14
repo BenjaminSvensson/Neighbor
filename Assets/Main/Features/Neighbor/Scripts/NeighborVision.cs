@@ -12,6 +12,7 @@ namespace Neighbor.Main.Features.Neighbor
         [Header("Vision")]
         [SerializeField, Min(0f)] private float viewDistance = 13f;
         [SerializeField, Range(1f, 180f)] private float viewAngle = 95f;
+        [SerializeField, Range(0f, 89f)] private float maximumUpwardViewAngle = 32f;
         [SerializeField, Min(0f)] private float closeDetectionDistance = 2.2f;
         [SerializeField] private LayerMask lineOfSightMask = ~0;
         [SerializeField, Min(0f)] private float eyeHeight = 1.65f;
@@ -23,6 +24,7 @@ namespace Neighbor.Main.Features.Neighbor
             : transform.position + Vector3.up * eyeHeight;
         public float ViewDistance => viewDistance;
         public float ViewAngle => viewAngle;
+        public float MaximumUpwardViewAngle => maximumUpwardViewAngle;
         public float CloseDetectionDistance => closeDetectionDistance;
 
         private void Awake()
@@ -65,7 +67,9 @@ namespace Neighbor.Main.Features.Neighbor
             float angle = Vector3.Angle(transform.forward, toTarget);
             bool insideViewCone = angle <= viewAngle * 0.5f;
             bool closeEnoughToNotice = distance <= closeDetectionDistance;
-            if (!insideViewCone && !closeEnoughToNotice)
+            Vector3 horizontalToTarget = Vector3.ProjectOnPlane(toTarget, Vector3.up);
+            float upwardAngle = Mathf.Atan2(toTarget.y, Mathf.Max(0.01f, horizontalToTarget.magnitude)) * Mathf.Rad2Deg;
+            if (upwardAngle > maximumUpwardViewAngle || (!insideViewCone && !closeEnoughToNotice))
             {
                 return false;
             }

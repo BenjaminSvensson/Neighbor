@@ -764,6 +764,7 @@ MonoBehaviour:
   target: {fileID: 0}
   viewDistance: 13
   viewAngle: 95
+  maximumUpwardViewAngle: 32
   closeDetectionDistance: 2.2
   lineOfSightMask:
     serializedVersion: 2
@@ -1074,6 +1075,13 @@ MonoBehaviour:
   traversalLandingAnimation: {fileID: 4832780573735333345, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
   climbAnimation: {fileID: -8073916434604345353, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
   traversalAnimationSpeed: 1
+  headLookSettings:
+    enableHeadTracking: 1
+    headWeight: 1
+    bodyWeight: 0.08
+    eyesWeight: 0.55
+    clampWeight: 0
+    weightSharpness: 18
 --- !u!114 &9013648726351842075
 MonoBehaviour:
   m_ObjectHideFlags: 0

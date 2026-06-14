@@ -69,8 +69,12 @@ namespace Neighbor.Main.Features.Neighbor
         [Header("Leg IK")]
         [SerializeField] private NeighborFootIK.Settings legIKSettings = new NeighborFootIK.Settings();
 
+        [Header("Visible Player Head Tracking")]
+        [SerializeField] private NeighborHeadLookIK.Settings headLookSettings = new NeighborHeadLookIK.Settings();
+
         private int currentState;
         private NeighborFootIK footIK;
+        private NeighborHeadLookIK headLookIK;
         private AnimatorOverrideController taskAnimationOverrides;
         private AnimationClip defaultTaskAnimation;
         private AnimationClip defaultHurtAnimation;
@@ -105,6 +109,14 @@ namespace Neighbor.Main.Features.Neighbor
                 }
 
                 footIK.Configure(animator, transform, motor, legIKSettings);
+                headLookSettings ??= new NeighborHeadLookIK.Settings();
+                headLookIK = animator.GetComponent<NeighborHeadLookIK>();
+                if (headLookIK == null)
+                {
+                    headLookIK = animator.gameObject.AddComponent<NeighborHeadLookIK>();
+                }
+
+                headLookIK.Configure(animator, brain, headLookSettings);
             }
         }
 
@@ -433,6 +445,92 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 Destroy(taskAnimationOverrides);
             }
+        }
+    }
+
+    [DisallowMultipleComponent]
+    [DefaultExecutionOrder(110)]
+    public sealed class NeighborHeadLookIK : MonoBehaviour
+    {
+        [System.Serializable]
+        public sealed class Settings
+        {
+            [Tooltip("Turns the Neighbor's head toward the player while the player is visible.")]
+            public bool enableHeadTracking = true;
+
+            [Range(0f, 1f)] public float headWeight = 1f;
+            [Range(0f, 1f)] public float bodyWeight = 0.08f;
+            [Range(0f, 1f)] public float eyesWeight = 0.55f;
+            [Range(0f, 1f)] public float clampWeight;
+            [Min(0.01f)] public float weightSharpness = 18f;
+        }
+
+        private Animator animator;
+        private NeighborBrain brain;
+        private Settings settings;
+        private float currentWeight;
+        private Vector3 lookPosition;
+
+        public void Configure(Animator targetAnimator, NeighborBrain targetBrain, Settings targetSettings)
+        {
+            animator = targetAnimator != null ? targetAnimator : GetComponent<Animator>();
+            brain = targetBrain;
+            settings = targetSettings ?? new Settings();
+        }
+
+        private void Awake()
+        {
+            animator = animator != null ? animator : GetComponent<Animator>();
+            settings ??= new Settings();
+        }
+
+        private void OnAnimatorIK(int layerIndex)
+        {
+            if (layerIndex != 0 || animator == null || !animator.isHuman)
+            {
+                return;
+            }
+
+            bool shouldTrack = settings.enableHeadTracking
+                && brain != null
+                && brain.IsPlayerVisible
+                && brain.Player != null;
+            if (shouldTrack)
+            {
+                lookPosition = GetPlayerAimPoint(brain.Player);
+            }
+
+            float desiredWeight = shouldTrack ? 1f : 0f;
+            currentWeight = Damp(currentWeight, desiredWeight, settings.weightSharpness, Time.deltaTime);
+            animator.SetLookAtWeight(
+                currentWeight,
+                settings.bodyWeight,
+                settings.headWeight,
+                settings.eyesWeight,
+                settings.clampWeight);
+
+            if (currentWeight > 0.001f)
+            {
+                animator.SetLookAtPosition(lookPosition);
+            }
+        }
+
+        private static Vector3 GetPlayerAimPoint(Transform player)
+        {
+            Camera playerCamera = player.GetComponentInChildren<Camera>(true);
+            if (playerCamera != null)
+            {
+                return playerCamera.transform.position;
+            }
+
+            CharacterController controller = player.GetComponent<CharacterController>()
+                ?? player.GetComponentInChildren<CharacterController>();
+            return controller != null ? controller.bounds.center : player.position + Vector3.up;
+        }
+
+        private static float Damp(float current, float target, float sharpness, float deltaTime)
+        {
+            return Mathf.Lerp(current, target, 1f - Mathf.Exp(-Mathf.Max(0.01f, sharpness) * Mathf.Max(0f, deltaTime)));
         }
     }
 }
