@@ -104,6 +104,7 @@ MonoBehaviour:
   spawnPoint: {fileID: 7278823244080569487}
   maximumPersistentReinforcements: 3
   randomizeYaw: 0
+  repeatedLocationPenalty: 0.8
   securityCameraPrefab: {fileID: 100000, guid: b4b2a27579f44971b5e658e13f2ba7ad, type: 3}
   securityCameraCost: 2
   securityCameraPlacementChance: 0.65
@@ -114,6 +115,11 @@ MonoBehaviour:
   cameraWallMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  cameraMinimumSpacing: 2.5
+  cameraCandidateOffset: 1.5
+  cameraRecentPlacementPenaltyRadius: 4
+  cameraRecentPlacementMemory: 6
+  cameraPlacementScoreRandomness: 0.35
   addNeighborAvoidanceObstacle: 1
   avoidancePadding: 0.65
   minimumAvoidanceHeight: 1.2

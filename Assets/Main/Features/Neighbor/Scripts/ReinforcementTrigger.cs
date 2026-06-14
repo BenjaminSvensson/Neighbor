@@ -71,6 +71,7 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField] private Transform spawnPoint;
         [SerializeField, Min(0)] private int maximumPersistentReinforcements = 1;
         [SerializeField] private bool randomizeYaw;
+        [SerializeField, Min(0f)] private float repeatedLocationPenalty = 0.8f;
 
         [Header("Security Camera Placement")]
         [SerializeField] private GameObject securityCameraPrefab;
@@ -81,6 +82,11 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float cameraMountHeight = 2.25f;
         [SerializeField, Range(0f, 1f)] private float cameraMaximumWallUpDot = 0.3f;
         [SerializeField] private LayerMask cameraWallMask = ~0;
+        [SerializeField, Min(0f)] private float cameraMinimumSpacing = 2.5f;
+        [SerializeField, Min(0f)] private float cameraCandidateOffset = 1.5f;
+        [SerializeField, Min(0f)] private float cameraRecentPlacementPenaltyRadius = 4f;
+        [SerializeField, Min(1)] private int cameraRecentPlacementMemory = 6;
+        [SerializeField, Min(0f)] private float cameraPlacementScoreRandomness = 0.35f;
 
         [Header("Neighbor Avoidance")]
         [SerializeField] private bool addNeighborAvoidanceObstacle = true;
@@ -94,8 +100,11 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0.01f)] private float directionGizmoHeadSize = 0.22f;
 
         private readonly HashSet<PlayerController> playersInside = new();
+        private readonly List<CameraWallCandidate> cameraWallCandidates = new();
+        private readonly List<Vector3> recentCameraPlacements = new();
         private float runScore;
         private int spawnedReinforcementCount;
+        private float ReinforcementRankingScore => runScore / (1f + spawnedReinforcementCount * repeatedLocationPenalty);
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetActiveTriggers()
@@ -153,7 +162,7 @@ namespace Neighbor.Main.Features.Neighbor
                 }
             }
 
-            rankedTriggers.Sort((a, b) => b.runScore.CompareTo(a.runScore));
+            rankedTriggers.Sort((a, b) => b.ReinforcementRankingScore.CompareTo(a.ReinforcementRankingScore));
             int maximumSpawnCount = Mathf.Min(Mathf.Max(0, maximumLocations), rankedTriggers.Count);
             int spawnedCount = 0;
             bool cameraPlacedThisPass = false;
@@ -202,7 +211,12 @@ namespace Neighbor.Main.Features.Neighbor
             RaycastHit wallHit = default;
             if (cameraPrefab != null && (!SecurityCamera.CanPlaceNeighborCamera || !TryFindCameraWall(anchor, out wallHit)))
             {
-                return false;
+                if (!TryGetRandomAffordableReinforcement(budget, out selection, false))
+                {
+                    return false;
+                }
+
+                cameraPrefab = null;
             }
 
             GameObject reinforcement = Instantiate(selection.Prefab, anchor.position, rotation);
@@ -218,8 +232,10 @@ namespace Neighbor.Main.Features.Neighbor
                 if (spawnedCamera == null || !spawnedCamera.TryAttachByNeighbor(wallHit.point, wallHit.normal))
                 {
                     Destroy(reinforcement);
-                    return false;
+                    return SpawnReinforcement(budget, false);
                 }
+
+                RememberCameraPlacement(wallHit.point);
             }
 
             if (cameraPrefab == null)
@@ -347,7 +363,21 @@ namespace Neighbor.Main.Features.Neighbor
                 right,
                 coverageDirection,
                 (-coverageDirection - right).normalized,
-                (-coverageDirection + right).normalized
+                (-coverageDirection + right).normalized,
+                (coverageDirection - right).normalized,
+                (coverageDirection + right).normalized
+            };
+            Vector3[] originOffsets =
+            {
+                Vector3.zero,
+                right * cameraCandidateOffset,
+                -right * cameraCandidateOffset,
+                coverageDirection * cameraCandidateOffset,
+                -coverageDirection * cameraCandidateOffset,
+                (right + coverageDirection).normalized * cameraCandidateOffset,
+                (right - coverageDirection).normalized * cameraCandidateOffset,
+                (-right + coverageDirection).normalized * cameraCandidateOffset,
+                (-right - coverageDirection).normalized * cameraCandidateOffset
             };
             float[] heightOffsets =
             {
@@ -356,30 +386,99 @@ namespace Neighbor.Main.Features.Neighbor
                 cameraMountHeight
             };
 
-            float bestScore = float.NegativeInfinity;
-            for (int heightIndex = 0; heightIndex < heightOffsets.Length; heightIndex++)
+            cameraWallCandidates.Clear();
+            for (int offsetIndex = 0; offsetIndex < originOffsets.Length; offsetIndex++)
             {
-                Vector3 origin = anchor.position + Vector3.up * heightOffsets[heightIndex];
-                for (int directionIndex = 0; directionIndex < directions.Length; directionIndex++)
+                for (int heightIndex = 0; heightIndex < heightOffsets.Length; heightIndex++)
                 {
-                    if (!Physics.Raycast(origin, directions[directionIndex], out RaycastHit hit, cameraWallSearchDistance, cameraWallMask, QueryTriggerInteraction.Ignore)
-                        || Mathf.Abs(Vector3.Dot(hit.normal.normalized, Vector3.up)) > cameraMaximumWallUpDot)
+                    Vector3 origin = anchor.position + originOffsets[offsetIndex] + Vector3.up * heightOffsets[heightIndex];
+                    for (int directionIndex = 0; directionIndex < directions.Length; directionIndex++)
                     {
-                        continue;
-                    }
+                        if (!Physics.Raycast(origin, directions[directionIndex], out RaycastHit hit, cameraWallSearchDistance, cameraWallMask, QueryTriggerInteraction.Ignore)
+                            || Mathf.Abs(Vector3.Dot(hit.normal.normalized, Vector3.up)) > cameraMaximumWallUpDot
+                            || hit.collider.GetComponentInParent<SecurityCamera>() != null
+                            || SecurityCamera.IsNeighborCameraWithinDistance(hit.point, cameraMinimumSpacing))
+                        {
+                            continue;
+                        }
 
-                    float coverageAlignment = Vector3.Dot(hit.normal.normalized, coverageDirection);
-                    float heightPreference = 1f - Mathf.Abs(heightOffsets[heightIndex] - cameraMountHeight) / Mathf.Max(0.1f, cameraMountHeight);
-                    float score = coverageAlignment * 3f + heightPreference * 0.35f - hit.distance * 0.1f;
-                    if (score > bestScore)
-                    {
-                        bestScore = score;
-                        bestHit = hit;
+                        float coverageAlignment = Vector3.Dot(hit.normal.normalized, coverageDirection);
+                        float heightPreference = 1f - Mathf.Abs(heightOffsets[heightIndex] - cameraMountHeight) / Mathf.Max(0.1f, cameraMountHeight);
+                        float recentPlacementPenalty = GetRecentCameraPlacementPenalty(hit.point);
+                        float score = coverageAlignment * 3f
+                            + heightPreference * 0.35f
+                            - hit.distance * 0.1f
+                            - recentPlacementPenalty
+                            + Random.Range(-cameraPlacementScoreRandomness, cameraPlacementScoreRandomness);
+                        AddOrImproveCameraWallCandidate(hit, score);
                     }
                 }
             }
 
-            return bestScore > float.NegativeInfinity;
+            if (cameraWallCandidates.Count == 0)
+            {
+                return false;
+            }
+
+            CameraWallCandidate bestCandidate = cameraWallCandidates[0];
+            for (int i = 1; i < cameraWallCandidates.Count; i++)
+            {
+                if (cameraWallCandidates[i].Score > bestCandidate.Score)
+                {
+                    bestCandidate = cameraWallCandidates[i];
+                }
+            }
+
+            bestHit = bestCandidate.Hit;
+            return true;
+        }
+
+        private void AddOrImproveCameraWallCandidate(RaycastHit hit, float score)
+        {
+            const float duplicateDistance = 0.45f;
+            float duplicateDistanceSquared = duplicateDistance * duplicateDistance;
+            for (int i = 0; i < cameraWallCandidates.Count; i++)
+            {
+                if ((cameraWallCandidates[i].Hit.point - hit.point).sqrMagnitude > duplicateDistanceSquared)
+                {
+                    continue;
+                }
+
+                if (score > cameraWallCandidates[i].Score)
+                {
+                    cameraWallCandidates[i] = new CameraWallCandidate(hit, score);
+                }
+
+                return;
+            }
+
+            cameraWallCandidates.Add(new CameraWallCandidate(hit, score));
+        }
+
+        private float GetRecentCameraPlacementPenalty(Vector3 candidatePosition)
+        {
+            if (cameraRecentPlacementPenaltyRadius <= 0f)
+            {
+                return 0f;
+            }
+
+            float closestDistance = float.PositiveInfinity;
+            for (int i = 0; i < recentCameraPlacements.Count; i++)
+            {
+                closestDistance = Mathf.Min(closestDistance, Vector3.Distance(candidatePosition, recentCameraPlacements[i]));
+            }
+
+            return Mathf.Clamp01(1f - closestDistance / cameraRecentPlacementPenaltyRadius) * 4f;
+        }
+
+        private void RememberCameraPlacement(Vector3 position)
+        {
+            recentCameraPlacements.Add(position);
+            int maximumRememberedPlacements = Mathf.Max(1, cameraRecentPlacementMemory);
+            while (recentCameraPlacements.Count > maximumRememberedPlacements)
+            {
+                recentCameraPlacements.RemoveAt(0);
+            }
         }
 
         private void ConfigureNeighborAvoidance(GameObject reinforcement)
@@ -504,6 +603,18 @@ namespace Neighbor.Main.Features.Neighbor
             Quaternion rightRotation = Quaternion.AngleAxis(-145f, Vector3.up);
             Gizmos.DrawLine(end, end + leftRotation * direction * directionGizmoHeadSize);
             Gizmos.DrawLine(end, end + rightRotation * direction * directionGizmoHeadSize);
+        }
+
+        private readonly struct CameraWallCandidate
+        {
+            public RaycastHit Hit { get; }
+            public float Score { get; }
+
+            public CameraWallCandidate(RaycastHit hit, float score)
+            {
+                Hit = hit;
+                Score = score;
+            }
         }
     }
 }

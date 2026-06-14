@@ -88,6 +88,21 @@ namespace Neighbor.Main.Features.Interaction
         }
         public static bool CanPlaceNeighborCamera => NeighborPlacedCameraCount < MaximumNeighborPlacedCameras;
 
+        public static bool IsNeighborCameraWithinDistance(Vector3 position, float distance)
+        {
+            NeighborPlacedCameras.RemoveWhere(camera => camera == null);
+            float distanceSquared = Mathf.Max(0f, distance) * Mathf.Max(0f, distance);
+            foreach (SecurityCamera camera in NeighborPlacedCameras)
+            {
+                if ((camera.transform.position - position).sqrMagnitude < distanceSquared)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetNeighborPlacedCameras()
         {
