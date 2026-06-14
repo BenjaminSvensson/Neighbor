@@ -87,6 +87,16 @@ namespace Neighbor.Main.HouseBuilder.Editor
             return activeDefinition != null && activeDefinition == clickedDefinition;
         }
 
+        public static bool ShouldShowWirePorts(
+            bool connectTabActive,
+            bool hasPendingOutput,
+            HouseBuilderObject selectedObject)
+        {
+            return connectTabActive
+                || hasPendingOutput
+                || selectedObject?.GetComponentInChildren<HouseWireEndpoint>(true) != null;
+        }
+
         public static bool TryPickFace(Ray ray, LayerMask mask, out HouseBuilderFaceHit faceHit)
         {
             RaycastHit[] hits = Physics.RaycastAll(ray, 10000f, mask, QueryTriggerInteraction.Ignore);

@@ -29,6 +29,9 @@ Every placed object has a stable `HouseBuilderObject.InstanceId`. Definitions, m
 4. Use **Draw** to create walls, floors, ceilings, doorway blocks, window blocks, ramps, stairs, and blocks. Click-drag to size the shape directly in Scene view.
 5. Select a generated shape while the **Draw** tab is open to resize it with direct Scene handles or friendly dimension fields.
 6. Use **Paint** to choose a material and click-drag over the actual faces in Scene view. Material cards and normal Unity Material assets can also be dragged directly onto a face.
+7. Select any connectable switch, trigger, door, lamp, trap, or wired prop to reveal its ports. Click an orange output and then a cyan input; a live cable follows the cursor while connecting.
+
+The default catalog includes a broad selection of project furniture, props, tools, traps, wiring objects, and AI markers. Most non-structural prefabs allow placement on any surface and do not enforce collision blocking. Doors can be placed on floors or walls; wall placement automatically grounds the door at the wall base. Saved face materials reapply automatically when entering play mode and after procedural geometry rebuilds.
 7. Use **Connect** to click an orange output port followed by a cyan input port.
 8. Use **Combine** to subtract, intersect, or union two mesh objects.
 9. Use **Save** to write or load a versioned `.house.json` document.

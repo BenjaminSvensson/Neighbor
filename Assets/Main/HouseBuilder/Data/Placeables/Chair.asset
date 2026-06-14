@@ -17,15 +17,17 @@ MonoBehaviour:
   categoryId: furniture
   prefab: {fileID: 100000, guid: 97aa4aa1d43e4691b145da794a2a90ee, type: 3}
   preview: {fileID: 0}
+  hideFromCatalog: 0
   placement:
-    allowedSurfaces: 1
+    allowedSurfaces: -1
     surfaceAlignment: 0
     requireSurface: 0
-    validateCollisions: 1
+    groundOnWall: 0
+    validateCollisions: 0
     allowTriggerOverlap: 1
     boundsSize: {x: 0.8283665, y: 1.6372893, z: 0.85778624}
     boundsCenter: {x: -0.015172452, y: 0.78564465, z: 0.032227665}
-    placementOffset: {x: 0, y: 0.033, z: 0}
+    placementOffset: {x: 0, y: 0.032999992, z: 0}
   wallOpening:
     enabled: 0
     size: {x: 1.2, y: 2.1, z: 0.5}

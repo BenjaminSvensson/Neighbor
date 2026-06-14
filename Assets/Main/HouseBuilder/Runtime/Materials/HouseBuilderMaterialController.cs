@@ -82,5 +82,17 @@ namespace Neighbor.Main.HouseBuilder
                 renderer.sharedMaterials = materials;
             }
         }
+
+        public void ApplyFromWorld()
+        {
+            HouseBuilderWorld world = GetComponentInParent<HouseBuilderWorld>();
+            if (world != null)
+            {
+                Apply(world.Catalog);
+            }
+        }
+
+        private void OnEnable() => ApplyFromWorld();
+        private void Start() => ApplyFromWorld();
     }
 }

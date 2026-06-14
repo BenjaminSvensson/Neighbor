@@ -12708,17 +12708,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8573506346761602368, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
   m_PrefabInstance: {fileID: 765803088}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &307906212 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 2581463567810445751, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
-  m_PrefabInstance: {fileID: 765803088}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c61a3165302f4e58b57d18876072a5b7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!43 &324054975
 Mesh:
   m_ObjectHideFlags: 0
@@ -28630,65 +28619,9 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1277913332}
     m_Modifications:
-    - target: {fileID: 1396788348566312222, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
-      propertyPath: runSpeed
-      value: 6.8
-      objectReference: {fileID: 0}
-    - target: {fileID: 1396788348566312222, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
-      propertyPath: acceleration
-      value: 24
-      objectReference: {fileID: 0}
     - target: {fileID: 5206360911464809966, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
       propertyPath: m_Name
       value: Neighbor
-      objectReference: {fileID: 0}
-    - target: {fileID: 6254384187814207898, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
-      propertyPath: footstepMaximumVolume
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6254384187814207898, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
-      propertyPath: 'chaseStartClips.Array.data[0]'
-      value: 
-      objectReference: {fileID: 8300000, guid: df6d61ccbb6298c42b30614604fc2e42, type: 3}
-    - target: {fileID: 7647593652331711903, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
-      propertyPath: impactReceiver
-      value: 
-      objectReference: {fileID: 307906212}
-    - target: {fileID: 7647593652331711903, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
-      propertyPath: hurtAnimations.Array.size
-      value: 2
-      objectReference: {fileID: 0}
-    - target: {fileID: 7647593652331711903, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
-      propertyPath: legIKSettings.pelvisWeight
-      value: 0.1
-      objectReference: {fileID: 0}
-    - target: {fileID: 7647593652331711903, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
-      propertyPath: legIKSettings.runningWeight
-      value: 0.2
-      objectReference: {fileID: 0}
-    - target: {fileID: 7647593652331711903, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
-      propertyPath: 'hurtAnimations.Array.data[0]'
-      value: 
-      objectReference: {fileID: 937510309337268382, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
-    - target: {fileID: 7647593652331711903, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
-      propertyPath: 'hurtAnimations.Array.data[1]'
-      value: 
-      objectReference: {fileID: -245273357908900549, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
-    - target: {fileID: 7647593652331711903, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
-      propertyPath: legIKSettings.groundMask.m_Bits
-      value: 321
-      objectReference: {fileID: 0}
-    - target: {fileID: 7647593652331711903, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
-      propertyPath: legIKSettings.footRotationWeight
-      value: 0.2
-      objectReference: {fileID: 0}
-    - target: {fileID: 7647593652331711903, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
-      propertyPath: legIKSettings.fullyPlantedHeight
-      value: 0.12
-      objectReference: {fileID: 0}
-    - target: {fileID: 7647593652331711903, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
-      propertyPath: legIKSettings.maximumPlantHeight
-      value: 0.35
       objectReference: {fileID: 0}
     - target: {fileID: 8573506346761602368, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
       propertyPath: m_LocalPosition.x
@@ -47374,7 +47307,7 @@ MeshCollider:
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
-  m_Mesh: {fileID: 0}
+  m_Mesh: {fileID: 2057475913}
 --- !u!33 &1272339774
 MeshFilter:
   m_ObjectHideFlags: 10

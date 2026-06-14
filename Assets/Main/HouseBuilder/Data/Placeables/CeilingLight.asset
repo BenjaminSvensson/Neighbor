@@ -17,11 +17,13 @@ MonoBehaviour:
   categoryId: wiring
   prefab: {fileID: 100000, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
   preview: {fileID: 0}
+  hideFromCatalog: 0
   placement:
-    allowedSurfaces: 4
+    allowedSurfaces: -1
     surfaceAlignment: 1
     requireSurface: 1
-    validateCollisions: 1
+    groundOnWall: 0
+    validateCollisions: 0
     allowTriggerOverlap: 1
     boundsSize: {x: 0.72, y: 0.31000006, z: 0.72}
     boundsCenter: {x: 0, y: -0.12500003, z: 0}

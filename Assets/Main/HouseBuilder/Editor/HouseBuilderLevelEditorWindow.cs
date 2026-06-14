@@ -553,7 +553,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 return;
             }
 
-            EditorGUILayout.HelpBox("In Scene view, click an orange output and then a cyan input. Connections are saved with the house.", MessageType.None);
+            EditorGUILayout.HelpBox("Select any connectable object to reveal its ports in Scene view. Click an orange output, then choose a cyan input while the live cable follows the cursor.", MessageType.None);
             if (selectedOutputEndpoint != null && selectedOutputPort != null)
             {
                 EditorGUILayout.LabelField($"From: {selectedOutputEndpoint.name} / {selectedOutputPort.DisplayName}", EditorStyles.boldLabel);
@@ -640,7 +640,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
         private void OnSceneGUI(SceneView sceneView)
         {
             DrawWires();
-            if (activeTab == 3)
+            if (ShouldDrawWirePorts())
             {
                 DrawWirePorts();
             }
@@ -973,6 +973,17 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 float tangent = Mathf.Max(0.5f, Vector3.Distance(start, end) * 0.35f);
                 Handles.DrawBezier(start, end, start + output.transform.forward * tangent, end - input.transform.forward * tangent, new Color(1f, 0.75f, 0.1f, 0.9f), null, 3f);
             }
+
+            if (selectedOutputEndpoint != null && selectedOutputPort != null && Event.current != null)
+            {
+                Vector3 start = selectedOutputEndpoint.GetPortWorldPosition(selectedOutputPort);
+                Ray mouseRay = HandleUtility.GUIPointToWorldRay(Event.current.mousePosition);
+                Vector3 end = GetFallbackPosition(mouseRay);
+                float tangent = Mathf.Max(0.5f, Vector3.Distance(start, end) * 0.35f);
+                Handles.DrawBezier(start, end, start + selectedOutputEndpoint.transform.forward * tangent, end - mouseRay.direction * tangent,
+                    new Color(1f, 0.75f, 0.1f, 0.95f), null, 4f);
+                Handles.Label(end, "Select a cyan input");
+            }
         }
 
         private void DrawWirePorts()
@@ -983,9 +994,16 @@ namespace Neighbor.Main.HouseBuilder.Editor
             }
 
             HouseWireEndpoint[] endpoints = world.GetComponentsInChildren<HouseWireEndpoint>(true);
+            HouseBuilderObject selectedObject = GetSelectedBuilderObject();
+            bool showAll = activeTab == 3 || selectedOutputEndpoint != null;
             for (int endpointIndex = 0; endpointIndex < endpoints.Length; endpointIndex++)
             {
                 HouseWireEndpoint endpoint = endpoints[endpointIndex];
+                if (!showAll && (selectedObject == null || endpoint.Owner != selectedObject))
+                {
+                    continue;
+                }
+
                 for (int portIndex = 0; portIndex < endpoint.Ports.Count; portIndex++)
                 {
                     HouseWirePortDefinition port = endpoint.Ports[portIndex];
@@ -1005,6 +1023,14 @@ namespace Neighbor.Main.HouseBuilder.Editor
                     Handles.Label(position + Vector3.up * size, port.DisplayName);
                 }
             }
+        }
+
+        private bool ShouldDrawWirePorts()
+        {
+            return HouseBuilderEditorInteractionUtility.ShouldShowWirePorts(
+                activeTab == 3,
+                selectedOutputEndpoint != null,
+                GetSelectedBuilderObject());
         }
 
         private void HandlePortClick(HouseWireEndpoint endpoint, HouseWirePortDefinition port)

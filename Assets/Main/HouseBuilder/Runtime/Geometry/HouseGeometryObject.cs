@@ -93,6 +93,8 @@ namespace Neighbor.Main.HouseBuilder
             {
                 SyncPhysicalObject(mesh, renderer.sharedMaterials);
             }
+
+            GetComponent<HouseBuilderMaterialController>()?.ApplyFromWorld();
         }
 
         public bool AddOrUpdateWallOpening(HouseBuilderObject openingOwner, Transform openingTransform, HouseWallOpeningProfile profile)

@@ -61,6 +61,7 @@ namespace Neighbor.Main.HouseBuilder
             }
 
             ApplyWirePorts(instance, definition);
+            instance.GetComponent<HouseBuilderMaterialController>()?.Apply(catalog);
             return builderObject;
         }
 

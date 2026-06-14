@@ -99,6 +99,10 @@ namespace Neighbor.Main.HouseBuilder
             Vector3 normal = hasSurface ? surfaceHit.normal.normalized : Vector3.up;
             HouseSurfaceType surfaceType = ClassifySurface(normal);
             HouseSnapKind snapKind = hasSurface && settings.SurfaceSnapping ? HouseSnapKind.Surface : HouseSnapKind.None;
+            if (hasSurface && profile.GroundOnWall && surfaceType == HouseSurfaceType.Wall && surfaceHit.collider != null)
+            {
+                position.y = surfaceHit.collider.bounds.min.y;
+            }
 
             if (settings.CornerSnapping || settings.EdgeSnapping)
             {
@@ -119,7 +123,9 @@ namespace Neighbor.Main.HouseBuilder
             }
 
             Quaternion rotation = requestedRotation;
-            if (hasSurface && profile.SurfaceAlignment != HouseSurfaceAlignment.None)
+            if (hasSurface
+                && profile.SurfaceAlignment != HouseSurfaceAlignment.None
+                && (profile.SurfaceAlignment != HouseSurfaceAlignment.ForwardToNormal || surfaceType == HouseSurfaceType.Wall))
             {
                 if (profile.SurfaceAlignment == HouseSurfaceAlignment.ForwardToNormal)
                 {
@@ -129,7 +135,7 @@ namespace Neighbor.Main.HouseBuilder
                         up = requestedRotation * Vector3.up;
                     }
 
-                    rotation = Quaternion.LookRotation(-normal, up.normalized);
+                    rotation = Quaternion.LookRotation(normal, up.normalized);
                 }
                 else
                 {

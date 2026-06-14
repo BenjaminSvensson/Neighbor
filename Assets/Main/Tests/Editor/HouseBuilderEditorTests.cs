@@ -347,6 +347,21 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void WiringPorts_ShowWhenConnectableObjectIsSelected()
+        {
+            GameObject connectableObject = Track(new GameObject("Connectable"));
+            HouseBuilderObject connectable = connectableObject.AddComponent<HouseBuilderObject>();
+            connectableObject.AddComponent<HouseWireEndpoint>();
+            GameObject plainObject = Track(new GameObject("Plain"));
+            HouseBuilderObject plain = plainObject.AddComponent<HouseBuilderObject>();
+
+            Assert.That(HouseBuilderEditorInteractionUtility.ShouldShowWirePorts(false, false, connectable), Is.True);
+            Assert.That(HouseBuilderEditorInteractionUtility.ShouldShowWirePorts(false, false, plain), Is.False);
+            Assert.That(HouseBuilderEditorInteractionUtility.ShouldShowWirePorts(true, false, null), Is.True);
+            Assert.That(HouseBuilderEditorInteractionUtility.ShouldShowWirePorts(false, true, null), Is.True);
+        }
+
+        [Test]
         public void PlacementEraser_OnlyPicksMatchingNearestPlacedObject()
         {
             GameObject world = Track(new GameObject("World"));
@@ -391,6 +406,102 @@ namespace Neighbor.Main.Tests
 
             Assert.That(floor.Placement.RequireSurface, Is.False);
             Assert.That(door.Placement.RequireSurface, Is.True);
+        }
+
+        [Test]
+        public void ExpandedCatalog_ContainsFlexibleProjectPrefabs()
+        {
+            HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(HouseBuilderAssetInstaller.DefaultCatalogPath);
+
+            Assert.That(catalog.Placeables.Count, Is.GreaterThanOrEqualTo(45));
+            Assert.That(catalog.TryGetPlaceable("neighbor.prop.crowbar", out _), Is.True);
+            Assert.That(catalog.TryGetPlaceable("neighbor.furniture.bed", out _), Is.True);
+            Assert.That(catalog.TryGetPlaceable("neighbor.wiring.lasergrid", out _), Is.True);
+            Assert.That(catalog.TryGetPlaceable("neighbor.wiring.trapdoor", out _), Is.True);
+        }
+
+        [Test]
+        public void FlexiblePlaceables_AllowAnySurfaceWithoutCollisionRestriction()
+        {
+            HousePlaceableDefinition chair = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                "Assets/Main/HouseBuilder/Data/Placeables/Chair.asset");
+            HousePlaceableDefinition lightSwitch = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                "Assets/Main/HouseBuilder/Data/Placeables/LightSwitch.asset");
+
+            Assert.That(chair.Placement.AllowedSurfaces, Is.EqualTo(HouseSurfaceType.Any));
+            Assert.That(chair.Placement.ValidateCollisions, Is.False);
+            Assert.That(lightSwitch.Placement.AllowedSurfaces, Is.EqualTo(HouseSurfaceType.Any));
+        }
+
+        [Test]
+        public void WallAlignment_FacesMountedObjectOutFromWall()
+        {
+            HousePlaceableDefinition lightSwitch = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                "Assets/Main/HouseBuilder/Data/Placeables/LightSwitch.asset");
+            GameObject wall = Track(GameObject.CreatePrimitive(PrimitiveType.Cube));
+            wall.transform.localScale = new Vector3(5f, 5f, 0.1f);
+            Physics.SyncTransforms();
+            Assert.That(Physics.Raycast(new Ray(Vector3.forward * 5f, Vector3.back), out RaycastHit hit), Is.True);
+
+            HousePlacementResult placement = HouseBuilderSnapUtility.Calculate(
+                hit.point,
+                Quaternion.identity,
+                true,
+                hit,
+                lightSwitch.Placement,
+                new HouseBuilderPlacementSettings(),
+                null);
+
+            Assert.That(Vector3.Dot(placement.Rotation * Vector3.forward, hit.normal), Is.GreaterThan(0.99f));
+        }
+
+        [Test]
+        public void Door_CanPlaceOnGroundOrWallAndGroundsWallPlacement()
+        {
+            HousePlaceableDefinition door = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                "Assets/Main/HouseBuilder/Data/Placeables/Door.asset");
+            GameObject wall = Track(GameObject.CreatePrimitive(PrimitiveType.Cube));
+            wall.transform.position = Vector3.up * 2f;
+            wall.transform.localScale = new Vector3(5f, 4f, 0.1f);
+            Physics.SyncTransforms();
+            Assert.That(Physics.Raycast(new Ray(new Vector3(0f, 2f, 5f), Vector3.back), out RaycastHit hit), Is.True);
+
+            HousePlacementResult placement = HouseBuilderSnapUtility.Calculate(
+                hit.point,
+                Quaternion.identity,
+                true,
+                hit,
+                door.Placement,
+                new HouseBuilderPlacementSettings(),
+                null);
+            float placedMinimum = placement.Position.y + door.Placement.BoundsCenter.y - door.Placement.BoundsSize.y * 0.5f;
+
+            Assert.That(door.Placement.AllowedSurfaces.HasFlag(HouseSurfaceType.Ground), Is.True);
+            Assert.That(door.Placement.AllowedSurfaces.HasFlag(HouseSurfaceType.Wall), Is.True);
+            Assert.That(door.Placement.GroundOnWall, Is.True);
+            Assert.That(placedMinimum, Is.EqualTo(wall.GetComponent<Collider>().bounds.min.y).Within(0.001f));
+        }
+
+        [Test]
+        public void MaterialBindings_ReapplyAfterGeometryRebuild()
+        {
+            HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(HouseBuilderAssetInstaller.DefaultCatalogPath);
+            HouseMaterialDefinition material = catalog.Materials[catalog.Materials.Count - 1];
+            GameObject worldObject = Track(new GameObject("World"));
+            HouseBuilderWorld world = worldObject.AddComponent<HouseBuilderWorld>();
+            world.Configure(catalog);
+            GameObject wallObject = Track(HouseGeometryFactory.Create(new HouseGeometryDescriptor(HouseGeometryKind.Wall, new Vector3(4f, 3f, 0.25f))));
+            wallObject.transform.SetParent(worldObject.transform);
+            HouseGeometryObject geometry = wallObject.GetComponent<HouseGeometryObject>();
+            geometry.PrepareForPlacement();
+            HouseBuilderMaterialController controller = wallObject.GetComponent<HouseBuilderMaterialController>();
+            controller.SetBinding(HouseFaceRole.Top, string.Empty, (int)HouseFaceRole.Top, material.Id);
+
+            controller.ApplyFromWorld();
+            geometry.Rebuild();
+
+            Renderer physical = wallObject.transform.Find(HouseGeometryObject.PhysicalObjectName).GetComponent<Renderer>();
+            Assert.That(physical.sharedMaterials[(int)HouseFaceRole.Top], Is.EqualTo(material.Material));
         }
 
         [TestCase("BoxingGloveTrap")]

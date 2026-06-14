@@ -17,11 +17,13 @@ MonoBehaviour:
   categoryId: ai.patrol_point
   prefab: {fileID: 5664946071805667827, guid: 581ba6effd2433042a5a765f8ab06578, type: 3}
   preview: {fileID: 0}
+  hideFromCatalog: 0
   placement:
     allowedSurfaces: 1
     surfaceAlignment: 0
     requireSurface: 0
-    validateCollisions: 1
+    groundOnWall: 0
+    validateCollisions: 0
     allowTriggerOverlap: 1
     boundsSize: {x: 1, y: 1, z: 1}
     boundsCenter: {x: 0, y: 0, z: 0}

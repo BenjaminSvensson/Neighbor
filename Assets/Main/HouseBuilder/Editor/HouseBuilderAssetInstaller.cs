@@ -11,7 +11,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
         public const string RootPath = "Assets/Main/HouseBuilder";
         public const string DataPath = RootPath + "/Data";
         public const string DefaultCatalogPath = DataPath + "/DefaultHouseBuilderCatalog.asset";
-        private const int InstallerVersion = 9;
+        private const int InstallerVersion = 10;
         private const string InstallerVersionKey = "Neighbor.HouseBuilder.DefaultAssetsVersion";
         private const string CategoryPath = DataPath + "/Categories";
         private const string DefinitionPath = DataPath + "/Placeables";
@@ -65,32 +65,32 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 CreateStructurePrefab("BasicCeiling", HouseGeometryKind.Ceiling, ceilingSize, defaultMaterial), HouseSurfaceType.Ground | HouseSurfaceType.Ceiling, HouseSurfaceAlignment.None,
                 placementOffset: Vector3.up * ceilingSize.y * 0.5f, boundsSize: ceilingSize);
             AddDefinition(placeables, "Door", "Door", HouseBuilderCategories.Door,
-                "Assets/Main/Features/Interaction/Items/Doors/Prefabs/Door.prefab", HouseSurfaceType.Wall, HouseSurfaceAlignment.ForwardToNormal,
-                true, new Vector3(1.3f, 2.25f, 0.6f), new Vector3(0f, 1.125f, 0f));
+                "Assets/Main/Features/Interaction/Items/Doors/Prefabs/Door.prefab", HouseSurfaceType.Ground | HouseSurfaceType.Wall, HouseSurfaceAlignment.ForwardToNormal,
+                true, new Vector3(1.3f, 2.25f, 0.6f), new Vector3(0f, 1.125f, 0f), Vector3.up * 0.05f, groundedOnWall: true);
             AddDefinition(placeables, "LockedDoor", "Locked Door", HouseBuilderCategories.Door,
-                "Assets/Main/Features/Interaction/Items/Doors/Prefabs/LockedDoor.prefab", HouseSurfaceType.Wall, HouseSurfaceAlignment.ForwardToNormal,
-                true, new Vector3(1.3f, 2.25f, 0.6f), new Vector3(0f, 1.125f, 0f));
+                "Assets/Main/Features/Interaction/Items/Doors/Prefabs/LockedDoor.prefab", HouseSurfaceType.Ground | HouseSurfaceType.Wall, HouseSurfaceAlignment.ForwardToNormal,
+                true, new Vector3(1.3f, 2.25f, 0.6f), new Vector3(0f, 1.125f, 0f), Vector3.up * 0.05f, groundedOnWall: true);
             AddDefinition(placeables, "WindowBlinds", "Window", HouseBuilderCategories.Window,
                 "Assets/Main/Features/Interaction/Items/Windows/Blinds/Prefabs/PlaceholderWindowBlinds.prefab", HouseSurfaceType.Wall, HouseSurfaceAlignment.ForwardToNormal,
                 true, new Vector3(1.5f, 1.3f, 0.5f), new Vector3(0f, 1.5f, 0f));
             AddDefinition(placeables, "Chair", "Chair", HouseBuilderCategories.Furniture,
-                "Assets/Main/Features/Interaction/Items/Chairs/Prefabs/PlaceholderChair.prefab", HouseSurfaceType.Ground, HouseSurfaceAlignment.None);
+                "Assets/Main/Features/Interaction/Items/Chairs/Prefabs/PlaceholderChair.prefab", HouseSurfaceType.Any, HouseSurfaceAlignment.None);
             AddDefinition(placeables, "Closet", "Closet", HouseBuilderCategories.Furniture,
-                "Assets/Main/Features/Interaction/Items/Closets/Prefabs/PlaceholderCloset.prefab", HouseSurfaceType.Ground, HouseSurfaceAlignment.None);
+                "Assets/Main/Features/Interaction/Items/Closets/Prefabs/PlaceholderCloset.prefab", HouseSurfaceType.Any, HouseSurfaceAlignment.None);
             AddDefinition(placeables, "Cupboard", "Cupboard", HouseBuilderCategories.Furniture,
-                "Assets/Main/Features/Interaction/Items/Cupboards/Prefabs/PlaceholderCupboard.prefab", HouseSurfaceType.Ground, HouseSurfaceAlignment.None);
+                "Assets/Main/Features/Interaction/Items/Cupboards/Prefabs/PlaceholderCupboard.prefab", HouseSurfaceType.Any, HouseSurfaceAlignment.None);
             AddDefinition(placeables, "CardboardBox", "Cardboard Box", HouseBuilderCategories.Prop,
-                "Assets/Main/Features/Interaction/Items/Boxes/CardboardBox/Prefabs/CardboardBox.prefab", HouseSurfaceType.Ground, HouseSurfaceAlignment.None);
+                "Assets/Main/Features/Interaction/Items/Boxes/CardboardBox/Prefabs/CardboardBox.prefab", HouseSurfaceType.Any, HouseSurfaceAlignment.None);
             AddDefinition(placeables, "LightSwitch", "Light Switch", HouseBuilderCategories.Wiring,
-                "Assets/Main/Features/Interaction/Items/Lights/LightSwitches/Prefabs/PlaceholderLightSwitch.prefab", HouseSurfaceType.Wall, HouseSurfaceAlignment.ForwardToNormal);
+                "Assets/Main/Features/Interaction/Items/Lights/LightSwitches/Prefabs/PlaceholderLightSwitch.prefab", HouseSurfaceType.Any, HouseSurfaceAlignment.ForwardToNormal);
             AddDefinition(placeables, "CeilingLight", "Ceiling Light", HouseBuilderCategories.Wiring,
-                "Assets/Main/Features/Interaction/Items/Lights/CeilingLight/Prefabs/PlaceholderCeilingLight.prefab", HouseSurfaceType.Ceiling, HouseSurfaceAlignment.UpToNormal);
+                "Assets/Main/Features/Interaction/Items/Lights/CeilingLight/Prefabs/PlaceholderCeilingLight.prefab", HouseSurfaceType.Any, HouseSurfaceAlignment.UpToNormal);
             AddDefinition(placeables, "Doorbell", "Button / Doorbell", HouseBuilderCategories.Wiring,
-                "Assets/Main/Features/Interaction/Items/Doorbells/Prefabs/PlaceholderDoorbell.prefab", HouseSurfaceType.Wall, HouseSurfaceAlignment.ForwardToNormal);
+                "Assets/Main/Features/Interaction/Items/Doorbells/Prefabs/PlaceholderDoorbell.prefab", HouseSurfaceType.Any, HouseSurfaceAlignment.ForwardToNormal);
             AddDefinition(placeables, "BoxingGloveTrap", "Boxing Glove Trap", HouseBuilderCategories.Prop,
-                "Assets/Main/Features/Interaction/Items/Traps/BoxingGloveTrap/Prefabs/PlaceholderSpringLoadedBoxingGloveTrap.prefab", HouseSurfaceType.Ground, HouseSurfaceAlignment.None);
+                "Assets/Main/Features/Interaction/Items/Traps/BoxingGloveTrap/Prefabs/PlaceholderSpringLoadedBoxingGloveTrap.prefab", HouseSurfaceType.Any, HouseSurfaceAlignment.None);
             AddDefinition(placeables, "SawBladeTrap", "Saw Blade Trap", HouseBuilderCategories.Prop,
-                "Assets/Main/Features/Interaction/Items/Traps/SawBladeTrap/Prefabs/PlaceholderRaySawBladeTrap.prefab", HouseSurfaceType.Ground, HouseSurfaceAlignment.None);
+                "Assets/Main/Features/Interaction/Items/Traps/SawBladeTrap/Prefabs/PlaceholderRaySawBladeTrap.prefab", HouseSurfaceType.Any, HouseSurfaceAlignment.None);
             AddDefinition(placeables, "SearchSpot", "Search Spot", HouseBuilderCategories.SearchSpot,
                 "Assets/Main/Features/Neighbor/Prefabs/Search/Prefabs/BaseSearchPoint.prefab", HouseSurfaceType.Ground, HouseSurfaceAlignment.None);
             AddDefinition(placeables, "TaskSpot", "Task Spot", HouseBuilderCategories.TaskSpot,
@@ -98,7 +98,34 @@ namespace Neighbor.Main.HouseBuilder.Editor
             AddDefinition(placeables, "ReinforcementTrigger", "Reinforcement Trigger", HouseBuilderCategories.ReinforcementTrigger,
                 "Assets/Main/Features/Neighbor/Prefabs/Reinforcement/Prefabs/BaseReinforcementTrigger.prefab", HouseSurfaceType.Ground, HouseSurfaceAlignment.None);
             AddDefinition(placeables, "SecurityCameraReinforcement", "Security Camera Reinforcement", HouseBuilderCategories.Reinforcement,
-                "Assets/Main/Features/Interaction/Items/SecurityCameras/Prefabs/PlaceholderSecurityCamera.prefab", HouseSurfaceType.Wall, HouseSurfaceAlignment.ForwardToNormal);
+                "Assets/Main/Features/Interaction/Items/SecurityCameras/Prefabs/PlaceholderSecurityCamera.prefab", HouseSurfaceType.Any, HouseSurfaceAlignment.ForwardToNormal);
+
+            AddFlexibleDefinition(placeables, "AlarmClock", "Alarm Clock", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/AlarmClocks/Prefabs/PlaceholderAlarmClock.prefab");
+            AddFlexibleDefinition(placeables, "Beartrap", "Bear Trap", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Beartraps/Prefabs/BeartrapPlaceholder.prefab");
+            AddFlexibleDefinition(placeables, "Bed", "Bed", HouseBuilderCategories.Furniture, "Assets/Main/Features/Interaction/Items/Beds/Prefabs/PlaceholderHideableBed.prefab");
+            AddFlexibleDefinition(placeables, "WoodBoard", "Wood Board", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Boards/Prefabs/PlaceholderWoodBoard.prefab");
+            AddFlexibleDefinition(placeables, "Notebook", "Notebook", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Books/Prefabs/PlaceholderNotebook.prefab");
+            AddFlexibleDefinition(placeables, "ReadableBook", "Readable Book", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Books/Prefabs/PlaceholderReadableBook.prefab");
+            AddFlexibleDefinition(placeables, "PhotoCamera", "Photo Camera", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Cameras/Prefabs/PlaceholderPhotoCamera.prefab");
+            AddFlexibleDefinition(placeables, "Curtains", "Curtains", HouseBuilderCategories.Furniture, "Assets/Main/Features/Interaction/Items/Curtains/Prefabs/PlaceholderHideableCurtains.prefab");
+            AddFlexibleDefinition(placeables, "Flashlight", "Flashlight", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Flashlights/Prefabs/PlaceholderFlashlight.prefab");
+            AddFlexibleDefinition(placeables, "Tomato", "Tomato", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Food/Tomato/Prefabs/PlaceholderTomato.prefab");
+            AddFlexibleDefinition(placeables, "Glass", "Glass", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Glass/Prefabs/PlaceholderGlass.prefab");
+            AddFlexibleDefinition(placeables, "Key", "Key", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Keys/Prefabs/TestKey.prefab");
+            AddFlexibleDefinition(placeables, "Mirror", "Mirror", HouseBuilderCategories.Furniture, "Assets/Main/Features/Interaction/Items/Mirrors/Prefabs/PlaceholderMirror.prefab");
+            AddFlexibleDefinition(placeables, "RemoteControl", "Remote Control", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/RemoteControls/Prefabs/PlaceholderRemoteControl.prefab");
+            AddFlexibleDefinition(placeables, "LaserGrid", "Laser Grid", HouseBuilderCategories.Wiring, "Assets/Main/Features/Interaction/Items/Security/LaserGrid/Prefabs/PlaceholderLaserGrid.prefab");
+            AddFlexibleDefinition(placeables, "Basketball", "Basketball", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Sports/Basketball/Prefabs/PlaceholderBasketball.prefab");
+            AddFlexibleDefinition(placeables, "SprayCan", "Spray Can", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/SprayCans/Prefabs/PlaceholderSprayCan.prefab");
+            AddFlexibleDefinition(placeables, "SwingingAxe", "Swinging Axe", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/SwingingAxes/Prefabs/HugeSwingingAxePlaceholder.prefab");
+            AddFlexibleDefinition(placeables, "Crowbar", "Crowbar", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Tools/Crowbar/Prefabs/PlaceholderCrowbar.prefab");
+            AddFlexibleDefinition(placeables, "Plunger", "Plunger", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Tools/Plunger/Prefabs/PlaceholderPlunger.prefab");
+            AddFlexibleDefinition(placeables, "Screwdriver", "Screwdriver", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Tools/Screwdriver/Prefabs/PlaceholderScrewdriver.prefab");
+            AddFlexibleDefinition(placeables, "WindUpToy", "Wind-up Toy", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Toys/WindUpToy/Prefabs/PlaceholderWindUpToy.prefab");
+            AddFlexibleDefinition(placeables, "TrapDoor", "Trap Door", HouseBuilderCategories.Wiring, "Assets/Main/Features/Interaction/Items/TrapDoors/Prefabs/FakeFloorTrapDoorPlaceholder.prefab");
+            AddFlexibleDefinition(placeables, "TV", "TV", HouseBuilderCategories.Wiring, "Assets/Main/Features/Interaction/Items/TVs/Prefabs/PlaceholderTV.prefab");
+            AddFlexibleDefinition(placeables, "Umbrella", "Umbrella", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Umbrellas/Prefabs/PlaceholderUmbrella.prefab");
+            AddFlexibleDefinition(placeables, "VentCover", "Vent Cover", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Vents/Prefabs/PlaceholderVentCover.prefab");
 
             GameObject spawnPrefab = CreateMarkerPrefab("NeighborSpawnPoint", typeof(HouseNeighborSpawnPoint));
             AddDefinition(placeables, "NeighborSpawnPoint", "Neighbor Spawn Point", HouseBuilderCategories.NeighborSpawnPoint, spawnPrefab,
@@ -121,6 +148,11 @@ namespace Neighbor.Main.HouseBuilder.Editor
             ConfigureWirePorts("SawBladeTrap", new WirePortSetup("active", "Active", HouseWirePortDirection.Input, HouseSignalKind.Bool, Vector3.up * 0.25f));
             ConfigureWirePorts("ReinforcementTrigger", new WirePortSetup("triggered", "Triggered", HouseWirePortDirection.Output, HouseSignalKind.Pulse, Vector3.up * 0.5f));
             ConfigureWirePorts("SecurityCameraReinforcement", new WirePortSetup("activate", "Activate", HouseWirePortDirection.Input, HouseSignalKind.Pulse, Vector3.up * 0.25f));
+            ConfigureWirePorts("Beartrap", new WirePortSetup("trigger", "Trigger", HouseWirePortDirection.Input, HouseSignalKind.Pulse, Vector3.up * 0.15f));
+            ConfigureWirePorts("LaserGrid", new WirePortSetup("active", "Active", HouseWirePortDirection.Input, HouseSignalKind.Bool, Vector3.up * 0.5f));
+            ConfigureWirePorts("SwingingAxe", new WirePortSetup("trigger", "Trigger", HouseWirePortDirection.Input, HouseSignalKind.Pulse, Vector3.up));
+            ConfigureWirePorts("TrapDoor", new WirePortSetup("trigger", "Trigger", HouseWirePortDirection.Input, HouseSignalKind.Pulse, Vector3.up * 0.1f));
+            ConfigureWirePorts("TV", new WirePortSetup("power", "Power", HouseWirePortDirection.Input, HouseSignalKind.Bool, Vector3.up * 0.5f));
 
             List<HouseMaterialDefinition> materials = new();
             if (defaultMaterial != null)
@@ -239,12 +271,13 @@ namespace Neighbor.Main.HouseBuilder.Editor
             Vector3 openingCenter = default,
             Vector3 placementOffset = default,
             Vector3 boundsSize = default,
-            bool hideFromCatalog = false)
+            bool hideFromCatalog = false,
+            bool groundedOnWall = false)
         {
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
             if (prefab != null)
             {
-                AddDefinition(output, fileName, displayName, categoryId, prefab, surfaces, alignment, opening, openingSize, openingCenter, placementOffset, boundsSize, hideFromCatalog);
+                AddDefinition(output, fileName, displayName, categoryId, prefab, surfaces, alignment, opening, openingSize, openingCenter, placementOffset, boundsSize, hideFromCatalog, groundedOnWall);
             }
         }
 
@@ -261,7 +294,8 @@ namespace Neighbor.Main.HouseBuilder.Editor
             Vector3 openingCenter = default,
             Vector3 placementOffset = default,
             Vector3 boundsSize = default,
-            bool hideFromCatalog = false)
+            bool hideFromCatalog = false,
+            bool groundedOnWall = false)
         {
             string path = $"{DefinitionPath}/{fileName}.asset";
             HousePlaceableDefinition definition = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(path);
@@ -291,7 +325,14 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 opening
                 || alignment != HouseSurfaceAlignment.None
                 || (surfaces & HouseSurfaceType.Ground) == 0;
-            placement.FindPropertyRelative("validateCollisions").boolValue = true;
+            placement.FindPropertyRelative("groundOnWall").boolValue = groundedOnWall;
+            bool structural = categoryId is HouseBuilderCategories.Structure
+                or HouseBuilderCategories.Wall
+                or HouseBuilderCategories.Floor
+                or HouseBuilderCategories.Ceiling
+                or HouseBuilderCategories.Door
+                or HouseBuilderCategories.Window;
+            placement.FindPropertyRelative("validateCollisions").boolValue = structural;
             SetBoundsFromPrefab(placement, prefab, out Bounds placementBounds, out bool hasVisualBounds);
             if (boundsSize.sqrMagnitude > 0f)
             {
@@ -319,6 +360,16 @@ namespace Neighbor.Main.HouseBuilder.Editor
 
             serialized.ApplyModifiedPropertiesWithoutUndo();
             output.Add(definition);
+        }
+
+        private static void AddFlexibleDefinition(
+            ICollection<HousePlaceableDefinition> output,
+            string fileName,
+            string displayName,
+            string categoryId,
+            string prefabPath)
+        {
+            AddDefinition(output, fileName, displayName, categoryId, prefabPath, HouseSurfaceType.Any, HouseSurfaceAlignment.None);
         }
 
         private static void SetBoundsFromPrefab(
