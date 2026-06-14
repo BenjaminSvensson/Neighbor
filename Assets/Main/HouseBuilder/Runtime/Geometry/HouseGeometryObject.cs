@@ -38,11 +38,7 @@ namespace Neighbor.Main.HouseBuilder
         public void PrepareForPlacement()
         {
             enabled = true;
-            MeshFilter filter = GetComponent<MeshFilter>();
-            if (filter.sharedMesh == null)
-            {
-                Rebuild();
-            }
+            Rebuild();
 
             MeshRenderer renderer = GetComponent<MeshRenderer>();
             renderer.enabled = true;
@@ -50,10 +46,6 @@ namespace Neighbor.Main.HouseBuilder
 
             MeshCollider collider = GetComponent<MeshCollider>();
             collider.enabled = true;
-            if (collider.sharedMesh == null)
-            {
-                collider.sharedMesh = filter.sharedMesh;
-            }
         }
 
         public void Rebuild()
@@ -140,11 +132,12 @@ namespace Neighbor.Main.HouseBuilder
 
         private void Start()
         {
-            MeshFilter filter = GetComponent<MeshFilter>();
-            if (descriptor != null && filter != null && filter.sharedMesh == null && gameObject.scene.IsValid())
-            {
-                Rebuild();
-            }
+            EnsureVisibleGeometry();
+        }
+
+        private void OnEnable()
+        {
+            EnsureVisibleGeometry();
         }
 
         private void Update()
@@ -163,6 +156,17 @@ namespace Neighbor.Main.HouseBuilder
             }
 
             staleMeshes.Clear();
+        }
+
+        private void EnsureVisibleGeometry()
+        {
+            MeshFilter filter = GetComponent<MeshFilter>();
+            if (descriptor != null
+                && gameObject.scene.IsValid()
+                && (filter == null || filter.sharedMesh == null || filter.sharedMesh.vertexCount == 0))
+            {
+                Rebuild();
+            }
         }
 
         private static Vector3 Abs(Vector3 value)

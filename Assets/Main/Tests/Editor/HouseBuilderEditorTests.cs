@@ -274,8 +274,34 @@ namespace Neighbor.Main.Tests
             Assert.That(instance.GetComponent<HouseGeometryObject>().enabled, Is.True);
             Assert.That(renderer.enabled, Is.True);
             Assert.That(filter.sharedMesh, Is.Not.Null);
+            Assert.That(filter.sharedMesh.vertexCount, Is.GreaterThan(0));
             Assert.That(collider.enabled, Is.True);
             Assert.That(collider.sharedMesh, Is.SameAs(filter.sharedMesh));
+        }
+
+        [TestCase("BasicWall")]
+        [TestCase("BasicFloor")]
+        [TestCase("BasicCeiling")]
+        public void StarterPrefab_RegistrationRepairsEmptyPhysicalGeometry(string prefabName)
+        {
+            HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(HouseBuilderAssetInstaller.DefaultCatalogPath);
+            HousePlaceableDefinition definition = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                $"Assets/Main/HouseBuilder/Data/Placeables/{prefabName}.asset");
+            GameObject worldObject = Track(new GameObject("World"));
+            HouseBuilderWorld world = worldObject.AddComponent<HouseBuilderWorld>();
+            world.Configure(catalog);
+            GameObject instance = Track((GameObject)PrefabUtility.InstantiatePrefab(definition.Prefab, world.transform));
+            Mesh emptyMesh = Track(new Mesh());
+            instance.GetComponent<MeshFilter>().sharedMesh = emptyMesh;
+            instance.GetComponent<MeshCollider>().sharedMesh = emptyMesh;
+
+            world.RegisterPlaceable(instance, definition);
+
+            MeshFilter filter = instance.GetComponent<MeshFilter>();
+            Assert.That(filter.sharedMesh, Is.Not.SameAs(emptyMesh));
+            Assert.That(filter.sharedMesh.vertexCount, Is.GreaterThan(0));
+            Assert.That(instance.GetComponent<MeshRenderer>().enabled, Is.True);
+            Assert.That(instance.GetComponent<MeshCollider>().sharedMesh, Is.SameAs(filter.sharedMesh));
         }
 
         [Test]
