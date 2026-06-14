@@ -34,6 +34,8 @@ namespace Neighbor.Main.Tests
             Assert.That(animationSettings.FindProperty("dropHoldDuration").floatValue, Is.LessThanOrEqualTo(0.25f));
             Assert.That(animationSettings.FindProperty("grabPlaybackSpeed").floatValue, Is.GreaterThanOrEqualTo(2f));
             Assert.That(animationSettings.FindProperty("dropPlaybackSpeed").floatValue, Is.GreaterThanOrEqualTo(2f));
+            Assert.That(animationSettings.FindProperty("interactHoldDuration").floatValue, Is.LessThanOrEqualTo(0.25f));
+            Assert.That(animationSettings.FindProperty("interactPlaybackSpeed").floatValue, Is.GreaterThanOrEqualTo(2.5f));
 
             ChildAnimatorState[] states = controller.layers[0].stateMachine.states;
             string[] stateNames = states

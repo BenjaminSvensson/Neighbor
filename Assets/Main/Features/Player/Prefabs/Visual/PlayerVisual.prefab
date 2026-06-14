@@ -55,9 +55,10 @@ MonoBehaviour:
   grabHoldDuration: 0.22
   dropHoldDuration: 0.22
   throwHoldDuration: 0.32
-  interactHoldDuration: 0.7
+  interactHoldDuration: 0.22
   grabPlaybackSpeed: 2.5
   dropPlaybackSpeed: 2.5
+  interactPlaybackSpeed: 3
   climbPlaybackSpeed: 3
   minimumLocomotionPlaybackSpeed: 0.75
   maximumLocomotionPlaybackSpeed: 1.35
