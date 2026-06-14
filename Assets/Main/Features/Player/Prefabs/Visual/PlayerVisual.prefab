@@ -48,6 +48,20 @@ MonoBehaviour:
   playerController: {fileID: 0}
   playerInteractor: {fileID: 0}
   animator: {fileID: 0}
+  idleAnimation: {fileID: 7994627924475153551, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  walkAnimation: {fileID: -7003542030617561338, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  runAnimation: {fileID: -4950333804767787469, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  crouchIdleAnimation: {fileID: -7993625790543202706, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  crouchWalkAnimation: {fileID: 4366774653929184976, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  slideAnimation: {fileID: 4366774653929184976, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  jumpStartAnimation: {fileID: -1862932125039169580, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  airborneAnimation: {fileID: -3659967873887649963, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  landAnimation: {fileID: 4832780573735333345, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  grabAnimation: {fileID: 2857599376137209812, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  dropAnimation: {fileID: 2857599376137209812, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  throwAnimation: {fileID: -5255406209399062677, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  interactAnimation: {fileID: -2328835098782832033, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  climbAnimation: {fileID: -8073916434604345353, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
   movingThreshold: 0.08
   transitionDuration: 0.12
   jumpStartHoldDuration: 0.14

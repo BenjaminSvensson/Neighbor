@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Neighbor.Main.Features.Interaction;
 using UnityEngine;
 
@@ -24,6 +25,24 @@ namespace Neighbor.Main.Features.Player
         [SerializeField] private PlayerController playerController;
         [SerializeField] private PlayerInteractor playerInteractor;
         [SerializeField] private Animator animator;
+
+        [Header("Animation Clips")]
+        [SerializeField] private AnimationClip idleAnimation;
+        [SerializeField] private AnimationClip walkAnimation;
+        [SerializeField] private AnimationClip runAnimation;
+        [SerializeField] private AnimationClip crouchIdleAnimation;
+        [SerializeField] private AnimationClip crouchWalkAnimation;
+        [SerializeField] private AnimationClip slideAnimation;
+        [SerializeField] private AnimationClip jumpStartAnimation;
+        [SerializeField] private AnimationClip airborneAnimation;
+        [SerializeField] private AnimationClip landAnimation;
+        [SerializeField] private AnimationClip grabAnimation;
+        [SerializeField] private AnimationClip dropAnimation;
+        [SerializeField] private AnimationClip throwAnimation;
+        [SerializeField] private AnimationClip interactAnimation;
+        [SerializeField] private AnimationClip climbAnimation;
+
+        [Header("Timing")]
         [SerializeField, Min(0f)] private float movingThreshold = 0.08f;
         [SerializeField, Min(0f)] private float transitionDuration = 0.12f;
         [SerializeField, Min(0f)] private float jumpStartHoldDuration = 0.14f;
@@ -58,6 +77,7 @@ namespace Neighbor.Main.Features.Player
             {
                 animator.applyRootMotion = false;
                 animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                ApplyAnimationOverrides();
 
                 handIK = animator.GetComponent<PlayerHandIK>();
                 if (handIK == null)
@@ -67,6 +87,73 @@ namespace Neighbor.Main.Features.Player
 
                 handIK.Configure(animator, playerInteractor);
             }
+        }
+
+        private void ApplyAnimationOverrides()
+        {
+            RuntimeAnimatorController baseController = animator.runtimeAnimatorController;
+            if (baseController == null)
+            {
+                return;
+            }
+
+            AnimatorOverrideController overrideController = new AnimatorOverrideController(baseController);
+            List<KeyValuePair<AnimationClip, AnimationClip>> overrides = new();
+            AddOverride(baseController, overrides, "Idle_Loop", idleAnimation);
+            AddOverride(baseController, overrides, "Walk_Loop", walkAnimation);
+            AddOverride(baseController, overrides, "Sprint_Loop", runAnimation);
+            AddOverride(baseController, overrides, "Crouch_Idle_Loop", crouchIdleAnimation);
+            AddOverride(baseController, overrides, "Crouch_Fwd_Loop", crouchWalkAnimation);
+            AddOverride(
+                baseController,
+                overrides,
+                "Dance_Loop",
+                slideAnimation != null ? slideAnimation : FindClip(baseController, "Crouch_Fwd_Loop"));
+            AddOverride(baseController, overrides, "Jump_Start", jumpStartAnimation);
+            AddOverride(baseController, overrides, "Jump_Loop", airborneAnimation);
+            AddOverride(baseController, overrides, "Jump_Land", landAnimation);
+            AddOverride(baseController, overrides, "PickUp_Table", grabAnimation);
+            AddOverride(
+                baseController,
+                overrides,
+                "Hit_Chest",
+                dropAnimation != null ? dropAnimation : FindClip(baseController, "PickUp_Table"));
+            AddOverride(baseController, overrides, "Spell_Simple_Shoot", throwAnimation);
+            AddOverride(baseController, overrides, "Interact", interactAnimation);
+            AddOverride(baseController, overrides, "ClimbUp_1m_RM", climbAnimation);
+            overrideController.ApplyOverrides(overrides);
+            animator.runtimeAnimatorController = overrideController;
+        }
+
+        private static void AddOverride(
+            RuntimeAnimatorController baseController,
+            ICollection<KeyValuePair<AnimationClip, AnimationClip>> overrides,
+            string sourceClipName,
+            AnimationClip replacement)
+        {
+            if (replacement == null)
+            {
+                return;
+            }
+
+            AnimationClip sourceClip = FindClip(baseController, sourceClipName);
+            if (sourceClip != null)
+            {
+                overrides.Add(new KeyValuePair<AnimationClip, AnimationClip>(sourceClip, replacement));
+            }
+        }
+
+        private static AnimationClip FindClip(RuntimeAnimatorController controller, string clipName)
+        {
+            foreach (AnimationClip clip in controller.animationClips)
+            {
+                if (clip != null && clip.name == clipName)
+                {
+                    return clip;
+                }
+            }
+
+            return null;
         }
 
         private void OnEnable()
