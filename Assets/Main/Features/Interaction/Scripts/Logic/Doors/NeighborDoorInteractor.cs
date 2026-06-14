@@ -115,6 +115,8 @@ namespace Neighbor.Main.Features.Interaction
                 if (door.IsOpen)
                 {
                     brain?.ObserveOpenDoor(door, transform.position);
+                    nextInteractionTime = Time.time + interactionCooldown;
+                    return;
                 }
 
                 float openPause = GetDoorOpenPause();
@@ -390,7 +392,8 @@ namespace Neighbor.Main.Features.Interaction
                 door,
                 openedFromDefaultSide,
                 Time.time + closeBehindDelay,
-                Time.time + closeBehindFailsafeDelay));
+                Time.time + closeBehindFailsafeDelay,
+                !requirePassingThroughDoorToClose));
         }
 
         private void UpdateOpenedDoors()
@@ -416,22 +419,40 @@ namespace Neighbor.Main.Features.Interaction
                     continue;
                 }
 
-                bool hasPassedThrough = door.IsOnDefaultOpeningSide(transform.position) != tracker.OpenedFromDefaultSide;
-                bool failsafeReady = Time.time >= tracker.FailsafeCloseTime;
-                if (requirePassingThroughDoorToClose && !hasPassedThrough && !failsafeReady)
-                {
-                    continue;
-                }
-
+                bool isOnOppositeSide = door.IsOnDefaultOpeningSide(transform.position) != tracker.OpenedFromDefaultSide;
                 float distanceToDoor = Vector3.Distance(transform.position, door.transform.position);
-                bool isClearOfDoorway = distanceToDoor >= closeBehindClearDistance;
-                bool hasLeftCloseRange = closeBehindDistance > 0f && distanceToDoor > closeBehindDistance;
-                if (!isClearOfDoorway && !failsafeReady)
+                if (isOnOppositeSide && distanceToDoor >= closeBehindClearDistance)
                 {
+                    tracker.ConfirmPassedThrough();
+                }
+
+                bool failsafeReady = Time.time >= tracker.FailsafeCloseTime;
+                if (!tracker.HasPassedThrough)
+                {
+                    if (failsafeReady)
+                    {
+                        openedDoors.RemoveAt(i);
+                    }
+
                     continue;
                 }
 
-                if (hasLeftCloseRange && !hasPassedThrough && !failsafeReady)
+                bool isClearOfDoorway = distanceToDoor >= closeBehindClearDistance;
+                bool isDoorBehindNeighbor = Vector3.Dot(
+                    transform.forward,
+                    door.transform.position - transform.position) < 0f;
+                if (!isClearOfDoorway || !isDoorBehindNeighbor)
+                {
+                    if (failsafeReady)
+                    {
+                        openedDoors.RemoveAt(i);
+                    }
+
+                    continue;
+                }
+
+                bool hasReachedCloseDistance = closeBehindDistance <= 0f || distanceToDoor >= closeBehindDistance;
+                if (!hasReachedCloseDistance && !failsafeReady)
                 {
                     continue;
                 }
@@ -441,20 +462,32 @@ namespace Neighbor.Main.Features.Interaction
             }
         }
 
-        private readonly struct OpenedDoorTracker
+        private sealed class OpenedDoorTracker
         {
-            public OpenedDoorTracker(Door door, bool openedFromDefaultSide, float closeAfterTime, float failsafeCloseTime)
+            public OpenedDoorTracker(
+                Door door,
+                bool openedFromDefaultSide,
+                float closeAfterTime,
+                float failsafeCloseTime,
+                bool hasPassedThrough)
             {
                 Door = door;
                 OpenedFromDefaultSide = openedFromDefaultSide;
                 CloseAfterTime = closeAfterTime;
                 FailsafeCloseTime = failsafeCloseTime;
+                HasPassedThrough = hasPassedThrough;
             }
 
             public Door Door { get; }
             public bool OpenedFromDefaultSide { get; }
             public float CloseAfterTime { get; }
             public float FailsafeCloseTime { get; }
+            public bool HasPassedThrough { get; private set; }
+
+            public void ConfirmPassedThrough()
+            {
+                HasPassedThrough = true;
+            }
         }
     }
 }

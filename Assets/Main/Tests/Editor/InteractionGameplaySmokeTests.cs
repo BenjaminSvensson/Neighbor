@@ -41,6 +41,22 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NeighborDoorInteractor_DoesNotCloseDoorWithoutConfirmedPassage()
+        {
+            Door door = context.AddInitializedComponent<Door>();
+            door.Unlock();
+            Assert.That(door.TryOpenForNeighbor(door.transform), Is.True);
+
+            NeighborDoorInteractor doorInteractor = context.AddInitializedComponent<NeighborDoorInteractor>();
+            GameplaySmokeTestReflection.SetField(doorInteractor, "closeBehindDelay", 0f);
+            GameplaySmokeTestReflection.SetField(doorInteractor, "closeBehindFailsafeDelay", 0f);
+            GameplaySmokeTestReflection.Invoke(doorInteractor, "TrackOpenedDoor", door);
+            GameplaySmokeTestReflection.Invoke(doorInteractor, "UpdateOpenedDoors");
+
+            Assert.That(door.IsOpen, Is.True);
+        }
+
+        [Test]
         public void PlayerKeyRing_TracksOwnedKeysAndIgnoresInvalidKeys()
         {
             PlayerKeyRing keyRing = context.AddInitializedComponent<PlayerKeyRing>();
