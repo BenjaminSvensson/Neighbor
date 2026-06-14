@@ -59,9 +59,8 @@ namespace Neighbor.Main.Features.Player
                 GetGripExtent(bounds, view.right) * 0.8f,
                 minimumGripSpacing,
                 maximumGripSpacing);
-            float gripDepth = GetGripExtent(bounds, view.forward) + handDepthOffset;
             Vector3 gripCenter = bounds.center
-                - view.forward * gripDepth
+                - view.forward * handDepthOffset
                 - view.up * (interactor.ThrowCharge * chargeHandDrop);
 
             animator.SetIKPosition(AvatarIKGoal.LeftHand, gripCenter - view.right * gripSpacing);
