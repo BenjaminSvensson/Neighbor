@@ -61,6 +61,7 @@ The default catalog includes ready-to-place `Basic Wall`, `Basic Floor`, and `Ba
 Door and window definitions can enable a `HouseWallOpeningProfile`. When one is placed on a parametric `HouseGeometryKind.Wall`:
 
 - the placed object receives a `HouseWallOpeningLink`;
+- linked openings follow designer transforms in edit mode, but remain fixed while doors or windows animate during gameplay;
 - the wall stores an opening keyed by the placed object's stable ID;
 - the wall rebuilds around all linked openings;
 - moving the object updates the hole;

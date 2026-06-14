@@ -524,6 +524,27 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void WallOpeningLink_DoesNotFollowAnimatedDoorTransformDuringGameplay()
+        {
+            GameObject wallObject = Track(HouseGeometryFactory.Create(
+                new HouseGeometryDescriptor(HouseGeometryKind.Wall, new Vector3(5f, 3f, 0.25f))));
+            HouseGeometryObject wall = wallObject.GetComponent<HouseGeometryObject>();
+            GameObject doorObject = Track(new GameObject("Door"));
+            HouseBuilderObject door = doorObject.AddComponent<HouseBuilderObject>();
+            door.Initialize("door", HouseBuilderCategories.Door);
+            HouseWallOpeningLink link = doorObject.AddComponent<HouseWallOpeningLink>();
+            link.Initialize(wall, new HouseWallOpeningProfile(new Vector3(1.2f, 2.3f, 0.6f), new Vector3(0f, 1.1f, 0f)));
+            HouseWallOpeningData initial = wall.Descriptor.WallOpenings[0];
+
+            doorObject.transform.SetPositionAndRotation(new Vector3(1f, 0f, 0.5f), Quaternion.Euler(0f, 95f, 0f));
+            link.RefreshIfMoved(false);
+
+            HouseWallOpeningData afterAnimation = wall.Descriptor.WallOpenings[0];
+            Assert.That(afterAnimation.Center, Is.EqualTo(initial.Center));
+            Assert.That(afterAnimation.Size, Is.EqualTo(initial.Size));
+        }
+
+        [Test]
         public void MaterialBindings_ReapplyAfterGeometryRebuild()
         {
             HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(HouseBuilderAssetInstaller.DefaultCatalogPath);

@@ -39,12 +39,21 @@ namespace Neighbor.Main.HouseBuilder
 
         private void OnEnable()
         {
-            RefreshOpening();
+            if (!Application.isPlaying)
+            {
+                RefreshOpening();
+            }
         }
 
         private void Update()
         {
-            if (wall != null
+            RefreshIfMoved(!Application.isPlaying);
+        }
+
+        public void RefreshIfMoved(bool allowTransformRefresh)
+        {
+            if (allowTransformRefresh
+                && wall != null
                 && (transform.position != lastPosition || transform.rotation != lastRotation || transform.lossyScale != lastScale))
             {
                 RefreshOpening();
