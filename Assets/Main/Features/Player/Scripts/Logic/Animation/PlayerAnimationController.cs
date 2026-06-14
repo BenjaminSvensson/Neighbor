@@ -28,10 +28,12 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float transitionDuration = 0.12f;
         [SerializeField, Min(0f)] private float jumpStartHoldDuration = 0.14f;
         [SerializeField, Min(0f)] private float landingHoldDuration = 0.18f;
-        [SerializeField, Min(0f)] private float grabHoldDuration = 0.42f;
-        [SerializeField, Min(0f)] private float dropHoldDuration = 0.42f;
+        [SerializeField, Min(0f)] private float grabHoldDuration = 0.22f;
+        [SerializeField, Min(0f)] private float dropHoldDuration = 0.22f;
         [SerializeField, Min(0f)] private float throwHoldDuration = 0.32f;
         [SerializeField, Min(0f)] private float openDoorHoldDuration = 0.7f;
+        [SerializeField, Min(0.1f)] private float grabPlaybackSpeed = 2.5f;
+        [SerializeField, Min(0.1f)] private float dropPlaybackSpeed = 2.5f;
         [SerializeField, Min(0.1f)] private float climbPlaybackSpeed = 3f;
         [SerializeField, Min(0.1f)] private float minimumLocomotionPlaybackSpeed = 0.75f;
         [SerializeField, Min(0.1f)] private float maximumLocomotionPlaybackSpeed = 1.35f;
@@ -147,6 +149,16 @@ namespace Neighbor.Main.Features.Player
             if (state == ClimbState)
             {
                 return climbPlaybackSpeed;
+            }
+
+            if (state == GrabState)
+            {
+                return grabPlaybackSpeed;
+            }
+
+            if (state == DropState)
+            {
+                return dropPlaybackSpeed;
             }
 
             float referenceSpeed01 = state == RunState

@@ -29,6 +29,12 @@ namespace Neighbor.Main.Tests
             Assert.That(controller.layers[0].iKPass, Is.True);
             Assert.That(animator.GetComponent<PlayerHandIK>(), Is.Not.Null);
 
+            SerializedObject animationSettings = new(playerVisual.GetComponent<PlayerAnimationController>());
+            Assert.That(animationSettings.FindProperty("grabHoldDuration").floatValue, Is.LessThanOrEqualTo(0.25f));
+            Assert.That(animationSettings.FindProperty("dropHoldDuration").floatValue, Is.LessThanOrEqualTo(0.25f));
+            Assert.That(animationSettings.FindProperty("grabPlaybackSpeed").floatValue, Is.GreaterThanOrEqualTo(2f));
+            Assert.That(animationSettings.FindProperty("dropPlaybackSpeed").floatValue, Is.GreaterThanOrEqualTo(2f));
+
             ChildAnimatorState[] states = controller.layers[0].stateMachine.states;
             string[] stateNames = states
                 .Select(childState => childState.state.name)

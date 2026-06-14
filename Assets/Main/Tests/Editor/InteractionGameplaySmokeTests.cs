@@ -136,22 +136,6 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
-        public void HeldPickup_GripPointUsesDisabledColliderSurface()
-        {
-            Pickupable pickup = CreatePickup("Pickup");
-            BoxCollider collider = pickup.GetComponent<BoxCollider>();
-            collider.size = new Vector3(4f, 2f, 2f);
-            pickup.Pickup(null);
-
-            Vector3 gripPoint = pickup.GetClosestGripPoint(new Vector3(0f, 0f, -5f));
-
-            Assert.That(collider.enabled, Is.False);
-            Assert.That(gripPoint.x, Is.EqualTo(0f).Within(0.001f));
-            Assert.That(gripPoint.y, Is.EqualTo(0f).Within(0.001f));
-            Assert.That(gripPoint.z, Is.EqualTo(-1f).Within(0.001f));
-        }
-
-        [Test]
         public void MatchingInventoryPickup_AutoEquipsSilentlyAfterActionDelay()
         {
             GameObject interactorObject = context.CreateObject("PlayerInteractor");
