@@ -294,6 +294,19 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void PlaceableCard_ClickingSelectedDefinitionRequestsDeselection()
+        {
+            HousePlaceableDefinition selected = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                "Assets/Main/HouseBuilder/Data/Placeables/BasicWall.asset");
+            HousePlaceableDefinition different = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                "Assets/Main/HouseBuilder/Data/Placeables/BasicFloor.asset");
+
+            Assert.That(HouseBuilderEditorInteractionUtility.ShouldDeselectPlaceable(selected, selected), Is.True);
+            Assert.That(HouseBuilderEditorInteractionUtility.ShouldDeselectPlaceable(selected, different), Is.False);
+            Assert.That(HouseBuilderEditorInteractionUtility.ShouldDeselectPlaceable(null, selected), Is.False);
+        }
+
+        [Test]
         public void PlacementEraser_OnlyPicksMatchingNearestPlacedObject()
         {
             GameObject world = Track(new GameObject("World"));

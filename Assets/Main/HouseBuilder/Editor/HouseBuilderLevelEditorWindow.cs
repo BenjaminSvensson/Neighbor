@@ -200,7 +200,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 return;
             }
 
-            EditorGUILayout.HelpBox("Click a card, then left-click in Scene view to place. Rotate with Q/E (yaw), R/F (pitch), or Z/C (roll). Press Esc to stop.", MessageType.None);
+            EditorGUILayout.HelpBox("Click a card to start placing it; click the green selected card again to stop. Rotate with Q/E (yaw), R/F (pitch), or Z/C (roll).", MessageType.None);
             if (placingDefinition != null || placingReinforcementLocations)
             {
                 using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
@@ -255,7 +255,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
             GUIContent content = new(
                 $"{definition.DisplayName}\n{FriendlyCategoryName(definition.CategoryId)}",
                 preview,
-                $"Place {definition.DisplayName}");
+                placingDefinition == definition ? $"Stop placing {definition.DisplayName}" : $"Place {definition.DisplayName}");
             Color previous = GUI.backgroundColor;
             if (placingDefinition == definition)
             {
@@ -264,7 +264,14 @@ namespace Neighbor.Main.HouseBuilder.Editor
 
             if (GUILayout.Button(content, cardStyle, GUILayout.ExpandWidth(true), GUILayout.Height(58f)))
             {
-                StartPlacement(definition);
+                if (HouseBuilderEditorInteractionUtility.ShouldDeselectPlaceable(placingDefinition, definition))
+                {
+                    CancelPlacement();
+                }
+                else
+                {
+                    StartPlacement(definition);
+                }
             }
 
             GUI.backgroundColor = previous;

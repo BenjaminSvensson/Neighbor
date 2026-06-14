@@ -80,6 +80,13 @@ namespace Neighbor.Main.HouseBuilder.Editor
             return rotation * Quaternion.AngleAxis(step * Mathf.Sign(direction), localAxis);
         }
 
+        public static bool ShouldDeselectPlaceable(
+            HousePlaceableDefinition activeDefinition,
+            HousePlaceableDefinition clickedDefinition)
+        {
+            return activeDefinition != null && activeDefinition == clickedDefinition;
+        }
+
         public static bool TryPickFace(Ray ray, LayerMask mask, out HouseBuilderFaceHit faceHit)
         {
             RaycastHit[] hits = Physics.RaycastAll(ray, 10000f, mask, QueryTriggerInteraction.Ignore);
