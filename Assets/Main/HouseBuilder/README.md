@@ -25,7 +25,7 @@ Every placed object has a stable `HouseBuilderObject.InstanceId`. Definitions, m
 
 1. Open the House Builder Level Editor.
 2. Create or assign a `HouseBuilderWorld`.
-3. Use **Place** and click an asset card. Move into Scene view and left-click to place copies. Right-click or hold and drag right-click over matching placed objects to erase them. Press `Q`/`E` to rotate and `Esc` to stop.
+3. Use **Place** and click an asset card. Move into Scene view and left-click to place copies. Right-click or hold and drag right-click over matching placed objects to erase them. Use `Q`/`E` for yaw, `R`/`F` for pitch, `Z`/`C` for roll, and `Esc` to stop.
 4. Use **Draw** to create walls, floors, ceilings, doorway blocks, window blocks, ramps, stairs, and blocks. Click-drag to size the shape directly in Scene view.
 5. Select a generated shape while the **Draw** tab is open to resize it with direct Scene handles or friendly dimension fields.
 6. Use **Paint** to choose a material and click-drag over the actual faces in Scene view. Material cards and normal Unity Material assets can also be dragged directly onto a face.

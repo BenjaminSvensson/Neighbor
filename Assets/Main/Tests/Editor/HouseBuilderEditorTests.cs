@@ -249,6 +249,50 @@ namespace Neighbor.Main.Tests
             Assert.That(AssetDatabase.Contains(prefab.GetComponent<MeshFilter>().sharedMesh), Is.True);
         }
 
+        [TestCase("BasicWall")]
+        [TestCase("BasicFloor")]
+        [TestCase("BasicCeiling")]
+        public void StarterPrefab_RegisteredEditorPlacementRemainsVisible(string prefabName)
+        {
+            HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(HouseBuilderAssetInstaller.DefaultCatalogPath);
+            HousePlaceableDefinition definition = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                $"Assets/Main/HouseBuilder/Data/Placeables/{prefabName}.asset");
+            GameObject worldObject = Track(new GameObject("World"));
+            HouseBuilderWorld world = worldObject.AddComponent<HouseBuilderWorld>();
+            world.Configure(catalog);
+            GameObject instance = Track((GameObject)PrefabUtility.InstantiatePrefab(definition.Prefab, world.transform));
+
+            HouseBuilderGhost accidentalPreviewState = instance.AddComponent<HouseBuilderGhost>();
+            accidentalPreviewState.Initialize();
+            Object.DestroyImmediate(accidentalPreviewState);
+            world.RegisterPlaceable(instance, definition);
+
+            MeshRenderer renderer = instance.GetComponent<MeshRenderer>();
+            MeshFilter filter = instance.GetComponent<MeshFilter>();
+            MeshCollider collider = instance.GetComponent<MeshCollider>();
+            Assert.That(instance.activeInHierarchy, Is.True);
+            Assert.That(instance.GetComponent<HouseGeometryObject>().enabled, Is.True);
+            Assert.That(renderer.enabled, Is.True);
+            Assert.That(filter.sharedMesh, Is.Not.Null);
+            Assert.That(collider.enabled, Is.True);
+            Assert.That(collider.sharedMesh, Is.SameAs(filter.sharedMesh));
+        }
+
+        [Test]
+        public void PlacementRotation_SupportsYawPitchAndRoll()
+        {
+            Quaternion yaw = HouseBuilderEditorInteractionUtility.RotatePlacement(
+                Quaternion.identity, HousePlacementRotationAxis.Yaw, 15f, 1f);
+            Quaternion pitch = HouseBuilderEditorInteractionUtility.RotatePlacement(
+                Quaternion.identity, HousePlacementRotationAxis.Pitch, 15f, 1f);
+            Quaternion roll = HouseBuilderEditorInteractionUtility.RotatePlacement(
+                Quaternion.identity, HousePlacementRotationAxis.Roll, 15f, 1f);
+
+            Assert.That(Quaternion.Angle(yaw, Quaternion.Euler(0f, 15f, 0f)), Is.LessThan(0.01f));
+            Assert.That(Quaternion.Angle(pitch, Quaternion.Euler(15f, 0f, 0f)), Is.LessThan(0.01f));
+            Assert.That(Quaternion.Angle(roll, Quaternion.Euler(0f, 0f, 15f)), Is.LessThan(0.01f));
+        }
+
         [Test]
         public void PlacementEraser_OnlyPicksMatchingNearestPlacedObject()
         {

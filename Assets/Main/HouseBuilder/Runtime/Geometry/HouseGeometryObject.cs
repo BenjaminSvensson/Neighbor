@@ -35,6 +35,27 @@ namespace Neighbor.Main.HouseBuilder
                 bakedMesh: HouseMeshData.Capture(filter.sharedMesh));
         }
 
+        public void PrepareForPlacement()
+        {
+            enabled = true;
+            MeshFilter filter = GetComponent<MeshFilter>();
+            if (filter.sharedMesh == null)
+            {
+                Rebuild();
+            }
+
+            MeshRenderer renderer = GetComponent<MeshRenderer>();
+            renderer.enabled = true;
+            renderer.SetPropertyBlock(null);
+
+            MeshCollider collider = GetComponent<MeshCollider>();
+            collider.enabled = true;
+            if (collider.sharedMesh == null)
+            {
+                collider.sharedMesh = filter.sharedMesh;
+            }
+        }
+
         public void Rebuild()
         {
             Mesh mesh = descriptor.BakedMesh != null

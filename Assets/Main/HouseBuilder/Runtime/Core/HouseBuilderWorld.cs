@@ -54,6 +54,12 @@ namespace Neighbor.Main.HouseBuilder
             }
 
             builderObject.Initialize(definition != null ? definition.Id : string.Empty, definition != null ? definition.CategoryId : HouseBuilderCategories.Prop, requestedId);
+            HouseGeometryObject[] geometryObjects = instance.GetComponentsInChildren<HouseGeometryObject>(true);
+            for (int i = 0; i < geometryObjects.Length; i++)
+            {
+                geometryObjects[i].PrepareForPlacement();
+            }
+
             ApplyWirePorts(instance, definition);
             return builderObject;
         }

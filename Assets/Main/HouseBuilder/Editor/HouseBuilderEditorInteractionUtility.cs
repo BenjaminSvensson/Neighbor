@@ -4,6 +4,13 @@ using UnityEngine;
 
 namespace Neighbor.Main.HouseBuilder.Editor
 {
+    internal enum HousePlacementRotationAxis
+    {
+        Yaw,
+        Pitch,
+        Roll
+    }
+
     internal readonly struct HouseBuilderFaceHit
     {
         public HouseBuilderObject Owner { get; }
@@ -56,6 +63,21 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 Mathf.Max(MinimumDimension, size.x),
                 Mathf.Max(MinimumDimension, size.y),
                 Mathf.Max(MinimumDimension, size.z));
+        }
+
+        public static Quaternion RotatePlacement(
+            Quaternion rotation,
+            HousePlacementRotationAxis axis,
+            float step,
+            float direction)
+        {
+            Vector3 localAxis = axis switch
+            {
+                HousePlacementRotationAxis.Pitch => Vector3.right,
+                HousePlacementRotationAxis.Roll => Vector3.forward,
+                _ => Vector3.up
+            };
+            return rotation * Quaternion.AngleAxis(step * Mathf.Sign(direction), localAxis);
         }
 
         public static bool TryPickFace(Ray ray, LayerMask mask, out HouseBuilderFaceHit faceHit)

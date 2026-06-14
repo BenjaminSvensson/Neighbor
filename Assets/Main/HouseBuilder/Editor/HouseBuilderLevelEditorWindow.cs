@@ -200,7 +200,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 return;
             }
 
-            EditorGUILayout.HelpBox("Click any card, then move the cursor into Scene view and left-click to place. Press Q/E to rotate and Esc to stop.", MessageType.None);
+            EditorGUILayout.HelpBox("Click a card, then left-click in Scene view to place. Rotate with Q/E (yaw), R/F (pitch), or Z/C (roll). Press Esc to stop.", MessageType.None);
             if (placingDefinition != null || placingReinforcementLocations)
             {
                 using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
@@ -671,7 +671,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
         {
             Event current = Event.current;
             HandleUtility.AddDefaultControl(GUIUtility.GetControlID(FocusType.Passive));
-            DrawSceneBanner(sceneView, $"Placing {placingDefinition.DisplayName}", "Left click: place    Right click/drag: erase matching    Q/E: rotate    Esc: stop");
+            DrawSceneBanner(sceneView, $"Placing {placingDefinition.DisplayName}", "Left click: place    Right click/drag: erase    Q/E: yaw    R/F: pitch    Z/C: roll    Esc: stop");
             if (current.type == EventType.KeyDown && current.keyCode == KeyCode.Escape)
             {
                 CancelPlacement();
@@ -679,10 +679,8 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 return;
             }
 
-            if (current.type == EventType.KeyDown && (current.keyCode == KeyCode.Q || current.keyCode == KeyCode.E))
+            if (TryRotatePlacement(current))
             {
-                float direction = current.keyCode == KeyCode.Q ? -1f : 1f;
-                requestedRotation *= Quaternion.Euler(0f, placementSettings.RotationStep * direction, 0f);
                 current.Use();
             }
 
@@ -1215,7 +1213,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
             string previewName = reinforcementLocationChoices.Count > 1
                 ? $"{reinforcementLocationChoices[0].DisplayName} + {reinforcementLocationChoices.Count - 1} alternative(s)"
                 : reinforcementLocationChoices[0].DisplayName;
-            DrawSceneBanner(sceneView, "Placing Reinforcement Locations", $"Preview: {previewName}    Left click: place another    Q/E: rotate    Esc: finish");
+            DrawSceneBanner(sceneView, "Placing Reinforcement Locations", $"Preview: {previewName}    Left click: place another    Q/E: yaw    R/F: pitch    Z/C: roll    Esc: finish");
             if (current.type == EventType.KeyDown && current.keyCode == KeyCode.Escape)
             {
                 ClearReinforcementLocationPlacement();
@@ -1226,10 +1224,8 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 return;
             }
 
-            if (current.type == EventType.KeyDown && (current.keyCode == KeyCode.Q || current.keyCode == KeyCode.E))
+            if (TryRotatePlacement(current))
             {
-                float direction = current.keyCode == KeyCode.Q ? -1f : 1f;
-                requestedRotation *= Quaternion.Euler(0f, placementSettings.RotationStep * direction, 0f);
                 current.Use();
             }
 
@@ -1293,6 +1289,53 @@ namespace Neighbor.Main.HouseBuilder.Editor
             placingReinforcementLocations = false;
             reinforcementTrigger = null;
             reinforcementLocationChoices.Clear();
+        }
+
+        private bool TryRotatePlacement(Event current)
+        {
+            if (current.type != EventType.KeyDown)
+            {
+                return false;
+            }
+
+            HousePlacementRotationAxis axis;
+            float direction;
+            switch (current.keyCode)
+            {
+                case KeyCode.Q:
+                    axis = HousePlacementRotationAxis.Yaw;
+                    direction = -1f;
+                    break;
+                case KeyCode.E:
+                    axis = HousePlacementRotationAxis.Yaw;
+                    direction = 1f;
+                    break;
+                case KeyCode.R:
+                    axis = HousePlacementRotationAxis.Pitch;
+                    direction = 1f;
+                    break;
+                case KeyCode.F:
+                    axis = HousePlacementRotationAxis.Pitch;
+                    direction = -1f;
+                    break;
+                case KeyCode.Z:
+                    axis = HousePlacementRotationAxis.Roll;
+                    direction = -1f;
+                    break;
+                case KeyCode.C:
+                    axis = HousePlacementRotationAxis.Roll;
+                    direction = 1f;
+                    break;
+                default:
+                    return false;
+            }
+
+            requestedRotation = HouseBuilderEditorInteractionUtility.RotatePlacement(
+                requestedRotation,
+                axis,
+                placementSettings.RotationStep,
+                direction);
+            return true;
         }
 
         private static void DrawEraseHighlight(HouseBuilderObject target)
