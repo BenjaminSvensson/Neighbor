@@ -311,6 +311,158 @@ namespace Neighbor.Main.Features.Interaction
             return new Bounds(transform.position, Vector3.one * 0.25f);
         }
 
+        public Vector3 GetClosestGripPoint(Vector3 probePosition)
+        {
+            Vector3 closestPoint = default;
+            float closestDistance = float.PositiveInfinity;
+            bool foundPoint = false;
+
+            if (ownColliders != null)
+            {
+                for (int i = 0; i < ownColliders.Length; i++)
+                {
+                    Collider ownCollider = ownColliders[i];
+                    if (!CanUseColliderForGrip(ownCollider, i))
+                    {
+                        continue;
+                    }
+
+                    if (!TryGetClosestPointOnCollider(ownCollider, probePosition, out Vector3 candidate))
+                    {
+                        continue;
+                    }
+
+                    float candidateDistance = (candidate - probePosition).sqrMagnitude;
+                    if (candidateDistance >= closestDistance)
+                    {
+                        continue;
+                    }
+
+                    closestPoint = candidate;
+                    closestDistance = candidateDistance;
+                    foundPoint = true;
+                }
+            }
+
+            return foundPoint ? closestPoint : GetPlacementBounds().ClosestPoint(probePosition);
+        }
+
+        private bool CanUseColliderForGrip(Collider ownCollider, int colliderIndex)
+        {
+            if (ownCollider == null || ownCollider.isTrigger)
+            {
+                return false;
+            }
+
+            if (disableCollidersWhileHeld
+                && IsHeld
+                && colliderIndex < originalColliderEnabled.Length
+                && !originalColliderEnabled[colliderIndex])
+            {
+                return false;
+            }
+
+            return ownCollider is BoxCollider
+                || ownCollider is SphereCollider
+                || ownCollider is CapsuleCollider;
+        }
+
+        // Held colliders are disabled, so Unity closest-point queries cannot provide their surface.
+        private static bool TryGetClosestPointOnCollider(
+            Collider collider,
+            Vector3 probePosition,
+            out Vector3 closestPoint)
+        {
+            switch (collider)
+            {
+                case BoxCollider boxCollider:
+                    Vector3 localProbe = boxCollider.transform.InverseTransformPoint(probePosition);
+                    Vector3 halfSize = boxCollider.size * 0.5f;
+                    Vector3 localPoint = new Vector3(
+                        Mathf.Clamp(localProbe.x, boxCollider.center.x - halfSize.x, boxCollider.center.x + halfSize.x),
+                        Mathf.Clamp(localProbe.y, boxCollider.center.y - halfSize.y, boxCollider.center.y + halfSize.y),
+                        Mathf.Clamp(localProbe.z, boxCollider.center.z - halfSize.z, boxCollider.center.z + halfSize.z));
+                    closestPoint = boxCollider.transform.TransformPoint(localPoint);
+                    return true;
+
+                case SphereCollider sphereCollider:
+                    Vector3 sphereCenter = sphereCollider.transform.TransformPoint(sphereCollider.center);
+                    float sphereRadius = sphereCollider.radius * GetLargestScale(sphereCollider.transform);
+                    closestPoint = sphereCenter + GetSurfaceDirection(probePosition - sphereCenter, sphereCollider.transform.forward) * sphereRadius;
+                    return true;
+
+                case CapsuleCollider capsuleCollider:
+                    GetCapsuleWorldShape(capsuleCollider, out Vector3 capsuleStart, out Vector3 capsuleEnd, out float capsuleRadius);
+                    Vector3 capsuleAxis = capsuleEnd - capsuleStart;
+                    float axisLengthSquared = capsuleAxis.sqrMagnitude;
+                    float alongAxis = axisLengthSquared > 0f
+                        ? Mathf.Clamp01(Vector3.Dot(probePosition - capsuleStart, capsuleAxis) / axisLengthSquared)
+                        : 0f;
+                    Vector3 closestAxisPoint = capsuleStart + capsuleAxis * alongAxis;
+                    closestPoint = closestAxisPoint
+                        + GetSurfaceDirection(probePosition - closestAxisPoint, capsuleCollider.transform.forward) * capsuleRadius;
+                    return true;
+
+                default:
+                    closestPoint = default;
+                    return false;
+            }
+        }
+
+        private static void GetCapsuleWorldShape(
+            CapsuleCollider capsule,
+            out Vector3 start,
+            out Vector3 end,
+            out float radius)
+        {
+            Vector3 scale = GetAbsoluteScale(capsule.transform);
+            Vector3 localAxis;
+            float axisScale;
+            float radiusScale;
+            switch (capsule.direction)
+            {
+                case 0:
+                    localAxis = Vector3.right;
+                    axisScale = scale.x;
+                    radiusScale = Mathf.Max(scale.y, scale.z);
+                    break;
+                case 2:
+                    localAxis = Vector3.forward;
+                    axisScale = scale.z;
+                    radiusScale = Mathf.Max(scale.x, scale.y);
+                    break;
+                default:
+                    localAxis = Vector3.up;
+                    axisScale = scale.y;
+                    radiusScale = Mathf.Max(scale.x, scale.z);
+                    break;
+            }
+
+            radius = capsule.radius * radiusScale;
+            float halfSegmentLength = Mathf.Max(0f, capsule.height * axisScale * 0.5f - radius);
+            Vector3 center = capsule.transform.TransformPoint(capsule.center);
+            Vector3 worldAxis = capsule.transform.TransformDirection(localAxis).normalized;
+            start = center - worldAxis * halfSegmentLength;
+            end = center + worldAxis * halfSegmentLength;
+        }
+
+        private static Vector3 GetSurfaceDirection(Vector3 direction, Vector3 fallback)
+        {
+            return direction.sqrMagnitude > 0.0001f ? direction.normalized : fallback.normalized;
+        }
+
+        private static float GetLargestScale(Transform target)
+        {
+            Vector3 scale = GetAbsoluteScale(target);
+            return Mathf.Max(scale.x, scale.y, scale.z);
+        }
+
+        private static Vector3 GetAbsoluteScale(Transform target)
+        {
+            Vector3 scale = target.lossyScale;
+            return new Vector3(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z));
+        }
+
         private bool TryGetRendererBounds(out Bounds bounds)
         {
             bounds = default;

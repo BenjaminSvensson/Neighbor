@@ -59,12 +59,25 @@ namespace Neighbor.Main.Features.Player
                 GetGripExtent(bounds, view.right) * 0.8f,
                 minimumGripSpacing,
                 maximumGripSpacing);
-            Vector3 gripCenter = bounds.center
-                - view.forward * handDepthOffset
-                - view.up * (interactor.ThrowCharge * chargeHandDrop);
+            Vector3 gripCenter = bounds.center - view.up * (interactor.ThrowCharge * chargeHandDrop);
+            float probeDepth = GetGripExtent(bounds, view.forward) + Mathf.Max(handDepthOffset, 0.1f);
+            Vector3 leftProbe = gripCenter - view.right * gripSpacing - view.forward * probeDepth;
+            Vector3 rightProbe = gripCenter + view.right * gripSpacing - view.forward * probeDepth;
 
-            animator.SetIKPosition(AvatarIKGoal.LeftHand, gripCenter - view.right * gripSpacing);
-            animator.SetIKPosition(AvatarIKGoal.RightHand, gripCenter + view.right * gripSpacing);
+            animator.SetIKPosition(AvatarIKGoal.LeftHand, GetGripTarget(heldPickup, leftProbe, view.forward));
+            animator.SetIKPosition(AvatarIKGoal.RightHand, GetGripTarget(heldPickup, rightProbe, view.forward));
+        }
+
+        private Vector3 GetGripTarget(Pickupable pickup, Vector3 probePosition, Vector3 viewForward)
+        {
+            Vector3 surfacePoint = pickup.GetClosestGripPoint(probePosition);
+            Vector3 outward = probePosition - surfacePoint;
+            if (outward.sqrMagnitude <= 0.0001f)
+            {
+                outward = -viewForward;
+            }
+
+            return surfacePoint + outward.normalized * handDepthOffset;
         }
 
         private static float GetGripExtent(Bounds bounds, Vector3 axis)
