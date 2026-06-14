@@ -46,6 +46,10 @@ namespace Neighbor.Main.HouseBuilder.Editor
         private string search = string.Empty;
         private string categoryFilter = string.Empty;
         private HousePlaceableDefinition placingDefinition;
+        private HouseBuilderObject reinforcementTrigger;
+        private HousePlaceableDefinition reinforcementLocationDefinition;
+        private readonly List<HousePlaceableDefinition> reinforcementLocationChoices = new();
+        private bool placingReinforcementLocations;
         private GameObject ghostObject;
         private HouseBuilderGhost ghost;
         private Quaternion requestedRotation = Quaternion.identity;
@@ -197,11 +201,12 @@ namespace Neighbor.Main.HouseBuilder.Editor
             }
 
             EditorGUILayout.HelpBox("Click any card, then move the cursor into Scene view and left-click to place. Press Q/E to rotate and Esc to stop.", MessageType.None);
-            if (placingDefinition != null)
+            if (placingDefinition != null || placingReinforcementLocations)
             {
                 using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
                 {
-                    EditorGUILayout.LabelField($"Placing: {placingDefinition.DisplayName}", EditorStyles.boldLabel);
+                    string placementName = placingReinforcementLocations ? "Reinforcement Locations" : placingDefinition.DisplayName;
+                    EditorGUILayout.LabelField($"Placing: {placementName}", EditorStyles.boldLabel);
                     if (GUILayout.Button("Stop", GUILayout.Width(56f)))
                     {
                         CancelPlacement();
@@ -215,6 +220,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
 
             IEnumerable<HousePlaceableDefinition> definitions = catalog.Placeables.Where(definition =>
                 definition != null
+                && !definition.HideFromCatalog
                 && MatchesCategoryFilter(definition.CategoryId)
                 && (string.IsNullOrWhiteSpace(search)
                     || definition.DisplayName.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0
@@ -638,6 +644,12 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 return;
             }
 
+            if (placingReinforcementLocations && ghostObject != null)
+            {
+                HandleReinforcementLocationPlacement(sceneView);
+                return;
+            }
+
             if (activeTab == 1)
             {
                 DrawSelectedGeometryHandle();
@@ -1038,6 +1050,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 return;
             }
 
+            ClearReinforcementLocationPlacement();
             DestroyGhost();
             placingDefinition = definition;
             requestedRotation = Quaternion.identity;
@@ -1061,10 +1074,20 @@ namespace Neighbor.Main.HouseBuilder.Editor
             Selection.activeObject = builderObject.gameObject;
             statusMessage = $"Placed {placingDefinition.DisplayName}. Left-click to place another, or press Esc to stop.";
             MarkSceneDirty();
+
+            if (placingDefinition.CategoryId == HouseBuilderCategories.ReinforcementTrigger)
+            {
+                BeginReinforcementTriggerSetup(builderObject);
+            }
         }
 
         private void CancelPlacement()
         {
+            if (placingReinforcementLocations)
+            {
+                ClearReinforcementLocationPlacement();
+            }
+
             placingDefinition = null;
             DestroyGhost();
             statusMessage = "Placement stopped.";
@@ -1093,10 +1116,183 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 world.WireGraph.RemoveConnectionsForObject(target.InstanceId);
             }
 
+            if (world != null && target.CategoryId == HouseBuilderCategories.ReinforcementTrigger)
+            {
+                HouseReinforcementLocation[] locations = world.GetComponentsInChildren<HouseReinforcementLocation>(true);
+                for (int i = locations.Length - 1; i >= 0; i--)
+                {
+                    if (locations[i] != null && locations[i].IsLinkedTo(target.InstanceId))
+                    {
+                        Undo.DestroyObjectImmediate(locations[i].gameObject);
+                    }
+                }
+            }
+
             Undo.DestroyObjectImmediate(target.gameObject);
             statusMessage = $"Erased {displayName}. Keep holding right-click to erase more.";
             MarkSceneDirty();
             Repaint();
+        }
+
+        private void BeginReinforcementTriggerSetup(HouseBuilderObject trigger)
+        {
+            List<HousePlaceableDefinition> choices = catalog.Placeables
+                .Where(definition => definition != null
+                    && definition.Prefab != null
+                    && definition.CategoryId == HouseBuilderCategories.Reinforcement)
+                .ToList();
+            placingDefinition = null;
+            DestroyGhost();
+            if (choices.Count == 0)
+            {
+                statusMessage = "The trigger was placed, but the catalog has no reinforcement assets to choose from.";
+                return;
+            }
+
+            reinforcementTrigger = trigger;
+            statusMessage = "Choose which reinforcements this trigger can spawn.";
+            Vector2 screenPosition = GUIUtility.GUIToScreenPoint(Event.current.mousePosition);
+            HouseReinforcementPickerPopup.Show(
+                screenPosition,
+                choices,
+                selected => StartReinforcementLocationPlacement(trigger, selected),
+                () =>
+                {
+                    reinforcementTrigger = null;
+                    statusMessage = "Reinforcement trigger placed without custom spawn locations.";
+                    Repaint();
+                });
+            Repaint();
+        }
+
+        private void StartReinforcementLocationPlacement(
+            HouseBuilderObject trigger,
+            IReadOnlyList<HousePlaceableDefinition> choices)
+        {
+            if (trigger == null || choices == null || choices.Count == 0 || catalog == null)
+            {
+                return;
+            }
+
+            reinforcementLocationDefinition = catalog.Placeables.FirstOrDefault(definition =>
+                definition != null && definition.CategoryId == HouseBuilderCategories.ReinforcementLocation);
+            if (reinforcementLocationDefinition?.Prefab == null)
+            {
+                statusMessage = "The Reinforcement Location marker is missing. Refresh the House Builder default assets.";
+                return;
+            }
+
+            reinforcementTrigger = trigger;
+            reinforcementLocationChoices.Clear();
+            reinforcementLocationChoices.AddRange(choices);
+            placingReinforcementLocations = true;
+            requestedRotation = Quaternion.identity;
+            DestroyGhost();
+            ghostObject = Instantiate(reinforcementLocationChoices[0].Prefab);
+            SetHideFlags(ghostObject, HideFlags.HideAndDontSave);
+            ghost = ghostObject.AddComponent<HouseBuilderGhost>();
+            ghost.Initialize();
+            statusMessage = "Place reinforcement locations in Scene view. Keep clicking to add more; press Esc when finished.";
+            SceneView.lastActiveSceneView?.Focus();
+            SceneView.RepaintAll();
+            Repaint();
+        }
+
+        private void HandleReinforcementLocationPlacement(SceneView sceneView)
+        {
+            Event current = Event.current;
+            HandleUtility.AddDefaultControl(GUIUtility.GetControlID(FocusType.Passive));
+            if (reinforcementTrigger == null)
+            {
+                ClearReinforcementLocationPlacement();
+                DestroyGhost();
+                statusMessage = "Reinforcement location placement stopped because its trigger no longer exists.";
+                sceneView.Repaint();
+                Repaint();
+                return;
+            }
+
+            string previewName = reinforcementLocationChoices.Count > 1
+                ? $"{reinforcementLocationChoices[0].DisplayName} + {reinforcementLocationChoices.Count - 1} alternative(s)"
+                : reinforcementLocationChoices[0].DisplayName;
+            DrawSceneBanner(sceneView, "Placing Reinforcement Locations", $"Preview: {previewName}    Left click: place another    Q/E: rotate    Esc: finish");
+            if (current.type == EventType.KeyDown && current.keyCode == KeyCode.Escape)
+            {
+                ClearReinforcementLocationPlacement();
+                DestroyGhost();
+                statusMessage = "Finished placing reinforcement locations.";
+                current.Use();
+                Repaint();
+                return;
+            }
+
+            if (current.type == EventType.KeyDown && (current.keyCode == KeyCode.Q || current.keyCode == KeyCode.E))
+            {
+                float direction = current.keyCode == KeyCode.Q ? -1f : 1f;
+                requestedRotation *= Quaternion.Euler(0f, placementSettings.RotationStep * direction, 0f);
+                current.Use();
+            }
+
+            HousePlacementProfile profile = reinforcementLocationChoices[0].Placement;
+            Ray ray = HandleUtility.GUIPointToWorldRay(current.mousePosition);
+            bool hasSurface = TryRaycastSurface(ray, out RaycastHit hit);
+            lastPlacement = HouseBuilderSnapUtility.Calculate(
+                GetFallbackPosition(ray),
+                requestedRotation,
+                hasSurface,
+                hit,
+                profile,
+                placementSettings,
+                GatherNearbyBounds());
+            lastValidation = HouseBuilderPlacementValidator.Validate(
+                lastPlacement.Position,
+                lastPlacement.Rotation,
+                profile,
+                placementSettings,
+                lastPlacement,
+                hasSurface ? hit.collider.transform : null);
+
+            ghostObject.transform.SetPositionAndRotation(lastPlacement.Position, lastPlacement.Rotation);
+            ghost.SetValid(lastValidation.IsValid);
+            Handles.color = lastValidation.IsValid ? new Color(0.1f, 0.9f, 1f) : Color.red;
+            Handles.Label(lastPlacement.Position + Vector3.up * 0.4f, lastValidation.IsValid ? "Click to place spawn location" : lastValidation.Message);
+
+            if (current.type == EventType.MouseDown && current.button == 0 && !current.alt)
+            {
+                if (lastValidation.IsValid)
+                {
+                    PlaceReinforcementLocation();
+                }
+                else
+                {
+                    statusMessage = lastValidation.Message;
+                }
+
+                current.Use();
+            }
+
+            sceneView.Repaint();
+        }
+
+        private void PlaceReinforcementLocation()
+        {
+            GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(reinforcementLocationDefinition.Prefab, world.transform);
+            Undo.RegisterCreatedObjectUndo(instance, "Place Reinforcement Location");
+            instance.transform.SetPositionAndRotation(lastPlacement.Position, lastPlacement.Rotation);
+            HouseBuilderObject builderObject = world.RegisterPlaceable(instance, reinforcementLocationDefinition);
+            HouseReinforcementLocation location = instance.GetComponent<HouseReinforcementLocation>();
+            location.Configure(reinforcementTrigger.InstanceId, reinforcementLocationChoices.Select(definition => definition.Id));
+            instance.name = $"Reinforcement Location - {reinforcementLocationChoices[0].DisplayName}";
+            Selection.activeObject = builderObject.gameObject;
+            statusMessage = "Placed reinforcement location. Click to place another, or press Esc to finish.";
+            MarkSceneDirty();
+        }
+
+        private void ClearReinforcementLocationPlacement()
+        {
+            placingReinforcementLocations = false;
+            reinforcementTrigger = null;
+            reinforcementLocationChoices.Clear();
         }
 
         private static void DrawEraseHighlight(HouseBuilderObject target)

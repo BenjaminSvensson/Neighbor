@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Neighbor.Main.HouseBuilder;
 using Neighbor.Main.HouseBuilder.Editor;
+using Neighbor.Main.Features.Neighbor;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -293,6 +294,59 @@ namespace Neighbor.Main.Tests
 
             Assert.That(floor.Placement.RequireSurface, Is.False);
             Assert.That(door.Placement.RequireSurface, Is.True);
+        }
+
+        [Test]
+        public void ReinforcementLocation_RoundTripsStableTriggerLinkAndSelections()
+        {
+            HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(HouseBuilderAssetInstaller.DefaultCatalogPath);
+            Assert.That(catalog, Is.Not.Null);
+            Assert.That(catalog.TryGetPlaceable("neighbor.ai.reinforcement_trigger.reinforcementtrigger", out HousePlaceableDefinition triggerDefinition), Is.True);
+            Assert.That(catalog.TryGetPlaceable("neighbor.ai.reinforcement_location.reinforcementlocation", out HousePlaceableDefinition locationDefinition), Is.True);
+            Assert.That(catalog.TryGetPlaceable("neighbor.ai.reinforcement.securitycamerareinforcement", out HousePlaceableDefinition reinforcementDefinition), Is.True);
+
+            GameObject worldObject = Track(new GameObject("World"));
+            HouseBuilderWorld world = worldObject.AddComponent<HouseBuilderWorld>();
+            world.Configure(catalog);
+            GameObject triggerObject = world.CreatePlaceable(triggerDefinition, Vector3.zero, Quaternion.identity);
+            HouseBuilderObject trigger = triggerObject.GetComponent<HouseBuilderObject>();
+            string triggerId = trigger.InstanceId;
+            GameObject locationObject = world.CreatePlaceable(locationDefinition, Vector3.right * 3f, Quaternion.Euler(0f, 45f, 0f));
+            HouseReinforcementLocation location = locationObject.GetComponent<HouseReinforcementLocation>();
+            location.Configure(triggerId, new[] { reinforcementDefinition.Id });
+
+            world.LoadFromJson(world.SaveToJson());
+
+            HouseReinforcementLocation loaded = world.GetComponentInChildren<HouseReinforcementLocation>();
+            Assert.That(loaded, Is.Not.Null);
+            Assert.That(loaded.TriggerInstanceId, Is.EqualTo(triggerId));
+            Assert.That(loaded.ReinforcementDefinitionIds, Is.EquivalentTo(new[] { reinforcementDefinition.Id }));
+        }
+
+        [Test]
+        public void ReinforcementTrigger_SelectsLinkedBuilderLocationAsSpawnAnchor()
+        {
+            HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(HouseBuilderAssetInstaller.DefaultCatalogPath);
+            Assert.That(catalog.TryGetPlaceable("neighbor.ai.reinforcement_trigger.reinforcementtrigger", out HousePlaceableDefinition triggerDefinition), Is.True);
+            Assert.That(catalog.TryGetPlaceable("neighbor.ai.reinforcement_location.reinforcementlocation", out HousePlaceableDefinition locationDefinition), Is.True);
+            Assert.That(catalog.TryGetPlaceable("neighbor.ai.reinforcement.securitycamerareinforcement", out HousePlaceableDefinition reinforcementDefinition), Is.True);
+
+            GameObject worldObject = Track(new GameObject("World"));
+            HouseBuilderWorld world = worldObject.AddComponent<HouseBuilderWorld>();
+            world.Configure(catalog);
+            GameObject triggerObject = world.CreatePlaceable(triggerDefinition, Vector3.zero, Quaternion.identity);
+            GameObject locationObject = world.CreatePlaceable(locationDefinition, Vector3.right * 3f, Quaternion.identity);
+            locationObject.GetComponent<HouseReinforcementLocation>().Configure(
+                triggerObject.GetComponent<HouseBuilderObject>().InstanceId,
+                new[] { reinforcementDefinition.Id });
+
+            bool found = triggerObject.GetComponent<ReinforcementTrigger>().TryGetConfiguredBuilderReinforcement(
+                new ReinforcementBudget(10),
+                out ReinforcementPrefabSelection selection);
+
+            Assert.That(found, Is.True);
+            Assert.That(selection.Anchor, Is.EqualTo(locationObject.transform));
+            Assert.That(selection.Prefab, Is.EqualTo(reinforcementDefinition.Prefab));
         }
 
         private T Track<T>(T value) where T : Object

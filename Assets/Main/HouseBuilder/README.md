@@ -37,6 +37,18 @@ Placement supports grid, surface, edge, corner, and rotation snapping. These opt
 
 Ground-based assets such as starter structures, furniture, props, and AI markers can be placed on the snapped build grid when no collider surface is available. Wall- and ceiling-mounted assets still require the appropriate real surface.
 
+### Reinforcement Trigger Workflow
+
+Placing a `Reinforcement Trigger` immediately opens a reinforcement picker. Check every reinforcement that the trigger may spawn, then choose **Place Locations**. The Scene view switches directly into repeatable reinforcement-location placement:
+
+- the first selected reinforcement is shown as the placement ghost and as a cyan preview on every saved location;
+- each location stores the complete checked reinforcement set and a stable link to its trigger;
+- left-click keeps placing more locations;
+- `Q`/`E` rotates the location;
+- `Esc` finishes location placement.
+
+At runtime, the existing `ReinforcementTrigger` gameplay system chooses an affordable configured reinforcement and spawns it at one of its linked locations. Save/load preserves trigger links, selected definitions, transforms, and previews. Erasing a trigger through Place mode also erases its linked locations.
+
 ### Starter Structures
 
 The default catalog includes ready-to-place `Basic Wall`, `Basic Floor`, and `Basic Ceiling` prefabs under `Assets/Main/HouseBuilder/Prefabs/Structures`. Their visible meshes are persistent assets under `Assets/Main/HouseBuilder/Meshes/Structures`, so the prefabs are immediately visible in the Project and Prefab views. They use the same parametric geometry, face-painting, wall-opening, snapping, and serialization systems as shapes created with the Draw tool.
@@ -107,7 +119,7 @@ The default catalog reuses the project's existing:
 - `ReinforcementTrigger`;
 - reinforcement prefabs.
 
-It also supplies `HouseNeighborSpawnPoint` and `HousePatrolPoint` marker prefabs. Scalar per-instance MonoBehaviour configuration is captured automatically in the JSON document. Components with specialized state or migration needs can implement `IHouseBuilderSerializable`.
+It also supplies `HouseNeighborSpawnPoint`, `HousePatrolPoint`, and linked `HouseReinforcementLocation` marker prefabs. Scalar per-instance MonoBehaviour configuration is captured automatically in the JSON document. Components with specialized state or migration needs can implement `IHouseBuilderSerializable`.
 
 ## Save Format
 

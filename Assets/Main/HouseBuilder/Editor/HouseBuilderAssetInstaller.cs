@@ -11,7 +11,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
         public const string RootPath = "Assets/Main/HouseBuilder";
         public const string DataPath = RootPath + "/Data";
         public const string DefaultCatalogPath = DataPath + "/DefaultHouseBuilderCatalog.asset";
-        private const int InstallerVersion = 6;
+        private const int InstallerVersion = 8;
         private const string InstallerVersionKey = "Neighbor.HouseBuilder.DefaultAssetsVersion";
         private const string CategoryPath = DataPath + "/Categories";
         private const string DefinitionPath = DataPath + "/Placeables";
@@ -45,6 +45,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 CreateCategory("PatrolPoints", HouseBuilderCategories.PatrolPoint, "Patrol Points", new Color(0.1f, 0.95f, 0.7f)),
                 CreateCategory("ReinforcementTriggers", HouseBuilderCategories.ReinforcementTrigger, "Reinforcement Triggers", new Color(1f, 0.2f, 0.12f)),
                 CreateCategory("Reinforcements", HouseBuilderCategories.Reinforcement, "Reinforcements", new Color(0.9f, 0.2f, 0.55f)),
+                CreateCategory("ReinforcementLocations", HouseBuilderCategories.ReinforcementLocation, "Reinforcement Locations", new Color(0.1f, 0.9f, 1f)),
                 CreateCategory("NeighborSpawnPoints", HouseBuilderCategories.NeighborSpawnPoint, "Neighbor Spawn Points", new Color(0.75f, 0.2f, 1f)),
                 CreateCategory("Wiring", HouseBuilderCategories.Wiring, "Wiring", new Color(1f, 0.85f, 0.1f))
             };
@@ -106,6 +107,10 @@ namespace Neighbor.Main.HouseBuilder.Editor
             GameObject patrolPrefab = CreateMarkerPrefab("PatrolPoint", typeof(HousePatrolPoint));
             AddDefinition(placeables, "PatrolPoint", "Patrol Point", HouseBuilderCategories.PatrolPoint, patrolPrefab,
                 HouseSurfaceType.Ground, HouseSurfaceAlignment.None);
+
+            GameObject reinforcementLocationPrefab = CreateMarkerPrefab("ReinforcementLocation", typeof(HouseReinforcementLocation));
+            AddDefinition(placeables, "ReinforcementLocation", "Reinforcement Location", HouseBuilderCategories.ReinforcementLocation, reinforcementLocationPrefab,
+                HouseSurfaceType.Ground, HouseSurfaceAlignment.None, boundsSize: Vector3.one * 0.25f, hideFromCatalog: true);
 
             ConfigureWirePorts("LightSwitch", new WirePortSetup("state", "State", HouseWirePortDirection.Output, HouseSignalKind.Bool, new Vector3(0f, 0.15f, 0.08f)));
             ConfigureWirePorts("CeilingLight", new WirePortSetup("power", "Power", HouseWirePortDirection.Input, HouseSignalKind.Bool, Vector3.down * 0.1f));
@@ -233,12 +238,13 @@ namespace Neighbor.Main.HouseBuilder.Editor
             Vector3 openingSize = default,
             Vector3 openingCenter = default,
             Vector3 placementOffset = default,
-            Vector3 boundsSize = default)
+            Vector3 boundsSize = default,
+            bool hideFromCatalog = false)
         {
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
             if (prefab != null)
             {
-                AddDefinition(output, fileName, displayName, categoryId, prefab, surfaces, alignment, opening, openingSize, openingCenter, placementOffset, boundsSize);
+                AddDefinition(output, fileName, displayName, categoryId, prefab, surfaces, alignment, opening, openingSize, openingCenter, placementOffset, boundsSize, hideFromCatalog);
             }
         }
 
@@ -254,7 +260,8 @@ namespace Neighbor.Main.HouseBuilder.Editor
             Vector3 openingSize = default,
             Vector3 openingCenter = default,
             Vector3 placementOffset = default,
-            Vector3 boundsSize = default)
+            Vector3 boundsSize = default,
+            bool hideFromCatalog = false)
         {
             string path = $"{DefinitionPath}/{fileName}.asset";
             HousePlaceableDefinition definition = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(path);
@@ -275,6 +282,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
             serialized.FindProperty("displayName").stringValue = displayName;
             serialized.FindProperty("categoryId").stringValue = categoryId;
             serialized.FindProperty("prefab").objectReferenceValue = prefab;
+            serialized.FindProperty("hideFromCatalog").boolValue = hideFromCatalog;
 
             SerializedProperty placement = serialized.FindProperty("placement");
             placement.FindPropertyRelative("allowedSurfaces").intValue = (int)surfaces;

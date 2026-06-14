@@ -12,6 +12,7 @@ namespace Neighbor.Main.HouseBuilder
         [SerializeField] private string categoryId = HouseBuilderCategories.Prop;
         [SerializeField] private GameObject prefab;
         [SerializeField] private Texture2D preview;
+        [SerializeField] private bool hideFromCatalog;
         [SerializeField] private HousePlacementProfile placement = new();
         [SerializeField] private HouseWallOpeningProfile wallOpening = new();
         [SerializeField] private List<HouseWirePortTemplate> wirePorts = new();
@@ -22,6 +23,7 @@ namespace Neighbor.Main.HouseBuilder
         public string CategoryId => categoryId;
         public GameObject Prefab => prefab;
         public Texture2D Preview => preview;
+        public bool HideFromCatalog => hideFromCatalog;
         public HousePlacementProfile Placement => placement;
         public HouseWallOpeningProfile WallOpening => wallOpening;
         public IReadOnlyList<HouseWirePortTemplate> WirePorts => wirePorts;

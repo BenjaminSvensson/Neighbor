@@ -18,6 +18,7 @@ namespace Neighbor.Main.HouseBuilder
         public const string PatrolPoint = "ai.patrol_point";
         public const string ReinforcementTrigger = "ai.reinforcement_trigger";
         public const string Reinforcement = "ai.reinforcement";
+        public const string ReinforcementLocation = "ai.reinforcement_location";
         public const string NeighborSpawnPoint = "ai.neighbor_spawn_point";
         public const string Wiring = "wiring";
     }

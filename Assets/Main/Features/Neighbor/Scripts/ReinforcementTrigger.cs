@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Neighbor.Main.HouseBuilder;
 using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
@@ -48,11 +49,13 @@ namespace Neighbor.Main.Features.Neighbor
     {
         public GameObject Prefab { get; }
         public int Cost { get; }
+        public Transform Anchor { get; }
 
-        public ReinforcementPrefabSelection(GameObject prefab, int cost)
+        public ReinforcementPrefabSelection(GameObject prefab, int cost, Transform anchor = null)
         {
             Prefab = prefab;
             Cost = Mathf.Max(1, cost);
+            Anchor = anchor;
         }
     }
 
@@ -186,6 +189,11 @@ namespace Neighbor.Main.Features.Neighbor
             }
         }
 
+        public bool TryGetConfiguredBuilderReinforcement(ReinforcementBudget budget, out ReinforcementPrefabSelection selection)
+        {
+            return TryGetBuilderLocationSelection(budget, true, out selection, out _);
+        }
+
         private bool CanSpawnReinforcement(ReinforcementBudget budget)
         {
             return HasConfiguredReinforcement()
@@ -200,7 +208,7 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
-            Transform anchor = spawnPoint != null ? spawnPoint : transform;
+            Transform anchor = selection.Anchor != null ? selection.Anchor : spawnPoint != null ? spawnPoint : transform;
             Quaternion rotation = anchor.rotation;
             if (randomizeYaw)
             {
@@ -258,6 +266,16 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
+            if (TryGetBuilderLocationSelection(budget, allowSecurityCamera, out selection, out bool hasBuilderLocations))
+            {
+                return true;
+            }
+
+            if (hasBuilderLocations)
+            {
+                return false;
+            }
+
             if (allowSecurityCamera
                 && (SecurityCamera.NeighborPlacedCameraCount == 0 || Random.value <= securityCameraPlacementChance)
                 && CanUsePrefab(securityCameraPrefab, true)
@@ -300,6 +318,11 @@ namespace Neighbor.Main.Features.Neighbor
 
         private bool HasConfiguredReinforcement()
         {
+            if (HasBuilderLocations())
+            {
+                return true;
+            }
+
             if (securityCameraPrefab != null)
             {
                 return true;
@@ -324,6 +347,69 @@ namespace Neighbor.Main.Features.Neighbor
                     {
                         return true;
                     }
+                }
+            }
+
+            return false;
+        }
+
+        private bool TryGetBuilderLocationSelection(
+            ReinforcementBudget budget,
+            bool allowSecurityCamera,
+            out ReinforcementPrefabSelection selection,
+            out bool hasBuilderLocations)
+        {
+            selection = default;
+            hasBuilderLocations = false;
+            HouseBuilderObject owner = GetComponent<HouseBuilderObject>();
+            HouseBuilderWorld world = GetComponentInParent<HouseBuilderWorld>();
+            if (owner == null || world == null || world.Catalog == null)
+            {
+                return false;
+            }
+
+            HouseReinforcementLocation[] locations = world.GetComponentsInChildren<HouseReinforcementLocation>(true);
+            int startIndex = locations.Length > 0 ? Random.Range(0, locations.Length) : 0;
+            for (int i = 0; i < locations.Length; i++)
+            {
+                HouseReinforcementLocation location = locations[(startIndex + i) % locations.Length];
+                if (location == null || !location.IsLinkedTo(owner.InstanceId))
+                {
+                    continue;
+                }
+
+                hasBuilderLocations = true;
+                List<HousePlaceableDefinition> definitions = new(location.ResolveDefinitions(world.Catalog));
+                int definitionStartIndex = definitions.Count > 0 ? Random.Range(0, definitions.Count) : 0;
+                for (int definitionIndex = 0; definitionIndex < definitions.Count; definitionIndex++)
+                {
+                    HousePlaceableDefinition definition = definitions[(definitionStartIndex + definitionIndex) % definitions.Count];
+                    if (definition?.Prefab != null && CanUsePrefab(definition.Prefab, allowSecurityCamera) && budget.CanAfford(1))
+                    {
+                        selection = new ReinforcementPrefabSelection(definition.Prefab, 1, location.transform);
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private bool HasBuilderLocations()
+        {
+            HouseBuilderObject owner = GetComponent<HouseBuilderObject>();
+            HouseBuilderWorld world = GetComponentInParent<HouseBuilderWorld>();
+            if (owner == null || world == null)
+            {
+                return false;
+            }
+
+            HouseReinforcementLocation[] locations = world.GetComponentsInChildren<HouseReinforcementLocation>(true);
+            for (int i = 0; i < locations.Length; i++)
+            {
+                if (locations[i] != null && locations[i].IsLinkedTo(owner.InstanceId))
+                {
+                    return true;
                 }
             }
 
