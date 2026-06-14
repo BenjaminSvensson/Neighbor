@@ -179,6 +179,16 @@ namespace Neighbor.Main.Features.Interaction
             body.MoveRotation(Quaternion.Slerp(body.rotation, targetRotation, rotationStep));
         }
 
+        public void SnapHeldPose(Vector3 targetPosition, Quaternion targetRotation)
+        {
+            if (!IsHeld || body == null)
+            {
+                return;
+            }
+
+            SetBodyPose(targetPosition, targetRotation);
+        }
+
         public void Drop()
         {
             RestoreInventoryState();

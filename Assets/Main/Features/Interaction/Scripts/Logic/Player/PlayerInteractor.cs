@@ -293,6 +293,7 @@ namespace Neighbor.Main.Features.Interaction
             inventorySlots[activeInventorySlot] = pickupable;
             heldPickup = pickupable;
             heldPickup.Pickup(this);
+            heldPickup.SnapHeldPose(GetHoldPosition(heldPickup), ViewTransform.rotation);
             PickupStarted?.Invoke();
         }
 

@@ -115,6 +115,27 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void PlayerPickup_SnapsItemToHandsBeforeGrabAnimationStarts()
+        {
+            GameObject interactorObject = context.CreateObject("PlayerInteractor");
+            PlayerInteractor interactor = interactorObject.AddComponent<PlayerInteractor>();
+            Transform holdPoint = context.CreateObject("MediumHoldPoint").transform;
+            holdPoint.SetPositionAndRotation(new Vector3(2f, 3f, 4f), Quaternion.Euler(10f, 20f, 30f));
+            GameplaySmokeTestReflection.SetField(interactor, "mediumHoldPoint", holdPoint);
+            GameplaySmokeTestReflection.SetField(interactor, "holdObstructionRadius", 0f);
+
+            Pickupable pickup = CreatePickup("Pickup");
+            pickup.transform.position = new Vector3(-10f, -10f, -10f);
+            Vector3 positionWhenAnimationStarted = Vector3.zero;
+            interactor.PickupStarted += () => positionWhenAnimationStarted = pickup.transform.position;
+
+            interactor.Pickup(pickup);
+
+            Assert.That(pickup.transform.position, Is.EqualTo(holdPoint.position));
+            Assert.That(positionWhenAnimationStarted, Is.EqualTo(holdPoint.position));
+        }
+
+        [Test]
         public void MatchingInventoryPickup_AutoEquipsSilentlyAfterActionDelay()
         {
             GameObject interactorObject = context.CreateObject("PlayerInteractor");
