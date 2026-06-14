@@ -659,9 +659,8 @@ namespace Neighbor.Main.HouseBuilder.Editor
         {
             Event current = Event.current;
             HandleUtility.AddDefaultControl(GUIUtility.GetControlID(FocusType.Passive));
-            DrawSceneBanner(sceneView, $"Placing {placingDefinition.DisplayName}", "Left click: place another    Q/E: rotate    Esc or right click: stop");
-            if (current.type == EventType.KeyDown && current.keyCode == KeyCode.Escape
-                || current.type == EventType.MouseDown && current.button == 1)
+            DrawSceneBanner(sceneView, $"Placing {placingDefinition.DisplayName}", "Left click: place    Right click/drag: erase matching    Q/E: rotate    Esc: stop");
+            if (current.type == EventType.KeyDown && current.keyCode == KeyCode.Escape)
             {
                 CancelPlacement();
                 current.Use();
@@ -676,6 +675,34 @@ namespace Neighbor.Main.HouseBuilder.Editor
             }
 
             Ray ray = HandleUtility.GUIPointToWorldRay(current.mousePosition);
+            bool canErase = HouseBuilderEditorInteractionUtility.TryPickMatchingPlacedObject(
+                ray,
+                placementSettings.SurfaceMask,
+                world != null ? world.transform : null,
+                ghostObject,
+                placingDefinition.Id,
+                out HouseBuilderObject eraseTarget);
+            if (canErase)
+            {
+                DrawEraseHighlight(eraseTarget);
+            }
+
+            if ((current.type == EventType.MouseDown || current.type == EventType.MouseDrag) && current.button == 1 && !current.alt)
+            {
+                if (canErase)
+                {
+                    ErasePlacedObject(eraseTarget);
+                }
+                else
+                {
+                    statusMessage = $"Point at a placed {placingDefinition.DisplayName} to erase it.";
+                }
+
+                current.Use();
+                sceneView.Repaint();
+                return;
+            }
+
             bool hasSurface = TryRaycastSurface(ray, out RaycastHit hit);
             Vector3 fallback = GetFallbackPosition(ray);
             lastPlacement = HouseBuilderSnapUtility.Calculate(
@@ -1043,6 +1070,66 @@ namespace Neighbor.Main.HouseBuilder.Editor
             statusMessage = "Placement stopped.";
             SceneView.RepaintAll();
             Repaint();
+        }
+
+        private void ErasePlacedObject(HouseBuilderObject target)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            string displayName = placingDefinition != null ? placingDefinition.DisplayName : target.name;
+            string actionName = $"Erase {displayName}";
+            HouseWallOpeningLink openingLink = target.GetComponent<HouseWallOpeningLink>();
+            if (openingLink != null && openingLink.Wall != null)
+            {
+                Undo.RecordObject(openingLink.Wall, actionName);
+            }
+
+            if (world != null && world.WireGraph != null)
+            {
+                Undo.RecordObject(world.WireGraph, actionName);
+                world.WireGraph.RemoveConnectionsForObject(target.InstanceId);
+            }
+
+            Undo.DestroyObjectImmediate(target.gameObject);
+            statusMessage = $"Erased {displayName}. Keep holding right-click to erase more.";
+            MarkSceneDirty();
+            Repaint();
+        }
+
+        private static void DrawEraseHighlight(HouseBuilderObject target)
+        {
+            Renderer[] renderers = target.GetComponentsInChildren<Renderer>(true);
+            Collider[] colliders = target.GetComponentsInChildren<Collider>(true);
+            Bounds bounds = new(target.transform.position, Vector3.one * 0.25f);
+            bool hasBounds = false;
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                bounds = Encapsulate(bounds, renderers[i].bounds, ref hasBounds);
+            }
+
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                bounds = Encapsulate(bounds, colliders[i].bounds, ref hasBounds);
+            }
+
+            Handles.color = new Color(1f, 0.2f, 0.1f);
+            Handles.DrawWireCube(bounds.center, bounds.size);
+            Handles.Label(bounds.center + Vector3.up * (bounds.extents.y + 0.2f), "Right click to erase");
+        }
+
+        private static Bounds Encapsulate(Bounds current, Bounds addition, ref bool hasBounds)
+        {
+            if (!hasBounds)
+            {
+                hasBounds = true;
+                return addition;
+            }
+
+            current.Encapsulate(addition);
+            return current;
         }
 
         private void DestroyGhost()

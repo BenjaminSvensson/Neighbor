@@ -11,13 +11,14 @@ namespace Neighbor.Main.HouseBuilder.Editor
         public const string RootPath = "Assets/Main/HouseBuilder";
         public const string DataPath = RootPath + "/Data";
         public const string DefaultCatalogPath = DataPath + "/DefaultHouseBuilderCatalog.asset";
-        private const int InstallerVersion = 5;
+        private const int InstallerVersion = 6;
         private const string InstallerVersionKey = "Neighbor.HouseBuilder.DefaultAssetsVersion";
         private const string CategoryPath = DataPath + "/Categories";
         private const string DefinitionPath = DataPath + "/Placeables";
         private const string MaterialPath = DataPath + "/Materials";
         private const string PrefabPath = RootPath + "/Prefabs";
         private const string StructurePrefabPath = PrefabPath + "/Structures";
+        private const string StructureMeshPath = RootPath + "/Meshes/Structures";
 
         static HouseBuilderAssetInstaller()
         {
@@ -183,6 +184,8 @@ namespace Neighbor.Main.HouseBuilder.Editor
             EnsureFolder(DataPath, "Materials");
             EnsureFolder(RootPath, "Prefabs");
             EnsureFolder(PrefabPath, "Structures");
+            EnsureFolder(RootPath, "Meshes");
+            EnsureFolder(RootPath + "/Meshes", "Structures");
         }
 
         private static void EnsureFolder(string parent, string child)
@@ -365,23 +368,57 @@ namespace Neighbor.Main.HouseBuilder.Editor
         private static GameObject CreateStructurePrefab(string name, HouseGeometryKind kind, Vector3 size, Material material)
         {
             string path = $"{StructurePrefabPath}/{name}.prefab";
+            Mesh persistentMesh = CreateOrUpdateStructureMesh(name, kind, size);
             GameObject existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             HouseGeometryObject existingGeometry = existing != null ? existing.GetComponent<HouseGeometryObject>() : null;
-            if (existingGeometry != null && existingGeometry.Descriptor.Kind == kind && existingGeometry.Descriptor.Size == size)
+            if (existingGeometry == null || existingGeometry.Descriptor.Kind != kind || existingGeometry.Descriptor.Size != size)
             {
-                return existing;
+                if (existing != null)
+                {
+                    AssetDatabase.DeleteAsset(path);
+                }
+
+                GameObject temporary = HouseGeometryFactory.Create(new HouseGeometryDescriptor(kind, size), material);
+                temporary.name = name;
+                PrefabUtility.SaveAsPrefabAsset(temporary, path);
+                Object.DestroyImmediate(temporary);
             }
 
-            if (existing != null)
+            GameObject prefabContents = PrefabUtility.LoadPrefabContents(path);
+            try
             {
-                AssetDatabase.DeleteAsset(path);
+                MeshFilter filter = prefabContents.GetComponent<MeshFilter>();
+                MeshCollider collider = prefabContents.GetComponent<MeshCollider>();
+                filter.sharedMesh = persistentMesh;
+                collider.sharedMesh = persistentMesh;
+                PrefabUtility.SaveAsPrefabAsset(prefabContents, path);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(prefabContents);
             }
 
-            GameObject temporary = HouseGeometryFactory.Create(new HouseGeometryDescriptor(kind, size), material);
-            temporary.name = name;
-            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(temporary, path);
-            Object.DestroyImmediate(temporary);
-            return prefab;
+            return AssetDatabase.LoadAssetAtPath<GameObject>(path);
+        }
+
+        private static Mesh CreateOrUpdateStructureMesh(string name, HouseGeometryKind kind, Vector3 size)
+        {
+            string path = $"{StructureMeshPath}/{name}.asset";
+            Mesh generated = HouseGeometryFactory.BuildMesh(new HouseGeometryDescriptor(kind, size));
+            generated.name = name;
+
+            Mesh persistent = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+            if (persistent == null)
+            {
+                AssetDatabase.CreateAsset(generated, path);
+                return generated;
+            }
+
+            EditorUtility.CopySerialized(generated, persistent);
+            persistent.name = name;
+            EditorUtility.SetDirty(persistent);
+            Object.DestroyImmediate(generated);
+            return persistent;
         }
 
         private static void AddMaterialIfPresent(ICollection<HouseMaterialDefinition> output, string fileName, string displayName, string materialPath)

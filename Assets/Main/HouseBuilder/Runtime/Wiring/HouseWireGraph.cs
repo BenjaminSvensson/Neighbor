@@ -72,6 +72,12 @@ namespace Neighbor.Main.HouseBuilder
 
         public bool RemoveConnection(string connectionId) => connections.RemoveAll(connection => connection.Id == connectionId) > 0;
 
+        public int RemoveConnectionsForObject(string objectId)
+        {
+            return connections.RemoveAll(connection =>
+                connection.OutputObjectId == objectId || connection.InputObjectId == objectId);
+        }
+
         public void SetConnections(IEnumerable<HouseWireConnection> values)
         {
             connections.Clear();

@@ -234,6 +234,55 @@ namespace Neighbor.Main.Tests
             Assert.That(preview.GetComponent<MeshCollider>().enabled, Is.False);
         }
 
+        [TestCase("BasicWall")]
+        [TestCase("BasicFloor")]
+        [TestCase("BasicCeiling")]
+        public void StarterPrefab_ContainsPersistentVisibleGeometry(string prefabName)
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                $"Assets/Main/HouseBuilder/Prefabs/Structures/{prefabName}.prefab");
+
+            Assert.That(prefab, Is.Not.Null);
+            Assert.That(prefab.GetComponent<MeshFilter>().sharedMesh, Is.Not.Null);
+            Assert.That(prefab.GetComponent<MeshCollider>().sharedMesh, Is.SameAs(prefab.GetComponent<MeshFilter>().sharedMesh));
+            Assert.That(AssetDatabase.Contains(prefab.GetComponent<MeshFilter>().sharedMesh), Is.True);
+        }
+
+        [Test]
+        public void PlacementEraser_OnlyPicksMatchingNearestPlacedObject()
+        {
+            GameObject world = Track(new GameObject("World"));
+            GameObject matching = Track(GameObject.CreatePrimitive(PrimitiveType.Cube));
+            matching.transform.SetParent(world.transform);
+            matching.AddComponent<HouseBuilderObject>().Initialize("definition.wall", HouseBuilderCategories.Wall);
+            Physics.SyncTransforms();
+
+            bool found = HouseBuilderEditorInteractionUtility.TryPickMatchingPlacedObject(
+                new Ray(new Vector3(0f, 0f, 5f), Vector3.back),
+                ~0,
+                world.transform,
+                null,
+                "definition.wall",
+                out HouseBuilderObject result);
+
+            Assert.That(found, Is.True);
+            Assert.That(result.gameObject, Is.EqualTo(matching));
+
+            GameObject different = Track(GameObject.CreatePrimitive(PrimitiveType.Cube));
+            different.transform.SetParent(world.transform);
+            different.transform.position = new Vector3(0f, 0f, 2f);
+            different.AddComponent<HouseBuilderObject>().Initialize("definition.chair", HouseBuilderCategories.Furniture);
+            Physics.SyncTransforms();
+
+            Assert.That(HouseBuilderEditorInteractionUtility.TryPickMatchingPlacedObject(
+                new Ray(new Vector3(0f, 0f, 5f), Vector3.back),
+                ~0,
+                world.transform,
+                null,
+                "definition.wall",
+                out _), Is.False);
+        }
+
         [Test]
         public void StarterPlacement_GroundAssetsCanUseGridButWallMountedAssetsRequireSurface()
         {

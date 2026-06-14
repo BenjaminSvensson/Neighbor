@@ -88,6 +88,44 @@ namespace Neighbor.Main.HouseBuilder.Editor
             return false;
         }
 
+        public static bool TryPickMatchingPlacedObject(
+            Ray ray,
+            LayerMask mask,
+            Transform worldRoot,
+            GameObject ignoredRoot,
+            string definitionId,
+            out HouseBuilderObject match)
+        {
+            RaycastHit[] hits = Physics.RaycastAll(ray, 10000f, mask, QueryTriggerInteraction.Collide);
+            Array.Sort(hits, (left, right) => left.distance.CompareTo(right.distance));
+            for (int i = 0; i < hits.Length; i++)
+            {
+                Transform hitTransform = hits[i].collider.transform;
+                if (ignoredRoot != null && hitTransform.IsChildOf(ignoredRoot.transform))
+                {
+                    continue;
+                }
+
+                HouseBuilderObject candidate = hitTransform.GetComponentInParent<HouseBuilderObject>();
+                if (candidate == null || worldRoot != null && !candidate.transform.IsChildOf(worldRoot))
+                {
+                    continue;
+                }
+
+                if (candidate.DefinitionId == definitionId)
+                {
+                    match = candidate;
+                    return true;
+                }
+
+                // A different placed object in front should prevent erasing through it.
+                break;
+            }
+
+            match = null;
+            return false;
+        }
+
         private static int ResolveMaterialIndex(RaycastHit hit)
         {
             if (hit.collider is not MeshCollider meshCollider || meshCollider.sharedMesh == null || hit.triangleIndex < 0)

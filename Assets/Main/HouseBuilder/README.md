@@ -25,7 +25,7 @@ Every placed object has a stable `HouseBuilderObject.InstanceId`. Definitions, m
 
 1. Open the House Builder Level Editor.
 2. Create or assign a `HouseBuilderWorld`.
-3. Use **Place** and click an asset card. Move into Scene view and left-click to place copies. Press `Q`/`E` to rotate and `Esc` to stop.
+3. Use **Place** and click an asset card. Move into Scene view and left-click to place copies. Right-click or hold and drag right-click over matching placed objects to erase them. Press `Q`/`E` to rotate and `Esc` to stop.
 4. Use **Draw** to create walls, floors, ceilings, doorway blocks, window blocks, ramps, stairs, and blocks. Click-drag to size the shape directly in Scene view.
 5. Select a generated shape while the **Draw** tab is open to resize it with direct Scene handles or friendly dimension fields.
 6. Use **Paint** to choose a material and click-drag over the actual faces in Scene view. Material cards and normal Unity Material assets can also be dragged directly onto a face.
@@ -39,7 +39,7 @@ Ground-based assets such as starter structures, furniture, props, and AI markers
 
 ### Starter Structures
 
-The default catalog includes ready-to-place `Basic Wall`, `Basic Floor`, and `Basic Ceiling` prefabs under `Assets/Main/HouseBuilder/Prefabs/Structures`. They use the same parametric geometry, face-painting, wall-opening, snapping, and serialization systems as shapes created with the Draw tool.
+The default catalog includes ready-to-place `Basic Wall`, `Basic Floor`, and `Basic Ceiling` prefabs under `Assets/Main/HouseBuilder/Prefabs/Structures`. Their visible meshes are persistent assets under `Assets/Main/HouseBuilder/Meshes/Structures`, so the prefabs are immediately visible in the Project and Prefab views. They use the same parametric geometry, face-painting, wall-opening, snapping, and serialization systems as shapes created with the Draw tool.
 
 ## Automatic Door And Window Holes
 

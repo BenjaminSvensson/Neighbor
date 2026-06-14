@@ -119,6 +119,221 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1001 &273522860
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 908822767}
+    m_Modifications:
+    - target: {fileID: 100000, guid: 97aa4aa1d43e4691b145da794a2a90ee, type: 3}
+      propertyPath: m_Name
+      value: PlaceholderChair
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 97aa4aa1d43e4691b145da794a2a90ee, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -3.25
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 97aa4aa1d43e4691b145da794a2a90ee, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 97aa4aa1d43e4691b145da794a2a90ee, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -2.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 97aa4aa1d43e4691b145da794a2a90ee, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.8660254
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 97aa4aa1d43e4691b145da794a2a90ee, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 97aa4aa1d43e4691b145da794a2a90ee, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.50000006
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 97aa4aa1d43e4691b145da794a2a90ee, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 97aa4aa1d43e4691b145da794a2a90ee, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 97aa4aa1d43e4691b145da794a2a90ee, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 97aa4aa1d43e4691b145da794a2a90ee, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: 97aa4aa1d43e4691b145da794a2a90ee, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 273522863}
+  m_SourcePrefab: {fileID: 100100000, guid: 97aa4aa1d43e4691b145da794a2a90ee, type: 3}
+--- !u!4 &273522861 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 100001, guid: 97aa4aa1d43e4691b145da794a2a90ee, type: 3}
+  m_PrefabInstance: {fileID: 273522860}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &273522862 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 100000, guid: 97aa4aa1d43e4691b145da794a2a90ee, type: 3}
+  m_PrefabInstance: {fileID: 273522860}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &273522863
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 273522862}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
+  instanceId: 8e0c2d8a65fe44eb89d2e06b2db30eab
+  definitionId: neighbor.furniture.chair
+  categoryId: furniture
+  properties: []
+--- !u!1001 &486826457
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 908822767}
+    m_Modifications:
+    - target: {fileID: 100000, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
+      propertyPath: m_Name
+      value: PlaceholderDoorbell
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -2.75
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.75
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -2.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.8660254
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.50000006
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 486826462}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 486826461}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 486826460}
+  m_SourcePrefab: {fileID: 100100000, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
+--- !u!4 &486826458 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 100001, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
+  m_PrefabInstance: {fileID: 486826457}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &486826459 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 100000, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
+  m_PrefabInstance: {fileID: 486826457}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &486826460
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 486826459}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d805329da59bf1544b0003d63e18b7ed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireOutputRelay
+  endpoint: {fileID: 486826461}
+  outputPortId: pressed
+--- !u!114 &486826461
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 486826459}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d2834eb53930484bb39749e568c6ec5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireEndpoint
+  endpointId: neighbor.wiring.doorbell.endpoint
+  ports:
+  - id: pressed
+    displayName: Pressed
+    direction: 1
+    signalKind: 1
+    maximumConnections: 0
+    visualOffset: {x: 0, y: 0.15, z: 0}
+    onSignalReceived:
+      m_PersistentCalls:
+        m_Calls: []
+--- !u!114 &486826462
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 486826459}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
+  instanceId: e956a973bb244295ab3857bfa80218d0
+  definitionId: neighbor.wiring.doorbell
+  categoryId: wiring
+  properties: []
 --- !u!1 &663236193
 GameObject:
   m_ObjectHideFlags: 0
@@ -272,6 +487,9 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1444660361}
+  - {fileID: 273522861}
+  - {fileID: 2035836119}
+  - {fileID: 486826458}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1444660360
@@ -487,6 +705,92 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
+--- !u!1001 &2035836118
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 908822767}
+    m_Modifications:
+    - target: {fileID: 100000, guid: e6fd9dc391be4fd3a429a64b641daf84, type: 3}
+      propertyPath: m_Name
+      value: PlaceholderWindowBlinds
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: e6fd9dc391be4fd3a429a64b641daf84, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -2
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: e6fd9dc391be4fd3a429a64b641daf84, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.75
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: e6fd9dc391be4fd3a429a64b641daf84, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: e6fd9dc391be4fd3a429a64b641daf84, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: e6fd9dc391be4fd3a429a64b641daf84, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: e6fd9dc391be4fd3a429a64b641daf84, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: e6fd9dc391be4fd3a429a64b641daf84, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: e6fd9dc391be4fd3a429a64b641daf84, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: e6fd9dc391be4fd3a429a64b641daf84, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: e6fd9dc391be4fd3a429a64b641daf84, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: e6fd9dc391be4fd3a429a64b641daf84, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2035836121}
+  m_SourcePrefab: {fileID: 100100000, guid: e6fd9dc391be4fd3a429a64b641daf84, type: 3}
+--- !u!4 &2035836119 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 100001, guid: e6fd9dc391be4fd3a429a64b641daf84, type: 3}
+  m_PrefabInstance: {fileID: 2035836118}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &2035836120 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 100000, guid: e6fd9dc391be4fd3a429a64b641daf84, type: 3}
+  m_PrefabInstance: {fileID: 2035836118}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2035836121
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2035836120}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
+  instanceId: 11f615202f9c494b92792cd483708c52
+  definitionId: neighbor.window.windowblinds
+  categoryId: window
+  properties: []
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
