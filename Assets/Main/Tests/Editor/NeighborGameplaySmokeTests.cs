@@ -104,6 +104,37 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void ObjectTask_ReservesAndProtectsMovableFurniture()
+        {
+            GameObject chair = context.CreateObject("ChairTask");
+            BoxCollider chairCollider = chair.AddComponent<BoxCollider>();
+            Rigidbody chairBody = chair.AddComponent<Rigidbody>();
+            NeighborTaskLocation task = context.AddInitializedComponent<NeighborTaskLocation>(chair);
+            GameplaySmokeTestReflection.SetField(task, "taskObjectRoot", chair);
+            GameplaySmokeTestReflection.SetField(task, "taskObjectBody", chairBody);
+            GameplaySmokeTestReflection.SetField(task, "ignoreTaskObjectCollisions", true);
+            GameplaySmokeTestReflection.SetField(task, "stabilizeTaskObject", true);
+
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            BoxCollider neighborCollider = neighborObject.AddComponent<BoxCollider>();
+            NeighborBrain neighbor = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            NeighborBrain otherNeighbor = context.AddInitializedComponent<NeighborBrain>();
+
+            Assert.That(task.TryReserve(neighbor), Is.True);
+            Assert.That(task.TryReserve(otherNeighbor), Is.False);
+            Assert.That(chairBody.isKinematic, Is.True);
+            Assert.That(chairBody.useGravity, Is.False);
+            Assert.That(Physics.GetIgnoreCollision(chairCollider, neighborCollider), Is.True);
+
+            task.EndTaskUse(neighbor, null);
+
+            Assert.That(chairBody.isKinematic, Is.False);
+            Assert.That(chairBody.useGravity, Is.True);
+            Assert.That(Physics.GetIgnoreCollision(chairCollider, neighborCollider), Is.False);
+            Assert.That(task.IsAvailable, Is.True);
+        }
+
+        [Test]
         public void Vision_RejectsPlayerAboveUpwardViewLimit()
         {
             NeighborVision vision = context.AddInitializedComponent<NeighborVision>();

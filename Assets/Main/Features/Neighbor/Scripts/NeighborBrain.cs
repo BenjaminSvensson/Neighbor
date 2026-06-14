@@ -261,6 +261,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void OnDisable()
         {
+            NeighborTaskLocation.ReleaseAllFor(this, motor);
             NeighborEnvironmentalAwareness.EnvironmentChanged -= HandleEnvironmentChanged;
             Door.UnexpectedlyOpened -= HandleUnexpectedDoorOpened;
             Door.Disturbed -= HandleDoorDisturbed;
@@ -868,6 +869,7 @@ namespace Neighbor.Main.Features.Neighbor
             if (currentState == BehaviorState.Task
                 && (currentTaskLocation == null || !currentTaskLocation.isActiveAndEnabled))
             {
+                NeighborTaskLocation.ReleaseAllFor(this, motor);
                 StopActiveTaskAudio();
                 ChooseNextRoutineGoal();
                 return;
@@ -1124,6 +1126,12 @@ namespace Neighbor.Main.Features.Neighbor
                 waitingAtGoal = true;
                 if (currentState == BehaviorState.Task)
                 {
+                    if (currentTaskLocation == null || !currentTaskLocation.BeginTaskUse(this, motor))
+                    {
+                        NeighborTaskLocation.ReleaseAllFor(this, motor);
+                        return true;
+                    }
+
                     BeginCurrentTaskAudio();
                     BeginTaskAnimationPhase(NeighborTaskLocation.TaskAnimationPhase.Starting);
                 }
@@ -1166,6 +1174,7 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             currentTaskAnimationPhase = NeighborTaskLocation.TaskAnimationPhase.None;
+            currentTaskLocation?.EndTaskUse(this, motor);
             return true;
         }
 
@@ -1206,6 +1215,12 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
+            NeighborTaskLocation.ReleaseAllFor(this, motor);
+            if (!taskLocation.TryReserve(this))
+            {
+                return false;
+            }
+
             lastTaskLocation = taskLocation;
             currentTaskLocation = taskLocation;
             goalWaitDuration = taskLocation.RandomWaitTime;
@@ -1217,6 +1232,7 @@ namespace Neighbor.Main.Features.Neighbor
                     taskLocation.NavigationSampleRadius,
                     out Vector3 sampledTaskPosition))
             {
+                taskLocation.EndTaskUse(this, motor);
                 currentTaskLocation = null;
                 return false;
             }
@@ -1226,6 +1242,7 @@ namespace Neighbor.Main.Features.Neighbor
             if (sampleOffset.sqrMagnitude > taskLocation.ArrivalDistance * taskLocation.ArrivalDistance)
             {
                 motor.Stop();
+                taskLocation.EndTaskUse(this, motor);
                 currentTaskLocation = null;
                 return false;
             }
@@ -1262,6 +1279,7 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 NeighborTaskLocation candidate = locations[i];
                 if (candidate == null
+                    || !candidate.IsAvailable
                     || blockedTaskUntilTimes.TryGetValue(candidate, out float blockedUntilTime)
                     && Time.time < blockedUntilTime)
                 {
@@ -1593,6 +1611,7 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (currentState == BehaviorState.Task && state != BehaviorState.Task)
             {
+                NeighborTaskLocation.ReleaseAllFor(this, motor);
                 currentTaskAnimationPhase = NeighborTaskLocation.TaskAnimationPhase.None;
                 StopActiveTaskAudio();
             }

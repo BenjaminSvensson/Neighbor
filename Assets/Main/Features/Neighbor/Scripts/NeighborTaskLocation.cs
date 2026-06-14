@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Neighbor.Main.Features.Interaction;
 using UnityEngine;
 
 namespace Neighbor.Main.Features.Neighbor
@@ -19,6 +20,14 @@ namespace Neighbor.Main.Features.Neighbor
             LoopUntilTaskFinished
         }
 
+        public enum ObjectTaskType
+        {
+            None,
+            Sit,
+            Sleep,
+            Repair
+        }
+
         private static readonly List<NeighborTaskLocation> ActiveLocations = new();
 
         [Header("Task")]
@@ -32,6 +41,19 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0.1f)] private float lookArrowLength = 1.2f;
         [SerializeField, Min(0.05f)] private float lookArrowHeadSize = 0.25f;
         [SerializeField] private Color lookArrowColor = new Color(0.1f, 0.85f, 1f, 0.9f);
+
+        [Header("Object Task")]
+        [SerializeField] private ObjectTaskType objectTaskType;
+        [SerializeField] private Transform navigationPoint;
+        [SerializeField] private Vector3 navigationLocalOffset;
+        [SerializeField] private Transform usePose;
+        [SerializeField] private Vector3 usePoseLocalOffset;
+        [SerializeField] private Vector3 usePoseLocalEulerAngles;
+        [SerializeField] private GameObject taskObjectRoot;
+        [SerializeField] private Rigidbody taskObjectBody;
+        [SerializeField] private bool anchorNeighborAtUsePose;
+        [SerializeField] private bool ignoreTaskObjectCollisions;
+        [SerializeField] private bool stabilizeTaskObject;
 
         [Header("Task Animation")]
         [Tooltip("Optional one-shot animation played after arriving, before the task begins.")]
@@ -58,15 +80,29 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0.1f)] private float audioMaxDistance = 12f;
 
         private AudioClip activeLoopClip;
+        private NeighborBrain reservedBy;
+        private Pickupable taskPickupable;
+        private Collider[] taskObjectColliders;
+        private Collider[] reservedNeighborColliders;
+        private bool taskUseActive;
+        private bool bodyStateCaptured;
+        private bool bodyWasKinematic;
+        private bool bodyWasUsingGravity;
 
-        public Vector3 Position => transform.position;
-        public Vector3 LookDirection => transform.forward;
+        public Vector3 Position => navigationPoint != null ? navigationPoint.position : transform.TransformPoint(navigationLocalOffset);
+        public Vector3 UsePosition => usePose != null ? usePose.position : transform.TransformPoint(usePoseLocalOffset);
+        public Quaternion UseRotation => usePose != null
+            ? usePose.rotation
+            : transform.rotation * Quaternion.Euler(usePoseLocalEulerAngles);
+        public Vector3 LookDirection => UseRotation * Vector3.forward;
         public float RandomWaitTime => Random.Range(minimumWaitTime, Mathf.Max(minimumWaitTime, maximumWaitTime));
         public bool CanRepeatImmediately => canRepeatImmediately;
         public float SelectionPriority => selectionPriority;
         public NeighborTaskLocation ForcedNextTask => forcedNextTask;
         public float ArrivalDistance => arrivalDistance;
         public float NavigationSampleRadius => navigationSampleRadius;
+        public ObjectTaskType TaskType => objectTaskType;
+        public bool IsAvailable => reservedBy == null && (taskPickupable == null || !taskPickupable.IsHeld);
         public static IReadOnlyList<NeighborTaskLocation> Locations => ActiveLocations;
 
         public AnimationClip GetAnimation(TaskAnimationPhase phase)
@@ -106,6 +142,7 @@ namespace Neighbor.Main.Features.Neighbor
         private void Awake()
         {
             ResolveAudioSource();
+            ResolveTaskObject();
         }
 
         private void OnEnable()
@@ -118,8 +155,84 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void OnDisable()
         {
+            ReleaseReservation(reservedBy, reservedBy != null ? reservedBy.GetComponent<NeighborMotor>() : null);
             ActiveLocations.Remove(this);
             StopTaskAudio();
+        }
+
+        private void Update()
+        {
+            if (ReferenceEquals(reservedBy, null))
+            {
+                return;
+            }
+
+            if (reservedBy == null
+                || reservedBy.CurrentState != NeighborBrain.BehaviorState.Task
+                || reservedBy.CurrentTaskLocation != this
+                || taskPickupable != null && taskPickupable.IsHeld)
+            {
+                NeighborMotor motor = reservedBy != null ? reservedBy.GetComponent<NeighborMotor>() : null;
+                ReleaseReservation(reservedBy, motor);
+            }
+        }
+
+        public bool TryReserve(NeighborBrain neighbor)
+        {
+            ResolveTaskObject();
+            if (!ReferenceEquals(reservedBy, null) && reservedBy == null)
+            {
+                ReleaseReservation(null, null);
+            }
+
+            if (neighbor == null
+                || reservedBy != null && reservedBy != neighbor
+                || taskPickupable != null && taskPickupable.IsHeld)
+            {
+                return false;
+            }
+
+            reservedBy = neighbor;
+            ApplyTaskObjectProtection(neighbor);
+            return true;
+        }
+
+        public bool BeginTaskUse(NeighborBrain neighbor, NeighborMotor motor)
+        {
+            if (neighbor == null || reservedBy != neighbor)
+            {
+                return false;
+            }
+
+            taskUseActive = true;
+            if (anchorNeighborAtUsePose)
+            {
+                motor?.BeginAnchoredTask(UsePosition, UseRotation);
+            }
+
+            return true;
+        }
+
+        public void EndTaskUse(NeighborBrain neighbor, NeighborMotor motor)
+        {
+            ReleaseReservation(neighbor, motor);
+        }
+
+        public static void ReleaseAllFor(NeighborBrain neighbor, NeighborMotor motor)
+        {
+            if (neighbor == null)
+            {
+                return;
+            }
+
+            for (int i = ActiveLocations.Count - 1; i >= 0; i--)
+            {
+                NeighborTaskLocation location = ActiveLocations[i];
+                if (location != null && location.reservedBy == neighbor)
+                {
+                    location.ReleaseReservation(neighbor, motor);
+                }
+            }
         }
 
         public void BeginTaskAudio()
@@ -202,8 +315,8 @@ namespace Neighbor.Main.Features.Neighbor
         {
             float arrowLength = Mathf.Max(0.1f, lookArrowLength);
             float arrowHeadSize = Mathf.Max(0.05f, lookArrowHeadSize);
-            Vector3 start = transform.position + Vector3.up * 0.08f;
-            Vector3 direction = transform.forward.sqrMagnitude > 0.001f ? transform.forward.normalized : Vector3.forward;
+            Vector3 start = Position + Vector3.up * 0.08f;
+            Vector3 direction = LookDirection.sqrMagnitude > 0.001f ? LookDirection.normalized : Vector3.forward;
             Vector3 end = start + direction * arrowLength;
 
             Color previousColor = Gizmos.color;
@@ -224,6 +337,97 @@ namespace Neighbor.Main.Features.Neighbor
             Gizmos.DrawLine(end, end + right * arrowHeadSize);
 
             Gizmos.color = previousColor;
+        }
+
+        private void ResolveTaskObject()
+        {
+            GameObject root = taskObjectRoot != null
+                ? taskObjectRoot
+                : gameObject;
+            taskPickupable = root.GetComponentInParent<Pickupable>() ?? root.GetComponentInChildren<Pickupable>();
+            taskObjectBody = taskObjectBody != null
+                ? taskObjectBody
+                : root.GetComponentInParent<Rigidbody>() ?? root.GetComponentInChildren<Rigidbody>();
+            taskObjectColliders = root.GetComponentsInChildren<Collider>(true);
+        }
+
+        private void ApplyTaskObjectProtection(NeighborBrain neighbor)
+        {
+            if (neighbor == null)
+            {
+                return;
+            }
+
+            if (ignoreTaskObjectCollisions)
+            {
+                reservedNeighborColliders = neighbor.GetComponentsInChildren<Collider>(true);
+                SetTaskCollisionIgnored(true);
+            }
+
+            if (stabilizeTaskObject && taskObjectBody != null && !bodyStateCaptured)
+            {
+                bodyWasKinematic = taskObjectBody.isKinematic;
+                bodyWasUsingGravity = taskObjectBody.useGravity;
+                bodyStateCaptured = true;
+                taskObjectBody.linearVelocity = Vector3.zero;
+                taskObjectBody.angularVelocity = Vector3.zero;
+                taskObjectBody.isKinematic = true;
+                taskObjectBody.useGravity = false;
+            }
+        }
+
+        private void ReleaseReservation(NeighborBrain neighbor, NeighborMotor motor)
+        {
+            if (ReferenceEquals(reservedBy, null) || neighbor != null && reservedBy != neighbor)
+            {
+                return;
+            }
+
+            if (taskUseActive && anchorNeighborAtUsePose)
+            {
+                Quaternion exitRotation = LookDirection.sqrMagnitude > 0.001f
+                    ? Quaternion.LookRotation(LookDirection, Vector3.up)
+                    : reservedBy != null ? reservedBy.transform.rotation : UseRotation;
+                motor?.EndAnchoredTask(Position, exitRotation);
+            }
+
+            SetTaskCollisionIgnored(false);
+            if (bodyStateCaptured && taskObjectBody != null)
+            {
+                taskObjectBody.isKinematic = bodyWasKinematic;
+                taskObjectBody.useGravity = bodyWasUsingGravity;
+            }
+
+            bodyStateCaptured = false;
+            taskUseActive = false;
+            reservedNeighborColliders = null;
+            reservedBy = null;
+        }
+
+        private void SetTaskCollisionIgnored(bool ignored)
+        {
+            if (taskObjectColliders == null || reservedNeighborColliders == null)
+            {
+                return;
+            }
+
+            for (int objectIndex = 0; objectIndex < taskObjectColliders.Length; objectIndex++)
+            {
+                Collider objectCollider = taskObjectColliders[objectIndex];
+                if (objectCollider == null || objectCollider.isTrigger)
+                {
+                    continue;
+                }
+
+                for (int neighborIndex = 0; neighborIndex < reservedNeighborColliders.Length; neighborIndex++)
+                {
+                    Collider neighborCollider = reservedNeighborColliders[neighborIndex];
+                    if (neighborCollider != null && neighborCollider != objectCollider)
+                    {
+                        Physics.IgnoreCollision(objectCollider, neighborCollider, ignored);
+                    }
+                }
+            }
         }
 
         private AudioClip GetTaskClip()

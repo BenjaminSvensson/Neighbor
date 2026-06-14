@@ -112,12 +112,14 @@ namespace Neighbor.Main.Features.Neighbor
         private Vector3 lastRecoveryPosition;
         private float lastRecoveryTime = float.NegativeInfinity;
         private TraversalAnimationPhase traversalAnimationPhase;
+        private bool isAnchoredForTask;
 
         public bool IsTraversingSpecialMove => traversalRoutine != null;
         public TraversalAnimationPhase CurrentTraversalAnimationPhase => traversalAnimationPhase;
         public bool IsOffMeshChasing => Time.time < offMeshChaseUntilTime;
         public bool IsDetachedFromNavMesh => agent != null && (!agent.updatePosition || !agent.isOnNavMesh);
         public bool IsPaused => isPaused;
+        public bool IsAnchoredForTask => isAnchoredForTask;
         public bool IsAvoidingDynamicObstacle => isAvoidingDynamicObstacle;
         public Vector3 DynamicObstacleDetour => dynamicObstacleDetour;
         public Vector3 RequestedDestination => requestedDestination;
@@ -148,6 +150,11 @@ namespace Neighbor.Main.Features.Neighbor
         private void Update()
         {
             if (agent == null)
+            {
+                return;
+            }
+
+            if (isAnchoredForTask)
             {
                 return;
             }
@@ -520,6 +527,7 @@ namespace Neighbor.Main.Features.Neighbor
             hasRequestedDestination = false;
             isAvoidingDynamicObstacle = false;
             isPaused = false;
+            isAnchoredForTask = false;
             ResetDestinationProgressTracking();
             offMeshChaseUntilTime = 0f;
 
@@ -554,6 +562,45 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             transform.rotation = rotation;
+        }
+
+        public void BeginAnchoredTask(Transform anchor)
+        {
+            if (anchor == null)
+            {
+                return;
+            }
+
+            BeginAnchoredTask(anchor.position, anchor.rotation);
+        }
+
+        public void BeginAnchoredTask(Vector3 position, Quaternion rotation)
+        {
+            Stop();
+            isAnchoredForTask = true;
+            isPaused = true;
+            if (agent != null && agent.enabled && agent.isOnNavMesh)
+            {
+                agent.isStopped = true;
+                agent.updatePosition = false;
+                agent.updateRotation = false;
+            }
+
+            transform.SetPositionAndRotation(position, rotation);
+            if (agent != null && agent.enabled)
+            {
+                agent.nextPosition = position;
+            }
+        }
+
+        public void EndAnchoredTask(Vector3 exitPosition, Quaternion exitRotation)
+        {
+            if (!isAnchoredForTask)
+            {
+                return;
+            }
+
+            ResetToPosition(exitPosition, exitRotation);
         }
 
         public void FaceTowards(Vector3 position, float turnSharpness)

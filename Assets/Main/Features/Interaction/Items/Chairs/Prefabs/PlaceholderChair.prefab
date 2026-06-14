@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 100004}
   - component: {fileID: 100005}
   - component: {fileID: 100006}
+  - component: {fileID: 9100000000000000001}
   m_Layer: 6
   m_Name: PlaceholderChair
   m_TagString: Untagged
@@ -171,6 +172,56 @@ MonoBehaviour:
   maximumVolume: 1
   pitchRandomness: 0.08
   generatedClipDuration: 0.16
+--- !u!114 &9100000000000000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6b8797e97910440e9c12f7f42f0a7c40, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Neighbor.NeighborTaskLocation
+  minimumWaitTime: 4
+  maximumWaitTime: 9
+  selectionPriority: 1.15
+  canRepeatImmediately: 0
+  forcedNextTask: {fileID: 0}
+  arrivalDistance: 0.7
+  navigationSampleRadius: 0.85
+  lookArrowLength: 1.2
+  lookArrowHeadSize: 0.25
+  lookArrowColor: {r: 0.1, g: 0.85, b: 1, a: 0.9}
+  objectTaskType: 1
+  navigationPoint: {fileID: 0}
+  navigationLocalOffset: {x: 0, y: 0, z: -0.95}
+  usePose: {fileID: 0}
+  usePoseLocalOffset: {x: 0, y: 0, z: 0}
+  usePoseLocalEulerAngles: {x: 0, y: 180, z: 0}
+  taskObjectRoot: {fileID: 100000}
+  taskObjectBody: {fileID: 100003}
+  anchorNeighborAtUsePose: 1
+  ignoreTaskObjectCollisions: 1
+  stabilizeTaskObject: 1
+  startTaskAnimation: {fileID: 7860179187555574969, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  startAnimationPlaybackSpeed: 1
+  taskAnimation: {fileID: -6676812269523803463, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  animationPlaybackSpeed: 1
+  endTaskAnimation: {fileID: 497093190674883199, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  endAnimationPlaybackSpeed: 1
+  audioSource: {fileID: 0}
+  taskStartClips: []
+  taskClips: []
+  taskFinishClips: []
+  audioPlaybackMode: 0
+  audioVolume: 0.65
+  startAudioVolume: 0.65
+  finishAudioVolume: 0.65
+  pitchRandomness: 0.04
+  audioMinDistance: 0.4
+  audioMaxDistance: 12
 --- !u!1001 &2399572842252564285
 PrefabInstance:
   m_ObjectHideFlags: 0
