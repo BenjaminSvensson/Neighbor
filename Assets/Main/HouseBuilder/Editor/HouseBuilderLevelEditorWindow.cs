@@ -60,6 +60,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
         private GameObject booleanRight;
         private HouseWireEndpoint selectedOutputEndpoint;
         private HouseWirePortDefinition selectedOutputPort;
+        private bool clickedWireInputThisEvent;
         private string statusMessage = "Choose an asset to place or a shape to draw.";
         private bool drawingGeometry;
         private Vector3 geometryDrawStart;
@@ -639,10 +640,16 @@ namespace Neighbor.Main.HouseBuilder.Editor
 
         private void OnSceneGUI(SceneView sceneView)
         {
+            clickedWireInputThisEvent = false;
             DrawWires();
             if (ShouldDrawWirePorts())
             {
                 DrawWirePorts();
+            }
+
+            if (HandleWireCancellation())
+            {
+                return;
             }
 
             if (placingDefinition != null && ghostObject != null)
@@ -994,6 +1001,15 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 return;
             }
 
+            int removedConnections = world.WireGraph.PruneInvalidConnections();
+            if (removedConnections > 0)
+            {
+                statusMessage = $"Removed {removedConnections} invalid or duplicate connection{(removedConnections == 1 ? string.Empty : "s")}.";
+                EditorUtility.SetDirty(world.WireGraph);
+                MarkSceneDirty();
+                Repaint();
+            }
+
             foreach (HouseWireConnection connection in world.WireGraph.Connections)
             {
                 if (!world.WireGraph.TryResolve(connection, out HouseWireEndpoint output, out HouseWirePortDefinition outputPort, out HouseWireEndpoint input, out HouseWirePortDefinition inputPort))
@@ -1026,10 +1042,10 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 return;
             }
 
-            HouseWireEndpoint[] endpoints = world.GetComponentsInChildren<HouseWireEndpoint>(true);
+            IReadOnlyList<HouseWireEndpoint> endpoints = world.WireGraph.Endpoints;
             HouseBuilderObject selectedObject = GetSelectedBuilderObject();
             bool showAll = activeTab == 3 || selectedOutputEndpoint != null;
-            for (int endpointIndex = 0; endpointIndex < endpoints.Length; endpointIndex++)
+            for (int endpointIndex = 0; endpointIndex < endpoints.Count; endpointIndex++)
             {
                 HouseWireEndpoint endpoint = endpoints[endpointIndex];
                 if (!showAll && (selectedObject == null || endpoint.Owner != selectedObject))
@@ -1070,6 +1086,12 @@ namespace Neighbor.Main.HouseBuilder.Editor
         {
             if (port.Direction == HouseWirePortDirection.Output)
             {
+                if (selectedOutputEndpoint != null)
+                {
+                    CancelWireConnection();
+                    return;
+                }
+
                 selectedOutputEndpoint = endpoint;
                 selectedOutputPort = port;
                 statusMessage = $"Selected output {endpoint.name}/{port.DisplayName}.";
@@ -1077,6 +1099,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 return;
             }
 
+            clickedWireInputThisEvent = true;
             if (selectedOutputEndpoint == null || selectedOutputPort == null)
             {
                 statusMessage = "Select an orange output first.";
@@ -1097,6 +1120,38 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 statusMessage = error;
             }
 
+            Repaint();
+        }
+
+        private bool HandleWireCancellation()
+        {
+            if (selectedOutputEndpoint == null || Event.current == null)
+            {
+                return false;
+            }
+
+            Event current = Event.current;
+            bool escape = current.type == EventType.KeyDown && current.keyCode == KeyCode.Escape;
+            bool clickedAway = current.type == EventType.MouseDown
+                && current.button == 0
+                && !current.alt
+                && HouseBuilderEditorInteractionUtility.ShouldCancelPendingWire(true, clickedWireInputThisEvent);
+            if (!escape && !clickedAway)
+            {
+                return false;
+            }
+
+            CancelWireConnection();
+            current.Use();
+            SceneView.RepaintAll();
+            return true;
+        }
+
+        private void CancelWireConnection()
+        {
+            selectedOutputEndpoint = null;
+            selectedOutputPort = null;
+            statusMessage = "Connection cancelled.";
             Repaint();
         }
 

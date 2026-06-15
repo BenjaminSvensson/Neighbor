@@ -10,7 +10,19 @@ namespace Neighbor.Main.HouseBuilder
     {
         [SerializeField] private List<HouseWireConnection> connections = new();
 
+        private readonly Dictionary<string, HouseWireEndpoint> endpointLookup = new();
+        private readonly List<HouseWireEndpoint> endpoints = new();
+        private bool endpointCacheDirty = true;
+
         public IReadOnlyList<HouseWireConnection> Connections => connections;
+        public IReadOnlyList<HouseWireEndpoint> Endpoints
+        {
+            get
+            {
+                EnsureEndpointCache();
+                return endpoints;
+            }
+        }
 
         public bool TryConnect(HouseWireEndpoint outputEndpoint, HouseWirePortDefinition outputPort, HouseWireEndpoint inputEndpoint, HouseWirePortDefinition inputPort, out string error)
         {
@@ -41,6 +53,8 @@ namespace Neighbor.Main.HouseBuilder
                 return false;
             }
 
+            InvalidateEndpointCache();
+            PruneInvalidConnections();
             if (outputPort.MaximumConnections > 0 && CountConnections(outputOwner.InstanceId, outputEndpoint.EndpointId, outputPort.Id, true) >= outputPort.MaximumConnections)
             {
                 error = "The output has reached its connection limit.";
@@ -78,6 +92,27 @@ namespace Neighbor.Main.HouseBuilder
                 connection.OutputObjectId == objectId || connection.InputObjectId == objectId);
         }
 
+        public int PruneInvalidConnections()
+        {
+            EnsureEndpointCache();
+            HashSet<string> uniqueConnections = new();
+            int removed = 0;
+            for (int i = connections.Count - 1; i >= 0; i--)
+            {
+                HouseWireConnection connection = connections[i];
+                string key = GetConnectionKey(connection);
+                if (!TryResolve(connection, out _, out _, out _, out _) || !uniqueConnections.Add(key))
+                {
+                    connections.RemoveAt(i);
+                    removed++;
+                }
+            }
+
+            return removed;
+        }
+
+        public void InvalidateEndpointCache() => endpointCacheDirty = true;
+
         public void SetConnections(IEnumerable<HouseWireConnection> values)
         {
             connections.Clear();
@@ -89,6 +124,15 @@ namespace Neighbor.Main.HouseBuilder
 
         public bool TryResolve(HouseWireConnection connection, out HouseWireEndpoint outputEndpoint, out HouseWirePortDefinition outputPort, out HouseWireEndpoint inputEndpoint, out HouseWirePortDefinition inputPort)
         {
+            if (connection == null)
+            {
+                outputEndpoint = null;
+                outputPort = null;
+                inputEndpoint = null;
+                inputPort = null;
+                return false;
+            }
+
             outputEndpoint = FindEndpoint(connection.OutputObjectId, connection.OutputEndpointId);
             inputEndpoint = FindEndpoint(connection.InputObjectId, connection.InputEndpointId);
             outputPort = null;
@@ -101,36 +145,76 @@ namespace Neighbor.Main.HouseBuilder
 
         private int CountConnections(string objectId, string endpointId, string portId, bool output)
         {
-            return connections.FindAll(connection => output
-                ? connection.OutputObjectId == objectId && connection.OutputEndpointId == endpointId && connection.OutputPortId == portId
-                : connection.InputObjectId == objectId && connection.InputEndpointId == endpointId && connection.InputPortId == portId).Count;
+            int count = 0;
+            for (int i = 0; i < connections.Count; i++)
+            {
+                HouseWireConnection connection = connections[i];
+                bool matches = output
+                    ? connection.OutputObjectId == objectId && connection.OutputEndpointId == endpointId && connection.OutputPortId == portId
+                    : connection.InputObjectId == objectId && connection.InputEndpointId == endpointId && connection.InputPortId == portId;
+                if (matches)
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         private HouseWireEndpoint FindEndpoint(string objectId, string endpointId)
         {
-            HouseBuilderObject[] objects = GetComponentsInChildren<HouseBuilderObject>(true);
-            for (int i = 0; i < objects.Length; i++)
+            EnsureEndpointCache();
+            string key = GetEndpointKey(objectId, endpointId);
+            if (endpointLookup.TryGetValue(key, out HouseWireEndpoint endpoint) && endpoint != null)
             {
-                if (objects[i].InstanceId != objectId)
-                {
-                    continue;
-                }
-
-                HouseWireEndpoint[] endpoints = objects[i].GetComponentsInChildren<HouseWireEndpoint>(true);
-                for (int endpointIndex = 0; endpointIndex < endpoints.Length; endpointIndex++)
-                {
-                    if (endpoints[endpointIndex].EndpointId == endpointId)
-                    {
-                        return endpoints[endpointIndex];
-                    }
-                }
+                return endpoint;
             }
 
             return null;
         }
 
-        private void OnEnable() => HouseWireEndpoint.OutputEmitted += HandleOutput;
+        private void EnsureEndpointCache()
+        {
+            if (!endpointCacheDirty)
+            {
+                return;
+            }
+
+            endpointCacheDirty = false;
+            endpointLookup.Clear();
+            endpoints.Clear();
+            HouseWireEndpoint[] foundEndpoints = GetComponentsInChildren<HouseWireEndpoint>(true);
+            for (int i = 0; i < foundEndpoints.Length; i++)
+            {
+                HouseWireEndpoint endpoint = foundEndpoints[i];
+                HouseBuilderObject owner = endpoint != null ? endpoint.Owner : null;
+                if (owner == null || string.IsNullOrWhiteSpace(owner.InstanceId) || string.IsNullOrWhiteSpace(endpoint.EndpointId))
+                {
+                    continue;
+                }
+
+                endpoints.Add(endpoint);
+                endpointLookup[GetEndpointKey(owner.InstanceId, endpoint.EndpointId)] = endpoint;
+            }
+        }
+
+        private static string GetEndpointKey(string objectId, string endpointId) => $"{objectId}\u001f{endpointId}";
+
+        private static string GetConnectionKey(HouseWireConnection connection)
+        {
+            return connection == null
+                ? string.Empty
+                : $"{connection.OutputObjectId}\u001f{connection.OutputEndpointId}\u001f{connection.OutputPortId}\u001e{connection.InputObjectId}\u001f{connection.InputEndpointId}\u001f{connection.InputPortId}";
+        }
+
+        private void OnEnable()
+        {
+            InvalidateEndpointCache();
+            HouseWireEndpoint.OutputEmitted += HandleOutput;
+        }
+
         private void OnDisable() => HouseWireEndpoint.OutputEmitted -= HandleOutput;
+        private void OnTransformChildrenChanged() => InvalidateEndpointCache();
 
         private void HandleOutput(HouseWireEndpoint endpoint, string portId, HouseSignal signal)
         {

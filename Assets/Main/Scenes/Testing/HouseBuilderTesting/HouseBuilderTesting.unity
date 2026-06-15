@@ -210,6 +210,7 @@ MonoBehaviour:
     size: {x: 2.2, y: 1.56, z: 0.5}
     center: {x: 0, y: 0.73999995, z: 0}
     margin: 0.02
+    centerPlacedObjectInWall: 0
 --- !u!114 &4358227
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -409,6 +410,7 @@ MonoBehaviour:
     size: {x: 1.2, y: 2.3, z: 0.6}
     center: {x: 0, y: 1.1, z: 0}
     margin: 0.02
+    centerPlacedObjectInWall: 0
 --- !u!114 &124883150
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1556,6 +1558,7 @@ MonoBehaviour:
     size: {x: 1.2, y: 2.3, z: 0.6}
     center: {x: 0, y: 1.1, z: 0}
     margin: 0.02
+    centerPlacedObjectInWall: 0
 --- !u!114 &302401286
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3805,7 +3808,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1327355640084703705, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 33.2
+      value: 12
       objectReference: {fileID: 0}
     - target: {fileID: 1327355640084703705, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: m_LocalPosition.y
@@ -3813,7 +3816,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1327355640084703705, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -44
+      value: 22
       objectReference: {fileID: 0}
     - target: {fileID: 1327355640084703705, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: m_LocalRotation.w
@@ -3843,23 +3846,123 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 2801324474213207061, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
-      propertyPath: walkSpeed
-      value: 5
-      objectReference: {fileID: 0}
     - target: {fileID: 4793360982295166136, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: m_Name
       value: Player
       objectReference: {fileID: 0}
-    - target: {fileID: 6230172472076133448, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
-      propertyPath: bodyAnimator
-      value: 
-      objectReference: {fileID: 2011062430}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
+--- !u!1001 &718411856
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 908822767}
+    m_Modifications:
+    - target: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_Name
+      value: PlaceholderGlass
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 10.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1.8508723
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -14.25
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 718411860}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 718411859}
+  m_SourcePrefab: {fileID: 100100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+--- !u!4 &718411857 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+  m_PrefabInstance: {fileID: 718411856}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &718411858 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+  m_PrefabInstance: {fileID: 718411856}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &718411859
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 718411858}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
+  wall: {fileID: 1521513416}
+  profile:
+    enabled: 1
+    size: {x: 0.85, y: 1.15, z: 0.5}
+    center: {x: 0, y: 0, z: 0}
+    margin: 0.02
+    centerPlacedObjectInWall: 1
+--- !u!114 &718411860
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 718411858}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
+  instanceId: 074458a73340463fa9b11fdd5c98a356
+  definitionId: neighbor.prop.glass
+  categoryId: prop
+  properties: []
 --- !u!1001 &743156766
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3951,6 +4054,7 @@ MonoBehaviour:
     size: {x: 2.2, y: 1.56, z: 0.5}
     center: {x: 0, y: 0.73999995, z: 0}
     margin: 0.02
+    centerPlacedObjectInWall: 0
 --- !u!114 &743156770
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5033,6 +5137,114 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2827704472333151519, guid: 80ca1015f38352a4ea4319a22bbfe289, type: 3}
   m_PrefabInstance: {fileID: 842058268}
   m_PrefabAsset: {fileID: 0}
+--- !u!1001 &842347172
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 908822767}
+    m_Modifications:
+    - target: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_Name
+      value: PlaceholderGlass
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 9
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1.825
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -14.25
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 842347176}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 842347175}
+  m_SourcePrefab: {fileID: 100100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+--- !u!4 &842347173 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+  m_PrefabInstance: {fileID: 842347172}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &842347174 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+  m_PrefabInstance: {fileID: 842347172}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &842347175
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 842347174}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
+  wall: {fileID: 1521513416}
+  profile:
+    enabled: 1
+    size: {x: 0.85, y: 1.15, z: 0.5}
+    center: {x: 0, y: 0, z: 0}
+    margin: 0.02
+    centerPlacedObjectInWall: 1
+--- !u!114 &842347176
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 842347174}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
+  instanceId: 4f3173c9ccb145958aa30b7460b2e105
+  definitionId: neighbor.prop.glass
+  categoryId: prop
+  properties: []
 --- !u!1001 &844609274
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5535,6 +5747,9 @@ Transform:
   - {fileID: 1245151885}
   - {fileID: 822146309}
   - {fileID: 1748614156}
+  - {fileID: 842347173}
+  - {fileID: 718411857}
+  - {fileID: 1909510863}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &951157392
@@ -5720,6 +5935,7 @@ MonoBehaviour:
     size: {x: 1.2, y: 2.3, z: 0.6}
     center: {x: 0, y: 1.1, z: 0}
     margin: 0.02
+    centerPlacedObjectInWall: 0
 --- !u!114 &985425987
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6208,6 +6424,7 @@ MonoBehaviour:
     size: {x: 2.2, y: 1.56, z: 0.5}
     center: {x: 0, y: 0.73999995, z: 0}
     margin: 0.02
+    centerPlacedObjectInWall: 0
 --- !u!114 &1027670585
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6223,6 +6440,69 @@ MonoBehaviour:
   instanceId: 5467292cbc664c6f9b68430b45423fcc
   definitionId: neighbor.window.windowblinds
   categoryId: window
+  properties: []
+--- !u!1 &1027797631 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+  m_PrefabInstance: {fileID: 1079218310}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1027797632 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+  m_PrefabInstance: {fileID: 1079218310}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1027797633
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1027797631}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d805329da59bf1544b0003d63e18b7ed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireOutputRelay
+  endpoint: {fileID: 1027797634}
+  outputPortId: state
+--- !u!114 &1027797634
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1027797631}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d2834eb53930484bb39749e568c6ec5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireEndpoint
+  endpointId: neighbor.wiring.lightswitch.endpoint
+  ports:
+  - id: state
+    displayName: State
+    direction: 1
+    signalKind: 2
+    maximumConnections: 0
+    visualOffset: {x: 0, y: 0.15, z: 0.08}
+    onSignalReceived:
+      m_PersistentCalls:
+        m_Calls: []
+--- !u!114 &1027797635
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1027797631}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
+  instanceId: a9002ec5d65b4e4b876f0d6de7dd85b2
+  definitionId: neighbor.wiring.lightswitch
+  categoryId: wiring
   properties: []
 --- !u!1001 &1040574917
 PrefabInstance:
@@ -6396,6 +6676,72 @@ MonoBehaviour:
   definitionId: neighbor.furniture.chair
   categoryId: furniture
   properties: []
+--- !u!1001 &1079218310
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1372680215}
+    m_Modifications:
+    - target: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_Name
+      value: PlaceholderLightSwitch
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 14.65
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 4.925001
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.00000004371139
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1027797635}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1027797634}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1027797633}
+  m_SourcePrefab: {fileID: 100100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
 --- !u!1001 &1082913281
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7984,6 +8330,7 @@ Transform:
   - {fileID: 1667257036}
   - {fileID: 529466230}
   - {fileID: 2045465364}
+  - {fileID: 1027797632}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1398872035
@@ -9485,6 +9832,7 @@ MonoBehaviour:
     size: {x: 1.2, y: 2.3, z: 0.6}
     center: {x: 0, y: 1.1, z: 0}
     margin: 0.02
+    centerPlacedObjectInWall: 0
 --- !u!114 &1582577104
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10418,6 +10766,7 @@ MonoBehaviour:
     size: {x: 1.2, y: 2.3, z: 0.6}
     center: {x: 0, y: 1.1, z: 0}
     margin: 0.02
+    centerPlacedObjectInWall: 0
 --- !u!114 &1748614159
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11381,6 +11730,114 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2827704472333151519, guid: 80ca1015f38352a4ea4319a22bbfe289, type: 3}
   m_PrefabInstance: {fileID: 1893076780}
   m_PrefabAsset: {fileID: 0}
+--- !u!1001 &1909510862
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 908822767}
+    m_Modifications:
+    - target: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_Name
+      value: PlaceholderGlass
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1.825
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -10.25
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1909510866}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1909510865}
+  m_SourcePrefab: {fileID: 100100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+--- !u!4 &1909510863 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+  m_PrefabInstance: {fileID: 1909510862}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1909510864 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
+  m_PrefabInstance: {fileID: 1909510862}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1909510865
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1909510864}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
+  wall: {fileID: 455215124}
+  profile:
+    enabled: 1
+    size: {x: 0.85, y: 1.15, z: 0.5}
+    center: {x: 0, y: 0, z: 0}
+    margin: 0.02
+    centerPlacedObjectInWall: 1
+--- !u!114 &1909510866
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1909510864}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
+  instanceId: 13abaf71d9e24548832217fe09d42960
+  definitionId: neighbor.prop.glass
+  categoryId: prop
+  properties: []
 --- !u!1 &1909579041
 GameObject:
   m_ObjectHideFlags: 0
@@ -12144,11 +12601,6 @@ PrefabInstance:
 Transform:
   m_CorrespondingSourceObject: {fileID: 4062467255874260607, guid: 75bc12e3cc8ceda4ebb6840921262086, type: 3}
   m_PrefabInstance: {fileID: 1995419157}
-  m_PrefabAsset: {fileID: 0}
---- !u!95 &2011062430 stripped
-Animator:
-  m_CorrespondingSourceObject: {fileID: 1522908480774008383, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
-  m_PrefabInstance: {fileID: 716352324}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &2045465363
 PrefabInstance:

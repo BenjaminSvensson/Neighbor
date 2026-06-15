@@ -98,6 +98,11 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 || selectedObject?.GetComponentInChildren<HouseWireEndpoint>(true) != null;
         }
 
+        public static bool ShouldCancelPendingWire(bool hasPendingOutput, bool clickedCyanInput)
+        {
+            return hasPendingOutput && !clickedCyanInput;
+        }
+
         public static bool TryCalculateCeilingFootprintPlacement(
             Vector3 referencePoint,
             Vector3 placementOffset,

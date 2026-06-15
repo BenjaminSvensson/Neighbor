@@ -115,6 +115,37 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void Wiring_PrunesUnresolvedAndDuplicateConnections()
+        {
+            GameObject worldObject = Track(new GameObject("World"));
+            HouseBuilderWorld world = worldObject.AddComponent<HouseBuilderWorld>();
+            GameObject sourceObject = Track(new GameObject("Source"));
+            sourceObject.transform.SetParent(worldObject.transform);
+            HouseBuilderObject sourceOwner = sourceObject.AddComponent<HouseBuilderObject>();
+            sourceOwner.Initialize("source", HouseBuilderCategories.Wiring);
+            HouseWireEndpoint source = sourceObject.AddComponent<HouseWireEndpoint>();
+            source.EnsureIdentity();
+            HouseWirePortDefinition output = source.AddPort("Output", HouseWirePortDirection.Output);
+
+            GameObject targetObject = Track(new GameObject("Target"));
+            targetObject.transform.SetParent(worldObject.transform);
+            HouseBuilderObject targetOwner = targetObject.AddComponent<HouseBuilderObject>();
+            targetOwner.Initialize("target", HouseBuilderCategories.Wiring);
+            HouseWireEndpoint target = targetObject.AddComponent<HouseWireEndpoint>();
+            target.EnsureIdentity();
+            HouseWirePortDefinition input = target.AddPort("Input", HouseWirePortDirection.Input);
+
+            HouseWireConnection valid = new(sourceOwner.InstanceId, source.EndpointId, output.Id, targetOwner.InstanceId, target.EndpointId, input.Id);
+            HouseWireConnection duplicate = new(sourceOwner.InstanceId, source.EndpointId, output.Id, targetOwner.InstanceId, target.EndpointId, input.Id);
+            HouseWireConnection unresolved = new(sourceOwner.InstanceId, source.EndpointId, output.Id, "missing", "missing", "missing");
+            world.WireGraph.SetConnections(new[] { valid, duplicate, unresolved });
+
+            Assert.That(world.WireGraph.PruneInvalidConnections(), Is.EqualTo(2));
+            Assert.That(world.WireGraph.Connections.Count, Is.EqualTo(1));
+            Assert.That(world.WireGraph.TryResolve(world.WireGraph.Connections[0], out _, out _, out _, out _), Is.True);
+        }
+
+        [Test]
         public void SaveLoad_RoundTripsGeometryOpeningsMaterialsAndConnections()
         {
             GameObject worldObject = Track(new GameObject("World"));
@@ -480,6 +511,14 @@ namespace Neighbor.Main.Tests
             Assert.That(HouseBuilderEditorInteractionUtility.ShouldShowWirePorts(false, false, plain), Is.False);
             Assert.That(HouseBuilderEditorInteractionUtility.ShouldShowWirePorts(true, false, null), Is.True);
             Assert.That(HouseBuilderEditorInteractionUtility.ShouldShowWirePorts(false, true, null), Is.True);
+        }
+
+        [Test]
+        public void WiringPendingConnection_CancelsWhenClickIsNotOnCyanInput()
+        {
+            Assert.That(HouseBuilderEditorInteractionUtility.ShouldCancelPendingWire(true, false), Is.True);
+            Assert.That(HouseBuilderEditorInteractionUtility.ShouldCancelPendingWire(true, true), Is.False);
+            Assert.That(HouseBuilderEditorInteractionUtility.ShouldCancelPendingWire(false, false), Is.False);
         }
 
         [Test]

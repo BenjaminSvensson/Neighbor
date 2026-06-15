@@ -61,6 +61,7 @@ namespace Neighbor.Main.HouseBuilder
             }
 
             ApplyWirePorts(instance, definition);
+            ResolveWireGraph().InvalidateEndpointCache();
             instance.GetComponent<HouseBuilderMaterialController>()?.Apply(catalog);
             return builderObject;
         }
@@ -218,6 +219,7 @@ namespace Neighbor.Main.HouseBuilder
             builderObject.Initialize(data.DefinitionId, data.CategoryId, data.InstanceId);
             builderObject.SetProperties(data.Properties);
             ApplyWirePorts(instance, definition);
+            ResolveWireGraph().InvalidateEndpointCache();
 
             HouseBuilderMaterialController materialController = instance.GetComponent<HouseBuilderMaterialController>();
             if (data.Materials.Count > 0 && materialController == null)

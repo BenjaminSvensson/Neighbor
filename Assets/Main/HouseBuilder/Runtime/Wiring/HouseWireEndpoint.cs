@@ -102,6 +102,19 @@ namespace Neighbor.Main.HouseBuilder
         }
 
         private void Awake() => EnsureIdentity();
-        private void OnValidate() => EnsureIdentity();
+        private void OnEnable() => InvalidateGraphCache();
+        private void OnDisable() => InvalidateGraphCache();
+        private void OnTransformParentChanged() => InvalidateGraphCache();
+
+        private void OnValidate()
+        {
+            EnsureIdentity();
+            InvalidateGraphCache();
+        }
+
+        private void InvalidateGraphCache()
+        {
+            GetComponentInParent<HouseWireGraph>()?.InvalidateEndpointCache();
+        }
     }
 }
