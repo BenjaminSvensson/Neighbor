@@ -509,6 +509,56 @@ namespace Neighbor.Main.Tests
                 Is.EqualTo(Vector3.forward));
         }
 
+        [Test]
+        public void Glass_AlignsPaneFlatToWallAndCreatesWindowOpening()
+        {
+            HousePlaceableDefinition glass = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                "Assets/Main/HouseBuilder/Data/Placeables/Glass.asset");
+            GameObject wall = Track(GameObject.CreatePrimitive(PrimitiveType.Cube));
+            wall.transform.localScale = new Vector3(5f, 5f, 0.1f);
+            Physics.SyncTransforms();
+            Ray ray = new(Vector3.forward * 5f, Vector3.back);
+            Assert.That(Physics.Raycast(ray, out RaycastHit hit), Is.True);
+
+            HousePlacementResult placement = HouseBuilderSnapUtility.Calculate(
+                hit.point,
+                Quaternion.identity,
+                true,
+                hit,
+                glass.Placement,
+                new HouseBuilderPlacementSettings(),
+                null,
+                ray.direction);
+
+            Assert.That(glass.Placement.SurfaceAlignment, Is.EqualTo(HouseSurfaceAlignment.RightToNormal));
+            Assert.That(Vector3.Dot(placement.Rotation * Vector3.right, -ray.direction), Is.GreaterThan(0.99f));
+            Assert.That(glass.WallOpening.Enabled, Is.True);
+            Assert.That(glass.WallOpening.Size.x, Is.EqualTo(0.85f).Within(0.001f));
+            Assert.That(glass.WallOpening.Size.y, Is.EqualTo(1.15f).Within(0.001f));
+        }
+
+        [Test]
+        public void Glass_PlacedOnBuilderWallCreatesOpening()
+        {
+            HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(HouseBuilderAssetInstaller.DefaultCatalogPath);
+            Assert.That(catalog.TryGetPlaceable("neighbor.prop.glass", out HousePlaceableDefinition glass), Is.True);
+            GameObject worldObject = Track(new GameObject("World"));
+            HouseBuilderWorld world = worldObject.AddComponent<HouseBuilderWorld>();
+            world.Configure(catalog);
+            GameObject wallObject = Track(HouseGeometryFactory.Create(
+                new HouseGeometryDescriptor(HouseGeometryKind.Wall, new Vector3(4f, 3f, 0.25f))));
+            wallObject.transform.SetParent(worldObject.transform);
+            HouseGeometryObject wall = wallObject.GetComponent<HouseGeometryObject>();
+            GameObject glassObject = world.CreatePlaceable(glass, Vector3.zero, Quaternion.identity);
+
+            bool created = world.TryCreateWallOpening(glassObject, glass, wallObject.GetComponent<Collider>());
+
+            Assert.That(created, Is.True);
+            Assert.That(wall.Descriptor.WallOpenings.Count, Is.EqualTo(1));
+            Assert.That(wall.Descriptor.WallOpenings[0].Size.x, Is.EqualTo(glass.WallOpening.Size.x + glass.WallOpening.Margin * 2f).Within(0.001f));
+            Assert.That(wall.Descriptor.WallOpenings[0].Size.y, Is.EqualTo(glass.WallOpening.Size.y + glass.WallOpening.Margin * 2f).Within(0.001f));
+        }
+
         [TestCase("Mirror")]
         [TestCase("Curtains")]
         [TestCase("LaserGrid")]

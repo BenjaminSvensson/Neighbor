@@ -20,8 +20,8 @@ MonoBehaviour:
   hideFromCatalog: 0
   placement:
     allowedSurfaces: -1
-    surfaceAlignment: 0
-    requireSurface: 0
+    surfaceAlignment: 3
+    requireSurface: 1
     groundOnWall: 0
     validateCollisions: 0
     allowTriggerOverlap: 1
@@ -29,9 +29,9 @@ MonoBehaviour:
     boundsCenter: {x: 0, y: 0, z: 0}
     placementOffset: {x: 0, y: 0.575, z: 0}
   wallOpening:
-    enabled: 0
-    size: {x: 1.2, y: 2.1, z: 0.5}
-    center: {x: 0, y: 1.05, z: 0}
+    enabled: 1
+    size: {x: 0.85, y: 1.15, z: 0.5}
+    center: {x: 0, y: 0, z: 0}
     margin: 0.02
   wirePorts: []
   tags: []

@@ -37,7 +37,8 @@ namespace Neighbor.Main.HouseBuilder
     {
         None,
         UpToNormal,
-        ForwardToNormal
+        ForwardToNormal,
+        RightToNormal
     }
 
     [Serializable]

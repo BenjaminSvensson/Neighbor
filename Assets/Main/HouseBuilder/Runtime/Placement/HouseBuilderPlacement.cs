@@ -128,9 +128,10 @@ namespace Neighbor.Main.HouseBuilder
             Quaternion rotation = requestedRotation;
             if (hasSurface
                 && profile.SurfaceAlignment != HouseSurfaceAlignment.None
-                && (profile.SurfaceAlignment != HouseSurfaceAlignment.ForwardToNormal || surfaceType == HouseSurfaceType.Wall))
+                && (profile.SurfaceAlignment is not (HouseSurfaceAlignment.ForwardToNormal or HouseSurfaceAlignment.RightToNormal)
+                    || surfaceType == HouseSurfaceType.Wall))
             {
-                if (profile.SurfaceAlignment == HouseSurfaceAlignment.ForwardToNormal)
+                if (profile.SurfaceAlignment is HouseSurfaceAlignment.ForwardToNormal or HouseSurfaceAlignment.RightToNormal)
                 {
                     Vector3 up = Vector3.ProjectOnPlane(Vector3.up, normal);
                     if (up.sqrMagnitude < 0.001f)
@@ -139,6 +140,10 @@ namespace Neighbor.Main.HouseBuilder
                     }
 
                     rotation = Quaternion.LookRotation(normal, up.normalized);
+                    if (profile.SurfaceAlignment == HouseSurfaceAlignment.RightToNormal)
+                    {
+                        rotation *= Quaternion.Euler(0f, -90f, 0f);
+                    }
                 }
                 else
                 {
