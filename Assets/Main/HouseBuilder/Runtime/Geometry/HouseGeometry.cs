@@ -474,10 +474,11 @@ namespace Neighbor.Main.HouseBuilder
                 vertices.Add(b);
                 vertices.Add(c);
                 vertices.Add(d);
-                uv.Add(new Vector2(0f, 0f));
-                uv.Add(new Vector2(1f, 0f));
-                uv.Add(new Vector2(1f, 1f));
-                uv.Add(new Vector2(0f, 1f));
+                Vector3 normal = Vector3.Cross(b - a, c - a).normalized;
+                uv.Add(ProjectUv(a, normal));
+                uv.Add(ProjectUv(b, normal));
+                uv.Add(ProjectUv(c, normal));
+                uv.Add(ProjectUv(d, normal));
                 triangles[(int)role].AddRange(new[] { start, start + 1, start + 2, start, start + 2, start + 3 });
             }
 
@@ -487,10 +488,24 @@ namespace Neighbor.Main.HouseBuilder
                 vertices.Add(a);
                 vertices.Add(b);
                 vertices.Add(c);
-                uv.Add(new Vector2(0f, 0f));
-                uv.Add(new Vector2(1f, 0f));
-                uv.Add(new Vector2(0.5f, 1f));
+                Vector3 normal = Vector3.Cross(b - a, c - a).normalized;
+                uv.Add(ProjectUv(a, normal));
+                uv.Add(ProjectUv(b, normal));
+                uv.Add(ProjectUv(c, normal));
                 triangles[(int)role].AddRange(new[] { start, start + 1, start + 2 });
+            }
+
+            private static Vector2 ProjectUv(Vector3 vertex, Vector3 normal)
+            {
+                Vector3 absoluteNormal = new(Mathf.Abs(normal.x), Mathf.Abs(normal.y), Mathf.Abs(normal.z));
+                if (absoluteNormal.x >= absoluteNormal.y && absoluteNormal.x >= absoluteNormal.z)
+                {
+                    return new Vector2(vertex.z, vertex.y);
+                }
+
+                return absoluteNormal.y >= absoluteNormal.z
+                    ? new Vector2(vertex.x, vertex.z)
+                    : new Vector2(vertex.x, vertex.y);
             }
 
             public Mesh Build(string meshName)

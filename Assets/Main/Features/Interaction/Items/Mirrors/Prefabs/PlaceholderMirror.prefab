@@ -53,6 +53,7 @@ MonoBehaviour:
   mirrorPlane: {fileID: 200001}
   textureSize: 768
   clipPlaneOffset: 0.04
+  reflectionFieldOfView: 72
   reflectionMask:
     serializedVersion: 2
     m_Bits: 4294967295

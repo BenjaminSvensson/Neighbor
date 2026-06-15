@@ -102,6 +102,9 @@ namespace Neighbor.Main.HouseBuilder
                 : Vector3.up;
             HouseSurfaceType surfaceType = ClassifySurface(normal);
             HouseSnapKind snapKind = hasSurface && settings.SurfaceSnapping ? HouseSnapKind.Surface : HouseSnapKind.None;
+            bool hasFeature = false;
+            Vector3 featureApproach = default;
+            Bounds featureBounds = default;
             if (hasSurface && profile.GroundOnWall && surfaceType == HouseSurfaceType.Wall && surfaceHit.collider != null)
             {
                 position.y = surfaceHit.collider.bounds.min.y;
@@ -109,16 +112,20 @@ namespace Neighbor.Main.HouseBuilder
 
             if (settings.CornerSnapping || settings.EdgeSnapping)
             {
-                if (TryFindFeature(position, nearbyBounds, settings, out Vector3 featurePoint, out HouseSnapKind featureKind))
+                if (TryFindFeature(position, nearbyBounds, settings, out Vector3 featurePoint, out HouseSnapKind featureKind, out featureBounds))
                 {
+                    featureApproach = position - featurePoint;
                     position = featurePoint;
                     snapKind = featureKind;
+                    hasFeature = true;
                 }
             }
 
-            if (settings.GridSnapping)
+            if (settings.GridSnapping && !hasFeature)
             {
-                position = SnapVector(position, settings.GridSize);
+                position = hasSurface && settings.SurfaceSnapping
+                    ? SnapOnSurface(position, normal, settings.GridSize)
+                    : SnapVector(position, settings.GridSize);
                 if (snapKind == HouseSnapKind.None)
                 {
                     snapKind = HouseSnapKind.Grid;
@@ -166,7 +173,9 @@ namespace Neighbor.Main.HouseBuilder
                 rotation = Quaternion.Euler(euler);
             }
 
-            position += rotation * profile.PlacementOffset;
+            position = hasFeature && profile.SnapBoundsToFeatures
+                ? AlignBoundsToFeature(position, featureApproach, featureBounds, rotation, profile)
+                : position + rotation * profile.PlacementOffset;
             return new HousePlacementResult(position, rotation, normal, surfaceType, snapKind, hasSurface);
         }
 
@@ -181,6 +190,13 @@ namespace Neighbor.Main.HouseBuilder
         public static float SnapValue(float value, float increment)
         {
             return increment > 0f ? Mathf.Round(value / increment) * increment : value;
+        }
+
+        public static Vector3 SnapOnSurface(Vector3 value, Vector3 surfaceNormal, float increment)
+        {
+            Vector3 normal = surfaceNormal.sqrMagnitude > 0.001f ? surfaceNormal.normalized : Vector3.up;
+            Vector3 snapped = SnapVector(value, increment);
+            return snapped + normal * Vector3.Dot(value - snapped, normal);
         }
 
         public static HouseSurfaceType ClassifySurface(Vector3 normal)
@@ -212,10 +228,12 @@ namespace Neighbor.Main.HouseBuilder
             IEnumerable<Bounds> boundsCollection,
             HouseBuilderPlacementSettings settings,
             out Vector3 featurePoint,
-            out HouseSnapKind snapKind)
+            out HouseSnapKind snapKind,
+            out Bounds featureBounds)
         {
             featurePoint = point;
             snapKind = HouseSnapKind.None;
+            featureBounds = default;
             float bestDistanceSquared = settings.FeatureSnapDistance * settings.FeatureSnapDistance;
             if (boundsCollection == null)
             {
@@ -235,6 +253,7 @@ namespace Neighbor.Main.HouseBuilder
                             bestDistanceSquared = distanceSquared;
                             featurePoint = BoundsCorners[i];
                             snapKind = HouseSnapKind.Corner;
+                            featureBounds = bounds;
                         }
                     }
                 }
@@ -250,12 +269,43 @@ namespace Neighbor.Main.HouseBuilder
                             bestDistanceSquared = distanceSquared;
                             featurePoint = closest;
                             snapKind = HouseSnapKind.Edge;
+                            featureBounds = bounds;
                         }
                     }
                 }
             }
 
             return snapKind != HouseSnapKind.None;
+        }
+
+        private static Vector3 AlignBoundsToFeature(
+            Vector3 featurePoint,
+            Vector3 approach,
+            Bounds sourceBounds,
+            Quaternion rotation,
+            HousePlacementProfile profile)
+        {
+            Quaternion inverseRotation = Quaternion.Inverse(rotation);
+            Vector3 localApproach = inverseRotation * approach;
+            Vector3 localSourceSide = inverseRotation * (featurePoint - sourceBounds.center);
+            Vector3 halfExtents = profile.BoundsSize * 0.5f;
+            Vector3 contact = new(
+                ResolveContactAxis(localApproach.x, localSourceSide.x, halfExtents.x),
+                ResolveContactAxis(localApproach.y, localSourceSide.y, halfExtents.y),
+                ResolveContactAxis(localApproach.z, localSourceSide.z, halfExtents.z));
+            return featurePoint - rotation * (profile.BoundsCenter + contact);
+        }
+
+        private static float ResolveContactAxis(float approach, float sourceSide, float halfExtent)
+        {
+            if (Mathf.Abs(approach) > 0.001f)
+            {
+                return -Mathf.Sign(approach) * halfExtent;
+            }
+
+            return Mathf.Abs(sourceSide) > 0.001f
+                ? Mathf.Sign(sourceSide) * halfExtent
+                : 0f;
         }
 
         private static readonly int[] EdgeIndices =

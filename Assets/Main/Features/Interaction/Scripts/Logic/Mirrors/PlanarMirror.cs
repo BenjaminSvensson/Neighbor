@@ -8,7 +8,10 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private Transform mirrorPlane;
         [SerializeField, Min(64)] private int textureSize = 768;
         [SerializeField, Min(0.01f)] private float clipPlaneOffset = 0.04f;
+        [SerializeField, Range(30f, 120f)] private float reflectionFieldOfView = 72f;
         [SerializeField] private LayerMask reflectionMask = ~0;
+
+        public float ReflectionFieldOfView => reflectionFieldOfView;
 
         private Camera mirrorCamera;
         private Camera sourceCamera;
@@ -90,13 +93,16 @@ namespace Neighbor.Main.Features.Interaction
 
                 mirrorCamera.CopyFrom(sourceCamera);
                 mirrorCamera.enabled = false;
+                mirrorCamera.orthographic = false;
+                mirrorCamera.fieldOfView = reflectionFieldOfView;
+                mirrorCamera.ResetProjectionMatrix();
                 mirrorCamera.cullingMask = reflectionMask;
                 mirrorCamera.targetTexture = renderTexture;
                 mirrorCamera.transform.SetPositionAndRotation(reflectedPosition, Quaternion.LookRotation(reflectedForward, reflectedUp));
                 mirrorCamera.worldToCameraMatrix = sourceCamera.worldToCameraMatrix * reflectionMatrix;
 
                 Vector4 cameraSpacePlane = CameraSpacePlane(mirrorCamera, planePosition, planeNormal, 1f, clipPlaneOffset);
-                mirrorCamera.projectionMatrix = sourceCamera.CalculateObliqueMatrix(cameraSpacePlane);
+                mirrorCamera.projectionMatrix = mirrorCamera.CalculateObliqueMatrix(cameraSpacePlane);
 
                 mirrorRenderer.enabled = false;
                 GL.invertCulling = !previousInvertCulling;
@@ -258,6 +264,7 @@ namespace Neighbor.Main.Features.Interaction
         {
             textureSize = Mathf.Max(64, textureSize);
             clipPlaneOffset = Mathf.Max(0.01f, clipPlaneOffset);
+            reflectionFieldOfView = Mathf.Clamp(reflectionFieldOfView, 30f, 120f);
         }
     }
 }

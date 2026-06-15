@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.HouseBuilder;
 using Neighbor.Main.HouseBuilder.Editor;
 using Neighbor.Main.Features.Neighbor;
@@ -42,6 +43,27 @@ namespace Neighbor.Main.Tests
                 bool insideOpening = Mathf.Abs(center.x) < 0.6f && center.y > -1.5f && center.y < 0.6f;
                 Assert.That(insideOpening, Is.False, $"Front face remained inside the door opening at {center}.");
             }
+        }
+
+        [Test]
+        public void Geometry_WallOpeningFragmentsShareMeterScaledUvs()
+        {
+            HouseGeometryDescriptor descriptor = new(HouseGeometryKind.Wall, new Vector3(4f, 3f, 0.25f));
+            descriptor.AddOrUpdateWallOpening(new HouseWallOpeningData("window", Vector2.zero, new Vector2(1.5f, 1.25f)));
+
+            Mesh mesh = Track(HouseGeometryFactory.BuildMesh(descriptor));
+            Vector3[] vertices = mesh.vertices;
+            Vector2[] uv = mesh.uv;
+            int[] exteriorIndices = mesh.GetIndices((int)HouseFaceRole.Exterior);
+            for (int i = 0; i < exteriorIndices.Length; i++)
+            {
+                int index = exteriorIndices[i];
+                Assert.That(uv[index].x, Is.EqualTo(vertices[index].x).Within(0.001f));
+                Assert.That(uv[index].y, Is.EqualTo(vertices[index].y).Within(0.001f));
+            }
+
+            Assert.That(mesh.bounds.size.x, Is.EqualTo(4f).Within(0.001f));
+            Assert.That(mesh.bounds.size.y, Is.EqualTo(3f).Within(0.001f));
         }
 
         [Test]
@@ -131,6 +153,42 @@ namespace Neighbor.Main.Tests
             Assert.That(result.SnapKind, Is.EqualTo(HouseSnapKind.Corner));
             Assert.That(result.Position, Is.EqualTo(Vector3.one));
             Assert.That(result.Rotation.eulerAngles.y, Is.EqualTo(15f).Within(0.01f));
+        }
+
+        [Test]
+        public void Snapping_PreservesSurfacePlaneWhileSnappingGrid()
+        {
+            Vector3 result = HouseBuilderSnapUtility.SnapOnSurface(
+                new Vector3(1.13f, 0.2f, 2.12f),
+                Vector3.up,
+                0.25f);
+
+            Assert.That(result.x, Is.EqualTo(1.25f).Within(0.001f));
+            Assert.That(result.y, Is.EqualTo(0.2f).Within(0.001f));
+            Assert.That(result.z, Is.EqualTo(2f).Within(0.001f));
+        }
+
+        [Test]
+        public void StarterFloorSnapping_AlignsItsBoundsToExistingEdge()
+        {
+            HousePlaceableDefinition floor = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                "Assets/Main/HouseBuilder/Data/Placeables/BasicFloor.asset");
+            Bounds existingFloor = new(Vector3.up * 0.1f, new Vector3(4f, 0.2f, 4f));
+
+            HousePlacementResult result = HouseBuilderSnapUtility.Calculate(
+                new Vector3(2.1f, 0f, 0f),
+                Quaternion.identity,
+                false,
+                default,
+                floor.Placement,
+                new HouseBuilderPlacementSettings(),
+                new[] { existingFloor });
+
+            Assert.That(floor.Placement.SnapBoundsToFeatures, Is.True);
+            Assert.That(result.SnapKind, Is.EqualTo(HouseSnapKind.Edge));
+            Assert.That(result.Position.x, Is.EqualTo(4f).Within(0.001f));
+            Assert.That(result.Position.y, Is.EqualTo(0.1f).Within(0.001f));
+            Assert.That(result.Position.z, Is.EqualTo(0f).Within(0.001f));
         }
 
         [Test]
@@ -570,6 +628,17 @@ namespace Neighbor.Main.Tests
                 $"Assets/Main/HouseBuilder/Data/Placeables/{definitionName}.asset");
 
             Assert.That(definition.Placement.SurfaceAlignment, Is.EqualTo(HouseSurfaceAlignment.ForwardToNormal));
+        }
+
+        [Test]
+        public void Mirror_UsesFixedWideReflectionFieldOfView()
+        {
+            GameObject mirrorPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Main/Features/Interaction/Items/Mirrors/Prefabs/PlaceholderMirror.prefab");
+            PlanarMirror mirror = mirrorPrefab.GetComponent<PlanarMirror>();
+
+            Assert.That(mirror, Is.Not.Null);
+            Assert.That(mirror.ReflectionFieldOfView, Is.EqualTo(72f));
         }
 
         [Test]
