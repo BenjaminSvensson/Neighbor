@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Neighbor.Main.HouseBuilder
 {
@@ -76,13 +77,16 @@ namespace Neighbor.Main.HouseBuilder
         [SerializeField] private Vector3 size = new(1.2f, 2.1f, 0.5f);
         [SerializeField] private Vector3 center = new(0f, 1.05f, 0f);
         [SerializeField, Min(0f)] private float margin = 0.02f;
-        [SerializeField] private bool centerPlacedObjectInWall;
+        [FormerlySerializedAs("centerPlacedObjectInWall")]
+        [SerializeField, Tooltip("Place the object on the wall midplane instead of mounting it on the clicked wall face.")]
+        private bool placeInsideWallOpening;
 
         public bool Enabled => enabled;
         public Vector3 Size => size;
         public Vector3 Center => center;
         public float Margin => margin;
-        public bool CenterPlacedObjectInWall => centerPlacedObjectInWall;
+        public bool PlaceInsideWallOpening => placeInsideWallOpening;
+        public bool CenterPlacedObjectInWall => placeInsideWallOpening;
 
         public HouseWallOpeningProfile()
         {
@@ -93,13 +97,13 @@ namespace Neighbor.Main.HouseBuilder
             Vector3 center,
             float margin = 0.02f,
             bool enabled = true,
-            bool centerPlacedObjectInWall = false)
+            bool placeInsideWallOpening = false)
         {
             this.enabled = enabled;
             this.size = size;
             this.center = center;
             this.margin = Mathf.Max(0f, margin);
-            this.centerPlacedObjectInWall = centerPlacedObjectInWall;
+            this.placeInsideWallOpening = placeInsideWallOpening;
         }
     }
 

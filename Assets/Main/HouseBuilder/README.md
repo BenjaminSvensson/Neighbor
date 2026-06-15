@@ -70,6 +70,8 @@ Door and window definitions can enable a `HouseWallOpeningProfile`. When one is 
 
 Opening size and center are projected from the placed object's active colliders into the wall plane, so resized, rotated, and custom door/window prefabs create matching holes automatically. Editing those colliders updates the linked hole in Edit Mode, while gameplay animation cannot move it. The profile margin remains data-driven, and its configured size/center are used as a fallback for collider-less custom objects.
 
+Each placeable with an enabled wall opening exposes **Place Inside Wall Opening**. Enable it for objects such as glass panes and garage doors that belong on the wall midplane; leave it disabled for face-mounted objects such as vent covers.
+
 ## Materials
 
 Generated geometry reserves stable submesh slots matching `HouseFaceRole`:

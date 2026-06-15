@@ -11,7 +11,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
         public const string RootPath = "Assets/Main/HouseBuilder";
         public const string DataPath = RootPath + "/Data";
         public const string DefaultCatalogPath = DataPath + "/DefaultHouseBuilderCatalog.asset";
-        private const int InstallerVersion = 16;
+        private const int InstallerVersion = 17;
         private const string InstallerVersionKey = "Neighbor.HouseBuilder.DefaultAssetsVersion";
         private const string CategoryPath = DataPath + "/Categories";
         private const string DefinitionPath = DataPath + "/Placeables";
@@ -70,6 +70,9 @@ namespace Neighbor.Main.HouseBuilder.Editor
             AddDefinition(placeables, "LockedDoor", "Locked Door", HouseBuilderCategories.Door,
                 "Assets/Main/Features/Interaction/Items/Doors/Prefabs/LockedDoor.prefab", HouseSurfaceType.Ground | HouseSurfaceType.Wall, HouseSurfaceAlignment.ForwardToNormal,
                 true, new Vector3(1.3f, 2.25f, 0.6f), new Vector3(0f, 1.125f, 0f), Vector3.up * 0.05f, groundedOnWall: true);
+            AddDefinition(placeables, "GarageDoor", "Garage Door", HouseBuilderCategories.Door,
+                CreateGarageDoorPrefab(defaultMaterial), HouseSurfaceType.Ground | HouseSurfaceType.Wall, HouseSurfaceAlignment.ForwardToNormal,
+                true, new Vector3(3.2f, 2.5f, 0.25f), new Vector3(0f, 1.25f, 0f), groundedOnWall: true, centerOpeningObjectInWall: true);
             AddDefinition(placeables, "WindowBlinds", "Window", HouseBuilderCategories.Window,
                 "Assets/Main/Features/Interaction/Items/Windows/Blinds/Prefabs/PlaceholderWindowBlinds.prefab", HouseSurfaceType.Wall, HouseSurfaceAlignment.ForwardToNormal,
                 true, new Vector3(1.5f, 1.3f, 0.5f), new Vector3(0f, 1.5f, 0f));
@@ -128,7 +131,9 @@ namespace Neighbor.Main.HouseBuilder.Editor
             AddFlexibleDefinition(placeables, "TrapDoor", "Trap Door", HouseBuilderCategories.Wiring, "Assets/Main/Features/Interaction/Items/TrapDoors/Prefabs/FakeFloorTrapDoorPlaceholder.prefab");
             AddFlexibleDefinition(placeables, "TV", "TV", HouseBuilderCategories.Wiring, "Assets/Main/Features/Interaction/Items/TVs/Prefabs/PlaceholderTV.prefab", HouseSurfaceAlignment.ForwardToNormal, Vector3.up * 0.66f);
             AddFlexibleDefinition(placeables, "Umbrella", "Umbrella", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Umbrellas/Prefabs/PlaceholderUmbrella.prefab");
-            AddFlexibleDefinition(placeables, "VentCover", "Vent Cover", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Vents/Prefabs/PlaceholderVentCover.prefab", HouseSurfaceAlignment.ForwardToNormal, Vector3.up * 0.425f);
+            AddDefinition(placeables, "VentCover", "Vent Cover", HouseBuilderCategories.Prop,
+                "Assets/Main/Features/Interaction/Items/Vents/Prefabs/PlaceholderVentCover.prefab", HouseSurfaceType.Any, HouseSurfaceAlignment.ForwardToNormal,
+                true, placementOffset: Vector3.up * 0.425f);
 
             GameObject spawnPrefab = CreateMarkerPrefab("NeighborSpawnPoint", typeof(HouseNeighborSpawnPoint));
             AddDefinition(placeables, "NeighborSpawnPoint", "Neighbor Spawn Point", HouseBuilderCategories.NeighborSpawnPoint, spawnPrefab,
@@ -365,7 +370,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
 
             SerializedProperty wallOpening = serialized.FindProperty("wallOpening");
             wallOpening.FindPropertyRelative("enabled").boolValue = opening;
-            wallOpening.FindPropertyRelative("centerPlacedObjectInWall").boolValue = opening && centerOpeningObjectInWall;
+            wallOpening.FindPropertyRelative("placeInsideWallOpening").boolValue = opening && centerOpeningObjectInWall;
             if (opening)
             {
                 if (hasVisualBounds && deriveOpeningFromVisualBounds)
@@ -461,6 +466,48 @@ namespace Neighbor.Main.HouseBuilder.Editor
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(temporary, path);
             Object.DestroyImmediate(temporary);
             return prefab;
+        }
+
+        private static GameObject CreateGarageDoorPrefab(Material material)
+        {
+            string path = $"{StructurePrefabPath}/GarageDoor.prefab";
+            GameObject existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            GameObject root = new("GarageDoor");
+            BoxCollider openingCollider = root.AddComponent<BoxCollider>();
+            openingCollider.center = new Vector3(0f, 1.25f, 0f);
+            openingCollider.size = new Vector3(3.2f, 2.5f, 0.25f);
+
+            CreateGarageDoorPart(root.transform, "Door Panel", new Vector3(0f, 1.25f, 0f), new Vector3(3f, 2.3f, 0.12f), material);
+            CreateGarageDoorPart(root.transform, "Left Frame", new Vector3(-1.575f, 1.25f, 0f), new Vector3(0.15f, 2.5f, 0.22f), material);
+            CreateGarageDoorPart(root.transform, "Right Frame", new Vector3(1.575f, 1.25f, 0f), new Vector3(0.15f, 2.5f, 0.22f), material);
+            CreateGarageDoorPart(root.transform, "Top Frame", new Vector3(0f, 2.425f, 0f), new Vector3(3f, 0.15f, 0.22f), material);
+            for (int i = 1; i < 5; i++)
+            {
+                CreateGarageDoorPart(root.transform, $"Panel Seam {i}", new Vector3(0f, i * 0.48f, -0.07f), new Vector3(3f, 0.035f, 0.025f), material);
+            }
+
+            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
+            Object.DestroyImmediate(root);
+            return prefab;
+        }
+
+        private static void CreateGarageDoorPart(Transform parent, string name, Vector3 localPosition, Vector3 localScale, Material material)
+        {
+            GameObject part = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            part.name = name;
+            part.transform.SetParent(parent, false);
+            part.transform.localPosition = localPosition;
+            part.transform.localScale = localScale;
+            Object.DestroyImmediate(part.GetComponent<Collider>());
+            if (material != null)
+            {
+                part.GetComponent<MeshRenderer>().sharedMaterial = material;
+            }
         }
 
         private static GameObject CreateStructurePrefab(string name, HouseGeometryKind kind, Vector3 size, Material material)

@@ -10,31 +10,31 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: aaf599b07c382c34a8c3b01cb6755454, type: 3}
-  m_Name: VentCover
+  m_Name: GarageDoor
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HousePlaceableDefinition
-  id: neighbor.prop.ventcover
-  displayName: Vent Cover
-  categoryId: prop
-  prefab: {fileID: 3165528747569395311, guid: a9ab812023ecfbf46a7d9b8c817bc40a, type: 3}
+  id: neighbor.door.garagedoor
+  displayName: Garage Door
+  categoryId: door
+  prefab: {fileID: 2304169882513668701, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
   preview: {fileID: 0}
   hideFromCatalog: 0
   placement:
-    allowedSurfaces: -1
+    allowedSurfaces: 3
     surfaceAlignment: 2
     requireSurface: 1
-    groundOnWall: 0
+    groundOnWall: 1
     snapBoundsToFeatures: 0
     groundOnFeatureSnaps: 0
-    validateCollisions: 0
+    validateCollisions: 1
     allowTriggerOverlap: 1
-    boundsSize: {x: 1.4, y: 0.85, z: 0.125}
-    boundsCenter: {x: 0, y: 0, z: -0.032500006}
-    placementOffset: {x: 0, y: 0.425, z: 0}
+    boundsSize: {x: 3.3000002, y: 2.5, z: 0.22}
+    boundsCenter: {x: 0, y: 1.25, z: 0}
+    placementOffset: {x: 0, y: 0, z: 0}
   wallOpening:
     enabled: 1
-    size: {x: 1.4, y: 0.85, z: 0}
-    center: {x: 0, y: 0, z: 0}
+    size: {x: 3.3000002, y: 2.5, z: 0.25}
+    center: {x: 0, y: 1.25, z: 0}
     margin: 0.02
-    placeInsideWallOpening: 0
+    placeInsideWallOpening: 1
   wirePorts: []
   tags: []

@@ -747,7 +747,7 @@ namespace Neighbor.Main.Tests
             bool created = world.TryCreateWallOpening(glassObject, glass, wallObject.GetComponent<Collider>());
 
             Assert.That(created, Is.True);
-            Assert.That(glass.WallOpening.CenterPlacedObjectInWall, Is.True);
+            Assert.That(glass.WallOpening.PlaceInsideWallOpening, Is.True);
             Assert.That(wallObject.transform.InverseTransformPoint(glassObject.transform.position).z, Is.EqualTo(0f).Within(0.001f));
             Assert.That(wall.Descriptor.WallOpenings.Count, Is.EqualTo(1));
             Assert.That(
@@ -832,6 +832,34 @@ namespace Neighbor.Main.Tests
             Assert.That(definition, Is.Not.Null);
             Assert.That(definition.WallOpening.Enabled, Is.True);
             Assert.That(definition.Prefab.GetComponentsInChildren<Collider>(true).Length, Is.GreaterThan(0));
+        }
+
+        [Test]
+        public void VentCover_CreatesFaceMountedWallOpening()
+        {
+            HousePlaceableDefinition vent = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                "Assets/Main/HouseBuilder/Data/Placeables/VentCover.asset");
+
+            Assert.That(vent, Is.Not.Null);
+            Assert.That(vent.WallOpening.Enabled, Is.True);
+            Assert.That(vent.WallOpening.PlaceInsideWallOpening, Is.False);
+            Assert.That(vent.Prefab.GetComponentsInChildren<Collider>(true).Length, Is.GreaterThan(0));
+        }
+
+        [Test]
+        public void GarageDoor_IsCatalogReadyAndPlacedInsideOpening()
+        {
+            HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(HouseBuilderAssetInstaller.DefaultCatalogPath);
+            Assert.That(catalog.TryGetPlaceable("neighbor.door.garagedoor", out HousePlaceableDefinition garageDoor), Is.True);
+
+            Assert.That(garageDoor.Prefab, Is.Not.Null);
+            Assert.That(garageDoor.CategoryId, Is.EqualTo(HouseBuilderCategories.Door));
+            Assert.That(garageDoor.WallOpening.Enabled, Is.True);
+            Assert.That(garageDoor.WallOpening.PlaceInsideWallOpening, Is.True);
+            BoxCollider collider = garageDoor.Prefab.GetComponent<BoxCollider>();
+            Assert.That(collider, Is.Not.Null);
+            Assert.That(collider.size.x, Is.EqualTo(3.2f).Within(0.001f));
+            Assert.That(collider.size.y, Is.EqualTo(2.5f).Within(0.001f));
         }
 
         [Test]

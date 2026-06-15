@@ -740,7 +740,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 ray.direction);
             if (hasSurface
                 && placingDefinition.WallOpening != null
-                && placingDefinition.WallOpening.CenterPlacedObjectInWall
+                && placingDefinition.WallOpening.PlaceInsideWallOpening
                 && hit.collider.GetComponentInParent<HouseGeometryObject>() is { } openingWall
                 && openingWall.Descriptor.Kind == HouseGeometryKind.Wall)
             {

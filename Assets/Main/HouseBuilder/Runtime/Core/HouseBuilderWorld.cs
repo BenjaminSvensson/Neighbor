@@ -80,7 +80,7 @@ namespace Neighbor.Main.HouseBuilder
                 return false;
             }
 
-            if (definition.WallOpening.CenterPlacedObjectInWall)
+            if (definition.WallOpening.PlaceInsideWallOpening)
             {
                 placedObject.transform.position = wall.CenterOnWallMidplane(placedObject.transform.position);
             }
