@@ -203,6 +203,38 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void DropRecovery_OnlyAcceptsSafeNearbyLowerLandings()
+        {
+            NeighborMotor motor = context.AddInitializedComponent<NeighborMotor>();
+            GameplaySmokeTestReflection.SetField(motor, "targetDropMinimumHeight", 0.5f);
+            GameplaySmokeTestReflection.SetField(motor, "targetDropMaximumHeight", 4f);
+            GameplaySmokeTestReflection.SetField(motor, "dropRecoveryHorizontalReach", 4f);
+            Vector3 start = Vector3.up * 3f;
+
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    motor,
+                    "IsDropWithinRecoveryRange",
+                    start,
+                    Vector3.forward * 2f),
+                Is.True);
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    motor,
+                    "IsDropWithinRecoveryRange",
+                    start,
+                    Vector3.up * 3f + Vector3.forward),
+                Is.False);
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    motor,
+                    "IsDropWithinRecoveryRange",
+                    start,
+                    Vector3.forward * 5f),
+                Is.False);
+        }
+
+        [Test]
         public void Vision_RejectsPlayerAboveUpwardViewLimit()
         {
             NeighborVision vision = context.AddInitializedComponent<NeighborVision>();

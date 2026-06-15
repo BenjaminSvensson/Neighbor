@@ -106,11 +106,24 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float chaseDropArcHeight = 0.35f;
         [SerializeField, Min(0f)] private float dropLandingSampleRadius = 2.5f;
 
+        [Header("Unreachable Drop Recovery")]
+        [SerializeField] private bool enableUnreachableDropRecovery = true;
+        [SerializeField, Min(0.5f)] private float dropRecoveryHorizontalReach = 4f;
+        [SerializeField, Range(8, 32)] private int dropRecoveryCandidateCount = 20;
+        [SerializeField, Range(2, 8)] private int dropRecoveryDistanceSteps = 4;
+        [SerializeField, Min(0.05f)] private float dropRecoveryLandingSampleRadius = 0.8f;
+        [SerializeField, Min(0f)] private float dropRecoveryGoalSeparation = 1.5f;
+        [SerializeField, Min(0f)] private float dropRecoveryCooldown = 1.25f;
+        [SerializeField, Min(0)] private int dropRecoveryNoProgressAttempts = 1;
+
         private NavMeshAgent agent;
         private Coroutine traversalRoutine;
         private Coroutine knockbackRoutine;
         private Vector3 requestedDestination;
         private bool hasRequestedDestination;
+        private Vector3 navigationGoal;
+        private bool hasNavigationGoal;
+        private float nextDropRecoveryTime;
         private float offMeshChaseUntilTime;
         private readonly RaycastHit[] climbProbeHits = new RaycastHit[10];
         private readonly RaycastHit[] dynamicObstacleHits = new RaycastHit[12];
@@ -158,6 +171,7 @@ namespace Neighbor.Main.Features.Neighbor
         public bool IsCrouchingForClearance => isCrouchingForClearance;
         public Vector3 DynamicObstacleDetour => dynamicObstacleDetour;
         public Vector3 RequestedDestination => requestedDestination;
+        public Vector3 NavigationGoal => navigationGoal;
         public float CurrentSpeed => agent != null ? agent.velocity.magnitude : 0f;
         public bool HasPath => agent != null && (agent.hasPath || agent.pathPending);
         public float ConfiguredSpeed => agent != null ? agent.speed : walkSpeed;
@@ -215,6 +229,11 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 isAvoidingDynamicObstacle = false;
                 traversalRoutine = StartCoroutine(TraverseOffMeshLink());
+                return;
+            }
+
+            if (TryStartUnreachableDropRecovery())
+            {
                 return;
             }
 
@@ -279,6 +298,8 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
+            navigationGoal = destination;
+            hasNavigationGoal = true;
             if (!TryResolveClosestReachableDestination(
                     destination,
                     Mathf.Max(0f, sampleRadius),
@@ -568,17 +589,22 @@ namespace Neighbor.Main.Features.Neighbor
             Vector3 flatToTarget = new Vector3(toTarget.x, 0f, toTarget.z);
             float horizontalDistance = flatToTarget.magnitude;
             float dropHeight = transform.position.y - target.position.y;
-            if (horizontalDistance > targetDropHorizontalReach || dropHeight < targetDropMinimumHeight || dropHeight > targetDropMaximumHeight)
+            if (dropHeight < targetDropMinimumHeight || dropHeight > targetDropMaximumHeight)
             {
                 return false;
             }
 
-            if (!TryFindDropLanding(target.position, out Vector3 landingPoint))
+            Vector3 landingPoint = default;
+            bool foundLanding = horizontalDistance <= targetDropHorizontalReach
+                && TryFindDropLanding(target.position, out landingPoint);
+            if (!foundLanding
+                && !TryFindSafeDropRecoveryLanding(target.position, out landingPoint))
             {
                 return false;
             }
 
             isAvoidingDynamicObstacle = false;
+            nextDropRecoveryTime = Time.time + dropRecoveryCooldown;
             traversalRoutine = StartCoroutine(JumpToPoint(landingPoint, chaseDropDuration, chaseDropArcHeight));
             return true;
         }
@@ -731,6 +757,7 @@ namespace Neighbor.Main.Features.Neighbor
         public void Stop()
         {
             hasRequestedDestination = false;
+            hasNavigationGoal = false;
             isAvoidingDynamicObstacle = false;
             ResetDestinationProgressTracking();
             if (agent == null || !agent.enabled || !agent.isOnNavMesh)
@@ -781,6 +808,7 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             hasRequestedDestination = false;
+            hasNavigationGoal = false;
             isAvoidingDynamicObstacle = false;
             isPaused = false;
             isAnchoredForTask = false;
@@ -1232,7 +1260,7 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            Vector3 abandonedDestination = requestedDestination;
+            Vector3 abandonedDestination = hasNavigationGoal ? navigationGoal : requestedDestination;
             Stop();
             DestinationAbandoned?.Invoke(abandonedDestination);
         }
@@ -1710,19 +1738,212 @@ namespace Neighbor.Main.Features.Neighbor
             return true;
         }
 
-        private bool TryFindDropLanding(Vector3 targetPosition, out Vector3 landingPoint)
+        private bool TryStartUnreachableDropRecovery()
         {
-            if (NavMesh.SamplePosition(targetPosition, out NavMeshHit navMeshHit, dropLandingSampleRadius, agent.areaMask))
+            if (!enableUnreachableDropRecovery
+                || Time.time < nextDropRecoveryTime
+                || !hasNavigationGoal
+                || !hasRequestedDestination
+                || isPaused
+                || isAnchoredForTask
+                || traversalRoutine != null
+                || knockbackRoutine != null
+                || agent == null
+                || !agent.enabled
+                || !agent.isOnNavMesh)
             {
-                landingPoint = navMeshHit.position;
-                return true;
+                return false;
             }
 
-            Vector3 probeOrigin = targetPosition + Vector3.up * 1.5f;
-            if (Physics.Raycast(probeOrigin, Vector3.down, out RaycastHit hit, targetDropMaximumHeight + 2f, climbMask, QueryTriggerInteraction.Ignore)
-                && !hit.transform.IsChildOf(transform))
+            if (transform.position.y - navigationGoal.y < targetDropMinimumHeight)
             {
-                landingPoint = hit.point + Vector3.up * 0.03f;
+                return false;
+            }
+
+            float goalSeparation = Vector3.Distance(requestedDestination, navigationGoal);
+            bool reachedClosestReachablePoint = HasArrived
+                || noProgressAttemptCount >= dropRecoveryNoProgressAttempts;
+            if (goalSeparation < dropRecoveryGoalSeparation || !reachedClosestReachablePoint)
+            {
+                return false;
+            }
+
+            nextDropRecoveryTime = Time.time + dropRecoveryCooldown;
+            if (!TryFindSafeDropRecoveryLanding(navigationGoal, out Vector3 landingPoint))
+            {
+                return false;
+            }
+
+            isAvoidingDynamicObstacle = false;
+            ResetDestinationProgressTracking();
+            traversalRoutine = StartCoroutine(JumpToPoint(landingPoint, chaseDropDuration, chaseDropArcHeight));
+            return true;
+        }
+
+        private bool TryFindSafeDropRecoveryLanding(Vector3 goal, out Vector3 landingPoint)
+        {
+            landingPoint = default;
+            if (agent == null || !agent.enabled)
+            {
+                return false;
+            }
+
+            Vector3 origin = transform.position;
+            Vector3 toGoal = goal - origin;
+            toGoal.y = 0f;
+            Vector3 preferredDirection = toGoal.sqrMagnitude > 0.01f
+                ? toGoal.normalized
+                : Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
+            if (preferredDirection.sqrMagnitude <= 0.01f)
+            {
+                preferredDirection = Vector3.forward;
+            }
+
+            bool hasGoalOnNavMesh = NavMesh.SamplePosition(
+                goal,
+                out NavMeshHit goalNavMeshHit,
+                dropRecoveryLandingSampleRadius,
+                agent.areaMask);
+            float currentGoalDistance = Vector3.Distance(origin, goal);
+            float minimumProbeDistance = Mathf.Min(
+                dropRecoveryHorizontalReach,
+                Mathf.Max(0.75f, agent.radius * 1.6f));
+            float bestScore = float.PositiveInfinity;
+            bool found = false;
+            int directionCount = Mathf.Max(8, dropRecoveryCandidateCount);
+            int distanceSteps = Mathf.Max(2, dropRecoveryDistanceSteps);
+
+            for (int directionIndex = 0; directionIndex < directionCount; directionIndex++)
+            {
+                float angle = directionIndex * (360f / directionCount);
+                Vector3 direction = Quaternion.AngleAxis(angle, Vector3.up) * preferredDirection;
+                float alignmentPenalty = (1f - Mathf.Clamp01(Vector3.Dot(direction, preferredDirection))) * 2f;
+                for (int distanceIndex = 0; distanceIndex < distanceSteps; distanceIndex++)
+                {
+                    float distance = Mathf.Lerp(
+                        minimumProbeDistance,
+                        dropRecoveryHorizontalReach,
+                        distanceSteps <= 1 ? 1f : distanceIndex / (distanceSteps - 1f));
+                    Vector3 probePosition = origin + direction * distance;
+                    Vector3 probeOrigin = probePosition + Vector3.up * 0.75f;
+                    if (!Physics.Raycast(
+                            probeOrigin,
+                            Vector3.down,
+                            out RaycastHit surfaceHit,
+                            targetDropMaximumHeight + 1.5f,
+                            climbMask,
+                            QueryTriggerInteraction.Ignore)
+                        || surfaceHit.transform.IsChildOf(transform)
+                        || transform.IsChildOf(surfaceHit.transform)
+                        || !IsDropWithinRecoveryRange(origin, surfaceHit.point)
+                        || !NavMesh.SamplePosition(
+                            surfaceHit.point,
+                            out NavMeshHit landingNavMeshHit,
+                            dropRecoveryLandingSampleRadius,
+                            agent.areaMask)
+                        || Mathf.Abs(landingNavMeshHit.position.y - surfaceHit.point.y) > dropRecoveryLandingSampleRadius
+                        || !IsDropWithinRecoveryRange(origin, landingNavMeshHit.position)
+                        || !IsRecoveryPositionClear(landingNavMeshHit.position)
+                        || !IsDropTrajectoryClear(origin, landingNavMeshHit.position))
+                    {
+                        continue;
+                    }
+
+                    float routeDistance;
+                    if (hasGoalOnNavMesh)
+                    {
+                        if (!NavMesh.CalculatePath(
+                                landingNavMeshHit.position,
+                                goalNavMeshHit.position,
+                                agent.areaMask,
+                                recoveryPath)
+                            || recoveryPath.status != NavMeshPathStatus.PathComplete)
+                        {
+                            continue;
+                        }
+
+                        routeDistance = GetPathDistance(recoveryPath);
+                    }
+                    else
+                    {
+                        float landingGoalDistance = Vector3.Distance(landingNavMeshHit.position, goal);
+                        if (landingGoalDistance >= currentGoalDistance - minimumProgressPerAttempt)
+                        {
+                            continue;
+                        }
+
+                        routeDistance = landingGoalDistance;
+                    }
+
+                    float score = routeDistance + distance * 0.35f + alignmentPenalty;
+                    if (score >= bestScore)
+                    {
+                        continue;
+                    }
+
+                    bestScore = score;
+                    landingPoint = landingNavMeshHit.position;
+                    found = true;
+                }
+            }
+
+            return found;
+        }
+
+        private bool IsDropWithinRecoveryRange(Vector3 start, Vector3 landing)
+        {
+            float dropHeight = start.y - landing.y;
+            Vector3 flatOffset = landing - start;
+            flatOffset.y = 0f;
+            return dropHeight >= targetDropMinimumHeight
+                && dropHeight <= targetDropMaximumHeight
+                && flatOffset.sqrMagnitude <= dropRecoveryHorizontalReach * dropRecoveryHorizontalReach;
+        }
+
+        private bool IsDropTrajectoryClear(Vector3 start, Vector3 landing)
+        {
+            float bodyHeight = agent != null ? agent.height : standingAgentHeight;
+            float bodyRadius = agent != null ? agent.radius : 0.5f;
+            float centerHeight = Mathf.Max(bodyRadius + 0.1f, bodyHeight * 0.5f);
+            Vector3 startCenter = start + Vector3.up * centerHeight;
+            Vector3 endCenter = landing + Vector3.up * centerHeight;
+            Vector3 trajectory = endCenter - startCenter;
+            float distance = trajectory.magnitude;
+            if (distance <= 0.05f)
+            {
+                return false;
+            }
+
+            int hitCount = Physics.SphereCastNonAlloc(
+                startCenter,
+                Mathf.Max(0.05f, bodyRadius * 0.65f),
+                trajectory / distance,
+                climbProbeHits,
+                distance,
+                climbMask,
+                QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < hitCount; i++)
+            {
+                RaycastHit hit = climbProbeHits[i];
+                if (hit.collider != null
+                    && !hit.transform.IsChildOf(transform)
+                    && !transform.IsChildOf(hit.transform))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private bool TryFindDropLanding(Vector3 targetPosition, out Vector3 landingPoint)
+        {
+            if (NavMesh.SamplePosition(targetPosition, out NavMeshHit navMeshHit, dropLandingSampleRadius, agent.areaMask)
+                && IsDropWithinRecoveryRange(transform.position, navMeshHit.position)
+                && IsRecoveryPositionClear(navMeshHit.position)
+                && IsDropTrajectoryClear(transform.position, navMeshHit.position))
+            {
+                landingPoint = navMeshHit.position;
                 return true;
             }
 
@@ -1841,7 +2062,23 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             yield return PlayLandingReaction();
+            ResumeNavigationGoalAfterTraversal();
             FinishTraversal();
+        }
+
+        private void ResumeNavigationGoalAfterTraversal()
+        {
+            if (!hasNavigationGoal
+                || agent == null
+                || !agent.enabled
+                || !agent.isOnNavMesh
+                || IsOffMeshChasing)
+            {
+                return;
+            }
+
+            Vector3 goal = navigationGoal;
+            TrySetDestination(goal, destinationSampleRadius, out _);
         }
 
         private IEnumerator PlayLandingReaction()
