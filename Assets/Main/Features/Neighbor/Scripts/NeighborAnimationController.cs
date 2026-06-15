@@ -18,6 +18,11 @@ namespace Neighbor.Main.Features.Neighbor
         private static readonly int DoorKickState = Animator.StringToHash("Base Layer.DoorKick");
         private const string DefaultTaskClipName = "Idle_Talking_Loop";
         private const string DefaultHurtClipName = "Hit_Chest";
+        private const string DefaultIdleClipName = "Idle_Loop";
+        private const string DefaultWalkClipName = "Walk_Loop";
+        private const string DefaultRunClipName = "Sprint_Loop";
+        private const string ZombieIdleClipName = "Zombie_Idle_Loop";
+        private const string ZombieWalkClipName = "Zombie_Walk_Fwd_Loop";
 
         private enum ActionAnimation
         {
@@ -42,6 +47,9 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float transitionDuration = 0.16f;
         [SerializeField, Min(0.1f)] private float minimumLocomotionPlaybackSpeed = 0.7f;
         [SerializeField, Min(0.1f)] private float maximumLocomotionPlaybackSpeed = 1.4f;
+
+        [Header("Locomotion Style")]
+        [SerializeField] private bool useZombieLocomotion;
 
         [Header("Hurt Reaction")]
         [SerializeField, Min(0f)] private float hurtTransitionDuration = 0.045f;
@@ -80,6 +88,11 @@ namespace Neighbor.Main.Features.Neighbor
         private AnimatorOverrideController taskAnimationOverrides;
         private AnimationClip defaultTaskAnimation;
         private AnimationClip defaultHurtAnimation;
+        private AnimationClip defaultIdleAnimation;
+        private AnimationClip defaultWalkAnimation;
+        private AnimationClip defaultRunAnimation;
+        private AnimationClip zombieIdleAnimation;
+        private AnimationClip zombieWalkAnimation;
         private NeighborTaskLocation activeAnimatedTask;
         private NeighborTaskLocation.TaskAnimationPhase activeTaskAnimationPhase;
         private ActionAnimation activeActionAnimation;
@@ -90,6 +103,20 @@ namespace Neighbor.Main.Features.Neighbor
         public float CatchAnimationDuration => catchPlayerAnimation != null
             ? catchPlayerAnimation.length / Mathf.Max(0.05f, catchPlayerAnimationSpeed)
             : 0f;
+        public bool UseZombieLocomotion
+        {
+            get => useZombieLocomotion;
+            set
+            {
+                if (useZombieLocomotion == value)
+                {
+                    return;
+                }
+
+                useZombieLocomotion = value;
+                ApplyLocomotionOverrides();
+            }
+        }
 
         private void Awake()
         {
@@ -245,15 +272,7 @@ namespace Neighbor.Main.Features.Neighbor
             AnimationClip[] clips = baseController.animationClips;
             for (int i = 0; i < clips.Length; i++)
             {
-                if (clips[i] != null && clips[i].name == DefaultTaskClipName)
-                {
-                    defaultTaskAnimation = clips[i];
-                }
-
-                if (clips[i] != null && clips[i].name == DefaultHurtClipName)
-                {
-                    defaultHurtAnimation = clips[i];
-                }
+                CacheKnownAnimation(clips[i]);
             }
 
             if (defaultTaskAnimation == null)
@@ -267,6 +286,60 @@ namespace Neighbor.Main.Features.Neighbor
             taskAnimationOverrides = new AnimatorOverrideController(baseController);
             taskAnimationOverrides.name = $"{baseController.name} (Task Overrides)";
             animator.runtimeAnimatorController = taskAnimationOverrides;
+            ApplyLocomotionOverrides();
+        }
+
+        private void CacheKnownAnimation(AnimationClip clip)
+        {
+            if (clip == null)
+            {
+                return;
+            }
+
+            switch (clip.name)
+            {
+                case DefaultTaskClipName:
+                    defaultTaskAnimation = clip;
+                    break;
+                case DefaultHurtClipName:
+                    defaultHurtAnimation = clip;
+                    break;
+                case DefaultIdleClipName:
+                    defaultIdleAnimation = clip;
+                    break;
+                case DefaultWalkClipName:
+                    defaultWalkAnimation = clip;
+                    break;
+                case DefaultRunClipName:
+                    defaultRunAnimation = clip;
+                    break;
+                case ZombieIdleClipName:
+                    zombieIdleAnimation = clip;
+                    break;
+                case ZombieWalkClipName:
+                    zombieWalkAnimation = clip;
+                    break;
+            }
+        }
+
+        private void ApplyLocomotionOverrides()
+        {
+            if (taskAnimationOverrides == null)
+            {
+                return;
+            }
+
+            OverrideAnimation(defaultIdleAnimation, useZombieLocomotion ? zombieIdleAnimation : defaultIdleAnimation);
+            OverrideAnimation(defaultWalkAnimation, useZombieLocomotion ? zombieWalkAnimation : defaultWalkAnimation);
+            OverrideAnimation(defaultRunAnimation, useZombieLocomotion ? zombieWalkAnimation : defaultRunAnimation);
+        }
+
+        private void OverrideAnimation(AnimationClip original, AnimationClip replacement)
+        {
+            if (original != null)
+            {
+                taskAnimationOverrides[original] = replacement != null ? replacement : original;
+            }
         }
 
         private bool UpdateActionAnimationOverride()
@@ -452,6 +525,18 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 animator.speed = 1f;
             }
+        }
+
+        private void OnValidate()
+        {
+            movingThreshold = Mathf.Max(0f, movingThreshold);
+            runningThreshold = Mathf.Max(0f, runningThreshold);
+            transitionDuration = Mathf.Max(0f, transitionDuration);
+            minimumLocomotionPlaybackSpeed = Mathf.Max(0.1f, minimumLocomotionPlaybackSpeed);
+            maximumLocomotionPlaybackSpeed = Mathf.Max(
+                minimumLocomotionPlaybackSpeed,
+                maximumLocomotionPlaybackSpeed);
+            ApplyLocomotionOverrides();
         }
 
         private void OnDestroy()

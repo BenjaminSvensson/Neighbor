@@ -2454,21 +2454,21 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1396788348566312222, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
+      propertyPath: lowClearanceMask.m_Bits
+      value: 321
+      objectReference: {fileID: 0}
     - target: {fileID: 5206360911464809966, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
       propertyPath: m_Name
       value: Neighbor
       objectReference: {fileID: 0}
-    - target: {fileID: 6254384187814207898, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
-      propertyPath: voiceAnchor
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 6254384187814207898, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
-      propertyPath: voiceSource
-      value: 
+    - target: {fileID: 7647593652331711903, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
+      propertyPath: legIKSettings.footRotationWeight
+      value: 0.1
       objectReference: {fileID: 0}
     - target: {fileID: 8573506346761602368, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -8.83
+      value: -8.97
       objectReference: {fileID: 0}
     - target: {fileID: 8573506346761602368, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
       propertyPath: m_LocalPosition.y
