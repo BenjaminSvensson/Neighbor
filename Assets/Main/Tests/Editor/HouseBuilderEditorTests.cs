@@ -662,6 +662,46 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void WallOpeningLink_PlayModeEnableRestoresOpeningWithoutFollowingAnimation()
+        {
+            GameObject wallObject = Track(HouseGeometryFactory.Create(
+                new HouseGeometryDescriptor(HouseGeometryKind.Wall, new Vector3(5f, 3f, 0.25f))));
+            HouseGeometryObject wall = wallObject.GetComponent<HouseGeometryObject>();
+            GameObject doorObject = Track(new GameObject("Door"));
+            HouseBuilderObject door = doorObject.AddComponent<HouseBuilderObject>();
+            door.Initialize("door", HouseBuilderCategories.Door);
+            HouseWallOpeningLink link = doorObject.AddComponent<HouseWallOpeningLink>();
+            link.Initialize(wall, new HouseWallOpeningProfile(new Vector3(1.2f, 2.3f, 0.6f), new Vector3(0f, 1.1f, 0f)));
+            wall.Descriptor.RemoveWallOpening(door.InstanceId);
+            wall.Rebuild();
+
+            link.RefreshOpening();
+            doorObject.transform.SetPositionAndRotation(new Vector3(1f, 0f, 0.5f), Quaternion.Euler(0f, 95f, 0f));
+            link.RefreshIfMoved(false);
+
+            Assert.That(wall.Descriptor.WallOpenings.Count, Is.EqualTo(1));
+            Assert.That(wall.Descriptor.WallOpenings[0].Center, Is.EqualTo(new Vector2(0f, 1.1f)));
+        }
+
+        [TestCase(true, true, false, false)]
+        [TestCase(false, false, false, false)]
+        [TestCase(false, true, true, false)]
+        [TestCase(false, true, false, true)]
+        public void WallOpeningLink_OnlyRemovesOpeningForRealEditModeDeletion(
+            bool applicationIsPlaying,
+            bool sceneIsLoaded,
+            bool editorPlayingOrChangingMode,
+            bool expected)
+        {
+            Assert.That(
+                HouseWallOpeningLink.ShouldRemoveOpeningOnDestroy(
+                    applicationIsPlaying,
+                    sceneIsLoaded,
+                    editorPlayingOrChangingMode),
+                Is.EqualTo(expected));
+        }
+
+        [Test]
         public void MaterialBindings_ReapplyAfterGeometryRebuild()
         {
             HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(HouseBuilderAssetInstaller.DefaultCatalogPath);

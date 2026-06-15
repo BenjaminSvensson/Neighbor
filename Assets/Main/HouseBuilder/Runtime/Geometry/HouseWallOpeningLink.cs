@@ -39,10 +39,7 @@ namespace Neighbor.Main.HouseBuilder
 
         private void OnEnable()
         {
-            if (!Application.isPlaying)
-            {
-                RefreshOpening();
-            }
+            RefreshOpening();
         }
 
         private void Update()
@@ -62,11 +59,28 @@ namespace Neighbor.Main.HouseBuilder
 
         private void OnDestroy()
         {
+            bool editorPlayingOrChangingMode = false;
+#if UNITY_EDITOR
+            editorPlayingOrChangingMode = UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode;
+#endif
+            if (!ShouldRemoveOpeningOnDestroy(Application.isPlaying, gameObject.scene.isLoaded, editorPlayingOrChangingMode))
+            {
+                return;
+            }
+
             HouseBuilderObject owner = GetComponent<HouseBuilderObject>();
             if (wall != null && owner != null)
             {
                 wall.RemoveWallOpening(owner.InstanceId);
             }
+        }
+
+        public static bool ShouldRemoveOpeningOnDestroy(
+            bool applicationIsPlaying,
+            bool sceneIsLoaded,
+            bool editorPlayingOrChangingMode)
+        {
+            return !applicationIsPlaying && sceneIsLoaded && !editorPlayingOrChangingMode;
         }
 
         private HouseWallOpeningProfile ResolveCurrentProfile(HouseBuilderObject owner)
