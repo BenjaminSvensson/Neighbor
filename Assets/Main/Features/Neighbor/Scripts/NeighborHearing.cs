@@ -65,7 +65,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         public void TryHear(NoiseEvent noiseEvent)
         {
-            if (noiseEvent == null || IsNoiseFromNeighbor(noiseEvent.SourceObject))
+            if (noiseEvent == null || IsNoiseInstigatedByThisNeighbor(noiseEvent.InstigatorObject))
             {
                 return;
             }
@@ -88,9 +88,13 @@ namespace Neighbor.Main.Features.Neighbor
                 noiseEvent.SourceObject));
         }
 
-        private static bool IsNoiseFromNeighbor(GameObject sourceObject)
+        private bool IsNoiseInstigatedByThisNeighbor(GameObject instigatorObject)
         {
-            return sourceObject != null && sourceObject.GetComponentInParent<NeighborBrain>() != null;
+            NeighborBrain instigator = instigatorObject != null
+                ? instigatorObject.GetComponentInParent<NeighborBrain>()
+                : null;
+            NeighborBrain listener = GetComponentInParent<NeighborBrain>();
+            return instigator != null && instigator == listener;
         }
 
         private void TryHear(Collider other)

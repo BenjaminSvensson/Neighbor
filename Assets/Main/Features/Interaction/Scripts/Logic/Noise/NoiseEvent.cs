@@ -16,6 +16,7 @@ namespace Neighbor.Main.Features.Interaction
         public float Loudness01 { get; private set; }
         public float Urgency01 { get; private set; }
         public GameObject SourceObject { get; private set; }
+        public GameObject InstigatorObject { get; private set; }
 
         private void Awake()
         {
@@ -31,13 +32,25 @@ namespace Neighbor.Main.Features.Interaction
             }
         }
 
-        public void Initialize(Vector3 origin, float radius, float loudness01, GameObject sourceObject, float lifetime, float urgency01 = 1f)
+        public void Initialize(
+            Vector3 origin,
+            float radius,
+            float loudness01,
+            GameObject sourceObject,
+            float lifetime,
+            float urgency01 = 1f,
+            GameObject instigatorObject = null)
         {
             Origin = origin;
             Radius = radius;
             Loudness01 = Mathf.Clamp01(loudness01);
             Urgency01 = Mathf.Clamp01(urgency01);
             SourceObject = sourceObject;
+            InstigatorObject = instigatorObject != null
+                ? instigatorObject
+                : sourceObject != null && sourceObject.GetComponentInParent<NeighborBrain>() != null
+                    ? sourceObject
+                    : null;
             despawnTime = Time.time + lifetime;
 
             if (noiseTrigger == null)
@@ -48,15 +61,19 @@ namespace Neighbor.Main.Features.Interaction
             noiseTrigger.isTrigger = true;
             noiseTrigger.radius = radius;
 
-            if (sourceObject == null
-                || sourceObject.GetComponentInParent<NeighborBrain>() == null
-                && sourceObject.GetComponentInParent<SecurityCamera>() == null)
+            if (!IsNeighborObject(InstigatorObject)
+                && (sourceObject == null || sourceObject.GetComponentInParent<SecurityCamera>() == null))
             {
                 PlayerFeedbackEvents.ReportNoise(origin, Loudness01, radius);
                 AdaptiveSecurityDirector.ReportDisturbance(Loudness01);
             }
 
             NotifyListenersInRange();
+        }
+
+        private static bool IsNeighborObject(GameObject candidate)
+        {
+            return candidate != null && candidate.GetComponentInParent<NeighborBrain>() != null;
         }
 
         private void NotifyListenersInRange()

@@ -465,6 +465,36 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NoiseEvent_InstigatedByNeighbor_IsIgnoredOnlyByThatNeighbor()
+        {
+            GameObject instigatorObject = context.CreateObject("InstigatorNeighbor");
+            context.AddInitializedComponent<NeighborHearing>(instigatorObject);
+            NeighborBrain instigatorBrain = context.AddInitializedComponent<NeighborBrain>(instigatorObject);
+            GameObject witnessObject = context.CreateObject("WitnessNeighbor");
+            context.AddInitializedComponent<NeighborHearing>(witnessObject);
+            NeighborBrain witnessBrain = context.AddInitializedComponent<NeighborBrain>(witnessObject);
+            GameObject source = context.CreateObject("KnockedObject");
+            GameObject noiseObject = context.CreateObject("NoiseEvent");
+            noiseObject.AddComponent<SphereCollider>();
+            NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
+
+            noiseEvent.Initialize(
+                instigatorObject.transform.position,
+                5f,
+                0.8f,
+                source,
+                1f,
+                1f,
+                instigatorObject);
+
+            Assert.That(instigatorBrain.Suspicion, Is.Zero);
+            Assert.That(witnessBrain.Suspicion, Is.GreaterThan(0f));
+            Assert.That(
+                GameplaySmokeTestReflection.GetField<GameObject>(witnessBrain, "currentInvestigationSource"),
+                Is.SameAs(source));
+        }
+
+        [Test]
         public void Stun_EntersStunnedStateAndRecoversToRoutine()
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>();

@@ -367,6 +367,7 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            MarkHeldObjectAsNeighborInstigated();
             if (TryFindPlacementPose(center, out Vector3 position, out Quaternion rotation))
             {
                 heldPickup.Place(position, rotation);
@@ -374,6 +375,15 @@ namespace Neighbor.Main.Features.Neighbor
             else
             {
                 heldPickup.Drop();
+            }
+        }
+
+        private void MarkHeldObjectAsNeighborInstigated()
+        {
+            PhysicsImpactNoiseEmitter[] emitters = heldPickup.GetComponentsInChildren<PhysicsImpactNoiseEmitter>(true);
+            foreach (PhysicsImpactNoiseEmitter emitter in emitters)
+            {
+                emitter?.MarkNeighborInstigator(gameObject);
             }
         }
 

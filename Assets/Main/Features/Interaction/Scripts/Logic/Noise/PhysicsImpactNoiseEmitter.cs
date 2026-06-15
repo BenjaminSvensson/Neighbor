@@ -82,7 +82,7 @@ namespace Neighbor.Main.Features.Interaction
 
             lastImpactTime = Time.time;
             PlayImpactAudio(origin, loudness01);
-            SpawnNoiseTrigger(origin, loudness01, ResolveNoiseSource());
+            SpawnNoiseTrigger(origin, loudness01, ResolveNoiseInstigator());
             NotifyImpactReceiver(collision, origin, loudness01);
             NotifyDoorImpact(collision);
         }
@@ -92,16 +92,36 @@ namespace Neighbor.Main.Features.Interaction
             NeighborBrain neighbor = collision.collider != null
                 ? collision.collider.GetComponentInParent<NeighborBrain>()
                 : null;
-            if (neighbor == null || speedBeforePhysicsStep > neighborAttributionMaximumObjectSpeed)
+            if (neighbor != null && speedBeforePhysicsStep <= neighborAttributionMaximumObjectSpeed)
+            {
+                MarkNeighborInstigator(neighbor.gameObject);
+                return;
+            }
+
+            PhysicsImpactNoiseEmitter otherEmitter = collision.collider != null
+                ? collision.collider.GetComponentInParent<PhysicsImpactNoiseEmitter>()
+                : null;
+            GameObject propagatedInstigator = otherEmitter != null && otherEmitter != this
+                ? otherEmitter.ResolveNoiseInstigator()
+                : null;
+            if (propagatedInstigator != null)
+            {
+                MarkNeighborInstigator(propagatedInstigator);
+            }
+        }
+
+        public void MarkNeighborInstigator(GameObject neighborInstigator)
+        {
+            if (neighborInstigator == null || neighborInstigator.GetComponentInParent<NeighborBrain>() == null)
             {
                 return;
             }
 
-            recentNeighborInstigator = neighbor.gameObject;
+            recentNeighborInstigator = neighborInstigator;
             neighborAttributionUntilTime = Time.time + neighborAttributionTime;
         }
 
-        private GameObject ResolveNoiseSource()
+        private GameObject ResolveNoiseInstigator()
         {
             if (recentNeighborInstigator != null && Time.time <= neighborAttributionUntilTime)
             {
@@ -187,7 +207,7 @@ namespace Neighbor.Main.Features.Interaction
             return clip;
         }
 
-        private void SpawnNoiseTrigger(Vector3 origin, float loudness01, GameObject sourceObject)
+        private void SpawnNoiseTrigger(Vector3 origin, float loudness01, GameObject instigatorObject)
         {
             float radius = Mathf.Lerp(minimumNoiseRadius, maximumNoiseRadius, loudness01);
             GameObject noiseObject = new GameObject("NoiseEvent");
@@ -202,7 +222,7 @@ namespace Neighbor.Main.Features.Interaction
             noiseBody.useGravity = false;
 
             NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
-            noiseEvent.Initialize(origin, radius, loudness01, sourceObject, noiseLifetime, alertUrgency);
+            noiseEvent.Initialize(origin, radius, loudness01, gameObject, noiseLifetime, alertUrgency, instigatorObject);
         }
 
         private void ConfigureAudioSource()
