@@ -68,7 +68,7 @@ Door and window definitions can enable a `HouseWallOpeningProfile`. When one is 
 - deleting the object removes the hole;
 - save/load restores both the opening and link.
 
-Opening size, local center, and margin are data-driven on the placeable definition. This allows different door and window prefabs to create appropriately sized holes.
+Opening size and center are projected from the placed object's active colliders into the wall plane, so resized, rotated, and custom door/window prefabs create matching holes automatically. Editing those colliders updates the linked hole in Edit Mode, while gameplay animation cannot move it. The profile margin remains data-driven, and its configured size/center are used as a fallback for collider-less custom objects.
 
 ## Materials
 

@@ -116,10 +116,21 @@ namespace Neighbor.Main.HouseBuilder
                 return false;
             }
 
-            Vector3 worldCenter = openingTransform.TransformPoint(profile.Center);
-            Vector3 localCenter = transform.InverseTransformPoint(worldCenter);
-            Vector3 worldSize = Vector3.Scale(profile.Size, Abs(openingTransform.lossyScale));
-            Vector3 localSize = Divide(worldSize, Abs(transform.lossyScale));
+            Vector3 localCenter;
+            Vector3 localSize;
+            if (!TryGetColliderBoundsInWallSpace(openingOwner.gameObject, out Bounds colliderBounds))
+            {
+                Vector3 worldCenter = openingTransform.TransformPoint(profile.Center);
+                localCenter = transform.InverseTransformPoint(worldCenter);
+                Vector3 worldSize = Vector3.Scale(profile.Size, Abs(openingTransform.lossyScale));
+                localSize = Divide(worldSize, Abs(transform.lossyScale));
+            }
+            else
+            {
+                localCenter = colliderBounds.center;
+                localSize = colliderBounds.size;
+            }
+
             Vector2 openingSize = new(
                 Mathf.Min(descriptor.Size.x, localSize.x + profile.Margin * 2f),
                 Mathf.Min(descriptor.Size.y, localSize.y + profile.Margin * 2f));
@@ -130,6 +141,113 @@ namespace Neighbor.Main.HouseBuilder
                 openingSize));
             Rebuild();
             return true;
+        }
+
+        private bool TryGetColliderBoundsInWallSpace(GameObject openingRoot, out Bounds bounds)
+        {
+            bounds = default;
+            if (openingRoot == null)
+            {
+                return false;
+            }
+
+            Collider[] colliders = openingRoot.GetComponentsInChildren<Collider>(true);
+            bool found = false;
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                Collider collider = colliders[i];
+                if (collider == null || !collider.enabled || !collider.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                if (TryGetLocalColliderBounds(collider, out Bounds localBounds))
+                {
+                    EncapsulateTransformedBounds(collider.transform, localBounds, ref bounds, ref found);
+                }
+                else
+                {
+                    EncapsulateWorldBounds(collider.bounds, ref bounds, ref found);
+                }
+            }
+
+            return found;
+        }
+
+        private static bool TryGetLocalColliderBounds(Collider collider, out Bounds bounds)
+        {
+            switch (collider)
+            {
+                case BoxCollider box:
+                    bounds = new Bounds(box.center, box.size);
+                    return true;
+                case MeshCollider mesh when mesh.sharedMesh != null:
+                    bounds = mesh.sharedMesh.bounds;
+                    return true;
+                case SphereCollider sphere:
+                    bounds = new Bounds(sphere.center, Vector3.one * sphere.radius * 2f);
+                    return true;
+                case CapsuleCollider capsule:
+                    Vector3 size = Vector3.one * capsule.radius * 2f;
+                    size[capsule.direction] = Mathf.Max(capsule.height, capsule.radius * 2f);
+                    bounds = new Bounds(capsule.center, size);
+                    return true;
+                default:
+                    bounds = default;
+                    return false;
+            }
+        }
+
+        private void EncapsulateTransformedBounds(Transform source, Bounds sourceBounds, ref Bounds target, ref bool found)
+        {
+            Vector3 min = sourceBounds.min;
+            Vector3 max = sourceBounds.max;
+            for (int x = 0; x < 2; x++)
+            {
+                for (int y = 0; y < 2; y++)
+                {
+                    for (int z = 0; z < 2; z++)
+                    {
+                        Vector3 localPoint = new(
+                            x == 0 ? min.x : max.x,
+                            y == 0 ? min.y : max.y,
+                            z == 0 ? min.z : max.z);
+                        EncapsulatePoint(transform.InverseTransformPoint(source.TransformPoint(localPoint)), ref target, ref found);
+                    }
+                }
+            }
+        }
+
+        private void EncapsulateWorldBounds(Bounds worldBounds, ref Bounds target, ref bool found)
+        {
+            Vector3 min = worldBounds.min;
+            Vector3 max = worldBounds.max;
+            for (int x = 0; x < 2; x++)
+            {
+                for (int y = 0; y < 2; y++)
+                {
+                    for (int z = 0; z < 2; z++)
+                    {
+                        Vector3 worldPoint = new(
+                            x == 0 ? min.x : max.x,
+                            y == 0 ? min.y : max.y,
+                            z == 0 ? min.z : max.z);
+                        EncapsulatePoint(transform.InverseTransformPoint(worldPoint), ref target, ref found);
+                    }
+                }
+            }
+        }
+
+        private static void EncapsulatePoint(Vector3 point, ref Bounds bounds, ref bool found)
+        {
+            if (!found)
+            {
+                bounds = new Bounds(point, Vector3.zero);
+                found = true;
+                return;
+            }
+
+            bounds.Encapsulate(point);
         }
 
         public void RemoveWallOpening(string ownerObjectId)

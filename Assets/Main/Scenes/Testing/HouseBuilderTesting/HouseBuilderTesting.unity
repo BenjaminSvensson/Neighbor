@@ -335,7 +335,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: b66dac0cfa5cf484bab2da51f0cd517a, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -10.5
+      value: -10.325
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: b66dac0cfa5cf484bab2da51f0cd517a, type: 3}
       propertyPath: m_LocalRotation.w
@@ -3855,114 +3855,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
---- !u!1001 &718411856
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 908822767}
-    m_Modifications:
-    - target: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_Name
-      value: PlaceholderGlass
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 10.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 1.8508723
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -14.25
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 0.7071068
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0.7071068
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 718411860}
-    - targetCorrespondingSourceObject: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 718411859}
-  m_SourcePrefab: {fileID: 100100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
---- !u!4 &718411857 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-  m_PrefabInstance: {fileID: 718411856}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &718411858 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-  m_PrefabInstance: {fileID: 718411856}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &718411859
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 718411858}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
-  wall: {fileID: 1521513416}
-  profile:
-    enabled: 1
-    size: {x: 0.85, y: 1.15, z: 0.5}
-    center: {x: 0, y: 0, z: 0}
-    margin: 0.02
-    centerPlacedObjectInWall: 1
---- !u!114 &718411860
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 718411858}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
-  instanceId: 074458a73340463fa9b11fdd5c98a356
-  definitionId: neighbor.prop.glass
-  categoryId: prop
-  properties: []
 --- !u!1001 &743156766
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5137,114 +5029,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2827704472333151519, guid: 80ca1015f38352a4ea4319a22bbfe289, type: 3}
   m_PrefabInstance: {fileID: 842058268}
   m_PrefabAsset: {fileID: 0}
---- !u!1001 &842347172
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 908822767}
-    m_Modifications:
-    - target: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_Name
-      value: PlaceholderGlass
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 9
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 1.825
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -14.25
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 0.7071068
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0.7071068
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 842347176}
-    - targetCorrespondingSourceObject: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 842347175}
-  m_SourcePrefab: {fileID: 100100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
---- !u!4 &842347173 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-  m_PrefabInstance: {fileID: 842347172}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &842347174 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 100000, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
-  m_PrefabInstance: {fileID: 842347172}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &842347175
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 842347174}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
-  wall: {fileID: 1521513416}
-  profile:
-    enabled: 1
-    size: {x: 0.85, y: 1.15, z: 0.5}
-    center: {x: 0, y: 0, z: 0}
-    margin: 0.02
-    centerPlacedObjectInWall: 1
---- !u!114 &842347176
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 842347174}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
-  instanceId: 4f3173c9ccb145958aa30b7460b2e105
-  definitionId: neighbor.prop.glass
-  categoryId: prop
-  properties: []
 --- !u!1001 &844609274
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5642,13 +5426,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireGraph
   connections:
-  - id: 01f41a6c924049488f38f18352432caf
-    outputObjectId: 96b703aaaa2b4dc0a404f90d6dcea68e
-    outputEndpointId: neighbor.wiring.lightswitch.endpoint
-    outputPortId: state
-    inputObjectId: eb019b006df1438a85896cde3d66799e
-    inputEndpointId: neighbor.wiring.ceilinglight.endpoint
-    inputPortId: power
   - id: bdd4410ff76f4587959f8c8cf224ecdf
     outputObjectId: 175655aa5ed842d49af2771094746c30
     outputEndpointId: neighbor.wiring.lightswitch.endpoint
@@ -5747,8 +5524,6 @@ Transform:
   - {fileID: 1245151885}
   - {fileID: 822146309}
   - {fileID: 1748614156}
-  - {fileID: 842347173}
-  - {fileID: 718411857}
   - {fileID: 1909510863}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -5860,7 +5635,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: b66dac0cfa5cf484bab2da51f0cd517a, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -14.5
+      value: -14.28
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: b66dac0cfa5cf484bab2da51f0cd517a, type: 3}
       propertyPath: m_LocalRotation.w

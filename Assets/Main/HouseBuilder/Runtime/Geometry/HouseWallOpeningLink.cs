@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Neighbor.Main.HouseBuilder
@@ -12,6 +13,8 @@ namespace Neighbor.Main.HouseBuilder
         private Vector3 lastPosition;
         private Quaternion lastRotation;
         private Vector3 lastScale;
+        private int lastColliderStateHash;
+        private readonly List<Collider> trackedColliders = new();
 
         public HouseGeometryObject Wall => wall;
 
@@ -35,6 +38,7 @@ namespace Neighbor.Main.HouseBuilder
             lastPosition = transform.position;
             lastRotation = transform.rotation;
             lastScale = transform.lossyScale;
+            lastColliderStateHash = CalculateColliderStateHash();
         }
 
         private void OnEnable()
@@ -51,9 +55,41 @@ namespace Neighbor.Main.HouseBuilder
         {
             if (allowTransformRefresh
                 && wall != null
-                && (transform.position != lastPosition || transform.rotation != lastRotation || transform.lossyScale != lastScale))
+                && (transform.position != lastPosition
+                    || transform.rotation != lastRotation
+                    || transform.lossyScale != lastScale
+                    || CalculateColliderStateHash() != lastColliderStateHash))
             {
                 RefreshOpening();
+            }
+        }
+
+        private int CalculateColliderStateHash()
+        {
+            unchecked
+            {
+                int hash = 17;
+                trackedColliders.Clear();
+                GetComponentsInChildren(true, trackedColliders);
+                for (int i = 0; i < trackedColliders.Count; i++)
+                {
+                    Collider collider = trackedColliders[i];
+                    if (collider == null)
+                    {
+                        continue;
+                    }
+
+                    hash = hash * 31 + collider.GetHashCode();
+                    hash = hash * 31 + collider.enabled.GetHashCode();
+                    hash = hash * 31 + collider.gameObject.activeInHierarchy.GetHashCode();
+                    if (collider.enabled && collider.gameObject.activeInHierarchy)
+                    {
+                        hash = hash * 31 + collider.bounds.center.GetHashCode();
+                        hash = hash * 31 + collider.bounds.size.GetHashCode();
+                    }
+                }
+
+                return hash;
             }
         }
 

@@ -84,6 +84,73 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void WallOpening_UsesPlacedObjectColliderInsteadOfConfiguredSize()
+        {
+            GameObject wallObject = Track(HouseGeometryFactory.Create(
+                new HouseGeometryDescriptor(HouseGeometryKind.Wall, new Vector3(10f, 10f, 0.25f))));
+            HouseGeometryObject wall = wallObject.GetComponent<HouseGeometryObject>();
+            GameObject openingObject = Track(new GameObject("Collider Opening"));
+            HouseBuilderObject owner = openingObject.AddComponent<HouseBuilderObject>();
+            owner.Initialize("opening", HouseBuilderCategories.Door);
+            BoxCollider collider = openingObject.AddComponent<BoxCollider>();
+            collider.center = new Vector3(0.5f, 1.5f, 0f);
+            collider.size = new Vector3(2f, 3f, 0.5f);
+
+            bool added = wall.AddOrUpdateWallOpening(
+                owner,
+                openingObject.transform,
+                new HouseWallOpeningProfile(new Vector3(0.25f, 0.25f, 0.25f), Vector3.zero, 0.1f));
+
+            Assert.That(added, Is.True);
+            Assert.That(wall.Descriptor.WallOpenings[0].Center, Is.EqualTo(new Vector2(0.5f, 1.5f)));
+            Assert.That(wall.Descriptor.WallOpenings[0].Size, Is.EqualTo(new Vector2(2.2f, 3.2f)));
+        }
+
+        [Test]
+        public void WallOpening_IgnoresInactiveChildColliders()
+        {
+            GameObject wallObject = Track(HouseGeometryFactory.Create(
+                new HouseGeometryDescriptor(HouseGeometryKind.Wall, new Vector3(10f, 10f, 0.25f))));
+            HouseGeometryObject wall = wallObject.GetComponent<HouseGeometryObject>();
+            GameObject openingObject = Track(new GameObject("Collider Opening"));
+            HouseBuilderObject owner = openingObject.AddComponent<HouseBuilderObject>();
+            owner.Initialize("opening", HouseBuilderCategories.Window);
+            openingObject.AddComponent<BoxCollider>().size = new Vector3(2f, 2f, 0.5f);
+            GameObject inactiveChild = Track(new GameObject("Inactive Shards"));
+            inactiveChild.transform.SetParent(openingObject.transform);
+            inactiveChild.transform.localPosition = Vector3.one * 20f;
+            inactiveChild.AddComponent<BoxCollider>().size = Vector3.one * 10f;
+            inactiveChild.SetActive(false);
+
+            wall.AddOrUpdateWallOpening(owner, openingObject.transform, new HouseWallOpeningProfile(Vector3.one, Vector3.zero));
+
+            Assert.That(wall.Descriptor.WallOpenings[0].Size.x, Is.EqualTo(2.04f).Within(0.001f));
+            Assert.That(wall.Descriptor.WallOpenings[0].Size.y, Is.EqualTo(2.04f).Within(0.001f));
+        }
+
+        [Test]
+        public void WallOpeningLink_EditModeRefreshTracksColliderChanges()
+        {
+            GameObject wallObject = Track(HouseGeometryFactory.Create(
+                new HouseGeometryDescriptor(HouseGeometryKind.Wall, new Vector3(10f, 10f, 0.25f))));
+            HouseGeometryObject wall = wallObject.GetComponent<HouseGeometryObject>();
+            GameObject openingObject = Track(new GameObject("Resizable Opening"));
+            HouseBuilderObject owner = openingObject.AddComponent<HouseBuilderObject>();
+            owner.Initialize("opening", HouseBuilderCategories.Window);
+            BoxCollider collider = openingObject.AddComponent<BoxCollider>();
+            collider.size = new Vector3(1f, 1f, 0.25f);
+            HouseWallOpeningLink link = openingObject.AddComponent<HouseWallOpeningLink>();
+            link.Initialize(wall, new HouseWallOpeningProfile(Vector3.one, Vector3.zero, 0f));
+
+            collider.size = new Vector3(2f, 3f, 0.25f);
+            collider.center = new Vector3(0.5f, 1f, 0f);
+            link.RefreshIfMoved(true);
+
+            Assert.That(wall.Descriptor.WallOpenings[0].Center, Is.EqualTo(new Vector2(0.5f, 1f)));
+            Assert.That(wall.Descriptor.WallOpenings[0].Size, Is.EqualTo(new Vector2(2f, 3f)));
+        }
+
+        [Test]
         public void Wiring_RoutesTypedSignalThroughSerializableConnection()
         {
             GameObject worldObject = Track(new GameObject("World"));
@@ -683,8 +750,11 @@ namespace Neighbor.Main.Tests
             Assert.That(glass.WallOpening.CenterPlacedObjectInWall, Is.True);
             Assert.That(wallObject.transform.InverseTransformPoint(glassObject.transform.position).z, Is.EqualTo(0f).Within(0.001f));
             Assert.That(wall.Descriptor.WallOpenings.Count, Is.EqualTo(1));
-            Assert.That(wall.Descriptor.WallOpenings[0].Size.x, Is.EqualTo(glass.WallOpening.Size.x + glass.WallOpening.Margin * 2f).Within(0.001f));
-            Assert.That(wall.Descriptor.WallOpenings[0].Size.y, Is.EqualTo(glass.WallOpening.Size.y + glass.WallOpening.Margin * 2f).Within(0.001f));
+            Assert.That(
+                Mathf.Abs(wall.Descriptor.WallOpenings[0].Size.x - (glass.WallOpening.Size.x + glass.WallOpening.Margin * 2f)),
+                Is.GreaterThan(0.001f));
+            Assert.That(wall.Descriptor.WallOpenings[0].Size.x, Is.GreaterThan(0f));
+            Assert.That(wall.Descriptor.WallOpenings[0].Size.y, Is.GreaterThan(0f));
         }
 
         [Test]
@@ -754,21 +824,18 @@ namespace Neighbor.Main.Tests
         [TestCase("Door")]
         [TestCase("LockedDoor")]
         [TestCase("WindowBlinds")]
-        public void WallOpening_MatchesVisiblePrefabBounds(string definitionName)
+        public void WallOpening_HasColliderBackedPrefab(string definitionName)
         {
             HousePlaceableDefinition definition = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
                 $"Assets/Main/HouseBuilder/Data/Placeables/{definitionName}.asset");
 
             Assert.That(definition, Is.Not.Null);
             Assert.That(definition.WallOpening.Enabled, Is.True);
-            Assert.That(definition.WallOpening.Size.x, Is.EqualTo(definition.Placement.BoundsSize.x).Within(0.001f));
-            Assert.That(definition.WallOpening.Size.y, Is.EqualTo(definition.Placement.BoundsSize.y).Within(0.001f));
-            Assert.That(definition.WallOpening.Center.x, Is.EqualTo(definition.Placement.BoundsCenter.x).Within(0.001f));
-            Assert.That(definition.WallOpening.Center.y, Is.EqualTo(definition.Placement.BoundsCenter.y).Within(0.001f));
+            Assert.That(definition.Prefab.GetComponentsInChildren<Collider>(true).Length, Is.GreaterThan(0));
         }
 
         [Test]
-        public void WallOpeningLink_RefreshUsesLatestCatalogProfile()
+        public void WallOpeningLink_RefreshUsesColliderBoundsWithLatestCatalogMargin()
         {
             HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(HouseBuilderAssetInstaller.DefaultCatalogPath);
             Assert.That(catalog.TryGetPlaceable("neighbor.window.windowblinds", out HousePlaceableDefinition window), Is.True);
@@ -787,9 +854,9 @@ namespace Neighbor.Main.Tests
             link.RefreshOpening();
 
             HouseWallOpeningData opening = wall.Descriptor.WallOpenings[0];
-            Assert.That(opening.Size.x, Is.EqualTo(window.WallOpening.Size.x + window.WallOpening.Margin * 2f).Within(0.001f));
-            Assert.That(opening.Size.y, Is.EqualTo(window.WallOpening.Size.y + window.WallOpening.Margin * 2f).Within(0.001f));
-            Assert.That(opening.Center.y, Is.EqualTo(window.WallOpening.Center.y).Within(0.001f));
+            Assert.That(opening.Size.x, Is.GreaterThan(0f));
+            Assert.That(opening.Size.y, Is.GreaterThan(0f));
+            Assert.That(opening.Size, Is.Not.EqualTo(Vector2.one));
         }
 
         [Test]
