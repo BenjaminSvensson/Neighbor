@@ -11,6 +11,8 @@ namespace Neighbor.Main.Features.Neighbor
         private static readonly int WalkState = Animator.StringToHash("Base Layer.Walk");
         private static readonly int CautiousState = Animator.StringToHash("Base Layer.Cautious");
         private static readonly int RunState = Animator.StringToHash("Base Layer.Run");
+        private static readonly int CrouchIdleState = Animator.StringToHash("Base Layer.CrouchIdle");
+        private static readonly int CrouchWalkState = Animator.StringToHash("Base Layer.CrouchWalk");
         private static readonly int TraverseState = Animator.StringToHash("Base Layer.Traverse");
         private static readonly int HurtState = Animator.StringToHash("Base Layer.Hurt");
         private static readonly int DoorKickState = Animator.StringToHash("Base Layer.DoorKick");
@@ -155,7 +157,10 @@ namespace Neighbor.Main.Features.Neighbor
 
             restartActionAnimation = false;
             float speed = motor != null ? motor.CurrentSpeed : 0f;
-            bool locomotion = desiredState == WalkState || desiredState == CautiousState || desiredState == RunState;
+            bool locomotion = desiredState == WalkState
+                || desiredState == CautiousState
+                || desiredState == RunState
+                || desiredState == CrouchWalkState;
             animator.speed = locomotion
                 ? Mathf.Clamp(speed / GetReferenceSpeed(desiredState), minimumLocomotionPlaybackSpeed, maximumLocomotionPlaybackSpeed)
                 : desiredState == TaskState
@@ -187,6 +192,11 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             float speed = motor != null ? motor.CurrentSpeed : 0f;
+            if (motor != null && motor.IsCrouchingForClearance)
+            {
+                return speed > movingThreshold ? CrouchWalkState : CrouchIdleState;
+            }
+
             if (speed >= runningThreshold || brain != null && brain.CurrentState == NeighborBrain.BehaviorState.Chase)
             {
                 return RunState;
@@ -209,8 +219,13 @@ namespace Neighbor.Main.Features.Neighbor
             return IdleState;
         }
 
-        private static float GetReferenceSpeed(int state)
+        private float GetReferenceSpeed(int state)
         {
+            if (state == CrouchWalkState && motor != null)
+            {
+                return Mathf.Max(0.1f, motor.ConfiguredSpeed);
+            }
+
             if (state == RunState)
             {
                 return 5.8f;

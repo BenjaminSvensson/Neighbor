@@ -165,6 +165,44 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void LowClearanceCrouching_ShortensColliderAndSlowsMovement()
+        {
+            GameObject neighborObject = context.CreateObject("CrouchingNeighbor");
+            CharacterController controller = neighborObject.AddComponent<CharacterController>();
+            NeighborMotor motor = context.AddInitializedComponent<NeighborMotor>(neighborObject);
+            GameplaySmokeTestReflection.SetField(motor, "crouchingHeight", 1.3f);
+            GameplaySmokeTestReflection.SetField(motor, "crouchSpeedMultiplier", 0.5f);
+
+            GameplaySmokeTestReflection.Invoke(motor, "SetCrouchingForClearance", true);
+
+            Assert.That(motor.IsCrouchingForClearance, Is.True);
+            Assert.That(controller.height, Is.EqualTo(1.3f).Within(0.001f));
+            Assert.That(motor.GetMoveSpeed(NeighborMotor.MoveMode.Walk), Is.EqualTo(1.2f).Within(0.001f));
+
+            GameplaySmokeTestReflection.Invoke(motor, "SetCrouchingForClearance", false);
+
+            Assert.That(motor.IsCrouchingForClearance, Is.False);
+            Assert.That(controller.height, Is.EqualTo(2f).Within(0.001f));
+        }
+
+        [Test]
+        public void LowClearanceCrouching_EntersWhenStandingCapsuleDoesNotFit()
+        {
+            GameObject neighborObject = context.CreateObject("CrouchingNeighbor");
+            neighborObject.AddComponent<CharacterController>();
+            NeighborMotor motor = context.AddInitializedComponent<NeighborMotor>(neighborObject);
+            GameObject ceiling = context.CreateObject("LowCeiling");
+            BoxCollider ceilingCollider = ceiling.AddComponent<BoxCollider>();
+            ceilingCollider.size = new Vector3(4f, 0.2f, 4f);
+            ceiling.transform.position = Vector3.up * 1.65f;
+            Physics.SyncTransforms();
+
+            GameplaySmokeTestReflection.Invoke(motor, "UpdateLowClearanceCrouching");
+
+            Assert.That(motor.IsCrouchingForClearance, Is.True);
+        }
+
+        [Test]
         public void Vision_RejectsPlayerAboveUpwardViewLimit()
         {
             NeighborVision vision = context.AddInitializedComponent<NeighborVision>();

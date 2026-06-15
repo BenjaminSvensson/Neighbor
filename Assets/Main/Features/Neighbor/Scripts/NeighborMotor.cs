@@ -33,6 +33,15 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float destinationSampleRadius = 1.5f;
         [SerializeField, Min(0f)] private float startNavMeshSnapRadius = 3f;
 
+        [Header("Low Clearance Crouching")]
+        [SerializeField] private bool enableLowClearanceCrouching = true;
+        [SerializeField] private LayerMask lowClearanceMask = ~0;
+        [SerializeField, Min(0.5f)] private float crouchingHeight = 1.3f;
+        [SerializeField, Range(0.1f, 1f)] private float crouchSpeedMultiplier = 0.55f;
+        [SerializeField, Min(0f)] private float lowClearanceProbeForwardDistance = 0.7f;
+        [SerializeField, Min(0f)] private float lowClearanceProbePadding = 0.04f;
+        [SerializeField, Min(0f)] private float crouchExitDelay = 0.2f;
+
         [Header("Closest Reachable Destination")]
         [SerializeField] private bool approachClosestReachableDestination = true;
         [SerializeField, Min(0.5f)] private float closestReachableSearchRadius = 12f;
@@ -106,6 +115,7 @@ namespace Neighbor.Main.Features.Neighbor
         private readonly RaycastHit[] climbProbeHits = new RaycastHit[10];
         private readonly RaycastHit[] dynamicObstacleHits = new RaycastHit[12];
         private readonly Collider[] recoveryOverlapHits = new Collider[16];
+        private readonly Collider[] lowClearanceOverlapHits = new Collider[16];
         private NavMeshPath destinationPath;
         private NavMeshPath dynamicObstaclePath;
         private NavMeshPath recoveryPath;
@@ -129,6 +139,14 @@ namespace Neighbor.Main.Features.Neighbor
         private Vector3 pendingKnockbackDirection;
         private float pendingKnockbackDistance;
         private float pendingKnockbackDuration;
+        private CharacterController characterController;
+        private MoveMode currentMoveMode = MoveMode.Walk;
+        private bool isCrouchingForClearance;
+        private float standingAgentHeight;
+        private float standingAgentBaseOffset;
+        private float standingControllerHeight;
+        private Vector3 standingControllerCenter;
+        private float clearToStandSinceTime = float.NegativeInfinity;
 
         public bool IsTraversingSpecialMove => traversalRoutine != null;
         public TraversalAnimationPhase CurrentTraversalAnimationPhase => traversalAnimationPhase;
@@ -137,6 +155,7 @@ namespace Neighbor.Main.Features.Neighbor
         public bool IsPaused => isPaused;
         public bool IsAnchoredForTask => isAnchoredForTask;
         public bool IsAvoidingDynamicObstacle => isAvoidingDynamicObstacle;
+        public bool IsCrouchingForClearance => isCrouchingForClearance;
         public Vector3 DynamicObstacleDetour => dynamicObstacleDetour;
         public Vector3 RequestedDestination => requestedDestination;
         public float CurrentSpeed => agent != null ? agent.velocity.magnitude : 0f;
@@ -160,7 +179,9 @@ namespace Neighbor.Main.Features.Neighbor
             dynamicObstaclePath = new NavMeshPath();
             recoveryPath = new NavMeshPath();
             agent = GetComponent<NavMeshAgent>();
+            characterController = GetComponent<CharacterController>();
             ownColliders = GetComponentsInChildren<Collider>(true);
+            CaptureStandingDimensions();
             ConfigureAgent();
             SnapToNavMeshIfNeeded();
         }
@@ -168,6 +189,7 @@ namespace Neighbor.Main.Features.Neighbor
         private void OnDisable()
         {
             SetClimbSurfaceCollisionIgnored(false);
+            SetCrouchingForClearance(false);
         }
 
         private void Update()
@@ -176,6 +198,8 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 return;
             }
+
+            UpdateLowClearanceCrouching();
 
             if (isAnchoredForTask)
             {
@@ -205,6 +229,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         public void SetMoveMode(MoveMode mode)
         {
+            currentMoveMode = mode;
             if (agent == null)
             {
                 return;
@@ -215,17 +240,19 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            agent.speed = GetMoveSpeed(mode);
+            ApplyMoveSpeed();
         }
 
         public float GetMoveSpeed(MoveMode mode)
         {
-            return mode switch
+            float speed = mode switch
             {
                 MoveMode.Run => runSpeed,
                 MoveMode.Cautious => cautiousSpeed,
                 _ => walkSpeed
             };
+
+            return isCrouchingForClearance ? speed * crouchSpeedMultiplier : speed;
         }
 
         public bool SetDestination(Vector3 destination)
@@ -733,6 +760,8 @@ namespace Neighbor.Main.Features.Neighbor
 
         public void ResetToPosition(Vector3 position, Quaternion rotation)
         {
+            SetCrouchingForClearance(false);
+
             if (traversalRoutine != null)
             {
                 StopCoroutine(traversalRoutine);
@@ -910,13 +939,170 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void ConfigureAgent()
         {
-            agent.speed = walkSpeed;
+            ApplyMoveSpeed();
             agent.acceleration = acceleration;
             agent.angularSpeed = angularSpeed;
             agent.stoppingDistance = stoppingDistance;
             agent.autoBraking = true;
             agent.autoRepath = true;
             agent.autoTraverseOffMeshLink = false;
+        }
+
+        private void CaptureStandingDimensions()
+        {
+            standingAgentHeight = agent != null ? agent.height : 2f;
+            standingAgentBaseOffset = agent != null ? agent.baseOffset : 0f;
+            if (characterController == null)
+            {
+                standingControllerHeight = standingAgentHeight;
+                standingControllerCenter = Vector3.up * (standingControllerHeight * 0.5f);
+                return;
+            }
+
+            standingControllerHeight = characterController.height;
+            standingControllerCenter = characterController.center;
+        }
+
+        private void UpdateLowClearanceCrouching()
+        {
+            if (!enableLowClearanceCrouching || traversalRoutine != null || knockbackRoutine != null)
+            {
+                return;
+            }
+
+            Vector3 forward = GetClearanceProbeDirection();
+            Vector3 aheadPosition = transform.position + forward * lowClearanceProbeForwardDistance;
+            float standingHeight = Mathf.Max(standingAgentHeight, standingControllerHeight);
+            float loweredHeight = Mathf.Min(crouchingHeight, standingHeight);
+            bool standingClearHere = HasClearanceForHeight(transform.position, standingHeight);
+            bool standingClearAhead = HasClearanceForHeight(aheadPosition, standingHeight);
+
+            if (!isCrouchingForClearance)
+            {
+                bool canCrouchHere = HasClearanceForHeight(transform.position, loweredHeight);
+                bool canCrouchAhead = HasClearanceForHeight(aheadPosition, loweredHeight);
+                if ((!standingClearHere && canCrouchHere) || (!standingClearAhead && canCrouchAhead))
+                {
+                    SetCrouchingForClearance(true);
+                }
+
+                return;
+            }
+
+            if (!standingClearHere || !standingClearAhead)
+            {
+                clearToStandSinceTime = float.NegativeInfinity;
+                return;
+            }
+
+            if (float.IsNegativeInfinity(clearToStandSinceTime))
+            {
+                clearToStandSinceTime = Time.time;
+                return;
+            }
+
+            if (Time.time - clearToStandSinceTime >= crouchExitDelay)
+            {
+                SetCrouchingForClearance(false);
+            }
+        }
+
+        private Vector3 GetClearanceProbeDirection()
+        {
+            if (agent != null)
+            {
+                Vector3 direction = agent.desiredVelocity;
+                direction.y = 0f;
+                if (direction.sqrMagnitude > 0.01f)
+                {
+                    return direction.normalized;
+                }
+
+                if (agent.hasPath && !agent.pathPending)
+                {
+                    direction = agent.steeringTarget - transform.position;
+                    direction.y = 0f;
+                    if (direction.sqrMagnitude > 0.01f)
+                    {
+                        return direction.normalized;
+                    }
+                }
+            }
+
+            Vector3 forward = transform.forward;
+            forward.y = 0f;
+            return forward.sqrMagnitude > 0.01f ? forward.normalized : Vector3.forward;
+        }
+
+        private bool HasClearanceForHeight(Vector3 feetPosition, float height)
+        {
+            float sourceRadius = characterController != null
+                ? characterController.radius
+                : agent != null
+                    ? agent.radius
+                    : 0.4f;
+            float radius = Mathf.Max(0.05f, sourceRadius - lowClearanceProbePadding);
+            float checkedHeight = Mathf.Max(radius * 2f, height);
+            Vector3 bottom = feetPosition + Vector3.up * (radius + lowClearanceProbePadding);
+            Vector3 top = feetPosition + Vector3.up * (checkedHeight - radius - lowClearanceProbePadding);
+            int hitCount = Physics.OverlapCapsuleNonAlloc(
+                bottom,
+                top,
+                radius,
+                lowClearanceOverlapHits,
+                lowClearanceMask,
+                QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < hitCount; i++)
+            {
+                Collider hit = lowClearanceOverlapHits[i];
+                if (hit != null && !hit.transform.IsChildOf(transform) && !transform.IsChildOf(hit.transform))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private void SetCrouchingForClearance(bool crouching)
+        {
+            if (isCrouchingForClearance == crouching)
+            {
+                return;
+            }
+
+            isCrouchingForClearance = crouching;
+            clearToStandSinceTime = float.NegativeInfinity;
+            float targetHeight = crouching
+                ? Mathf.Min(crouchingHeight, Mathf.Max(standingAgentHeight, standingControllerHeight))
+                : standingAgentHeight;
+
+            if (agent != null)
+            {
+                agent.height = targetHeight;
+                agent.baseOffset = standingAgentBaseOffset;
+            }
+
+            if (characterController != null)
+            {
+                float controllerHeight = crouching
+                    ? Mathf.Min(crouchingHeight, standingControllerHeight)
+                    : standingControllerHeight;
+                Vector3 center = standingControllerCenter;
+                center.y -= (standingControllerHeight - controllerHeight) * 0.5f;
+                characterController.height = controllerHeight;
+                characterController.center = center;
+            }
+
+            ApplyMoveSpeed();
+        }
+
+        private void ApplyMoveSpeed()
+        {
+            if (agent != null)
+            {
+                agent.speed = GetMoveSpeed(currentMoveMode);
+            }
         }
 
         private void UpdateDynamicObstacleAvoidance()
