@@ -192,6 +192,35 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void StarterWallSnapping_GroundsBottomOnFloorTopEdge()
+        {
+            HousePlaceableDefinition wall = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(
+                "Assets/Main/HouseBuilder/Data/Placeables/BasicWall.asset");
+            GameObject floorObject = Track(GameObject.CreatePrimitive(PrimitiveType.Cube));
+            floorObject.transform.position = Vector3.up * 0.1f;
+            floorObject.transform.localScale = new Vector3(4f, 0.2f, 4f);
+            Physics.SyncTransforms();
+            Ray ray = new(new Vector3(1.9f, 5f, 0f), Vector3.down);
+            Collider floorCollider = floorObject.GetComponent<Collider>();
+            Assert.That(floorCollider.Raycast(ray, out RaycastHit hit, 10f), Is.True);
+
+            HousePlacementResult result = HouseBuilderSnapUtility.Calculate(
+                hit.point,
+                Quaternion.identity,
+                true,
+                hit,
+                wall.Placement,
+                new HouseBuilderPlacementSettings(),
+                new[] { floorCollider.bounds },
+                ray.direction);
+
+            float wallBottom = result.Position.y + wall.Placement.BoundsCenter.y - wall.Placement.BoundsSize.y * 0.5f;
+            Assert.That(wall.Placement.GroundOnFeatureSnaps, Is.True);
+            Assert.That(result.SnapKind, Is.EqualTo(HouseSnapKind.Edge));
+            Assert.That(wallBottom, Is.EqualTo(floorCollider.bounds.max.y).Within(0.001f));
+        }
+
+        [Test]
         public void CeilingPlacement_CentersOverFloorAndRestsOnAdjacentWalls()
         {
             Bounds floor = new(new Vector3(2f, 0.1f, 2f), new Vector3(4f, 0.2f, 4f));

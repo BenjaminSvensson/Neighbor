@@ -49,6 +49,7 @@ namespace Neighbor.Main.HouseBuilder
         [SerializeField] private bool requireSurface;
         [SerializeField] private bool groundOnWall;
         [SerializeField] private bool snapBoundsToFeatures;
+        [SerializeField] private bool groundOnFeatureSnaps;
         [SerializeField] private bool validateCollisions = true;
         [SerializeField] private bool allowTriggerOverlap = true;
         [SerializeField] private Vector3 boundsSize = Vector3.one;
@@ -60,6 +61,7 @@ namespace Neighbor.Main.HouseBuilder
         public bool RequireSurface => requireSurface;
         public bool GroundOnWall => groundOnWall;
         public bool SnapBoundsToFeatures => snapBoundsToFeatures;
+        public bool GroundOnFeatureSnaps => groundOnFeatureSnaps;
         public bool ValidateCollisions => validateCollisions;
         public bool AllowTriggerOverlap => allowTriggerOverlap;
         public Vector3 BoundsSize => boundsSize;

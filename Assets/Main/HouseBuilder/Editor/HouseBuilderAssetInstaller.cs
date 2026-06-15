@@ -11,7 +11,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
         public const string RootPath = "Assets/Main/HouseBuilder";
         public const string DataPath = RootPath + "/Data";
         public const string DefaultCatalogPath = DataPath + "/DefaultHouseBuilderCatalog.asset";
-        private const int InstallerVersion = 14;
+        private const int InstallerVersion = 15;
         private const string InstallerVersionKey = "Neighbor.HouseBuilder.DefaultAssetsVersion";
         private const string CategoryPath = DataPath + "/Categories";
         private const string DefinitionPath = DataPath + "/Placeables";
@@ -335,6 +335,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 or HouseBuilderCategories.Floor
                 or HouseBuilderCategories.Ceiling;
             placement.FindPropertyRelative("snapBoundsToFeatures").boolValue = snapStructuralBounds;
+            placement.FindPropertyRelative("groundOnFeatureSnaps").boolValue = categoryId == HouseBuilderCategories.Wall;
             bool structural = categoryId is HouseBuilderCategories.Structure
                 or HouseBuilderCategories.Wall
                 or HouseBuilderCategories.Floor

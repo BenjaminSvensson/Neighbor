@@ -23,6 +23,7 @@ MonoBehaviour:
     requireSurface: 0
     groundOnWall: 0
     snapBoundsToFeatures: 1
+    groundOnFeatureSnaps: 1
     validateCollisions: 1
     allowTriggerOverlap: 1
     boundsSize: {x: 4, y: 3, z: 0.25}

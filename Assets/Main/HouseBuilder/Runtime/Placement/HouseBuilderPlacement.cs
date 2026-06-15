@@ -174,7 +174,7 @@ namespace Neighbor.Main.HouseBuilder
             }
 
             position = hasFeature && profile.SnapBoundsToFeatures
-                ? AlignBoundsToFeature(position, featureApproach, featureBounds, rotation, profile)
+                ? AlignBoundsToFeature(position, featureApproach, featureBounds, rotation, profile, hasSurface && surfaceType == HouseSurfaceType.Ground)
                 : position + rotation * profile.PlacementOffset;
             return new HousePlacementResult(position, rotation, normal, surfaceType, snapKind, hasSurface);
         }
@@ -283,7 +283,8 @@ namespace Neighbor.Main.HouseBuilder
             Vector3 approach,
             Bounds sourceBounds,
             Quaternion rotation,
-            HousePlacementProfile profile)
+            HousePlacementProfile profile,
+            bool snappedFromGroundSurface)
         {
             Quaternion inverseRotation = Quaternion.Inverse(rotation);
             Vector3 localApproach = inverseRotation * approach;
@@ -291,7 +292,9 @@ namespace Neighbor.Main.HouseBuilder
             Vector3 halfExtents = profile.BoundsSize * 0.5f;
             Vector3 contact = new(
                 ResolveContactAxis(localApproach.x, localSourceSide.x, halfExtents.x),
-                ResolveContactAxis(localApproach.y, localSourceSide.y, halfExtents.y),
+                snappedFromGroundSurface && profile.GroundOnFeatureSnaps
+                    ? -halfExtents.y
+                    : ResolveContactAxis(localApproach.y, localSourceSide.y, halfExtents.y),
                 ResolveContactAxis(localApproach.z, localSourceSide.z, halfExtents.z));
             return featurePoint - rotation * (profile.BoundsCenter + contact);
         }
