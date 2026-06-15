@@ -114,8 +114,8 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float catchDistance = 0.72f;
         [SerializeField, Min(0f)] private float catchAnimationFallbackDuration = 0.55f;
         [SerializeField, Min(0f)] private float maximumCatchAnimationDuration = 2.5f;
+        [SerializeField, Min(0f)] private float quickCatchPresentationDuration = 0.8f;
         [SerializeField, Min(0f)] private float catchPresentationDistance = 1.35f;
-        [SerializeField, Min(0f)] private float catchCameraLockDuration = 0.65f;
         [SerializeField, Min(0f)] private float offMeshDirectChaseSpeed = 4.5f;
         [SerializeField, Min(0f)] private float climbCommitVerticalDifference = 0.45f;
         [SerializeField, Min(0f)] private float dropCommitVerticalDifference = 0.55f;
@@ -570,12 +570,11 @@ namespace Neighbor.Main.Features.Neighbor
                 : 0f;
             float duration = animationDuration > 0f ? animationDuration : catchAnimationFallbackDuration;
             duration = Mathf.Min(duration, maximumCatchAnimationDuration);
+            duration = Mathf.Min(duration, quickCatchPresentationDuration > 0f ? quickCatchPresentationDuration : 0.8f);
             catchPlayerAtTime = Time.time + duration;
 
             PlayerDeathController deathController = caughtPlayer.GetComponent<PlayerDeathController>();
-            deathController?.ScheduleCatchCameraFocus(
-                transform,
-                Mathf.Max(0f, duration - catchCameraLockDuration));
+            deathController?.BeginCatchCameraFocus(transform);
         }
 
         public void TryCatchPlayer(PlayerController playerController)
