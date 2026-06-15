@@ -1,283 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &834110558997992330
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 6541191761060352529}
-  - component: {fileID: 7849154912499610842}
-  - component: {fileID: 540191951640742163}
-  - component: {fileID: 4894446523712337978}
-  m_Layer: 7
-  m_Name: Cube
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &6541191761060352529
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 834110558997992330}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.04089737, y: 0.49999976, z: 0.4179392}
-  m_LocalScale: {x: 0.5, y: 0.2, z: 0.2}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2600997364233460654}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &7849154912499610842
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 834110558997992330}
-  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!23 &540191951640742163
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 834110558997992330}
-  m_Enabled: 0
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_MaskInteraction: 0
-  m_AdditionalVertexStreams: {fileID: 0}
---- !u!82 &4894446523712337978
-AudioSource:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 834110558997992330}
-  m_Enabled: 1
-  serializedVersion: 4
-  OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 0}
-  m_Resource: {fileID: 0}
-  m_PlayOnAwake: 1
-  m_Volume: 1
-  m_Pitch: 1
-  Loop: 0
-  Mute: 0
-  Spatialize: 0
-  SpatializePostEffects: 0
-  Priority: 128
-  DopplerLevel: 1
-  MinDistance: 1
-  MaxDistance: 500
-  Pan2D: 0
-  rolloffMode: 0
-  BypassEffects: 0
-  BypassListenerEffects: 0
-  BypassReverbZones: 0
-  rolloffCustomCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    - serializedVersion: 3
-      time: 1
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  panLevelCustomCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  spreadCustomCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  reverbZoneMixCustomCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
---- !u!1 &3786852850746917547
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 5314472815684190179}
-  - component: {fileID: 275396162302528210}
-  - component: {fileID: 8495415494575719001}
-  m_Layer: 7
-  m_Name: Mesh
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &5314472815684190179
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3786852850746917547}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 1
-  m_Children: []
-  m_Father: {fileID: 2600997364233460654}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &275396162302528210
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3786852850746917547}
-  m_Mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
---- !u!23 &8495415494575719001
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3786852850746917547}
-  m_Enabled: 0
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: cf9bb45774cb4dc6a4b2b7e1d89d8012, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_MaskInteraction: 0
-  m_AdditionalVertexStreams: {fileID: 0}
 --- !u!1 &4429574295923404111
 GameObject:
   m_ObjectHideFlags: 0
@@ -545,7 +267,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8573506346761602368}
-  - component: {fileID: 6586602168759589104}
   - component: {fileID: 6835100427796417406}
   - component: {fileID: 3418586483215124470}
   - component: {fileID: 8773311825000123456}
@@ -555,9 +276,10 @@ GameObject:
   - component: {fileID: 2581463567810445751}
   - component: {fileID: 7659305663438818443}
   - component: {fileID: 6254384187814207898}
-  - component: {fileID: 1444078023610178018}
   - component: {fileID: 7647593652331711903}
   - component: {fileID: 9013648726351842075}
+  - component: {fileID: 6586602168759589104}
+  - component: {fileID: 1444078023610178018}
   m_Layer: 7
   m_Name: Neighbor
   m_TagString: Untagged
@@ -583,31 +305,6 @@ Transform:
   - {fileID: 421557903390624158}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!143 &6586602168759589104
-CharacterController:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5206360911464809966}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Height: 2
-  m_Radius: 0.4
-  m_SlopeLimit: 45
-  m_StepOffset: 0.3
-  m_SkinWidth: 0.08
-  m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 1, z: 0}
 --- !u!195 &6835100427796417406
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -655,6 +352,10 @@ MonoBehaviour:
   minimumUrgencyToRunToNoise: 0.65
   noiseDestinationSampleRadius: 4
   investigationWaitTime: 2.2
+  unexpectedOpenDoorSuspicion: 0.36
+  doorRoomCheckDistance: 2.4
+  doorRoomSearchPointRadius: 9
+  doorRoomMinimumDepth: 0.35
   suspicionDecayPerSecond: 0.035
   curiousThreshold: 0.18
   suspiciousThreshold: 0.48
@@ -664,6 +365,11 @@ MonoBehaviour:
   learnedFalseAlarmPenalty: 0.08
   memoryDecayPerDeath: 0.82
   resumeInterruptedTaskChance: 0.72
+  blockedTaskRetryDelay: 18
+  postEncounterTaskCooldown: 25
+  vigilancePatrolRadius: 10
+  vigilanceWaitMinimum: 1.4
+  vigilanceWaitMaximum: 3
   searchLookAngle: 70
   searchLookSpeed: 1.4
   closetSearchRadius: 8
@@ -680,6 +386,10 @@ MonoBehaviour:
   chaseMemoryTime: 3.5
   chaseRepathInterval: 0.12
   catchDistance: 0.72
+  catchAnimationFallbackDuration: 0.55
+  maximumCatchAnimationDuration: 2.5
+  quickCatchPresentationDuration: 0.8
+  catchPresentationDistance: 1.35
   offMeshDirectChaseSpeed: 4.5
   climbCommitVerticalDifference: 0.45
   dropCommitVerticalDifference: 0.55
@@ -691,6 +401,8 @@ MonoBehaviour:
   predictionChance: 0.72
   predictionMistakeChance: 0.16
   predictionDecisionInterval: 0.85
+  lastSeenVerificationDuration: 1.8
+  lastSeenVerificationSampleRadius: 1.25
 --- !u!114 &8773311825000123456
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -701,10 +413,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 369d694a9a9e4fc184bc73d45bb312a6, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Neighbor.NeighborObjectHandling
   enableObjectHandling: 1
-  routineChance: 0.18
+  routineChance: 0.3
   retryCooldown: 8
   pickupSearchRadius: 5
   pickupApproachDistance: 1.15
@@ -713,7 +425,7 @@ MonoBehaviour:
   maximumPickupSize: 1.25
   pickupSearchMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 64
   ignoreTaskObjects: 1
   ignoreDoorBlockers: 1
   ignoreNeighborPlacedCameras: 1
@@ -722,7 +434,7 @@ MonoBehaviour:
   fallbackCarryOffset: {x: 0.38, y: 1.15, z: 0.42}
   carryRotationEuler: {x: 0, y: 0, z: 0}
   minimumCarryTime: 1.5
-  maximumCarryTime: 4
+  maximumCarryTime: 8
   placementRadius: 5
   minimumCarryDistance: 1.5
   placementDestinationAttempts: 10
@@ -747,14 +459,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a4f59c4dc7994d62995d651698c8464d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  walkSpeed: 2.4
+  walkSpeed: 3
   cautiousSpeed: 1.65
-  runSpeed: 5.8
-  acceleration: 18
+  runSpeed: 6
+  acceleration: 24
   angularSpeed: 540
   stoppingDistance: 0.45
   destinationSampleRadius: 1.5
   startNavMeshSnapRadius: 3
+  enableLowClearanceCrouching: 1
+  lowClearanceMask:
+    serializedVersion: 2
+    m_Bits: 321
+  crouchingHeight: 4
+  crouchSpeedMultiplier: 0.55
+  lowClearanceProbeForwardDistance: 0.7
+  lowClearanceProbePadding: 0.04
+  crouchExitDelay: 0.2
+  approachClosestReachableDestination: 1
+  closestReachableSearchRadius: 12
+  closestReachableCandidateCount: 12
   enableDynamicObstacleAvoidance: 1
   dynamicObstacleMask:
     serializedVersion: 2
@@ -766,6 +490,19 @@ MonoBehaviour:
   dynamicObstacleSampleRadius: 0.8
   dynamicObstacleProbeInterval: 0.15
   dynamicObstacleDetourTimeout: 1.25
+  maximumUsefulDetourExtraDistance: 2.25
+  maximumUsefulDetourDistanceRatio: 1.35
+  climbDynamicObstaclesWhenDetourIsPoor: 1
+  maximumNoProgressAttempts: 3
+  noProgressCheckInterval: 1.5
+  minimumProgressPerAttempt: 0.3
+  destinationChangeResetDistance: 0.75
+  recoveryStartAttempt: 2
+  maximumRecoveryAttempts: 2
+  recoverySearchRadius: 2.5
+  recoveryNavMeshSampleRadius: 3.5
+  minimumRecoveryRelocationDistance: 0.65
+  recoveryCandidateCount: 16
   traverseOffMeshLinks: 1
   offMeshTraverseDuration: 0.34
   offMeshJumpHeight: 1.1
@@ -777,6 +514,7 @@ MonoBehaviour:
   ledgeMaximumHeight: 1.25
   ledgeTopProbeForwardOffset: 0.35
   ledgeClimbDuration: 0.3
+  postClimbNavMeshVerticalSnapTolerance: 0.35
   climbMask:
     serializedVersion: 2
     m_Bits: 65
@@ -794,6 +532,14 @@ MonoBehaviour:
   chaseDropDuration: 0.26
   chaseDropArcHeight: 0.35
   dropLandingSampleRadius: 2.5
+  enableUnreachableDropRecovery: 1
+  dropRecoveryHorizontalReach: 4
+  dropRecoveryCandidateCount: 20
+  dropRecoveryDistanceSteps: 4
+  dropRecoveryLandingSampleRadius: 0.8
+  dropRecoveryGoalSeparation: 1.5
+  dropRecoveryCooldown: 1.25
+  dropRecoveryNoProgressAttempts: 1
 --- !u!114 &4166624945201646064
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -874,6 +620,9 @@ MonoBehaviour:
   blockedDoorKickDuration: 2.25
   blockedDoorKickInterval: 0.48
   blockedDoorKickAbortDistance: 2.2
+  blockedDoorRouteDecisionCooldown: 1.25
+  alternativeRouteTimeBias: 0
+  blockedDoorwayAvoidanceRadius: 1.1
   lockedDoorRetryInterval: 0.7
   lockedDoorAbortDistance: 2.2
   kickTurnSharpness: 12
@@ -901,32 +650,32 @@ MonoBehaviour:
   brain: {fileID: 3418586483215124470}
   motor: {fileID: 1396788348566312222}
   bodyAnchor: {fileID: 8573506346761602368}
-  voiceAnchor: {fileID: 6541191761060352529}
+  voiceAnchor: {fileID: 0}
   leftFootAnchor: {fileID: 8573506346761602368}
   rightFootAnchor: {fileID: 8573506346761602368}
   leftFootSource: {fileID: 1768731547756681823}
   rightFootSource: {fileID: 3648817188603362400}
   bodyOneShotSource: {fileID: 1444078023610178018}
-  voiceSource: {fileID: 4894446523712337978}
+  voiceSource: {fileID: 0}
   breathingLoopSource: {fileID: 7680866538844444963}
   chaseLoopSource: {fileID: 4885244350191148267}
   movementFoleyLoopSource: {fileID: 2357611106739779267}
   downstairsWalkFootsteps:
-  - {fileID: 8300000, guid: 5e7f06f7e25f2ea45ad5ebbcc7fe0e7a, type: 3}
+  - {fileID: 8300000, guid: a9aec569b98c5d642847b5fa168aabff, type: 3}
   downstairsRunFootsteps:
-  - {fileID: 8300000, guid: 5e7f06f7e25f2ea45ad5ebbcc7fe0e7a, type: 3}
+  - {fileID: 8300000, guid: a9aec569b98c5d642847b5fa168aabff, type: 3}
   upstairsWalkFootsteps:
-  - {fileID: 8300000, guid: 5e7f06f7e25f2ea45ad5ebbcc7fe0e7a, type: 3}
+  - {fileID: 8300000, guid: a9aec569b98c5d642847b5fa168aabff, type: 3}
   upstairsRunFootsteps:
-  - {fileID: 8300000, guid: 5e7f06f7e25f2ea45ad5ebbcc7fe0e7a, type: 3}
+  - {fileID: 8300000, guid: a9aec569b98c5d642847b5fa168aabff, type: 3}
   upstairsHeight: 2.2
   minimumFootstepSpeed: 0.32
-  runSpeedReference: 5.8
-  footstepMinimumVolume: 0.34
-  footstepMaximumVolume: 0.86
-  upstairsVolumeBoost: 0.14
+  runSpeedReference: 6.5
+  footstepMinimumVolume: 0.4
+  footstepMaximumVolume: 1
+  upstairsVolumeBoost: 0.4
   footstepPitchRandomness: 0.07
-  footstepStereoWidth: 0.22
+  footstepStereoWidth: 0.5
   footstepLoopFadeSharpness: 9
   movementFoleyLoopClip: {fileID: 0}
   movementFoleyVolume: 0.16
@@ -942,7 +691,7 @@ MonoBehaviour:
   alertedClips:
   - {fileID: 8300000, guid: e1a26a70e183dde4facb4e23fab71456, type: 3}
   chaseStartClips:
-  - {fileID: 8300000, guid: e1a26a70e183dde4facb4e23fab71456, type: 3}
+  - {fileID: 8300000, guid: df6d61ccbb6298c42b30614604fc2e42, type: 3}
   searchLostClips: []
   stunnedClips: []
   idleMutterClips: []
@@ -978,6 +727,133 @@ MonoBehaviour:
   useGeneratedFallbacks: 1
   generatedSampleRate: 22050
   generatedFootstepVariants: 4
+--- !u!114 &7647593652331711903
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5206360911464809966}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 47950a29cc2fb3b47a163f253a1e3d09, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Neighbor.NeighborAnimationController
+  animator: {fileID: 1975000115202536154}
+  brain: {fileID: 3418586483215124470}
+  motor: {fileID: 1396788348566312222}
+  doorInteractor: {fileID: 7659305663438818443}
+  impactReceiver: {fileID: 2581463567810445751}
+  movingThreshold: 0.08
+  runningThreshold: 3.4
+  transitionDuration: 0.16
+  minimumLocomotionPlaybackSpeed: 0.7
+  maximumLocomotionPlaybackSpeed: 1.4
+  useZombieLocomotion: 0
+  hurtTransitionDuration: 0.045
+  hurtAnimations:
+  - {fileID: 937510309337268382, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
+  catchPlayerAnimation: {fileID: -7062361950610221846, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
+  catchPlayerAnimationSpeed: 1
+  searchClosetAnimation: {fileID: 2857599376137209812, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  searchClosetAnimationSpeed: 1
+  wanderIdleAnimations:
+  - {fileID: -7062361950610221846, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
+  - {fileID: 4980751744999542695, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
+  - {fileID: 5000254507835852519, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
+  wanderIdleAnimationSpeed: 1
+  investigationArrivalAnimation: {fileID: 5000254507835852519, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
+  investigationArrivalAnimationSpeed: 1
+  lockedDoorReactionAnimation: {fileID: -2328835098782832033, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  lockedDoorReactionAnimationSpeed: 1
+  openDoorAnimation: {fileID: 2857599376137209812, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  openDoorAnimationSpeed: 1
+  traversalStartAnimation: {fileID: -1862932125039169580, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  traversalLoopAnimation: {fileID: -3659967873887649963, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  traversalLandingAnimation: {fileID: 4832780573735333345, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  climbAnimation: {fileID: -8073916434604345353, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
+  traversalAnimationSpeed: 1
+  legIKSettings:
+    enableFootIK: 1
+    groundMask:
+      serializedVersion: 2
+      m_Bits: 321
+    raycastOriginHeight: 0.45
+    groundProbeDistance: 0.75
+    footSoleOffset: 0.025
+    maximumGroundAngle: 58
+    fullyPlantedHeight: 0.12
+    maximumPlantHeight: 0.35
+    footRotationWeight: 0.1
+    runningWeight: 0.2
+    runSpeedThreshold: 3.4
+    maximumPelvisDrop: 0.3
+    maximumPelvisRise: 0.12
+    pelvisWeight: 0.1
+    footPositionSharpness: 22
+    footRotationSharpness: 18
+    weightSharpness: 16
+    pelvisSharpness: 12
+  headLookSettings:
+    enableHeadTracking: 1
+    headWeight: 1
+    bodyWeight: 0.08
+    eyesWeight: 0.55
+    clampWeight: 0
+    weightSharpness: 18
+--- !u!114 &9013648726351842075
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5206360911464809966}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae3836adf3e24d458750755f13b21fea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Neighbor.NeighborDebugVisualizer
+  brain: {fileID: 3418586483215124470}
+  motor: {fileID: 1396788348566312222}
+  vision: {fileID: 4166624945201646064}
+  hearing: {fileID: 6627152104098474557}
+  doorInteractor: {fileID: 7659305663438818443}
+  showOverheadStatus: 1
+  showVision: 1
+  showPath: 1
+  showCurrentGoal: 1
+  showLastKnownPlayer: 1
+  showRecentSound: 1
+  showInteractionTargets: 1
+  overheadHeight: 3.1
+  markerSize: 0.3
+  recentSoundDisplayTime: 5
+  recoveryDisplayTime: 5
+--- !u!143 &6586602168759589104
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5206360911464809966}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 2
+  m_Radius: 0.4
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 1, z: 0}
 --- !u!82 &1444078023610178018
 AudioSource:
   m_ObjectHideFlags: 0
@@ -1075,86 +951,6 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
---- !u!114 &7647593652331711903
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5206360911464809966}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 47950a29cc2fb3b47a163f253a1e3d09, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Neighbor.NeighborAnimationController
-  animator: {fileID: 1975000115202536154}
-  brain: {fileID: 3418586483215124470}
-  motor: {fileID: 1396788348566312222}
-  doorInteractor: {fileID: 7659305663438818443}
-  movingThreshold: 0.08
-  runningThreshold: 3.4
-  transitionDuration: 0.16
-  minimumLocomotionPlaybackSpeed: 0.7
-  maximumLocomotionPlaybackSpeed: 1.4
-  hurtTransitionDuration: 0.045
-  hurtAnimations:
-  - {fileID: -245273357908900549, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
-  - {fileID: -8534173349268677819, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
-  - {fileID: 937510309337268382, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
-  catchPlayerAnimation: {fileID: -8061687084165900903, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
-  catchPlayerAnimationSpeed: 1
-  searchClosetAnimation: {fileID: 6621786791131625799, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
-  searchClosetAnimationSpeed: 1
-  wanderIdleAnimations:
-  - {fileID: -7062361950610221846, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
-  - {fileID: 4980751744999542695, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
-  - {fileID: 5000254507835852519, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
-  wanderIdleAnimationSpeed: 1
-  investigationArrivalAnimation: {fileID: 5000254507835852519, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
-  investigationArrivalAnimationSpeed: 1
-  lockedDoorReactionAnimation: {fileID: -2328835098782832033, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
-  lockedDoorReactionAnimationSpeed: 1
-  openDoorAnimation: {fileID: -2328835098782832033, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
-  openDoorAnimationSpeed: 1
-  traversalStartAnimation: {fileID: -1862932125039169580, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
-  traversalLoopAnimation: {fileID: -3659967873887649963, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
-  traversalLandingAnimation: {fileID: 4832780573735333345, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
-  climbAnimation: {fileID: -8073916434604345353, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
-  traversalAnimationSpeed: 1
-  headLookSettings:
-    enableHeadTracking: 1
-    headWeight: 1
-    bodyWeight: 0.08
-    eyesWeight: 0.55
-    clampWeight: 0
-    weightSharpness: 18
---- !u!114 &9013648726351842075
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5206360911464809966}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ae3836adf3e24d458750755f13b21fea, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Neighbor.NeighborDebugVisualizer
-  brain: {fileID: 3418586483215124470}
-  motor: {fileID: 1396788348566312222}
-  vision: {fileID: 4166624945201646064}
-  hearing: {fileID: 6627152104098474557}
-  doorInteractor: {fileID: 7659305663438818443}
-  showOverheadStatus: 1
-  showVision: 1
-  showPath: 1
-  showCurrentGoal: 1
-  showLastKnownPlayer: 1
-  showRecentSound: 1
-  showInteractionTargets: 1
-  overheadHeight: 3.1
-  markerSize: 0.3
-  recentSoundDisplayTime: 5
 --- !u!1 &5797687532467202263
 GameObject:
   m_ObjectHideFlags: 0
@@ -1313,8 +1109,6 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 5314472815684190179}
-  - {fileID: 6541191761060352529}
   - {fileID: 3007059815040581921}
   - {fileID: 4371392054650104659}
   - {fileID: 3567462524689926642}
@@ -1593,15 +1387,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
       propertyPath: m_LocalScale.x
-      value: 1.45
+      value: 1.55
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
       propertyPath: m_LocalScale.y
-      value: 1.45
+      value: 1.55
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
       propertyPath: m_LocalScale.z
-      value: 1.45
+      value: 1.55
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
       propertyPath: m_LocalPosition.x

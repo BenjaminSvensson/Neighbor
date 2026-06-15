@@ -138,8 +138,8 @@ MonoBehaviour:
     m_Bits: 193
   eye: {fileID: 210001}
   sightBeam: {fileID: 230001}
-  viewDistance: 16
-  viewAngle: 76
+  viewDistance: 12
+  viewAngle: 50
   scanInterval: 0.12
   lineOfSightMask:
     serializedVersion: 2
@@ -149,10 +149,10 @@ MonoBehaviour:
   sweepWhenAttached: 1
   sweepAngle: 55
   sweepPeriod: 3.5
-  downwardScanAngle: 24
-  trackingTurnSpeed: 8
-  trackingMemory: 2.25
-  sightConeColor: {r: 1, g: 0, b: 0, a: 0.22}
+  downwardScanAngle: 17.1
+  trackingTurnSpeed: 7.92
+  trackingMemory: 1
+  sightConeColor: {r: 1, g: 0, b: 0, a: 0.0627451}
   alertRadius: 25
   loudness: 1
   alertUrgency: 0.95

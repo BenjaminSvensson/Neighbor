@@ -23,15 +23,18 @@ MonoBehaviour:
     surfaceAlignment: 0
     requireSurface: 0
     groundOnWall: 0
+    snapBoundsToFeatures: 0
+    groundOnFeatureSnaps: 0
     validateCollisions: 0
     allowTriggerOverlap: 1
-    boundsSize: {x: 0.8283665, y: 1.6372893, z: 0.85778624}
-    boundsCenter: {x: -0.015172452, y: 0.78564465, z: 0.032227665}
+    boundsSize: {x: 0.8283665, y: 1.6372893, z: 0.8577862}
+    boundsCenter: {x: -0.015172452, y: 0.78564465, z: 0.389752}
     placementOffset: {x: 0, y: 0.032999992, z: 0}
   wallOpening:
     enabled: 0
     size: {x: 1.2, y: 2.1, z: 0.5}
     center: {x: 0, y: 1.05, z: 0}
     margin: 0.02
+    centerPlacedObjectInWall: 0
   wirePorts: []
   tags: []

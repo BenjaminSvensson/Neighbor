@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 100004}
   - component: {fileID: 100005}
   - component: {fileID: 100006}
+  - component: {fileID: 9023422693850020098}
   - component: {fileID: 9100000000000000001}
   m_Layer: 6
   m_Name: PlaceholderChair
@@ -57,8 +58,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.95, y: 0.75112617, z: 0.78632003}
-  m_Center: {x: 2.7483869e-16, y: 0.3705631, z: 0.08184004}
+  m_Size: {x: 0.76767194, y: 0.75112617, z: 0.66132647}
+  m_Center: {x: 0.02302128, y: 0.3705631, z: 0.3621281}
 --- !u!54 &100003
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -130,11 +131,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7f2f658ecddf4ed8b8342c5dcdb40c7c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  doorOffset: 0.85
+  doorOffset: 1.15
   placementSurfacePadding: 0.02
   groundProbeHeight: 1.5
   groundProbeDistance: 3
-  autoBlockRadius: 1.1
+  autoBlockRadius: 0.3
   leanAngle: 12
   attachToDoorSurface: 0
   doorSurfaceOffset: 0.03
@@ -145,6 +146,7 @@ MonoBehaviour:
   doorMask:
     serializedVersion: 2
     m_Bits: 64
+  placementOrigin: 0
 --- !u!114 &100006
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -172,6 +174,27 @@ MonoBehaviour:
   maximumVolume: 1
   pitchRandomness: 0.08
   generatedClipDuration: 0.16
+--- !u!65 &9023422693850020098
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100000}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.7691827, y: 0.82406235, z: 0.097815394}
+  m_Center: {x: -0.0038897991, y: 1.1702116, z: 0.732269}
 --- !u!114 &9100000000000000001
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -182,7 +205,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6b8797e97910440e9c12f7f42f0a7c40, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Neighbor.NeighborTaskLocation
   minimumWaitTime: 4
   maximumWaitTime: 9
@@ -205,6 +228,10 @@ MonoBehaviour:
   anchorNeighborAtUsePose: 1
   ignoreTaskObjectCollisions: 1
   stabilizeTaskObject: 1
+  minimumUprightDot: 0.9
+  maximumUseVerticalOffset: 0.45
+  maximumObjectSpeedForUse: 0.2
+  maximumObjectAngularSpeedForUse: 0.35
   startTaskAnimation: {fileID: 7860179187555574969, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
   startAnimationPlaybackSpeed: 1
   taskAnimation: {fileID: -6676812269523803463, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
@@ -252,7 +279,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2c67de708b1502d42a6a100d55560afe, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -0.0095244
+      value: 0.348
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2c67de708b1502d42a6a100d55560afe, type: 3}
       propertyPath: m_LocalRotation.w
