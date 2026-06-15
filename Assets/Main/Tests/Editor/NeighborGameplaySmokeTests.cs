@@ -135,6 +135,36 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void DynamicObstacleAvoidance_OnlyUsesUsefulDetours()
+        {
+            NeighborMotor motor = context.AddInitializedComponent<NeighborMotor>();
+            GameplaySmokeTestReflection.SetField(motor, "maximumUsefulDetourExtraDistance", 2f);
+            GameplaySmokeTestReflection.SetField(motor, "maximumUsefulDetourDistanceRatio", 1.35f);
+
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    motor,
+                    "IsDynamicObstacleDetourWorthTaking",
+                    10f,
+                    12f),
+                Is.True);
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    motor,
+                    "IsDynamicObstacleDetourWorthTaking",
+                    10f,
+                    14f),
+                Is.False);
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    motor,
+                    "IsDynamicObstacleDetourWorthTaking",
+                    2f,
+                    3f),
+                Is.False);
+        }
+
+        [Test]
         public void Vision_RejectsPlayerAboveUpwardViewLimit()
         {
             NeighborVision vision = context.AddInitializedComponent<NeighborVision>();

@@ -33,6 +33,11 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float destinationSampleRadius = 1.5f;
         [SerializeField, Min(0f)] private float startNavMeshSnapRadius = 3f;
 
+        [Header("Closest Reachable Destination")]
+        [SerializeField] private bool approachClosestReachableDestination = true;
+        [SerializeField, Min(0.5f)] private float closestReachableSearchRadius = 12f;
+        [SerializeField, Range(4, 32)] private int closestReachableCandidateCount = 12;
+
         [Header("Dynamic Obstacle Avoidance")]
         [SerializeField] private bool enableDynamicObstacleAvoidance = true;
         [SerializeField] private LayerMask dynamicObstacleMask = ~0;
@@ -43,6 +48,9 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float dynamicObstacleSampleRadius = 0.8f;
         [SerializeField, Min(0.05f)] private float dynamicObstacleProbeInterval = 0.15f;
         [SerializeField, Min(0.1f)] private float dynamicObstacleDetourTimeout = 1.25f;
+        [SerializeField, Min(0f)] private float maximumUsefulDetourExtraDistance = 2.25f;
+        [SerializeField, Min(1f)] private float maximumUsefulDetourDistanceRatio = 1.35f;
+        [SerializeField] private bool climbDynamicObstaclesWhenDetourIsPoor = true;
 
         [Header("Blocked Destination")]
         [SerializeField, Min(1)] private int maximumNoProgressAttempts = 3;
@@ -68,6 +76,7 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float ledgeMaximumHeight = 1.25f;
         [SerializeField, Min(0f)] private float ledgeTopProbeForwardOffset = 0.35f;
         [SerializeField, Min(0.01f)] private float ledgeClimbDuration = 0.3f;
+        [SerializeField, Min(0f)] private float postClimbNavMeshVerticalSnapTolerance = 0.35f;
         [SerializeField] private LayerMask climbMask = ~0;
 
         [Header("Chase Climb Assist")]
@@ -97,6 +106,7 @@ namespace Neighbor.Main.Features.Neighbor
         private readonly RaycastHit[] climbProbeHits = new RaycastHit[10];
         private readonly RaycastHit[] dynamicObstacleHits = new RaycastHit[12];
         private readonly Collider[] recoveryOverlapHits = new Collider[16];
+        private NavMeshPath destinationPath;
         private NavMeshPath dynamicObstaclePath;
         private NavMeshPath recoveryPath;
         private bool isAvoidingDynamicObstacle;
@@ -113,6 +123,12 @@ namespace Neighbor.Main.Features.Neighbor
         private float lastRecoveryTime = float.NegativeInfinity;
         private TraversalAnimationPhase traversalAnimationPhase;
         private bool isAnchoredForTask;
+        private Collider[] activeClimbSurfaceColliders;
+        private Collider[] ownColliders;
+        private bool hasPendingKnockback;
+        private Vector3 pendingKnockbackDirection;
+        private float pendingKnockbackDistance;
+        private float pendingKnockbackDuration;
 
         public bool IsTraversingSpecialMove => traversalRoutine != null;
         public TraversalAnimationPhase CurrentTraversalAnimationPhase => traversalAnimationPhase;
@@ -140,11 +156,18 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void Awake()
         {
+            destinationPath = new NavMeshPath();
             dynamicObstaclePath = new NavMeshPath();
             recoveryPath = new NavMeshPath();
             agent = GetComponent<NavMeshAgent>();
+            ownColliders = GetComponentsInChildren<Collider>(true);
             ConfigureAgent();
             SnapToNavMeshIfNeeded();
+        }
+
+        private void OnDisable()
+        {
+            SetClimbSurfaceCollisionIgnored(false);
         }
 
         private void Update()
@@ -229,15 +252,18 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
-            if (!NavMesh.SamplePosition(destination, out NavMeshHit hit, Mathf.Max(0f, sampleRadius), agent.areaMask))
+            if (!TryResolveClosestReachableDestination(
+                    destination,
+                    Mathf.Max(0f, sampleRadius),
+                    out Vector3 resolvedDestination))
             {
                 sampledDestination = destination;
                 return false;
             }
 
             bool destinationChanged = !hasRequestedDestination
-                || Vector3.Distance(requestedDestination, hit.position) > destinationChangeResetDistance;
-            requestedDestination = hit.position;
+                || Vector3.Distance(requestedDestination, resolvedDestination) > destinationChangeResetDistance;
+            requestedDestination = resolvedDestination;
             hasRequestedDestination = true;
             Vector3 movementSinceProgressCheck = transform.position - progressCheckPosition;
             movementSinceProgressCheck.y = 0f;
@@ -248,14 +274,122 @@ namespace Neighbor.Main.Features.Neighbor
                 ResetDestinationProgressTracking();
             }
 
-            sampledDestination = hit.position;
+            sampledDestination = resolvedDestination;
             agent.isStopped = isPaused;
             if (isAvoidingDynamicObstacle)
             {
                 return true;
             }
 
-            return agent.SetDestination(hit.position);
+            return agent.SetPath(destinationPath);
+        }
+
+        private bool TryResolveClosestReachableDestination(
+            Vector3 destination,
+            float sampleRadius,
+            out Vector3 resolvedDestination)
+        {
+            resolvedDestination = destination;
+            bool found = TryEvaluateDestinationCandidate(
+                destination,
+                sampleRadius,
+                destination,
+                out Vector3 bestDestination,
+                out float bestScore,
+                out bool completePath);
+            if (completePath)
+            {
+                resolvedDestination = bestDestination;
+                return agent.CalculatePath(resolvedDestination, destinationPath)
+                    && destinationPath.status == NavMeshPathStatus.PathComplete;
+            }
+
+            if (!approachClosestReachableDestination)
+            {
+                return false;
+            }
+
+            int candidateCount = Mathf.Max(4, closestReachableCandidateCount);
+            float maximumRadius = Mathf.Max(sampleRadius, closestReachableSearchRadius);
+            if (maximumRadius > sampleRadius
+                && TryEvaluateDestinationCandidate(
+                    destination,
+                    maximumRadius,
+                    destination,
+                    out Vector3 expandedDestination,
+                    out float expandedScore,
+                    out _)
+                && expandedScore < bestScore)
+            {
+                found = true;
+                bestDestination = expandedDestination;
+                bestScore = expandedScore;
+            }
+
+            const float goldenAngle = 137.50776f;
+            for (int i = 0; i < candidateCount; i++)
+            {
+                float radius01 = Mathf.Sqrt((i + 1f) / candidateCount);
+                float radius = Mathf.Lerp(Mathf.Max(0.1f, sampleRadius), maximumRadius, radius01);
+                Vector3 direction = Quaternion.AngleAxis(i * goldenAngle, Vector3.up) * Vector3.forward;
+                Vector3 candidate = destination + direction * radius;
+                if (!TryEvaluateDestinationCandidate(
+                        candidate,
+                        Mathf.Max(0.5f, sampleRadius),
+                        destination,
+                        out Vector3 candidateDestination,
+                        out float candidateScore,
+                        out bool candidateComplete)
+                    || candidateScore >= bestScore)
+                {
+                    continue;
+                }
+
+                found = true;
+                bestDestination = candidateDestination;
+                bestScore = candidateScore;
+                if (candidateComplete && bestScore <= sampleRadius * sampleRadius)
+                {
+                    break;
+                }
+            }
+
+            if (!found)
+            {
+                return false;
+            }
+
+            resolvedDestination = bestDestination;
+            return agent.CalculatePath(resolvedDestination, destinationPath)
+                && destinationPath.status == NavMeshPathStatus.PathComplete;
+        }
+
+        private bool TryEvaluateDestinationCandidate(
+            Vector3 candidate,
+            float sampleRadius,
+            Vector3 desiredDestination,
+            out Vector3 reachableDestination,
+            out float score,
+            out bool completePath)
+        {
+            reachableDestination = candidate;
+            score = float.PositiveInfinity;
+            completePath = false;
+            if (!NavMesh.SamplePosition(candidate, out NavMeshHit hit, sampleRadius, agent.areaMask)
+                || !agent.CalculatePath(hit.position, destinationPath)
+                || destinationPath.status == NavMeshPathStatus.PathInvalid
+                || destinationPath.corners == null
+                || destinationPath.corners.Length == 0)
+            {
+                return false;
+            }
+
+            completePath = destinationPath.status == NavMeshPathStatus.PathComplete;
+            reachableDestination = completePath
+                ? hit.position
+                : destinationPath.corners[destinationPath.corners.Length - 1];
+            score = (reachableDestination - desiredDestination).sqrMagnitude;
+            return true;
         }
 
         public bool CanReach(Vector3 destination, out float pathDistance, out Vector3 sampledPosition)
@@ -382,13 +516,17 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             Vector3 approachDirection = flatToTarget / horizontalDistance;
-            if (!TryFindTopBelowTarget(target, approachDirection, out Vector3 climbTarget))
+            if (!TryFindTopBelowTarget(target, approachDirection, out Vector3 climbTarget, out Collider climbSurface))
             {
                 return false;
             }
 
             isAvoidingDynamicObstacle = false;
-            traversalRoutine = StartCoroutine(ClimbLedge(climbTarget, true, chaseClimbDuration, chaseClimbArcHeight));
+            traversalRoutine = StartCoroutine(ClimbLedge(
+                climbTarget,
+                climbSurface,
+                chaseClimbDuration,
+                chaseClimbArcHeight));
             return true;
         }
 
@@ -428,7 +566,7 @@ namespace Neighbor.Main.Features.Neighbor
             isAvoidingDynamicObstacle = false;
             traversalRoutine = StartCoroutine(ClimbLedge(
                 climbLink.TopPosition,
-                true,
+                null,
                 climbLink.ClimbDuration,
                 climbLink.JumpArcHeight));
             return true;
@@ -448,17 +586,105 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (traversalRoutine != null)
             {
-                StopCoroutine(traversalRoutine);
-                traversalRoutine = null;
-                traversalAnimationPhase = TraversalAnimationPhase.None;
-                if (agent != null && agent.enabled && agent.isOnNavMesh)
-                {
-                    agent.isStopped = false;
-                }
+                QueueKnockback(direction.normalized, distance, duration);
+                return;
             }
 
             isAvoidingDynamicObstacle = false;
             knockbackRoutine = StartCoroutine(Knockback(direction.normalized, distance, duration));
+        }
+
+        private void QueueKnockback(Vector3 direction, float distance, float duration)
+        {
+            if (!hasPendingKnockback || distance >= pendingKnockbackDistance)
+            {
+                pendingKnockbackDirection = direction;
+                pendingKnockbackDistance = distance;
+                pendingKnockbackDuration = duration;
+            }
+
+            hasPendingKnockback = true;
+        }
+
+        private void FinishTraversal()
+        {
+            traversalRoutine = null;
+            traversalAnimationPhase = TraversalAnimationPhase.None;
+            SetClimbSurfaceCollisionIgnored(false);
+            if (!hasPendingKnockback)
+            {
+                return;
+            }
+
+            Vector3 direction = pendingKnockbackDirection;
+            float distance = pendingKnockbackDistance;
+            float duration = pendingKnockbackDuration;
+            hasPendingKnockback = false;
+            pendingKnockbackDistance = 0f;
+            pendingKnockbackDuration = 0f;
+            isAvoidingDynamicObstacle = false;
+            knockbackRoutine = StartCoroutine(Knockback(direction, distance, duration));
+        }
+
+        private static Transform GetClimbAnchor(Collider climbSurface)
+        {
+            if (climbSurface == null)
+            {
+                return null;
+            }
+
+            return climbSurface.attachedRigidbody != null
+                ? climbSurface.attachedRigidbody.transform
+                : climbSurface.transform;
+        }
+
+        private void BeginClimbSurfaceCollisionIgnore(Collider climbSurface)
+        {
+            SetClimbSurfaceCollisionIgnored(false);
+            Transform climbAnchor = GetClimbAnchor(climbSurface);
+            if (climbAnchor == null)
+            {
+                return;
+            }
+
+            activeClimbSurfaceColliders = climbAnchor.GetComponentsInChildren<Collider>(true);
+            SetClimbSurfaceCollisionIgnored(true);
+        }
+
+        private void SetClimbSurfaceCollisionIgnored(bool ignored)
+        {
+            if (activeClimbSurfaceColliders == null)
+            {
+                return;
+            }
+
+            if (ownColliders == null || ownColliders.Length == 0)
+            {
+                ownColliders = GetComponentsInChildren<Collider>(true);
+            }
+
+            for (int surfaceIndex = 0; surfaceIndex < activeClimbSurfaceColliders.Length; surfaceIndex++)
+            {
+                Collider surfaceCollider = activeClimbSurfaceColliders[surfaceIndex];
+                if (surfaceCollider == null || surfaceCollider.isTrigger)
+                {
+                    continue;
+                }
+
+                for (int ownIndex = 0; ownIndex < ownColliders.Length; ownIndex++)
+                {
+                    Collider ownCollider = ownColliders[ownIndex];
+                    if (ownCollider != null && ownCollider != surfaceCollider)
+                    {
+                        Physics.IgnoreCollision(ownCollider, surfaceCollider, ignored);
+                    }
+                }
+            }
+
+            if (!ignored)
+            {
+                activeClimbSurfaceColliders = null;
+            }
         }
 
         public void MoveDirectlyToward(Vector3 target, float speed, float turnSharpness)
@@ -512,6 +738,7 @@ namespace Neighbor.Main.Features.Neighbor
                 StopCoroutine(traversalRoutine);
                 traversalRoutine = null;
                 traversalAnimationPhase = TraversalAnimationPhase.None;
+                SetClimbSurfaceCollisionIgnored(false);
                 if (agent != null && agent.enabled && agent.isOnNavMesh)
                 {
                     agent.isStopped = false;
@@ -528,6 +755,7 @@ namespace Neighbor.Main.Features.Neighbor
             isAvoidingDynamicObstacle = false;
             isPaused = false;
             isAnchoredForTask = false;
+            hasPendingKnockback = false;
             ResetDestinationProgressTracking();
             offMeshChaseUntilTime = 0f;
 
@@ -736,8 +964,24 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             nextDynamicObstacleProbeTime = Time.time + dynamicObstacleProbeInterval;
-            if (!TryFindDynamicObstacleDetour(out Vector3 detour))
+            if (!TryFindDynamicObstacleResponse(
+                    out Collider blockingObstacle,
+                    out Vector3 detour,
+                    out bool shouldUseDetour))
             {
+                return;
+            }
+
+            if (!shouldUseDetour)
+            {
+                if (climbDynamicObstaclesWhenDetourIsPoor
+                    && enableLedgeClimb
+                    && TryStartClimbOverDynamicObstacle(blockingObstacle))
+                {
+                    return;
+                }
+
+                ResumeRequestedDestination();
                 return;
             }
 
@@ -861,7 +1105,6 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
-            CancelActiveTraversalForRecovery();
             agent.updatePosition = true;
             agent.updateRotation = true;
             agent.isStopped = false;
@@ -946,18 +1189,6 @@ namespace Neighbor.Main.Features.Neighbor
             }
         }
 
-        private void CancelActiveTraversalForRecovery()
-        {
-            if (traversalRoutine != null)
-            {
-                StopCoroutine(traversalRoutine);
-                traversalRoutine = null;
-            }
-
-            traversalAnimationPhase = TraversalAnimationPhase.None;
-            offMeshChaseUntilTime = 0f;
-        }
-
         private void ResetDestinationProgressTracking()
         {
             noProgressAttemptCount = 0;
@@ -966,9 +1197,14 @@ namespace Neighbor.Main.Features.Neighbor
             nextProgressCheckTime = Time.time + noProgressCheckInterval;
         }
 
-        private bool TryFindDynamicObstacleDetour(out Vector3 detour)
+        private bool TryFindDynamicObstacleResponse(
+            out Collider blockingObstacle,
+            out Vector3 detour,
+            out bool shouldUseDetour)
         {
+            blockingObstacle = null;
             detour = default;
+            shouldUseDetour = false;
             Vector3 forward = agent.desiredVelocity;
             forward.y = 0f;
             if (forward.sqrMagnitude <= 0.01f)
@@ -993,7 +1229,6 @@ namespace Neighbor.Main.Features.Neighbor
                 dynamicObstacleMask,
                 QueryTriggerInteraction.Ignore);
 
-            Collider closestObstacle = null;
             float closestDistance = float.PositiveInfinity;
             for (int i = 0; i < hitCount; i++)
             {
@@ -1008,16 +1243,16 @@ namespace Neighbor.Main.Features.Neighbor
                     continue;
                 }
 
-                closestObstacle = hit.collider;
+                blockingObstacle = hit.collider;
                 closestDistance = hit.distance;
             }
 
-            if (closestObstacle == null)
+            if (blockingObstacle == null)
             {
                 return false;
             }
 
-            Bounds bounds = closestObstacle.bounds;
+            Bounds bounds = blockingObstacle.bounds;
             Vector3 lateral = Vector3.Cross(Vector3.up, forward).normalized;
             Vector3 extents = bounds.extents;
             float lateralExtent = Mathf.Abs(lateral.x) * extents.x + Mathf.Abs(lateral.z) * extents.z;
@@ -1038,12 +1273,86 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (!foundLeft && !foundRight)
             {
+                return true;
+            }
+
+            float bestScore;
+            if (!foundRight || foundLeft && leftScore <= rightScore)
+            {
+                detour = leftDetour;
+                bestScore = leftScore;
+            }
+            else
+            {
+                detour = rightDetour;
+                bestScore = rightScore;
+            }
+
+            float directDistance = GetCurrentDirectRouteEstimate();
+            shouldUseDetour = IsDynamicObstacleDetourWorthTaking(directDistance, bestScore);
+            return true;
+        }
+
+        private float GetCurrentDirectRouteEstimate()
+        {
+            float directDistance = Vector3.Distance(transform.position, requestedDestination);
+            if (!agent.pathPending && !float.IsInfinity(agent.remainingDistance))
+            {
+                directDistance = Mathf.Max(directDistance, agent.remainingDistance);
+            }
+
+            return Mathf.Max(0.1f, directDistance);
+        }
+
+        private bool IsDynamicObstacleDetourWorthTaking(float directDistance, float detourDistance)
+        {
+            float extraDistance = detourDistance - directDistance;
+            return extraDistance <= maximumUsefulDetourExtraDistance
+                && detourDistance <= directDistance * maximumUsefulDetourDistanceRatio;
+        }
+
+        private bool TryStartClimbOverDynamicObstacle(Collider obstacle)
+        {
+            if (obstacle == null
+                || traversalRoutine != null
+                || (climbMask.value & 1 << obstacle.gameObject.layer) == 0)
+            {
                 return false;
             }
 
-            detour = !foundRight || foundLeft && leftScore <= rightScore
-                ? leftDetour
-                : rightDetour;
+            Vector3 forward = requestedDestination - transform.position;
+            forward.y = 0f;
+            if (forward.sqrMagnitude <= 0.01f)
+            {
+                forward = transform.forward;
+            }
+
+            forward.Normalize();
+            Bounds bounds = obstacle.bounds;
+            Vector3 extents = bounds.extents;
+            float forwardExtent = Mathf.Abs(forward.x) * extents.x + Mathf.Abs(forward.z) * extents.z;
+            Vector3 topProbeOrigin = bounds.center
+                + forward * Mathf.Min(ledgeTopProbeForwardOffset, forwardExtent * 0.5f)
+                + Vector3.up * (extents.y + 0.5f);
+            Ray topRay = new Ray(topProbeOrigin, Vector3.down);
+            if (!obstacle.Raycast(topRay, out RaycastHit topHit, bounds.size.y + 1f))
+            {
+                return false;
+            }
+
+            float ledgeHeight = topHit.point.y - transform.position.y;
+            if (ledgeHeight < ledgeMinimumHeight || ledgeHeight > ledgeMaximumHeight)
+            {
+                return false;
+            }
+
+            isAvoidingDynamicObstacle = false;
+            Vector3 climbTarget = topHit.point + Vector3.up * 0.03f;
+            traversalRoutine = StartCoroutine(ClimbLedge(
+                climbTarget,
+                obstacle,
+                ledgeClimbDuration,
+                0f));
             return true;
         }
 
@@ -1091,7 +1400,11 @@ namespace Neighbor.Main.Features.Neighbor
             }
         }
 
-        private bool TryFindTopBelowTarget(Transform target, Vector3 approachDirection, out Vector3 climbTarget)
+        private bool TryFindTopBelowTarget(
+            Transform target,
+            Vector3 approachDirection,
+            out Vector3 climbTarget,
+            out Collider climbSurface)
         {
             Vector3 probeOrigin = target.position - approachDirection * targetClimbForwardOffset + Vector3.up * 0.75f;
             float probeDistance = ledgeMaximumHeight + 1.5f;
@@ -1105,6 +1418,7 @@ namespace Neighbor.Main.Features.Neighbor
 
             float bestHeight = float.NegativeInfinity;
             Vector3 bestPoint = Vector3.zero;
+            climbSurface = null;
             bool found = false;
 
             for (int i = 0; i < hitCount; i++)
@@ -1125,6 +1439,7 @@ namespace Neighbor.Main.Features.Neighbor
                 {
                     bestHeight = hit.point.y;
                     bestPoint = hit.point;
+                    climbSurface = hit.collider;
                     found = true;
                 }
             }
@@ -1165,8 +1480,7 @@ namespace Neighbor.Main.Features.Neighbor
             agent.Warp(end);
             agent.CompleteOffMeshLink();
             yield return PlayLandingReaction();
-            traversalRoutine = null;
-            traversalAnimationPhase = TraversalAnimationPhase.None;
+            FinishTraversal();
         }
 
         private bool TryStartLedgeClimb()
@@ -1202,7 +1516,11 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             Vector3 climbTarget = topHit.point + Vector3.up * 0.03f;
-            traversalRoutine = StartCoroutine(ClimbLedge(climbTarget, false, ledgeClimbDuration, 0f));
+            traversalRoutine = StartCoroutine(ClimbLedge(
+                climbTarget,
+                topHit.collider,
+                ledgeClimbDuration,
+                0f));
             return true;
         }
 
@@ -1226,15 +1544,22 @@ namespace Neighbor.Main.Features.Neighbor
             return false;
         }
 
-        private IEnumerator ClimbLedge(Vector3 target, bool allowOffMeshFinish, float duration, float arcHeight)
+        private IEnumerator ClimbLedge(
+            Vector3 target,
+            Collider climbSurface,
+            float duration,
+            float arcHeight)
         {
             Vector3 start = transform.position;
+            Transform climbAnchor = GetClimbAnchor(climbSurface);
+            Vector3 localTarget = climbAnchor != null ? climbAnchor.InverseTransformPoint(target) : default;
             float timer = 0f;
             if (agent.enabled && agent.isOnNavMesh)
             {
                 agent.ResetPath();
             }
 
+            BeginClimbSurfaceCollisionIgnore(climbSurface);
             agent.updatePosition = false;
             agent.updateRotation = false;
             traversalAnimationPhase = TraversalAnimationPhase.Climb;
@@ -1245,15 +1570,20 @@ namespace Neighbor.Main.Features.Neighbor
                 timer += Time.deltaTime;
                 float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(timer / moveDuration));
                 float arc = Mathf.Sin(t * Mathf.PI) * arcHeight;
-                transform.position = Vector3.Lerp(start, target, t) + Vector3.up * arc;
-                FaceTowards(target, 16f);
+                Vector3 currentTarget = climbAnchor != null
+                    ? climbAnchor.TransformPoint(localTarget)
+                    : target;
+                transform.position = Vector3.Lerp(start, currentTarget, t) + Vector3.up * arc;
+                FaceTowards(currentTarget, 16f);
                 yield return null;
             }
 
+            target = climbAnchor != null ? climbAnchor.TransformPoint(localTarget) : target;
             transform.position = target;
 
             bool warpedToNavMesh = false;
-            if (NavMesh.SamplePosition(target, out NavMeshHit navMeshHit, startNavMeshSnapRadius, agent.areaMask))
+            if (NavMesh.SamplePosition(target, out NavMeshHit navMeshHit, startNavMeshSnapRadius, agent.areaMask)
+                && Mathf.Abs(navMeshHit.position.y - target.y) <= postClimbNavMeshVerticalSnapTolerance)
             {
                 warpedToNavMesh = agent.Warp(navMeshHit.position);
             }
@@ -1261,12 +1591,9 @@ namespace Neighbor.Main.Features.Neighbor
             if (!warpedToNavMesh)
             {
                 agent.nextPosition = transform.position;
-                agent.updatePosition = !allowOffMeshFinish;
-                agent.updateRotation = !allowOffMeshFinish;
-                if (allowOffMeshFinish)
-                {
-                    offMeshChaseUntilTime = Time.time + postClimbOffMeshChaseTime;
-                }
+                agent.updatePosition = false;
+                agent.updateRotation = false;
+                offMeshChaseUntilTime = Time.time + postClimbOffMeshChaseTime;
             }
             else
             {
@@ -1278,9 +1605,9 @@ namespace Neighbor.Main.Features.Neighbor
                 }
             }
 
+            SetClimbSurfaceCollisionIgnored(false);
             yield return PlayLandingReaction();
-            traversalRoutine = null;
-            traversalAnimationPhase = TraversalAnimationPhase.None;
+            FinishTraversal();
         }
 
         private IEnumerator JumpToPoint(Vector3 target, float duration, float arcHeight)
@@ -1328,8 +1655,7 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             yield return PlayLandingReaction();
-            traversalRoutine = null;
-            traversalAnimationPhase = TraversalAnimationPhase.None;
+            FinishTraversal();
         }
 
         private IEnumerator PlayLandingReaction()

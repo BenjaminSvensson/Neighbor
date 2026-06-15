@@ -77,6 +77,13 @@ namespace Neighbor.Main.Tests
             method.Invoke(target, arguments);
         }
 
+        public static TResult InvokeResult<TResult>(object target, string methodName, params object[] arguments)
+        {
+            MethodInfo method = FindMethod(target, methodName);
+            Assert.That(method, Is.Not.Null, $"Could not find private method '{methodName}'.");
+            return (TResult)method.Invoke(target, arguments);
+        }
+
         public static void InvokeIfPresent(object target, string methodName)
         {
             FindMethod(target, methodName)?.Invoke(target, null);
