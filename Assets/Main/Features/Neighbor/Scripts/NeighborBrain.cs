@@ -42,6 +42,7 @@ namespace Neighbor.Main.Features.Neighbor
             Idle,
             Task,
             Wander,
+            ObjectHandling,
             Investigate,
             Chase,
             Catching,
@@ -53,6 +54,7 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField] private NeighborMotor motor;
         [SerializeField] private NeighborVision vision;
         [SerializeField] private NeighborHearing hearing;
+        [SerializeField] private NeighborObjectHandling objectHandling;
         [SerializeField] private Transform player;
 
         [Header("Routine")]
@@ -227,6 +229,7 @@ namespace Neighbor.Main.Features.Neighbor
             && waitingAtGoal
             && motor != null
             && motor.HasArrived;
+        public NeighborObjectHandling ObjectHandling => objectHandling;
         public bool IsAtInvestigationGoal => currentState == BehaviorState.Investigate
             && waitingAtGoal
             && motor != null
@@ -239,6 +242,7 @@ namespace Neighbor.Main.Features.Neighbor
             motor = motor != null ? motor : GetComponent<NeighborMotor>();
             vision = vision != null ? vision : GetComponent<NeighborVision>();
             hearing = hearing != null ? hearing : GetComponent<NeighborHearing>();
+            objectHandling = objectHandling != null ? objectHandling : GetComponent<NeighborObjectHandling>();
             animationController = GetComponent<NeighborAnimationController>();
             ResolvePlayer();
         }
@@ -411,6 +415,9 @@ namespace Neighbor.Main.Features.Neighbor
                     break;
                 case BehaviorState.HuntMode:
                     UpdateHuntMode();
+                    break;
+                case BehaviorState.ObjectHandling:
+                    UpdateObjectHandling();
                     break;
                 case BehaviorState.Task:
                 case BehaviorState.Wander:
@@ -605,6 +612,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         public void HandlePlayerRespawned(float sightGraceTime)
         {
+            objectHandling?.CancelActivity();
             currentClimbLink = null;
             currentSearchPoint = null;
             currentHideSpot = null;
@@ -1009,6 +1017,10 @@ namespace Neighbor.Main.Features.Neighbor
                 case BehaviorState.Idle:
                     ChooseNextRoutineGoal();
                     return;
+                case BehaviorState.ObjectHandling:
+                    objectHandling?.CancelActivity();
+                    ChooseNextRoutineGoal();
+                    return;
             }
         }
 
@@ -1053,6 +1065,15 @@ namespace Neighbor.Main.Features.Neighbor
                 && TryStartTask(interruptedTaskLocation))
             {
                 interruptedTaskLocation = null;
+                return;
+            }
+
+            if (objectHandling != null && objectHandling.TryBeginRoutine(out Vector3 objectHandlingGoal))
+            {
+                currentGoal = objectHandlingGoal;
+                currentTaskLocation = null;
+                waitingAtGoal = false;
+                SetState(BehaviorState.ObjectHandling);
                 return;
             }
 
@@ -1176,6 +1197,17 @@ namespace Neighbor.Main.Features.Neighbor
             currentTaskAnimationPhase = NeighborTaskLocation.TaskAnimationPhase.None;
             currentTaskLocation?.EndTaskUse(this, motor);
             return true;
+        }
+
+        private void UpdateObjectHandling()
+        {
+            if (objectHandling != null && objectHandling.UpdateActivity(out Vector3 activityGoal))
+            {
+                currentGoal = activityGoal;
+                return;
+            }
+
+            ChooseNextRoutineGoal();
         }
 
         private void BeginTaskAnimationPhase(
@@ -1614,6 +1646,11 @@ namespace Neighbor.Main.Features.Neighbor
                 NeighborTaskLocation.ReleaseAllFor(this, motor);
                 currentTaskAnimationPhase = NeighborTaskLocation.TaskAnimationPhase.None;
                 StopActiveTaskAudio();
+            }
+
+            if (currentState == BehaviorState.ObjectHandling && state != BehaviorState.ObjectHandling)
+            {
+                objectHandling?.CancelActivity();
             }
 
             if (currentState == BehaviorState.Chase && state != BehaviorState.Chase)

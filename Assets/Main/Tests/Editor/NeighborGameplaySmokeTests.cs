@@ -135,6 +135,95 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void ObjectHandling_RejectsHeavyAndTaskObjects()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            context.AddInitializedComponent<NeighborMotor>(neighborObject);
+            context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            NeighborObjectHandling objectHandling = context.AddInitializedComponent<NeighborObjectHandling>(neighborObject);
+            GameplaySmokeTestReflection.SetField(objectHandling, "maximumPickupMass", 5f);
+
+            GameObject pickupObject = context.CreateObject("Pickup");
+            Rigidbody body = pickupObject.AddComponent<Rigidbody>();
+            pickupObject.AddComponent<BoxCollider>();
+            Pickupable pickup = context.AddInitializedComponent<Pickupable>(pickupObject);
+
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    objectHandling,
+                    "IsPickupCandidateValid",
+                    pickup),
+                Is.True);
+
+            body.mass = 6f;
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    objectHandling,
+                    "IsPickupCandidateValid",
+                    pickup),
+                Is.False);
+
+            body.mass = 1f;
+            context.AddInitializedComponent<NeighborTaskLocation>(pickupObject);
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    objectHandling,
+                    "IsPickupCandidateValid",
+                    pickup),
+                Is.False);
+        }
+
+        [Test]
+        public void ObjectHandling_CancelReleasesHeldObject()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            context.AddInitializedComponent<NeighborMotor>(neighborObject);
+            context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            NeighborObjectHandling objectHandling = context.AddInitializedComponent<NeighborObjectHandling>(neighborObject);
+            GameObject pickupObject = context.CreateObject("Pickup");
+            pickupObject.AddComponent<Rigidbody>();
+            pickupObject.AddComponent<BoxCollider>();
+            Pickupable pickup = context.AddInitializedComponent<Pickupable>(pickupObject);
+            pickup.Pickup(null, false);
+            GameplaySmokeTestReflection.SetField(objectHandling, "heldPickup", pickup);
+            objectHandling.EnableObjectHandling = true;
+
+            objectHandling.EnableObjectHandling = false;
+
+            Assert.That(pickup.IsHeld, Is.False);
+            Assert.That(objectHandling.EnableObjectHandling, Is.False);
+            Assert.That(objectHandling.IsActive, Is.False);
+            Assert.That(objectHandling.HeldPickup, Is.Null);
+        }
+
+        [Test]
+        public void ObjectHandling_PlacesHeldObjectOnClearGround()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            context.AddInitializedComponent<NeighborMotor>(neighborObject);
+            context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            NeighborObjectHandling objectHandling = context.AddInitializedComponent<NeighborObjectHandling>(neighborObject);
+            GameObject pickupObject = context.CreateObject("Pickup");
+            pickupObject.AddComponent<Rigidbody>();
+            pickupObject.AddComponent<BoxCollider>();
+            Pickupable pickup = context.AddInitializedComponent<Pickupable>(pickupObject);
+            GameObject ground = context.CreateObject("Ground");
+            BoxCollider groundCollider = ground.AddComponent<BoxCollider>();
+            groundCollider.size = new Vector3(8f, 0.2f, 8f);
+            ground.transform.position = Vector3.down * 0.1f;
+            Physics.SyncTransforms();
+
+            pickup.Pickup(null, false);
+            GameplaySmokeTestReflection.SetField(objectHandling, "heldPickup", pickup);
+            GameplaySmokeTestReflection.Invoke(objectHandling, "CacheHeldBounds", pickup);
+            GameplaySmokeTestReflection.Invoke(objectHandling, "PlaceHeldObjectNear", Vector3.zero);
+
+            Assert.That(pickup.IsHeld, Is.False);
+            Assert.That(pickup.transform.position.y, Is.GreaterThan(0.45f));
+            Assert.That(pickup.transform.position.y, Is.LessThan(0.6f));
+        }
+
+        [Test]
         public void DynamicObstacleAvoidance_OnlyUsesUsefulDetours()
         {
             NeighborMotor motor = context.AddInitializedComponent<NeighborMotor>();

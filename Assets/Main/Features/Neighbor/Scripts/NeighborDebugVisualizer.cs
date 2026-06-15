@@ -227,6 +227,22 @@ namespace Neighbor.Main.Features.Neighbor
                 return $"Task {brain.CurrentTaskLocation.name} ({brain.ActiveTaskAnimationPhase})";
             }
 
+            if (brain.CurrentState == NeighborBrain.BehaviorState.ObjectHandling && brain.ObjectHandling != null)
+            {
+                NeighborObjectHandling objectHandling = brain.ObjectHandling;
+                if (objectHandling.HeldPickup != null)
+                {
+                    return $"Carrying {objectHandling.HeldPickup.name} to placement";
+                }
+
+                if (objectHandling.TargetPickup != null)
+                {
+                    return $"Picking up {objectHandling.TargetPickup.name}";
+                }
+
+                return $"Object handling ({objectHandling.CurrentPhase})";
+            }
+
             if (brain.CurrentSearchPoint != null)
             {
                 return brain.CurrentUnexpectedOpenDoor != null
