@@ -883,15 +883,18 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            if (currentState == BehaviorState.Task && !HasReachedCurrentTask())
+            if (currentState == BehaviorState.Task
+                && motor.IsAnchoredForTask
+                && !waitingAtGoal
+                && currentTaskAnimationPhase == NeighborTaskLocation.TaskAnimationPhase.None)
             {
-                if (waitingAtGoal)
-                {
-                    waitingAtGoal = false;
-                    currentTaskAnimationPhase = NeighborTaskLocation.TaskAnimationPhase.None;
-                    StopActiveTaskAudio();
-                }
+                FinishCurrentTaskUse();
+                ChooseNextRoutineGoal();
+                return;
+            }
 
+            if (currentState == BehaviorState.Task && !waitingAtGoal && !HasReachedCurrentTask())
+            {
                 return;
             }
 
@@ -1194,9 +1197,16 @@ namespace Neighbor.Main.Features.Neighbor
                 }
             }
 
-            currentTaskAnimationPhase = NeighborTaskLocation.TaskAnimationPhase.None;
-            currentTaskLocation?.EndTaskUse(this, motor);
+            FinishCurrentTaskUse();
             return true;
+        }
+
+        private void FinishCurrentTaskUse()
+        {
+            currentTaskAnimationPhase = NeighborTaskLocation.TaskAnimationPhase.None;
+            waitingAtGoal = false;
+            StopActiveTaskAudio();
+            currentTaskLocation?.EndTaskUse(this, motor);
         }
 
         private void UpdateObjectHandling()

@@ -135,6 +135,70 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AnchoredTask_ContinuesAfterUsePoseMovesNeighborAwayFromNavigationPoint()
+        {
+            GameObject chair = context.CreateObject("ChairTask");
+            chair.AddComponent<BoxCollider>();
+            chair.AddComponent<Rigidbody>();
+            NeighborTaskLocation task = context.AddInitializedComponent<NeighborTaskLocation>(chair);
+            GameplaySmokeTestReflection.SetField(task, "anchorNeighborAtUsePose", true);
+            GameplaySmokeTestReflection.SetField(task, "usePoseLocalOffset", Vector3.forward * 2f);
+
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            NeighborMotor motor = context.AddInitializedComponent<NeighborMotor>(neighborObject);
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            Assert.That(task.TryReserve(brain), Is.True);
+            Assert.That(task.BeginTaskUse(brain, motor), Is.True);
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.Task);
+            GameplaySmokeTestReflection.SetField(brain, "currentTaskLocation", task);
+            GameplaySmokeTestReflection.SetField(brain, "waitingAtGoal", true);
+            GameplaySmokeTestReflection.SetField(
+                brain,
+                "currentTaskAnimationPhase",
+                NeighborTaskLocation.TaskAnimationPhase.Starting);
+            GameplaySmokeTestReflection.SetField(brain, "waitUntilTime", Time.time + 10f);
+
+            GameplaySmokeTestReflection.Invoke(brain, "UpdateRoutine");
+
+            Assert.That(motor.IsAnchoredForTask, Is.True);
+            Assert.That(brain.CurrentTaskLocation, Is.SameAs(task));
+            Assert.That(
+                GameplaySmokeTestReflection.GetField<NeighborTaskLocation.TaskAnimationPhase>(
+                    brain,
+                    "currentTaskAnimationPhase"),
+                Is.EqualTo(NeighborTaskLocation.TaskAnimationPhase.Starting));
+        }
+
+        [Test]
+        public void AnchoredTask_WithNoActivePhaseRecoversFromPausedState()
+        {
+            GameObject chair = context.CreateObject("ChairTask");
+            chair.AddComponent<BoxCollider>();
+            chair.AddComponent<Rigidbody>();
+            NeighborTaskLocation task = context.AddInitializedComponent<NeighborTaskLocation>(chair);
+            GameplaySmokeTestReflection.SetField(task, "anchorNeighborAtUsePose", true);
+
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            NeighborMotor motor = context.AddInitializedComponent<NeighborMotor>(neighborObject);
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            Assert.That(task.TryReserve(brain), Is.True);
+            Assert.That(task.BeginTaskUse(brain, motor), Is.True);
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.Task);
+            GameplaySmokeTestReflection.SetField(brain, "currentTaskLocation", task);
+            GameplaySmokeTestReflection.SetField(brain, "waitingAtGoal", false);
+            GameplaySmokeTestReflection.SetField(
+                brain,
+                "currentTaskAnimationPhase",
+                NeighborTaskLocation.TaskAnimationPhase.None);
+            GameplaySmokeTestReflection.SetField(brain, "tasksSuppressedUntilTime", float.PositiveInfinity);
+
+            GameplaySmokeTestReflection.Invoke(brain, "UpdateRoutine");
+
+            Assert.That(motor.IsAnchoredForTask, Is.False);
+            Assert.That(task.IsAvailable, Is.True);
+        }
+
+        [Test]
         public void ObjectHandling_RejectsHeavyAndTaskObjects()
         {
             GameObject neighborObject = context.CreateObject("Neighbor");
