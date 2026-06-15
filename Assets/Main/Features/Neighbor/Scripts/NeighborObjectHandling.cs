@@ -304,9 +304,21 @@ namespace Neighbor.Main.Features.Neighbor
                 || !pickup.isActiveAndEnabled
                 || pickup.IsHeld
                 || pickup.IsInventoryStored
-                || !pickup.CanInteract(null)
-                || ignoreTaskObjects && pickup.GetComponentInParent<NeighborTaskLocation>() != null
-                || ignoreDoorBlockers && pickup.GetComponentInChildren<DoorBlockerChair>() != null)
+                || !pickup.CanInteract(null))
+            {
+                return false;
+            }
+
+            NeighborTaskLocation taskLocation = pickup.GetComponentInParent<NeighborTaskLocation>();
+            bool needsTaskObjectRecovery = taskLocation != null && taskLocation.NeedsObjectRecovery;
+            if (ignoreTaskObjects && taskLocation != null && !needsTaskObjectRecovery)
+            {
+                return false;
+            }
+
+            if (ignoreDoorBlockers
+                && pickup.GetComponentInChildren<DoorBlockerChair>() != null
+                && !needsTaskObjectRecovery)
             {
                 return false;
             }

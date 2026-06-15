@@ -135,6 +135,56 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void FallenChairTask_IsUnavailableUntilPlacedUpright()
+        {
+            GameObject chair = context.CreateObject("ChairTask");
+            chair.AddComponent<BoxCollider>();
+            Rigidbody chairBody = chair.AddComponent<Rigidbody>();
+            NeighborTaskLocation task = context.AddInitializedComponent<NeighborTaskLocation>(chair);
+            GameplaySmokeTestReflection.SetField(
+                task,
+                "objectTaskType",
+                NeighborTaskLocation.ObjectTaskType.Sit);
+            GameplaySmokeTestReflection.SetField(task, "taskObjectBody", chairBody);
+            chairBody.isKinematic = true;
+
+            chair.transform.rotation = Quaternion.Euler(0f, 0f, 90f);
+
+            Assert.That(task.IsAvailable, Is.False);
+            Assert.That(task.NeedsObjectRecovery, Is.True);
+
+            chair.transform.rotation = Quaternion.Euler(0f, 35f, 0f);
+
+            Assert.That(task.IsAvailable, Is.True);
+            Assert.That(task.NeedsObjectRecovery, Is.False);
+        }
+
+        [Test]
+        public void ChairTask_DoesNotBeginFromAboveNavigationPoint()
+        {
+            GameObject chair = context.CreateObject("ChairTask");
+            chair.AddComponent<BoxCollider>();
+            Rigidbody chairBody = chair.AddComponent<Rigidbody>();
+            chairBody.isKinematic = true;
+            NeighborTaskLocation task = context.AddInitializedComponent<NeighborTaskLocation>(chair);
+            GameplaySmokeTestReflection.SetField(
+                task,
+                "objectTaskType",
+                NeighborTaskLocation.ObjectTaskType.Sit);
+            GameplaySmokeTestReflection.SetField(task, "taskObjectBody", chairBody);
+            GameplaySmokeTestReflection.SetField(task, "maximumUseVerticalOffset", 0.45f);
+
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            neighborObject.transform.position = chair.transform.position + Vector3.up * 1f;
+            NeighborMotor motor = context.AddInitializedComponent<NeighborMotor>(neighborObject);
+            NeighborBrain neighbor = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+
+            Assert.That(task.TryReserve(neighbor), Is.True);
+            Assert.That(task.BeginTaskUse(neighbor, motor), Is.False);
+            Assert.That(motor.IsAnchoredForTask, Is.False);
+        }
+
+        [Test]
         public void AnchoredTask_ContinuesAfterUsePoseMovesNeighborAwayFromNavigationPoint()
         {
             GameObject chair = context.CreateObject("ChairTask");
@@ -235,6 +285,37 @@ namespace Neighbor.Main.Tests
                     "IsPickupCandidateValid",
                     pickup),
                 Is.False);
+        }
+
+        [Test]
+        public void ObjectHandling_AcceptsFallenChairTaskForRecovery()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            context.AddInitializedComponent<NeighborMotor>(neighborObject);
+            context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            NeighborObjectHandling objectHandling = context.AddInitializedComponent<NeighborObjectHandling>(neighborObject);
+
+            GameObject chair = context.CreateObject("FallenChairTask");
+            Rigidbody body = chair.AddComponent<Rigidbody>();
+            body.isKinematic = true;
+            chair.AddComponent<BoxCollider>();
+            Pickupable pickup = context.AddInitializedComponent<Pickupable>(chair);
+            chair.AddComponent<DoorBlockerChair>();
+            NeighborTaskLocation task = context.AddInitializedComponent<NeighborTaskLocation>(chair);
+            GameplaySmokeTestReflection.SetField(
+                task,
+                "objectTaskType",
+                NeighborTaskLocation.ObjectTaskType.Sit);
+            GameplaySmokeTestReflection.SetField(task, "taskObjectBody", body);
+            chair.transform.rotation = Quaternion.Euler(0f, 0f, 90f);
+
+            Assert.That(task.NeedsObjectRecovery, Is.True);
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    objectHandling,
+                    "IsPickupCandidateValid",
+                    pickup),
+                Is.True);
         }
 
         [Test]

@@ -54,6 +54,10 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField] private bool anchorNeighborAtUsePose;
         [SerializeField] private bool ignoreTaskObjectCollisions;
         [SerializeField] private bool stabilizeTaskObject;
+        [SerializeField, Range(0f, 1f)] private float minimumUprightDot = 0.9f;
+        [SerializeField, Min(0f)] private float maximumUseVerticalOffset = 0.45f;
+        [SerializeField, Min(0f)] private float maximumObjectSpeedForUse = 0.2f;
+        [SerializeField, Min(0f)] private float maximumObjectAngularSpeedForUse = 0.35f;
 
         [Header("Task Animation")]
         [Tooltip("Optional one-shot animation played after arriving, before the task begins.")]
@@ -82,6 +86,7 @@ namespace Neighbor.Main.Features.Neighbor
         private AudioClip activeLoopClip;
         private NeighborBrain reservedBy;
         private Pickupable taskPickupable;
+        private DoorBlockerChair taskDoorBlocker;
         private Collider[] taskObjectColliders;
         private Collider[] reservedNeighborColliders;
         private bool taskUseActive;
@@ -100,9 +105,17 @@ namespace Neighbor.Main.Features.Neighbor
         public float SelectionPriority => selectionPriority;
         public NeighborTaskLocation ForcedNextTask => forcedNextTask;
         public float ArrivalDistance => arrivalDistance;
+        public float MaximumUseVerticalOffset => maximumUseVerticalOffset;
         public float NavigationSampleRadius => navigationSampleRadius;
         public ObjectTaskType TaskType => objectTaskType;
-        public bool IsAvailable => reservedBy == null && (taskPickupable == null || !taskPickupable.IsHeld);
+        public bool IsObjectPoseUsable => IsTaskObjectPoseUsable();
+        public bool NeedsObjectRecovery => objectTaskType == ObjectTaskType.Sit
+            && (taskPickupable == null || !taskPickupable.IsHeld)
+            && (taskDoorBlocker == null || !taskDoorBlocker.IsBlockingDoor)
+            && !IsTaskObjectPoseUsable();
+        public bool IsAvailable => reservedBy == null
+            && (taskPickupable == null || !taskPickupable.IsHeld)
+            && IsTaskObjectPoseUsable();
         public static IReadOnlyList<NeighborTaskLocation> Locations => ActiveLocations;
 
         public AnimationClip GetAnimation(TaskAnimationPhase phase)
@@ -187,7 +200,8 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (neighbor == null
                 || reservedBy != null && reservedBy != neighbor
-                || taskPickupable != null && taskPickupable.IsHeld)
+                || taskPickupable != null && taskPickupable.IsHeld
+                || !IsTaskObjectPoseUsable())
             {
                 return false;
             }
@@ -199,7 +213,12 @@ namespace Neighbor.Main.Features.Neighbor
 
         public bool BeginTaskUse(NeighborBrain neighbor, NeighborMotor motor)
         {
-            if (neighbor == null || reservedBy != neighbor)
+            if (neighbor == null
+                || reservedBy != neighbor
+                || motor == null
+                || motor.IsTraversingSpecialMove
+                || !IsTaskObjectPoseUsable()
+                || Mathf.Abs(neighbor.transform.position.y - Position.y) > maximumUseVerticalOffset)
             {
                 return false;
             }
@@ -294,6 +313,9 @@ namespace Neighbor.Main.Features.Neighbor
         {
             maximumWaitTime = Mathf.Max(minimumWaitTime, maximumWaitTime);
             arrivalDistance = Mathf.Max(0.1f, arrivalDistance);
+            maximumUseVerticalOffset = Mathf.Max(0f, maximumUseVerticalOffset);
+            maximumObjectSpeedForUse = Mathf.Max(0f, maximumObjectSpeedForUse);
+            maximumObjectAngularSpeedForUse = Mathf.Max(0f, maximumObjectAngularSpeedForUse);
             startAnimationPlaybackSpeed = Mathf.Max(0.05f, startAnimationPlaybackSpeed);
             animationPlaybackSpeed = Mathf.Max(0.05f, animationPlaybackSpeed);
             endAnimationPlaybackSpeed = Mathf.Max(0.05f, endAnimationPlaybackSpeed);
@@ -345,10 +367,41 @@ namespace Neighbor.Main.Features.Neighbor
                 ? taskObjectRoot
                 : gameObject;
             taskPickupable = root.GetComponentInParent<Pickupable>() ?? root.GetComponentInChildren<Pickupable>();
+            taskDoorBlocker = root.GetComponentInParent<DoorBlockerChair>()
+                ?? root.GetComponentInChildren<DoorBlockerChair>();
             taskObjectBody = taskObjectBody != null
                 ? taskObjectBody
                 : root.GetComponentInParent<Rigidbody>() ?? root.GetComponentInChildren<Rigidbody>();
             taskObjectColliders = root.GetComponentsInChildren<Collider>(true);
+        }
+
+        private bool IsTaskObjectPoseUsable()
+        {
+            if (objectTaskType != ObjectTaskType.Sit)
+            {
+                return true;
+            }
+
+            if (taskDoorBlocker != null && taskDoorBlocker.IsBlockingDoor)
+            {
+                return false;
+            }
+
+            if (taskObjectBody == null)
+            {
+                return true;
+            }
+
+            Transform objectTransform = taskObjectBody.transform;
+            if (Vector3.Dot(objectTransform.up, Vector3.up) < minimumUprightDot)
+            {
+                return false;
+            }
+
+            return taskObjectBody.linearVelocity.sqrMagnitude
+                    <= maximumObjectSpeedForUse * maximumObjectSpeedForUse
+                && taskObjectBody.angularVelocity.sqrMagnitude
+                    <= maximumObjectAngularSpeedForUse * maximumObjectAngularSpeedForUse;
         }
 
         private void ApplyTaskObjectProtection(NeighborBrain neighbor)

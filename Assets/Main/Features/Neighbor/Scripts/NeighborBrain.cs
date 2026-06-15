@@ -1296,15 +1296,21 @@ namespace Neighbor.Main.Features.Neighbor
 
         private bool HasReachedCurrentTask()
         {
-            if (motor == null || currentTaskLocation == null || !motor.HasArrived)
+            if (motor == null
+                || currentTaskLocation == null
+                || !motor.HasArrived
+                || motor.IsTraversingSpecialMove
+                || !currentTaskLocation.IsObjectPoseUsable)
             {
                 return false;
             }
 
             Vector3 toTaskLocation = currentTaskLocation.Position - transform.position;
+            float verticalOffset = Mathf.Abs(toTaskLocation.y);
             toTaskLocation.y = 0f;
-            return toTaskLocation.sqrMagnitude
-                <= currentTaskLocation.ArrivalDistance * currentTaskLocation.ArrivalDistance;
+            return verticalOffset <= currentTaskLocation.MaximumUseVerticalOffset
+                && toTaskLocation.sqrMagnitude
+                    <= currentTaskLocation.ArrivalDistance * currentTaskLocation.ArrivalDistance;
         }
 
         private NeighborTaskLocation GetRandomTaskLocation()
