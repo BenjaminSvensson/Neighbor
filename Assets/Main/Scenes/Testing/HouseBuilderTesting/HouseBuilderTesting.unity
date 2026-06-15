@@ -690,40 +690,135 @@ MonoBehaviour:
   definitionId: neighbor.prop.cardboardbox
   categoryId: prop
   properties: []
---- !u!1 &285373157 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 220000, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
-  m_PrefabInstance: {fileID: 1396534378}
+--- !u!1001 &327200322
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 908822767}
+    m_Modifications:
+    - target: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_Name
+      value: PlaceholderLightSwitch
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 5.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.00000004371139
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 327200327}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 327200326}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 327200325}
+  m_SourcePrefab: {fileID: 100100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+--- !u!4 &327200323 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+  m_PrefabInstance: {fileID: 327200322}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &285373159
+--- !u!1 &327200324 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+  m_PrefabInstance: {fileID: 327200322}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &327200325
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 285373157}
+  m_GameObject: {fileID: 327200324}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Script: {fileID: 11500000, guid: d805329da59bf1544b0003d63e18b7ed, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalLightData
-  m_UsePipelineSettings: 1
-  m_AdditionalLightsShadowResolutionTier: 2
-  m_CustomShadowLayers: 0
-  m_LightCookieSize: {x: 1, y: 1}
-  m_LightCookieOffset: {x: 0, y: 0}
-  m_SoftShadowQuality: 0
-  m_RenderingLayersMask:
-    serializedVersion: 0
-    m_Bits: 1
-  m_ShadowRenderingLayersMask:
-    serializedVersion: 0
-    m_Bits: 1
-  m_Version: 4
-  m_LightLayerMask: 1
-  m_ShadowLayerMask: 1
-  m_RenderingLayers: 1
-  m_ShadowRenderingLayers: 1
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireOutputRelay
+  endpoint: {fileID: 327200326}
+  outputPortId: state
+--- !u!114 &327200326
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 327200324}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d2834eb53930484bb39749e568c6ec5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireEndpoint
+  endpointId: neighbor.wiring.lightswitch.endpoint
+  ports:
+  - id: state
+    displayName: State
+    direction: 1
+    signalKind: 2
+    maximumConnections: 0
+    visualOffset: {x: 0, y: 0.15, z: 0.08}
+    onSignalReceived:
+      m_PersistentCalls:
+        m_Calls: []
+--- !u!114 &327200327
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 327200324}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
+  instanceId: 96b703aaaa2b4dc0a404f90d6dcea68e
+  definitionId: neighbor.wiring.lightswitch
+  categoryId: wiring
+  properties: []
 --- !u!1 &361968925 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 100000, guid: b08ba65b2ad6486b8cb508b97085e5e8, type: 3}
@@ -1016,6 +1111,274 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 1301623287}
   m_SourcePrefab: {fileID: 100100000, guid: 1c0dcbb1f0b242798dcdec659a5ad4ed, type: 3}
+--- !u!1001 &590195814
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 908822767}
+    m_Modifications:
+    - target: {fileID: 100000, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_Name
+      value: PlaceholderTV
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -7.75
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.91
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 590195819}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 590195818}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 590195817}
+  m_SourcePrefab: {fileID: 100100000, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+--- !u!4 &590195815 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+  m_PrefabInstance: {fileID: 590195814}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &590195816 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 100000, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+  m_PrefabInstance: {fileID: 590195814}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &590195817
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 590195816}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8155c721a319d78418c48d0d9a3d987e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireInputRelay
+  onPulse:
+    m_PersistentCalls:
+      m_Calls: []
+  onBool:
+    m_PersistentCalls:
+      m_Calls: []
+  onFloat:
+    m_PersistentCalls:
+      m_Calls: []
+  onString:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &590195818
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 590195816}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d2834eb53930484bb39749e568c6ec5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireEndpoint
+  endpointId: neighbor.wiring.tv.endpoint
+  ports:
+  - id: power
+    displayName: Power
+    direction: 0
+    signalKind: 2
+    maximumConnections: 0
+    visualOffset: {x: 0, y: 0.5, z: 0}
+    onSignalReceived:
+      m_PersistentCalls:
+        m_Calls: []
+--- !u!114 &590195819
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 590195816}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
+  instanceId: e433e0773078469daa798a0dfe65bde6
+  definitionId: neighbor.wiring.tv
+  categoryId: wiring
+  properties: []
+--- !u!1001 &599185055
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 908822767}
+    m_Modifications:
+    - target: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_Name
+      value: PlaceholderLightSwitch
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -6.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1.75
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 599185060}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 599185059}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 599185058}
+  m_SourcePrefab: {fileID: 100100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+--- !u!4 &599185056 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+  m_PrefabInstance: {fileID: 599185055}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &599185057 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+  m_PrefabInstance: {fileID: 599185055}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &599185058
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 599185057}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d805329da59bf1544b0003d63e18b7ed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireOutputRelay
+  endpoint: {fileID: 599185059}
+  outputPortId: state
+--- !u!114 &599185059
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 599185057}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d2834eb53930484bb39749e568c6ec5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireEndpoint
+  endpointId: neighbor.wiring.lightswitch.endpoint
+  ports:
+  - id: state
+    displayName: State
+    direction: 1
+    signalKind: 2
+    maximumConnections: 0
+    visualOffset: {x: 0, y: 0.15, z: 0.08}
+    onSignalReceived:
+      m_PersistentCalls:
+        m_Calls: []
+--- !u!114 &599185060
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 599185057}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
+  instanceId: 5e0f3aade74b4faebab79e2c2a1eb465
+  definitionId: neighbor.wiring.lightswitch
+  categoryId: wiring
+  properties: []
 --- !u!1 &663236193
 GameObject:
   m_ObjectHideFlags: 0
@@ -1660,6 +2023,145 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 80ca1015f38352a4ea4319a22bbfe289, type: 3}
+--- !u!1001 &894039295
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 908822767}
+    m_Modifications:
+    - target: {fileID: 100000, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_Name
+      value: PlaceholderTV
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -8
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1.9100001
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 5.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 894039300}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 894039299}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 894039298}
+  m_SourcePrefab: {fileID: 100100000, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+--- !u!4 &894039296 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 100001, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+  m_PrefabInstance: {fileID: 894039295}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &894039297 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 100000, guid: 8ca5e81fe46d4e18ae47b164e7de5548, type: 3}
+  m_PrefabInstance: {fileID: 894039295}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &894039298
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 894039297}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8155c721a319d78418c48d0d9a3d987e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireInputRelay
+  onPulse:
+    m_PersistentCalls:
+      m_Calls: []
+  onBool:
+    m_PersistentCalls:
+      m_Calls: []
+  onFloat:
+    m_PersistentCalls:
+      m_Calls: []
+  onString:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &894039299
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 894039297}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d2834eb53930484bb39749e568c6ec5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireEndpoint
+  endpointId: neighbor.wiring.tv.endpoint
+  ports:
+  - id: power
+    displayName: Power
+    direction: 0
+    signalKind: 2
+    maximumConnections: 0
+    visualOffset: {x: 0, y: 0.5, z: 0}
+    onSignalReceived:
+      m_PersistentCalls:
+        m_Calls: []
+--- !u!114 &894039300
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 894039297}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
+  instanceId: 16bc6f0326d84bd18afb9335f3b22090
+  definitionId: neighbor.wiring.tv
+  categoryId: wiring
+  properties: []
 --- !u!114 &899084379 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 5044946487330572658, guid: 95b343824e3dcce4f82a9abdc3dd1d76, type: 3}
@@ -1872,7 +2374,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7e0c25c58da8b8e4fb8702465d2739fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireGraph
-  connections: []
+  connections:
+  - id: 01f41a6c924049488f38f18352432caf
+    outputObjectId: 96b703aaaa2b4dc0a404f90d6dcea68e
+    outputEndpointId: neighbor.wiring.lightswitch.endpoint
+    outputPortId: state
+    inputObjectId: eb019b006df1438a85896cde3d66799e
+    inputEndpointId: neighbor.wiring.ceilinglight.endpoint
+    inputPortId: power
 --- !u!4 &908822767
 Transform:
   m_ObjectHideFlags: 0
@@ -1894,9 +2403,7 @@ Transform:
   - {fileID: 855742901}
   - {fileID: 1301623285}
   - {fileID: 1079867859}
-  - {fileID: 1927272743}
   - {fileID: 1554962355}
-  - {fileID: 1513690229}
   - {fileID: 1137389148}
   - {fileID: 1412848385}
   - {fileID: 426911444}
@@ -1921,6 +2428,11 @@ Transform:
   - {fileID: 361968926}
   - {fileID: 1826031043}
   - {fileID: 1257495608}
+  - {fileID: 894039296}
+  - {fileID: 590195815}
+  - {fileID: 599185056}
+  - {fileID: 1676023355}
+  - {fileID: 327200323}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &945326133
@@ -2621,75 +3133,6 @@ MonoBehaviour:
   definitionId: neighbor.furniture.closet
   categoryId: furniture
   properties: []
---- !u!1001 &1396534378
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 908822767}
-    m_Modifications:
-    - target: {fileID: 100000, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
-      propertyPath: m_Name
-      value: PlaceholderCeilingLight
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -2.25
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 3
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 4.75
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: -0.00000004371139
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 100000, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1513690232}
-    - targetCorrespondingSourceObject: {fileID: 100000, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1513690231}
-    - targetCorrespondingSourceObject: {fileID: 100000, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1513690230}
-    - targetCorrespondingSourceObject: {fileID: 220000, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 285373159}
-  m_SourcePrefab: {fileID: 100100000, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
 --- !u!1 &1412848384 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 100000, guid: 78a187d38ec7450a86106fde7dfb013a, type: 3}
@@ -2843,79 +3286,6 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
---- !u!1 &1513690228 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 100000, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
-  m_PrefabInstance: {fileID: 1396534378}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &1513690229 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
-  m_PrefabInstance: {fileID: 1396534378}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1513690230
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1513690228}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8155c721a319d78418c48d0d9a3d987e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireInputRelay
-  onPulse:
-    m_PersistentCalls:
-      m_Calls: []
-  onBool:
-    m_PersistentCalls:
-      m_Calls: []
-  onFloat:
-    m_PersistentCalls:
-      m_Calls: []
-  onString:
-    m_PersistentCalls:
-      m_Calls: []
---- !u!114 &1513690231
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1513690228}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6d2834eb53930484bb39749e568c6ec5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireEndpoint
-  endpointId: neighbor.wiring.ceilinglight.endpoint
-  ports:
-  - id: power
-    displayName: Power
-    direction: 0
-    signalKind: 2
-    maximumConnections: 0
-    visualOffset: {x: 0, y: -0.1, z: 0}
-    onSignalReceived:
-      m_PersistentCalls:
-        m_Calls: []
---- !u!114 &1513690232
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1513690228}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
-  instanceId: 631b0cbbff51478bb10b4b48922b4444
-  definitionId: neighbor.wiring.ceilinglight
-  categoryId: wiring
-  properties: []
 --- !u!1001 &1551138340
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3363,7 +3733,7 @@ MonoBehaviour:
   definitionId: neighbor.ai.neighbor_spawn_point.neighborspawnpoint
   categoryId: ai.neighbor_spawn_point
   properties: []
---- !u!1001 &1735137982
+--- !u!1001 &1676023354
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -3371,47 +3741,47 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 908822767}
     m_Modifications:
-    - target: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+    - target: {fileID: 100000, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
       propertyPath: m_Name
-      value: PlaceholderLightSwitch
+      value: PlaceholderCeilingLight
       objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -1.57
+      value: -1
       objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.26
+      value: 3.059
       objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 5.636
+      value: 4.5
       objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.008779283
+      value: 1
       objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
       propertyPath: m_LocalRotation.x
       value: -0
       objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.9999615
+      value: -0
       objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
       propertyPath: m_LocalRotation.z
       value: -0
       objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: -178.994
+      value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+    - target: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
@@ -3419,16 +3789,126 @@ PrefabInstance:
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1927272746}
-    - targetCorrespondingSourceObject: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      addedObject: {fileID: 1676023361}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1927272745}
-    - targetCorrespondingSourceObject: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      addedObject: {fileID: 1676023360}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1927272744}
-  m_SourcePrefab: {fileID: 100100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
+      addedObject: {fileID: 1676023359}
+    - targetCorrespondingSourceObject: {fileID: 220000, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1676023358}
+  m_SourcePrefab: {fileID: 100100000, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
+--- !u!4 &1676023355 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 100001, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
+  m_PrefabInstance: {fileID: 1676023354}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1676023356 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 220000, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
+  m_PrefabInstance: {fileID: 1676023354}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1676023357 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 100000, guid: f432ef8f0a9344a5a3ee5e5976a3314e, type: 3}
+  m_PrefabInstance: {fileID: 1676023354}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1676023358
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1676023356}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalLightData
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_CustomShadowLayers: 0
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
+  m_RenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_ShadowRenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_Version: 4
+  m_LightLayerMask: 1
+  m_ShadowLayerMask: 1
+  m_RenderingLayers: 1
+  m_ShadowRenderingLayers: 1
+--- !u!114 &1676023359
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1676023357}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8155c721a319d78418c48d0d9a3d987e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireInputRelay
+  onPulse:
+    m_PersistentCalls:
+      m_Calls: []
+  onBool:
+    m_PersistentCalls:
+      m_Calls: []
+  onFloat:
+    m_PersistentCalls:
+      m_Calls: []
+  onString:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &1676023360
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1676023357}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d2834eb53930484bb39749e568c6ec5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireEndpoint
+  endpointId: neighbor.wiring.ceilinglight.endpoint
+  ports:
+  - id: power
+    displayName: Power
+    direction: 0
+    signalKind: 2
+    maximumConnections: 0
+    visualOffset: {x: 0, y: -0.1, z: 0}
+    onSignalReceived:
+      m_PersistentCalls:
+        m_Calls: []
+--- !u!114 &1676023361
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1676023357}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
+  instanceId: eb019b006df1438a85896cde3d66799e
+  definitionId: neighbor.wiring.ceilinglight
+  categoryId: wiring
+  properties: []
 --- !u!1001 &1754649903
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3785,69 +4265,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 95b343824e3dcce4f82a9abdc3dd1d76, type: 3}
---- !u!1 &1927272742 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 100000, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
-  m_PrefabInstance: {fileID: 1735137982}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &1927272743 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
-  m_PrefabInstance: {fileID: 1735137982}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1927272744
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1927272742}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d805329da59bf1544b0003d63e18b7ed, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireOutputRelay
-  endpoint: {fileID: 1927272745}
-  outputPortId: state
---- !u!114 &1927272745
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1927272742}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6d2834eb53930484bb39749e568c6ec5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireEndpoint
-  endpointId: neighbor.wiring.lightswitch.endpoint
-  ports:
-  - id: state
-    displayName: State
-    direction: 1
-    signalKind: 2
-    maximumConnections: 0
-    visualOffset: {x: 0, y: 0.15, z: 0.08}
-    onSignalReceived:
-      m_PersistentCalls:
-        m_Calls: []
---- !u!114 &1927272746
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1927272742}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
-  instanceId: 9aa770a8fe7e4811b556df9a177998fc
-  definitionId: neighbor.wiring.lightswitch
-  categoryId: wiring
-  properties: []
 --- !u!114 &1960742550 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 5044946487330572658, guid: 95b343824e3dcce4f82a9abdc3dd1d76, type: 3}

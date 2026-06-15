@@ -731,6 +731,23 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 placementSettings,
                 GatherNearbyBounds(),
                 ray.direction);
+            if (placingDefinition.CategoryId == HouseBuilderCategories.Ceiling
+                && HouseBuilderEditorInteractionUtility.TryCalculateCeilingFootprintPlacement(
+                    hasSurface ? hit.point : fallback,
+                    lastPlacement.Rotation * placingDefinition.Placement.PlacementOffset,
+                    GatherGeometryBounds(HouseGeometryKind.Floor),
+                    GatherGeometryBounds(HouseGeometryKind.Wall),
+                    out Vector3 ceilingPosition))
+            {
+                lastPlacement = new HousePlacementResult(
+                    ceilingPosition,
+                    lastPlacement.Rotation,
+                    Vector3.up,
+                    HouseSurfaceType.Ground,
+                    HouseSnapKind.Surface,
+                    true);
+            }
+
             lastSurfaceCollider = hasSurface ? hit.collider : null;
             lastValidation = HouseBuilderPlacementValidator.Validate(
                 lastPlacement.Position,
@@ -1781,6 +1798,51 @@ namespace Neighbor.Main.HouseBuilder.Editor
                     yield return colliders[i].bounds;
                 }
             }
+        }
+
+        private IEnumerable<Bounds> GatherGeometryBounds(HouseGeometryKind kind)
+        {
+            if (world == null)
+            {
+                yield break;
+            }
+
+            HouseGeometryObject[] geometryObjects = world.GetComponentsInChildren<HouseGeometryObject>(true);
+            for (int geometryIndex = 0; geometryIndex < geometryObjects.Length; geometryIndex++)
+            {
+                HouseGeometryObject geometry = geometryObjects[geometryIndex];
+                if (geometry == null || geometry.Descriptor.Kind != kind)
+                {
+                    continue;
+                }
+
+                Collider[] colliders = geometry.GetComponentsInChildren<Collider>(true);
+                bool hasBounds = false;
+                Bounds bounds = default;
+                for (int colliderIndex = 0; colliderIndex < colliders.Length; colliderIndex++)
+                {
+                    Collider collider = colliders[colliderIndex];
+                    if (collider == null || !collider.enabled)
+                    {
+                        continue;
+                    }
+
+                    bounds = hasBounds ? Encapsulate(bounds, collider.bounds) : collider.bounds;
+                    hasBounds = true;
+                }
+
+                if (hasBounds)
+                {
+                    yield return bounds;
+                }
+            }
+        }
+
+        private static Bounds Encapsulate(Bounds bounds, Bounds other)
+        {
+            bounds.Encapsulate(other.min);
+            bounds.Encapsulate(other.max);
+            return bounds;
         }
 
         private HouseGeometryObject GetSelectedGeometry()

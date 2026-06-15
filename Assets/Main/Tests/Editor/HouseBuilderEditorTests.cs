@@ -134,6 +134,40 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void CeilingPlacement_CentersOverFloorAndRestsOnAdjacentWalls()
+        {
+            Bounds floor = new(new Vector3(2f, 0.1f, 2f), new Vector3(4f, 0.2f, 4f));
+            Bounds wall = new(new Vector3(0f, 1.7f, 2f), new Vector3(0.25f, 3f, 4f));
+
+            bool found = HouseBuilderEditorInteractionUtility.TryCalculateCeilingFootprintPlacement(
+                new Vector3(0f, 1.5f, 2f),
+                Vector3.up * 0.075f,
+                new[] { floor },
+                new[] { wall },
+                out Vector3 position);
+
+            Assert.That(found, Is.True);
+            Assert.That(position.x, Is.EqualTo(floor.center.x).Within(0.001f));
+            Assert.That(position.z, Is.EqualTo(floor.center.z).Within(0.001f));
+            Assert.That(position.y, Is.EqualTo(wall.max.y + 0.075f).Within(0.001f));
+        }
+
+        [Test]
+        public void CeilingPlacement_DoesNotSnapToFloorWithoutSupportingWalls()
+        {
+            Bounds floor = new(new Vector3(2f, 0.1f, 2f), new Vector3(4f, 0.2f, 4f));
+
+            bool found = HouseBuilderEditorInteractionUtility.TryCalculateCeilingFootprintPlacement(
+                floor.center,
+                Vector3.up * 0.075f,
+                new[] { floor },
+                System.Array.Empty<Bounds>(),
+                out _);
+
+            Assert.That(found, Is.False);
+        }
+
+        [Test]
         public void Geometry_AllSupportedPrimitivesBuildValidMeshes()
         {
             HouseGeometryKind[] kinds =

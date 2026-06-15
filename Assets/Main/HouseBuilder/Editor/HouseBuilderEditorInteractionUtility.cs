@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Neighbor.Main.HouseBuilder.Editor
@@ -95,6 +96,67 @@ namespace Neighbor.Main.HouseBuilder.Editor
             return connectTabActive
                 || hasPendingOutput
                 || selectedObject?.GetComponentInChildren<HouseWireEndpoint>(true) != null;
+        }
+
+        public static bool TryCalculateCeilingFootprintPlacement(
+            Vector3 referencePoint,
+            Vector3 placementOffset,
+            IEnumerable<Bounds> floorBounds,
+            IEnumerable<Bounds> wallBounds,
+            out Vector3 position)
+        {
+            position = default;
+            bool foundFloor = false;
+            Bounds nearestFloor = default;
+            float nearestDistanceSquared = float.PositiveInfinity;
+            if (floorBounds != null)
+            {
+                foreach (Bounds floor in floorBounds)
+                {
+                    Vector3 closest = floor.ClosestPoint(referencePoint);
+                    closest.y = referencePoint.y;
+                    float distanceSquared = (closest - referencePoint).sqrMagnitude;
+                    float maximumDistance = Mathf.Max(floor.extents.x, floor.extents.z) + 0.75f;
+                    if (distanceSquared <= maximumDistance * maximumDistance && distanceSquared < nearestDistanceSquared)
+                    {
+                        foundFloor = true;
+                        nearestFloor = floor;
+                        nearestDistanceSquared = distanceSquared;
+                    }
+                }
+            }
+
+            if (!foundFloor)
+            {
+                return false;
+            }
+
+            bool foundSupportingWall = false;
+            float supportTop = nearestFloor.max.y;
+            if (wallBounds != null)
+            {
+                foreach (Bounds wall in wallBounds)
+                {
+                    bool overlapsFootprint = wall.max.x >= nearestFloor.min.x - 0.35f
+                        && wall.min.x <= nearestFloor.max.x + 0.35f
+                        && wall.max.z >= nearestFloor.min.z - 0.35f
+                        && wall.min.z <= nearestFloor.max.z + 0.35f;
+                    bool startsAtFloor = Mathf.Abs(wall.min.y - nearestFloor.max.y) <= 0.5f;
+                    if (overlapsFootprint && startsAtFloor)
+                    {
+                        foundSupportingWall = true;
+                        supportTop = Mathf.Max(supportTop, wall.max.y);
+                    }
+                }
+            }
+
+            if (!foundSupportingWall)
+            {
+                return false;
+            }
+
+            position = new Vector3(nearestFloor.center.x, supportTop, nearestFloor.center.z) + placementOffset;
+            return true;
         }
 
         public static bool TryPickFace(Ray ray, LayerMask mask, out HouseBuilderFaceHit faceHit)
