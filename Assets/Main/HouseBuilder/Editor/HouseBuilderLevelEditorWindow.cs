@@ -731,6 +731,21 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 placementSettings,
                 GatherNearbyBounds(),
                 ray.direction);
+            if (hasSurface
+                && placingDefinition.WallOpening != null
+                && placingDefinition.WallOpening.CenterPlacedObjectInWall
+                && hit.collider.GetComponentInParent<HouseGeometryObject>() is { } openingWall
+                && openingWall.Descriptor.Kind == HouseGeometryKind.Wall)
+            {
+                lastPlacement = new HousePlacementResult(
+                    openingWall.CenterOnWallMidplane(lastPlacement.Position),
+                    lastPlacement.Rotation,
+                    lastPlacement.SurfaceNormal,
+                    lastPlacement.SurfaceType,
+                    lastPlacement.SnapKind,
+                    lastPlacement.HasSurface);
+            }
+
             if (placingDefinition.CategoryId == HouseBuilderCategories.Ceiling
                 && HouseBuilderEditorInteractionUtility.TryCalculateCeilingFootprintPlacement(
                     hasSurface ? hit.point : fallback,

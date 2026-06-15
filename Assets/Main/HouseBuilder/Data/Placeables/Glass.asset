@@ -33,5 +33,6 @@ MonoBehaviour:
     size: {x: 0.85, y: 1.15, z: 0.5}
     center: {x: 0, y: 0, z: 0}
     margin: 0.02
+    centerPlacedObjectInWall: 1
   wirePorts: []
   tags: []

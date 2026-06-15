@@ -3,9 +3,7 @@ using Neighbor.Main.Features.Neighbor;
 
 namespace Neighbor.Main.Features.Interaction
 {
-    [RequireComponent(typeof(Rigidbody))]
-    [RequireComponent(typeof(Pickupable))]
-    public sealed class GlassShatter : MonoBehaviour, IPickupInteractionOverride
+    public sealed class GlassShatter : MonoBehaviour
     {
         [Header("Shatter Trigger")]
         [SerializeField, Min(0f)] private float minimumImpactImpulse = 2.2f;
@@ -30,14 +28,11 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Range(0f, 1f)] private float shatterVolume = 0.8f;
         [SerializeField, Min(0f)] private float pitchRandomness = 0.12f;
 
-        private Rigidbody body;
         private AudioClip generatedShatterClip;
         private bool isShattered;
 
         private void Awake()
         {
-            body = GetComponent<Rigidbody>();
-
             if (intactVisualRoot == null)
             {
                 intactVisualRoot = gameObject;
@@ -62,11 +57,6 @@ namespace Neighbor.Main.Features.Interaction
         private void OnCollisionStay(Collision collision)
         {
             TryShatter(collision);
-        }
-
-        public bool CanPickup(PlayerInteractor interactor)
-        {
-            return !isShattered;
         }
 
         private void TryShatter(Collision collision)
@@ -103,13 +93,6 @@ namespace Neighbor.Main.Features.Interaction
             if (intactCollider != null)
             {
                 intactCollider.enabled = false;
-            }
-
-            if (body != null)
-            {
-                RigidbodyVelocityUtility.ClearIfDynamic(body);
-                body.isKinematic = true;
-                body.useGravity = false;
             }
 
             ReleaseShards(origin, incomingVelocity);

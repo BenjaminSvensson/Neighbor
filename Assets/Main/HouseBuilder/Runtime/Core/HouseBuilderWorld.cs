@@ -79,6 +79,11 @@ namespace Neighbor.Main.HouseBuilder
                 return false;
             }
 
+            if (definition.WallOpening.CenterPlacedObjectInWall)
+            {
+                placedObject.transform.position = wall.CenterOnWallMidplane(placedObject.transform.position);
+            }
+
             HouseWallOpeningLink link = placedObject.GetComponent<HouseWallOpeningLink>();
             if (link == null)
             {

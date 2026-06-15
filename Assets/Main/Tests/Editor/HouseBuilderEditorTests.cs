@@ -636,14 +636,29 @@ namespace Neighbor.Main.Tests
                 new HouseGeometryDescriptor(HouseGeometryKind.Wall, new Vector3(4f, 3f, 0.25f))));
             wallObject.transform.SetParent(worldObject.transform);
             HouseGeometryObject wall = wallObject.GetComponent<HouseGeometryObject>();
-            GameObject glassObject = world.CreatePlaceable(glass, Vector3.zero, Quaternion.identity);
+            GameObject glassObject = world.CreatePlaceable(glass, Vector3.forward * wall.Descriptor.Size.z * 0.5f, Quaternion.identity);
 
             bool created = world.TryCreateWallOpening(glassObject, glass, wallObject.GetComponent<Collider>());
 
             Assert.That(created, Is.True);
+            Assert.That(glass.WallOpening.CenterPlacedObjectInWall, Is.True);
+            Assert.That(wallObject.transform.InverseTransformPoint(glassObject.transform.position).z, Is.EqualTo(0f).Within(0.001f));
             Assert.That(wall.Descriptor.WallOpenings.Count, Is.EqualTo(1));
             Assert.That(wall.Descriptor.WallOpenings[0].Size.x, Is.EqualTo(glass.WallOpening.Size.x + glass.WallOpening.Margin * 2f).Within(0.001f));
             Assert.That(wall.Descriptor.WallOpenings[0].Size.y, Is.EqualTo(glass.WallOpening.Size.y + glass.WallOpening.Margin * 2f).Within(0.001f));
+        }
+
+        [Test]
+        public void GlassPrefab_IntactPaneIsFixedAndOnlyShardsHaveRigidbodies()
+        {
+            GameObject glassPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Main/Features/Interaction/Items/Glass/Prefabs/PlaceholderGlass.prefab");
+
+            Assert.That(glassPrefab, Is.Not.Null);
+            Assert.That(glassPrefab.GetComponent<Pickupable>(), Is.Null);
+            Assert.That(glassPrefab.GetComponent<Rigidbody>(), Is.Null);
+            Assert.That(glassPrefab.GetComponent<GlassShatter>(), Is.Not.Null);
+            Assert.That(glassPrefab.transform.Find("Shards").GetComponentsInChildren<Rigidbody>(true).Length, Is.GreaterThan(0));
         }
 
         [TestCase("Mirror")]

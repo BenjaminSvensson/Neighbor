@@ -51,6 +51,13 @@ namespace Neighbor.Main.HouseBuilder
             SyncPhysicalObject(filter.sharedMesh, renderer.sharedMaterials);
         }
 
+        public Vector3 CenterOnWallMidplane(Vector3 worldPosition)
+        {
+            Vector3 localPosition = transform.InverseTransformPoint(worldPosition);
+            localPosition.z = 0f;
+            return transform.TransformPoint(localPosition);
+        }
+
         public void Rebuild()
         {
             Mesh mesh = descriptor.BakedMesh != null && descriptor.BakedMesh.HasGeometry

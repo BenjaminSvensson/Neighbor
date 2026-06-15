@@ -76,22 +76,30 @@ namespace Neighbor.Main.HouseBuilder
         [SerializeField] private Vector3 size = new(1.2f, 2.1f, 0.5f);
         [SerializeField] private Vector3 center = new(0f, 1.05f, 0f);
         [SerializeField, Min(0f)] private float margin = 0.02f;
+        [SerializeField] private bool centerPlacedObjectInWall;
 
         public bool Enabled => enabled;
         public Vector3 Size => size;
         public Vector3 Center => center;
         public float Margin => margin;
+        public bool CenterPlacedObjectInWall => centerPlacedObjectInWall;
 
         public HouseWallOpeningProfile()
         {
         }
 
-        public HouseWallOpeningProfile(Vector3 size, Vector3 center, float margin = 0.02f, bool enabled = true)
+        public HouseWallOpeningProfile(
+            Vector3 size,
+            Vector3 center,
+            float margin = 0.02f,
+            bool enabled = true,
+            bool centerPlacedObjectInWall = false)
         {
             this.enabled = enabled;
             this.size = size;
             this.center = center;
             this.margin = Mathf.Max(0f, margin);
+            this.centerPlacedObjectInWall = centerPlacedObjectInWall;
         }
     }
 

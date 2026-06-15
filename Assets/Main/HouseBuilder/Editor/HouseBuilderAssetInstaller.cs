@@ -11,7 +11,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
         public const string RootPath = "Assets/Main/HouseBuilder";
         public const string DataPath = RootPath + "/Data";
         public const string DefaultCatalogPath = DataPath + "/DefaultHouseBuilderCatalog.asset";
-        private const int InstallerVersion = 15;
+        private const int InstallerVersion = 16;
         private const string InstallerVersionKey = "Neighbor.HouseBuilder.DefaultAssetsVersion";
         private const string CategoryPath = DataPath + "/Categories";
         private const string DefinitionPath = DataPath + "/Placeables";
@@ -112,7 +112,8 @@ namespace Neighbor.Main.HouseBuilder.Editor
             AddFlexibleDefinition(placeables, "Tomato", "Tomato", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Food/Tomato/Prefabs/PlaceholderTomato.prefab");
             AddDefinition(placeables, "Glass", "Glass", HouseBuilderCategories.Prop,
                 "Assets/Main/Features/Interaction/Items/Glass/Prefabs/PlaceholderGlass.prefab", HouseSurfaceType.Any, HouseSurfaceAlignment.RightToNormal,
-                true, new Vector3(0.85f, 1.15f, 0.5f), Vector3.zero, Vector3.up * 0.575f, deriveOpeningFromVisualBounds: false);
+                true, new Vector3(0.85f, 1.15f, 0.5f), Vector3.zero, Vector3.up * 0.575f,
+                deriveOpeningFromVisualBounds: false, centerOpeningObjectInWall: true);
             AddFlexibleDefinition(placeables, "Key", "Key", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/Keys/Prefabs/TestKey.prefab");
             AddFlexibleDefinition(placeables, "Mirror", "Mirror", HouseBuilderCategories.Furniture, "Assets/Main/Features/Interaction/Items/Mirrors/Prefabs/PlaceholderMirror.prefab", HouseSurfaceAlignment.ForwardToNormal, Vector3.up * 0.87f);
             AddFlexibleDefinition(placeables, "RemoteControl", "Remote Control", HouseBuilderCategories.Prop, "Assets/Main/Features/Interaction/Items/RemoteControls/Prefabs/PlaceholderRemoteControl.prefab");
@@ -275,12 +276,13 @@ namespace Neighbor.Main.HouseBuilder.Editor
             Vector3 boundsSize = default,
             bool hideFromCatalog = false,
             bool groundedOnWall = false,
-            bool deriveOpeningFromVisualBounds = true)
+            bool deriveOpeningFromVisualBounds = true,
+            bool centerOpeningObjectInWall = false)
         {
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
             if (prefab != null)
             {
-                AddDefinition(output, fileName, displayName, categoryId, prefab, surfaces, alignment, opening, openingSize, openingCenter, placementOffset, boundsSize, hideFromCatalog, groundedOnWall, deriveOpeningFromVisualBounds);
+                AddDefinition(output, fileName, displayName, categoryId, prefab, surfaces, alignment, opening, openingSize, openingCenter, placementOffset, boundsSize, hideFromCatalog, groundedOnWall, deriveOpeningFromVisualBounds, centerOpeningObjectInWall);
             }
         }
 
@@ -299,7 +301,8 @@ namespace Neighbor.Main.HouseBuilder.Editor
             Vector3 boundsSize = default,
             bool hideFromCatalog = false,
             bool groundedOnWall = false,
-            bool deriveOpeningFromVisualBounds = true)
+            bool deriveOpeningFromVisualBounds = true,
+            bool centerOpeningObjectInWall = false)
         {
             string path = $"{DefinitionPath}/{fileName}.asset";
             HousePlaceableDefinition definition = AssetDatabase.LoadAssetAtPath<HousePlaceableDefinition>(path);
@@ -362,6 +365,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
 
             SerializedProperty wallOpening = serialized.FindProperty("wallOpening");
             wallOpening.FindPropertyRelative("enabled").boolValue = opening;
+            wallOpening.FindPropertyRelative("centerPlacedObjectInWall").boolValue = opening && centerOpeningObjectInWall;
             if (opening)
             {
                 if (hasVisualBounds && deriveOpeningFromVisualBounds)
