@@ -17,6 +17,7 @@ namespace Neighbor.Main.Features.Interaction
         private Quaternion leftClosedRotation;
         private Quaternion rightClosedRotation;
         private bool isOpen;
+        private ItemAudioFeedback audioFeedback;
 
         public bool IsOpen => isOpen;
         public ClosetHideSpot HideSpot => hideSpot;
@@ -35,6 +36,8 @@ namespace Neighbor.Main.Features.Interaction
             {
                 rightClosedRotation = rightDoor.localRotation;
             }
+
+            audioFeedback = ItemAudioFeedback.Resolve(gameObject);
         }
 
         public bool CanInteract(PlayerInteractor interactor)
@@ -60,7 +63,13 @@ namespace Neighbor.Main.Features.Interaction
 
         public void SetOpen(bool open)
         {
+            if (isOpen == open)
+            {
+                return;
+            }
+
             isOpen = open;
+            audioFeedback?.Play(ItemSoundProfile.HingedWood, 0.55f);
             if (moveRoutine != null)
             {
                 StopCoroutine(moveRoutine);

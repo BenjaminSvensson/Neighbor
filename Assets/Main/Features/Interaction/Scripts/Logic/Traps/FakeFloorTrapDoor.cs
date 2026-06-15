@@ -24,10 +24,12 @@ namespace Neighbor.Main.Features.Interaction
         private Quaternion leftClosedRotation;
         private Quaternion rightClosedRotation;
         private bool isOpen;
+        private ItemAudioFeedback audioFeedback;
 
         private void Awake()
         {
             CacheClosedPose();
+            audioFeedback = ItemAudioFeedback.Resolve(gameObject);
         }
 
         private void OnTriggerEnter(Collider other)
@@ -66,6 +68,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             isOpen = true;
+            audioFeedback?.Play(ItemSoundProfile.TrapDoorOpen, 0.78f);
             SetBlockingCollidersEnabled(false);
 
             if (openRoutine != null)

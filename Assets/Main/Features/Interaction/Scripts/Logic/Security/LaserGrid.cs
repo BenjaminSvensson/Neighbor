@@ -40,6 +40,7 @@ namespace Neighbor.Main.Features.Interaction
         private bool? lastVisualPowered;
         private bool powered;
         private float nextTriggerTime;
+        private ItemAudioFeedback audioFeedback;
 
         public bool IsPowered => powered && IsFuseSatisfied();
         public int BeamCount => beamCount;
@@ -52,6 +53,7 @@ namespace Neighbor.Main.Features.Interaction
         private void Awake()
         {
             powered = startsEnabled;
+            audioFeedback = ItemAudioFeedback.Resolve(gameObject);
             ResolveBeamRenderers();
             ApplyVisualState(true);
         }
@@ -130,6 +132,7 @@ namespace Neighbor.Main.Features.Interaction
         private void TriggerAlert()
         {
             nextTriggerTime = Time.time + triggerCooldown;
+            audioFeedback?.Play(ItemSoundProfile.Alarm, 0.75f);
             EmitNeighborNoise();
             ActivateTargets();
         }

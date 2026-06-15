@@ -35,6 +35,7 @@ namespace Neighbor.Main.Features.Interaction
         private BlockerPlacementOrigin placementOrigin = BlockerPlacementOrigin.Player;
         private readonly Collider[] nearbyDoorHits = new Collider[8];
         private readonly RaycastHit[] groundHits = new RaycastHit[12];
+        private ItemAudioFeedback audioFeedback;
 
         public bool IsBlockingDoor => blockedDoor != null;
         public BlockerPlacementOrigin PlacementOrigin => placementOrigin;
@@ -50,6 +51,7 @@ namespace Neighbor.Main.Features.Interaction
             pickupable = GetComponent<Pickupable>();
             body = GetComponent<Rigidbody>();
             isWoodBoard = GetComponent<WoodBoardPryTarget>() != null;
+            audioFeedback = ItemAudioFeedback.Resolve(gameObject);
         }
 
         private void OnDisable()
@@ -134,6 +136,7 @@ namespace Neighbor.Main.Features.Interaction
 
         public void HandleKickedLoose(Vector3 kickDirection, float impulse, float upwardImpulse)
         {
+            audioFeedback?.Play(ItemSoundProfile.Impact, 0.75f);
             ClearBlockedDoor();
             blockDisabledUntilPlaced = true;
 
@@ -191,6 +194,7 @@ namespace Neighbor.Main.Features.Interaction
 
             pickupable.Place(position, rotation);
             blockedDoor = door;
+            audioFeedback?.Play(ItemSoundProfile.Impact, 0.42f);
             FreezeBlockedBody();
         }
 

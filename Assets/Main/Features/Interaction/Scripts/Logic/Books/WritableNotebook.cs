@@ -12,6 +12,12 @@ namespace Neighbor.Main.Features.Interaction
             "",
             ""
         };
+        private ItemAudioFeedback audioFeedback;
+
+        private void Awake()
+        {
+            audioFeedback = ItemAudioFeedback.Resolve(gameObject);
+        }
 
         public bool CanPrimaryUse(PlayerInteractor interactor)
         {
@@ -24,6 +30,7 @@ namespace Neighbor.Main.Features.Interaction
 
         public void PrimaryUse(PlayerInteractor interactor)
         {
+            audioFeedback?.Play(ItemSoundProfile.BookOpen, 0.35f);
             NotebookWriterOverlay.Open(title, pages, SavePage);
         }
 

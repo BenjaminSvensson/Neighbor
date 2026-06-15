@@ -16,11 +16,13 @@ namespace Neighbor.Main.Features.Interaction
 
         private Rigidbody body;
         private DoorBlockerChair doorBlocker;
+        private ItemAudioFeedback audioFeedback;
 
         private void Awake()
         {
             body = GetComponent<Rigidbody>();
             doorBlocker = GetComponent<DoorBlockerChair>();
+            audioFeedback = ItemAudioFeedback.Resolve(gameObject);
         }
 
         public bool CanPickup(PlayerInteractor interactor)
@@ -31,6 +33,7 @@ namespace Neighbor.Main.Features.Interaction
         public void PryLoose(Vector3 origin, Vector3 direction, GameObject instigator)
         {
             doorBlocker?.HandlePriedLoose();
+            audioFeedback?.Play(ItemSoundProfile.WoodPry, 0.72f);
 
             if (body != null)
             {

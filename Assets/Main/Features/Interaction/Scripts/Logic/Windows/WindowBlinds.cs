@@ -17,6 +17,7 @@ namespace Neighbor.Main.Features.Interaction
         private Vector3 closedLocalPosition;
         private Vector3 closedLocalScale;
         private bool isOpen;
+        private ItemAudioFeedback audioFeedback;
 
         public bool IsOpen => isOpen;
 
@@ -29,6 +30,7 @@ namespace Neighbor.Main.Features.Interaction
 
             closedLocalPosition = movingPart.localPosition;
             closedLocalScale = movingPart.localScale;
+            audioFeedback = ItemAudioFeedback.Resolve(gameObject);
             SetImmediate(startsOpen);
         }
 
@@ -59,12 +61,13 @@ namespace Neighbor.Main.Features.Interaction
 
         public void SetOpen(bool open)
         {
-            if (movingPart == null)
+            if (movingPart == null || isOpen == open)
             {
                 return;
             }
 
             isOpen = open;
+            audioFeedback?.Play(ItemSoundProfile.FabricMove, 0.42f);
             Vector3 targetPosition = GetTargetPosition(open);
             Vector3 targetScale = GetTargetScale(open);
 

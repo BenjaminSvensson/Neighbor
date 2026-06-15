@@ -52,6 +52,7 @@ namespace Neighbor.Main.Features.Interaction
         private float armedAtTime;
         private float nextHitTime;
         private bool isActive;
+        private ItemAudioFeedback audioFeedback;
 
         private Vector3 Direction => transform.TransformDirection(localDirection.sqrMagnitude > 0.0001f ? localDirection.normalized : Vector3.forward);
         private bool IsArmed => isActive && Time.time >= armedAtTime;
@@ -59,6 +60,7 @@ namespace Neighbor.Main.Features.Interaction
         private void Awake()
         {
             isActive = startsActive;
+            audioFeedback = ItemAudioFeedback.Resolve(gameObject);
             cycleStateStartTime = Time.time;
             armedAtTime = isActive ? Time.time + warningDelay : float.PositiveInfinity;
             if (slidingVisual != null)
@@ -96,6 +98,10 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             isActive = active;
+            if (isActive)
+            {
+                audioFeedback?.Play(ItemSoundProfile.SawStart, 0.66f);
+            }
             cycleStateStartTime = Time.time;
             armedAtTime = isActive ? Time.time + warningDelay : float.PositiveInfinity;
         }
@@ -155,6 +161,7 @@ namespace Neighbor.Main.Features.Interaction
 
             if (TryApplyNeighborEffect(bestHit) || TryApplyPlayerEffect(bestHit) || TryApplyRigidbodyEffect(bestHit))
             {
+                audioFeedback?.Play(ItemSoundProfile.Impact, 0.82f);
                 nextHitTime = Time.time + hitCooldown;
             }
         }

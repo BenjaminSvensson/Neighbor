@@ -32,11 +32,13 @@ namespace Neighbor.Main.Features.Interaction
         private MaterialPropertyBlock tomatoPropertyBlock;
         private MaterialPropertyBlock stemPropertyBlock;
         private bool isSquashed;
+        private ItemAudioFeedback audioFeedback;
 
         private void Awake()
         {
             body = GetComponent<Rigidbody>();
             pickupable = GetComponent<Pickupable>();
+            audioFeedback = ItemAudioFeedback.Resolve(gameObject);
 
             if (tomatoVisual == null)
             {
@@ -98,6 +100,7 @@ namespace Neighbor.Main.Features.Interaction
         private void Squash(Vector3 contactPoint, Vector3 surfaceNormal, float squash01)
         {
             isSquashed = true;
+            audioFeedback?.Play(ItemSoundProfile.WetSquash, 0.7f);
 
             surfaceNormal = surfaceNormal.sqrMagnitude > 0.0001f ? surfaceNormal.normalized : Vector3.up;
             float thickness = Mathf.Lerp(maximumSquashedThickness, minimumSquashedThickness, squash01);

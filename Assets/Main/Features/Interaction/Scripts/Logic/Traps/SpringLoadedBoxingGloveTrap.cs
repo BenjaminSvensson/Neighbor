@@ -56,6 +56,7 @@ namespace Neighbor.Main.Features.Interaction
         private float stateStartTime;
         private float cooldownUntilTime;
         private bool hasHitThisPunch;
+        private ItemAudioFeedback audioFeedback;
 
         private void Awake()
         {
@@ -88,6 +89,7 @@ namespace Neighbor.Main.Features.Interaction
             gloveRestLocalPosition = glove != null ? glove.localPosition : Vector3.zero;
             springRestLocalPosition = spring != null ? spring.localPosition : Vector3.zero;
             springRestLocalScale = spring != null ? spring.localScale : Vector3.one;
+            audioFeedback = ItemAudioFeedback.Resolve(gameObject);
             ApplyReadyVisual();
         }
 
@@ -146,6 +148,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             state = TrapState.Extending;
+            audioFeedback?.Play(ItemSoundProfile.SpringLaunch, 0.72f);
             stateStartTime = Time.time;
             hasHitThisPunch = false;
             ApplyTriggeredVisual();
@@ -259,6 +262,7 @@ namespace Neighbor.Main.Features.Interaction
                 if (TryPushNeighbor(hit) || TryPushPlayer(hit) || TryPushRigidbody(hit))
                 {
                     hasHitThisPunch = true;
+                    audioFeedback?.Play(ItemSoundProfile.Impact, 0.86f);
                     return;
                 }
             }

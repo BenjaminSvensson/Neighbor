@@ -11,6 +11,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private Vector3 onLocalEuler = new(24f, 0f, 0f);
         [SerializeField] private string onActionText = "Disable Laser Grid";
         [SerializeField] private string offActionText = "Enable Laser Grid";
+        private ItemAudioFeedback audioFeedback;
 
         private void Awake()
         {
@@ -25,6 +26,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             ApplyLeverPose();
+            audioFeedback = ItemAudioFeedback.Resolve(gameObject);
         }
 
         public bool CanInteract(PlayerInteractor interactor)
@@ -40,6 +42,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             targetGrid.TogglePowered();
+            audioFeedback?.Play(ItemSoundProfile.SwitchClick, 0.5f);
             ApplyLeverPose();
         }
 

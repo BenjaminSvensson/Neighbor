@@ -53,6 +53,7 @@ namespace Neighbor.Main.Features.Interaction
         private NavMeshAgent stuckAgent;
         private bool stuckRigidbodyWasKinematic;
         private float releaseNeighborAtTime;
+        private ItemAudioFeedback audioFeedback;
 
         private bool IsMoving => !Mathf.Approximately(openAmount, targetOpenAmount);
 
@@ -61,6 +62,7 @@ namespace Neighbor.Main.Features.Interaction
             pickupable = GetComponent<Pickupable>();
             trapBody = GetComponent<Rigidbody>();
             ownColliders = GetComponentsInChildren<Collider>();
+            audioFeedback = ItemAudioFeedback.Resolve(gameObject);
         }
 
         private void Start()
@@ -121,6 +123,7 @@ namespace Neighbor.Main.Features.Interaction
         public void PrimaryUse(PlayerInteractor interactor)
         {
             NeighborEnvironmentalAwareness.Report(transform.position, 0.45f, gameObject);
+            audioFeedback?.Play(ItemSoundProfile.TrapSnap, 0.45f);
             SetState(TrapState.Open);
         }
 
@@ -165,6 +168,7 @@ namespace Neighbor.Main.Features.Interaction
 
         private void Trigger(Collider triggeringCollider)
         {
+            audioFeedback?.Play(ItemSoundProfile.TrapSnap, 0.9f);
             SetState(TrapState.Triggered);
 
             stuckPlayer = triggeringCollider.GetComponentInParent<PlayerController>();

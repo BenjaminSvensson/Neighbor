@@ -26,6 +26,7 @@ namespace Neighbor.Main.Features.Interaction
         private Rigidbody coverBody;
         private int screwsRemaining;
         private bool isOpen;
+        private ItemAudioFeedback audioFeedback;
 
         public bool HasScrewsRemaining => screwsRemaining > 0;
         public bool CanUnscrew => !isOpen && screwsRemaining > 0;
@@ -40,6 +41,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             screwsRemaining = Mathf.Max(0, screwCount);
+            audioFeedback = ItemAudioFeedback.Resolve(gameObject);
             ApplyScrewVisuals();
             ApplyCoverColor();
         }
@@ -68,6 +70,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             screwsRemaining--;
+            audioFeedback?.Play(ItemSoundProfile.ScrewTurn, 0.48f);
             ApplyScrewVisuals();
             ApplyCoverColor();
 
@@ -99,6 +102,7 @@ namespace Neighbor.Main.Features.Interaction
         private void Open(GameObject source)
         {
             isOpen = true;
+            audioFeedback?.Play(ItemSoundProfile.MetalDetach, 0.68f);
             ApplyScrewVisuals();
             ApplyCoverColor();
 

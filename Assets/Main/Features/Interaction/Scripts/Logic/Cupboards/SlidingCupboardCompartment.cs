@@ -21,6 +21,7 @@ namespace Neighbor.Main.Features.Interaction
         private bool isOpen;
         private readonly Collider[] carryHits = new Collider[32];
         private readonly List<Rigidbody> carriedBodies = new List<Rigidbody>(8);
+        private ItemAudioFeedback audioFeedback;
 
         private void Awake()
         {
@@ -31,6 +32,7 @@ namespace Neighbor.Main.Features.Interaction
 
             closedLocalPosition = movingPart.localPosition;
             targetLocalPosition = closedLocalPosition;
+            audioFeedback = ItemAudioFeedback.Resolve(gameObject);
         }
 
         private void OnDisable()
@@ -60,6 +62,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             isOpen = !isOpen;
+            audioFeedback?.Play(ItemSoundProfile.MechanicalSlide, 0.5f);
             Vector3 destination = isOpen
                 ? closedLocalPosition + openLocalOffset
                 : closedLocalPosition;
