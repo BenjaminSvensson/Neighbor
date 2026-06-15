@@ -117,6 +117,11 @@ namespace Neighbor.Main.Tests
             Assert.That(cameraController, Is.Not.Null);
             Assert.That(animator, Is.Not.Null);
             Assert.That(animator.GetBoneTransform(HumanBodyBones.Head), Is.Not.Null);
+
+            SerializedObject cameraSettings = new(cameraController);
+            Assert.That(
+                cameraSettings.FindProperty("maximumAnimatedHeadDistanceFromAnchor").floatValue,
+                Is.InRange(0.1f, 3f));
         }
     }
 }

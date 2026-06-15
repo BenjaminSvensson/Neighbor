@@ -15,6 +15,7 @@ namespace Neighbor.Main.Features.Player
         [Header("First Person Body")]
         [SerializeField] private Animator bodyAnimator;
         [SerializeField] private Vector3 headViewOffset = new Vector3(0f, 0.08f, 0.08f);
+        [SerializeField, Min(0f)] private float maximumAnimatedHeadDistanceFromAnchor = 1.5f;
 
         [Header("Look")]
         [SerializeField, Min(0f)] private float mouseSensitivity = 0.08f;
@@ -317,14 +318,22 @@ namespace Neighbor.Main.Features.Player
                 ResolveAnimatedHead();
             }
 
-            if (animatedHead == null || yawRoot == null)
+            Vector3 fallbackLocalPosition = baseLocalPosition + proceduralOffset;
+            if (animatedHead == null || yawRoot == null || transform.parent == null)
             {
-                transform.localPosition = baseLocalPosition + proceduralOffset;
+                transform.localPosition = fallbackLocalPosition;
                 return;
             }
 
-            transform.position = animatedHead.position
+            Vector3 fallbackPosition = transform.parent.TransformPoint(fallbackLocalPosition);
+            Vector3 animatedHeadPosition = animatedHead.position
                 + yawRoot.TransformVector(headViewOffset + proceduralOffset);
+            float maximumDistance = Mathf.Max(0f, maximumAnimatedHeadDistanceFromAnchor);
+
+            transform.position = maximumDistance > 0f
+                && Vector3.SqrMagnitude(animatedHeadPosition - fallbackPosition) <= maximumDistance * maximumDistance
+                    ? animatedHeadPosition
+                    : fallbackPosition;
         }
 
         private void UpdateImpactFeedback()
