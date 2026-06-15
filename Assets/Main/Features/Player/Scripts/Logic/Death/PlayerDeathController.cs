@@ -51,6 +51,7 @@ namespace Neighbor.Main.Features.Player
         private Vector3 cameraRestLocalPosition;
         private Quaternion cameraRestLocalRotation;
         private float cameraRestFieldOfView;
+        private Coroutine catchCameraFocusRoutine;
         private bool initialized;
 
         public bool IsDead { get; private set; }
@@ -113,9 +114,41 @@ namespace Neighbor.Main.Features.Player
             return true;
         }
 
+        public void ScheduleCatchCameraFocus(Transform target, float delay)
+        {
+            if (target == null || IsDead)
+            {
+                return;
+            }
+
+            if (catchCameraFocusRoutine != null)
+            {
+                StopCoroutine(catchCameraFocusRoutine);
+            }
+
+            catchCameraFocusRoutine = StartCoroutine(BeginCatchCameraFocusAfterDelay(target, delay));
+        }
+
+        private IEnumerator BeginCatchCameraFocusAfterDelay(Transform target, float delay)
+        {
+            if (delay > 0f)
+            {
+                yield return new WaitForSeconds(delay);
+            }
+
+            cameraController?.BeginCinematicLookAt(target);
+            catchCameraFocusRoutine = null;
+        }
+
         private IEnumerator DeathAndReset(Vector3 sourcePosition)
         {
             IsDead = true;
+            if (catchCameraFocusRoutine != null)
+            {
+                StopCoroutine(catchCameraFocusRoutine);
+                catchCameraFocusRoutine = null;
+            }
+
             EnsureFadeOverlay();
             SetFade(0f);
             DisableGameplay();

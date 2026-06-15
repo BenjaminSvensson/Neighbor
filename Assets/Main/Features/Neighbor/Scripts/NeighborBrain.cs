@@ -114,6 +114,8 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float catchDistance = 0.72f;
         [SerializeField, Min(0f)] private float catchAnimationFallbackDuration = 0.55f;
         [SerializeField, Min(0f)] private float maximumCatchAnimationDuration = 2.5f;
+        [SerializeField, Min(0f)] private float catchPresentationDistance = 1.35f;
+        [SerializeField, Min(0f)] private float catchCameraLockDuration = 0.65f;
         [SerializeField, Min(0f)] private float offMeshDirectChaseSpeed = 4.5f;
         [SerializeField, Min(0f)] private float climbCommitVerticalDifference = 0.45f;
         [SerializeField, Min(0f)] private float dropCommitVerticalDifference = 0.55f;
@@ -560,13 +562,61 @@ namespace Neighbor.Main.Features.Neighbor
             caughtPlayer.PrepareForDeath();
             currentClimbLink = null;
             motor?.Stop();
+            PositionForCatchPresentation(playerController.transform);
             SetState(BehaviorState.Catching);
 
             float animationDuration = animationController != null
                 ? animationController.CatchAnimationDuration
                 : 0f;
             float duration = animationDuration > 0f ? animationDuration : catchAnimationFallbackDuration;
-            catchPlayerAtTime = Time.time + Mathf.Min(duration, maximumCatchAnimationDuration);
+            duration = Mathf.Min(duration, maximumCatchAnimationDuration);
+            catchPlayerAtTime = Time.time + duration;
+
+            PlayerDeathController deathController = caughtPlayer.GetComponent<PlayerDeathController>();
+            deathController?.ScheduleCatchCameraFocus(
+                transform,
+                Mathf.Max(0f, duration - catchCameraLockDuration));
+        }
+
+        public void TryCatchPlayer(PlayerController playerController)
+        {
+            if (currentState == BehaviorState.Chase)
+            {
+                BeginCatchingPlayer(playerController);
+            }
+        }
+
+        private void PositionForCatchPresentation(Transform caughtPlayerTransform)
+        {
+            if (caughtPlayerTransform == null || catchPresentationDistance <= 0f)
+            {
+                return;
+            }
+
+            Vector3 fromPlayer = transform.position - caughtPlayerTransform.position;
+            fromPlayer.y = 0f;
+            if (fromPlayer.sqrMagnitude <= 0.001f)
+            {
+                fromPlayer = -caughtPlayerTransform.forward;
+                fromPlayer.y = 0f;
+            }
+
+            Vector3 presentationPosition = caughtPlayerTransform.position
+                + fromPlayer.normalized * catchPresentationDistance;
+            presentationPosition.y = transform.position.y;
+            Vector3 faceDirection = caughtPlayerTransform.position - presentationPosition;
+            faceDirection.y = 0f;
+            Quaternion presentationRotation = faceDirection.sqrMagnitude > 0.001f
+                ? Quaternion.LookRotation(faceDirection.normalized, Vector3.up)
+                : transform.rotation;
+            if (motor != null)
+            {
+                motor.ResetToPosition(presentationPosition, presentationRotation);
+            }
+            else
+            {
+                transform.SetPositionAndRotation(presentationPosition, presentationRotation);
+            }
         }
 
         private void UpdateCatching()

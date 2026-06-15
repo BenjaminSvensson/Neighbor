@@ -82,6 +82,10 @@ namespace Neighbor.Main.Features.Player
         [Header("Impact Return")]
         [SerializeField, Min(0f)] private float impactReturnSpeed = 18f;
 
+        [Header("Cinematic Look")]
+        [SerializeField, Min(0f)] private float cinematicLookHeight = 1.45f;
+        [SerializeField, Min(0f)] private float cinematicLookSharpness = 14f;
+
         private Camera playerCamera;
         private Transform animatedHead;
         private Vector3 baseLocalPosition;
@@ -111,6 +115,7 @@ namespace Neighbor.Main.Features.Player
         private bool playZoomAudioThroughSmoothing;
         private PlayerFrameInput frameInput;
         private bool gameplayInputBlocked;
+        private Transform cinematicLookTarget;
 
         public int ZoomDirection { get; private set; }
         public event System.Action<int> ZoomDirectionChanged;
@@ -189,6 +194,12 @@ namespace Neighbor.Main.Features.Player
 
         private void LateUpdate()
         {
+            if (cinematicLookTarget != null)
+            {
+                UpdateCinematicLook();
+                return;
+            }
+
             if (!gameplayInputBlocked)
             {
                 UpdateCameraPose(frameInput);
@@ -196,6 +207,33 @@ namespace Neighbor.Main.Features.Player
             }
 
             UpdateCameraPosition(currentProceduralOffset);
+        }
+
+        public void BeginCinematicLookAt(Transform target)
+        {
+            cinematicLookTarget = target;
+        }
+
+        private void UpdateCinematicLook()
+        {
+            Vector3 lookTarget = cinematicLookTarget.position + Vector3.up * cinematicLookHeight;
+            Vector3 toTarget = lookTarget - transform.position;
+            if (toTarget.sqrMagnitude <= 0.001f)
+            {
+                return;
+            }
+
+            Quaternion desiredWorldRotation = Quaternion.LookRotation(toTarget.normalized, Vector3.up);
+            float t = 1f - Mathf.Exp(-cinematicLookSharpness * Time.deltaTime);
+            Quaternion nextWorldRotation = Quaternion.Slerp(transform.rotation, desiredWorldRotation, t);
+            Vector3 flatForward = nextWorldRotation * Vector3.forward;
+            flatForward.y = 0f;
+            if (yawRoot != null && flatForward.sqrMagnitude > 0.001f)
+            {
+                yawRoot.rotation = Quaternion.LookRotation(flatForward.normalized, Vector3.up);
+            }
+
+            transform.rotation = nextWorldRotation;
         }
 
         private void UpdateZoom(PlayerFrameInput input)
@@ -467,6 +505,7 @@ namespace Neighbor.Main.Features.Player
 
         public void SyncAfterRespawn()
         {
+            cinematicLookTarget = null;
             yaw = yawRoot != null ? yawRoot.rotation.eulerAngles.y : transform.root.rotation.eulerAngles.y;
             pitch = NormalizeAngle(transform.localEulerAngles.x);
             smoothedPitch = pitch;

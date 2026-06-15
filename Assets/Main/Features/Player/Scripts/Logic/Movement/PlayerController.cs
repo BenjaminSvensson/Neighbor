@@ -507,7 +507,7 @@ namespace Neighbor.Main.Features.Player
             NeighborBrain neighborBrain = hit.collider != null ? hit.collider.GetComponentInParent<NeighborBrain>() : null;
             if (neighborBrain != null && neighborBrain.CurrentState == NeighborBrain.BehaviorState.Chase)
             {
-                PlayerDeathController.Kill(this, neighborBrain.transform.position);
+                neighborBrain.TryCatchPlayer(this);
                 return;
             }
 
