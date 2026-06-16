@@ -1089,11 +1089,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -10.369
+      value: -8.508
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.78
+      value: 2.201
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: 1972fd21cc5a44cdaabccb824b28e719, type: 3}
       propertyPath: m_LocalPosition.z
@@ -1712,11 +1712,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -7.25
+      value: -6.5
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.825
+      value: 2.053
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: db74285a634141fdbb4632f5fd32fda1, type: 3}
       propertyPath: m_LocalPosition.z
@@ -2114,7 +2114,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 4.25
+      value: 3.834
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
       propertyPath: m_LocalPosition.y
@@ -2827,8 +2827,8 @@ MonoBehaviour:
       center: {x: 5.9799995, y: 0.024999857}
       size: {x: 2.04, y: 2.7858996}
     - ownerObjectId: 73c940fe22f94c759377251793f91647
-      center: {x: -5, y: -0.31271458}
-      size: {x: 1.7157726, y: 1.3792524}
+      center: {x: 5.7799997, y: -0.31271458}
+      size: {x: 1.7157717, y: 1.3792524}
     - ownerObjectId: a434337f4f7147a88745df9fc371a116
       center: {x: -4.8500004, y: 0.07499981}
       size: {x: 1.771781, y: 2.586769}
@@ -3182,7 +3182,7 @@ MonoBehaviour:
       center: {x: 0.40023708, y: -0.6}
       size: {x: 1.3399992, y: 2.84}
     - ownerObjectId: 9c914bcc215944f792bd881c7b14e6cf
-      center: {x: -1.75, y: -0.17499995}
+      center: {x: -2.5, y: 0.052999973}
       size: {x: 2.04, y: 1.54}
 --- !u!64 &781703372
 MeshCollider:
@@ -4142,7 +4142,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 9.42
+      value: 9.175
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
       propertyPath: m_LocalPosition.y

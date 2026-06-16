@@ -897,6 +897,17 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void DefaultCatalog_ContainsImportedWallpaperPaintMaterials()
+        {
+            HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(HouseBuilderAssetInstaller.DefaultCatalogPath);
+
+            Assert.That(catalog.TryGetMaterial("neighbor.material.wallpaper001a", out Material wallpaperA), Is.True);
+            Assert.That(catalog.TryGetMaterial("neighbor.material.wallpaper001c", out Material wallpaperC), Is.True);
+            Assert.That(wallpaperA, Is.Not.Null);
+            Assert.That(wallpaperC, Is.Not.Null);
+        }
+
+        [Test]
         public void WallOpeningLink_RefreshUsesColliderBoundsWithLatestCatalogMargin()
         {
             HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(HouseBuilderAssetInstaller.DefaultCatalogPath);

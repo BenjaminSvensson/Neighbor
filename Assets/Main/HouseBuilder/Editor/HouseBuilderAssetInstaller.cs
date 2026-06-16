@@ -11,7 +11,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
         public const string RootPath = "Assets/Main/HouseBuilder";
         public const string DataPath = RootPath + "/Data";
         public const string DefaultCatalogPath = DataPath + "/DefaultHouseBuilderCatalog.asset";
-        private const int InstallerVersion = 19;
+        private const int InstallerVersion = 20;
         private const string InstallerVersionKey = "Neighbor.HouseBuilder.DefaultAssetsVersion";
         private const string CategoryPath = DataPath + "/Categories";
         private const string DefinitionPath = DataPath + "/Placeables";
@@ -174,6 +174,8 @@ namespace Neighbor.Main.HouseBuilder.Editor
             AddMaterialIfPresent(materials, "Tiles", "Tiles", "Assets/Main/Art/Materials/AmbientCG/Tiles133A/Tiles133A.mat");
             AddMaterialIfPresent(materials, "Marble", "Marble", "Assets/Main/Art/Materials/AmbientCG/Marble020/Marble020.mat");
             AddMaterialIfPresent(materials, "Wallpaper", "Wallpaper", "Assets/Main/Art/Materials/AmbientCG/Paper005/Paper005.mat");
+            AddGeneratedPbrMaterialIfPresent(materials, "Wallpaper001A", "Wallpaper 001 A", "Assets/Main/Art/Materials/AmbientCG/Wallpaper001A");
+            AddGeneratedPbrMaterialIfPresent(materials, "Wallpaper001C", "Wallpaper 001 C", "Assets/Main/Art/Materials/AmbientCG/Wallpaper001C");
             AddMaterialIfPresent(materials, "Ground", "Ground", "Assets/Main/Art/Materials/AmbientCG/Ground048/Ground048.mat");
 
             HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(DefaultCatalogPath);
@@ -626,6 +628,101 @@ namespace Neighbor.Main.HouseBuilder.Editor
             if (material != null)
             {
                 output.Add(CreateMaterial(fileName, displayName, material));
+            }
+        }
+
+        private static void AddGeneratedPbrMaterialIfPresent(ICollection<HouseMaterialDefinition> output, string fileName, string displayName, string folderPath)
+        {
+            Material material = CreatePbrMaterialIfTexturesPresent(fileName, displayName, folderPath);
+            if (material != null)
+            {
+                output.Add(CreateMaterial(fileName, displayName, material));
+            }
+        }
+
+        private static Material CreatePbrMaterialIfTexturesPresent(string fileName, string displayName, string folderPath)
+        {
+            string colorPath = $"{folderPath}/{fileName}_2K-PNG_Color.png";
+            string normalPath = $"{folderPath}/{fileName}_2K-PNG_NormalGL.png";
+            if (!System.IO.File.Exists(colorPath) || !System.IO.File.Exists(normalPath))
+            {
+                return null;
+            }
+
+            ConfigureTextureImporter(colorPath, TextureImporterType.Default, true);
+            ConfigureTextureImporter(normalPath, TextureImporterType.NormalMap, false);
+
+            Texture2D color = AssetDatabase.LoadAssetAtPath<Texture2D>(colorPath);
+            Texture2D normal = AssetDatabase.LoadAssetAtPath<Texture2D>(normalPath);
+            if (color == null || normal == null)
+            {
+                return null;
+            }
+
+            string materialPath = $"{folderPath}/{fileName}.mat";
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
+            if (material == null)
+            {
+                Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+                if (shader == null)
+                {
+                    return null;
+                }
+
+                material = new Material(shader)
+                {
+                    name = displayName
+                };
+                AssetDatabase.CreateAsset(material, materialPath);
+            }
+
+            material.name = displayName;
+            SetTextureIfPresent(material, "_BaseMap", color);
+            SetTextureIfPresent(material, "_MainTex", color);
+            SetTextureIfPresent(material, "_BumpMap", normal);
+            if (material.HasProperty("_BumpScale"))
+            {
+                material.SetFloat("_BumpScale", 1f);
+            }
+
+            if (material.HasProperty("_Smoothness"))
+            {
+                material.SetFloat("_Smoothness", 0.35f);
+            }
+
+            material.EnableKeyword("_NORMALMAP");
+            EditorUtility.SetDirty(material);
+            return material;
+        }
+
+        private static void ConfigureTextureImporter(string assetPath, TextureImporterType textureType, bool sRgbTexture)
+        {
+            TextureImporter importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
+            if (importer == null)
+            {
+                AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceSynchronousImport);
+                importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
+            }
+
+            if (importer == null)
+            {
+                return;
+            }
+
+            bool dirty = importer.textureType != textureType || importer.sRGBTexture != sRgbTexture;
+            if (dirty)
+            {
+                importer.textureType = textureType;
+                importer.sRGBTexture = sRgbTexture;
+                importer.SaveAndReimport();
+            }
+        }
+
+        private static void SetTextureIfPresent(Material material, string propertyName, Texture texture)
+        {
+            if (material.HasProperty(propertyName))
+            {
+                material.SetTexture(propertyName, texture);
             }
         }
 
