@@ -46,7 +46,7 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
-        public void Geometry_WallOpeningFragmentsShareMeterScaledUvs()
+        public void Geometry_WallOpeningFragmentsShareDesignerScaledUvs()
         {
             HouseGeometryDescriptor descriptor = new(HouseGeometryKind.Wall, new Vector3(4f, 3f, 0.25f));
             descriptor.AddOrUpdateWallOpening(new HouseWallOpeningData("window", Vector2.zero, new Vector2(1.5f, 1.25f)));
@@ -58,8 +58,8 @@ namespace Neighbor.Main.Tests
             for (int i = 0; i < exteriorIndices.Length; i++)
             {
                 int index = exteriorIndices[i];
-                Assert.That(uv[index].x, Is.EqualTo(vertices[index].x).Within(0.001f));
-                Assert.That(uv[index].y, Is.EqualTo(vertices[index].y).Within(0.001f));
+                Assert.That(uv[index].x, Is.EqualTo(vertices[index].x * HouseGeometryFactory.DefaultUvUnitsPerMeter).Within(0.001f));
+                Assert.That(uv[index].y, Is.EqualTo(vertices[index].y * HouseGeometryFactory.DefaultUvUnitsPerMeter).Within(0.001f));
             }
 
             Assert.That(mesh.bounds.size.x, Is.EqualTo(4f).Within(0.001f));

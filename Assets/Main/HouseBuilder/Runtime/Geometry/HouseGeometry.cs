@@ -204,6 +204,7 @@ namespace Neighbor.Main.HouseBuilder
     public static class HouseGeometryFactory
     {
         public const int MaterialSlotCount = 10;
+        public const float DefaultUvUnitsPerMeter = 0.35f;
 
         public static GameObject Create(HouseGeometryDescriptor descriptor, Material defaultMaterial = null)
         {
@@ -500,12 +501,12 @@ namespace Neighbor.Main.HouseBuilder
                 Vector3 absoluteNormal = new(Mathf.Abs(normal.x), Mathf.Abs(normal.y), Mathf.Abs(normal.z));
                 if (absoluteNormal.x >= absoluteNormal.y && absoluteNormal.x >= absoluteNormal.z)
                 {
-                    return new Vector2(vertex.z, vertex.y);
+                    return new Vector2(vertex.z, vertex.y) * DefaultUvUnitsPerMeter;
                 }
 
                 return absoluteNormal.y >= absoluteNormal.z
-                    ? new Vector2(vertex.x, vertex.z)
-                    : new Vector2(vertex.x, vertex.y);
+                    ? new Vector2(vertex.x, vertex.z) * DefaultUvUnitsPerMeter
+                    : new Vector2(vertex.x, vertex.y) * DefaultUvUnitsPerMeter;
             }
 
             public Mesh Build(string meshName)
