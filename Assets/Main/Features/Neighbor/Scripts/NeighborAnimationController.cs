@@ -348,6 +348,15 @@ namespace Neighbor.Main.Features.Neighbor
             NeighborTaskLocation.TaskAnimationPhase phase = brain != null
                 ? brain.ActiveTaskAnimationPhase
                 : NeighborTaskLocation.TaskAnimationPhase.None;
+            if (task == null
+                && brain != null
+                && brain.CurrentState == NeighborBrain.BehaviorState.Task
+                && brain.CurrentTaskLocation != null
+                && brain.IsAtTaskUsePoint)
+            {
+                task = brain.CurrentTaskLocation;
+                phase = NeighborTaskLocation.TaskAnimationPhase.Performing;
+            }
 
             ActionAnimation desiredAction = ActionAnimation.None;
             AnimationClip desiredAnimation = defaultTaskAnimation;

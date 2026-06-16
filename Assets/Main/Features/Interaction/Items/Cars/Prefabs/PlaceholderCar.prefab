@@ -246,11 +246,11 @@ MonoBehaviour:
   anchorNeighborAtUsePose: 0
   ignoreTaskObjectCollisions: 0
   stabilizeTaskObject: 0
-  startTaskAnimation: {fileID: -2328835098782832033, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  startTaskAnimation: {fileID: 0}
   startAnimationPlaybackSpeed: 1
   taskAnimation: {fileID: 3659977189094709723, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
   animationPlaybackSpeed: 1
-  endTaskAnimation: {fileID: -2328835098782832033, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
+  endTaskAnimation: {fileID: 0}
   endAnimationPlaybackSpeed: 1
   audioSource: {fileID: 0}
   taskStartClips: []
