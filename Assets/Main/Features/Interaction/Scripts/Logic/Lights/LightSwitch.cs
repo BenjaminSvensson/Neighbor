@@ -1,12 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
 using Neighbor.Main.Features.Neighbor;
+using Neighbor.Main.HouseBuilder;
 using UnityEngine;
 
 namespace Neighbor.Main.Features.Interaction
 {
     [RequireComponent(typeof(Collider))]
-    public sealed class LightSwitch : MonoBehaviour, IInteractable
+    public sealed class LightSwitch : MonoBehaviour, IInteractable, IHouseWireSignalSource
     {
         [SerializeField] private string circuitId = "default_room";
         [SerializeField] private CeilingLight[] explicitLights;
@@ -22,6 +23,8 @@ namespace Neighbor.Main.Features.Interaction
         private Coroutine animationRoutine;
         private AudioClip generatedToggleClip;
         private bool isOn = true;
+
+        public event System.Action<HouseSignal> HouseWireSignalEmitted;
 
         private void Awake()
         {
@@ -59,8 +62,16 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             isOn = nextState;
-            AnimateLever();
-            PlayToggleSound();
+            HouseWireSignalEmitted?.Invoke(HouseSignal.Bool(isOn));
+            if (Application.isPlaying)
+            {
+                AnimateLever();
+                PlayToggleSound();
+            }
+            else
+            {
+                SetLeverInstant();
+            }
         }
 
         private void SyncStateFromTargets()

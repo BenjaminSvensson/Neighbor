@@ -1001,6 +1001,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 return;
             }
 
+            EnsureWorldDefinitionFeatures();
             int removedConnections = world.WireGraph.PruneInvalidConnections();
             if (removedConnections > 0)
             {
@@ -1033,6 +1034,21 @@ namespace Neighbor.Main.HouseBuilder.Editor
                     new Color(1f, 0.75f, 0.1f, 0.95f), null, 4f);
                 Handles.Label(end, "Select a cyan input");
             }
+        }
+
+        private void EnsureWorldDefinitionFeatures()
+        {
+            int changed = world.EnsureDefinitionFeatures();
+            if (changed <= 0)
+            {
+                return;
+            }
+
+            statusMessage = $"Updated wiring setup on {changed} placed object{(changed == 1 ? string.Empty : "s")}.";
+            EditorUtility.SetDirty(world);
+            EditorUtility.SetDirty(world.WireGraph);
+            MarkSceneDirty();
+            Repaint();
         }
 
         private void DrawWirePorts()

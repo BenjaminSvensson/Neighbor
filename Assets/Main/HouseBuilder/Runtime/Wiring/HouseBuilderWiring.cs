@@ -24,6 +24,11 @@ namespace Neighbor.Main.HouseBuilder
         void ReceiveHouseWireSignal(HouseSignal signal);
     }
 
+    public interface IHouseWireSignalSource
+    {
+        event Action<HouseSignal> HouseWireSignalEmitted;
+    }
+
     [Serializable]
     public sealed class HouseSignal
     {
@@ -98,6 +103,32 @@ namespace Neighbor.Main.HouseBuilder
             }
 
             EnsureIdentity();
+        }
+
+        public bool Configure(
+            string displayName,
+            HouseWirePortDirection direction,
+            HouseSignalKind signalKind,
+            int maximumConnections,
+            Vector3 visualOffset)
+        {
+            maximumConnections = Mathf.Max(0, maximumConnections);
+            bool changed = this.displayName != displayName
+                || this.direction != direction
+                || this.signalKind != signalKind
+                || this.maximumConnections != maximumConnections
+                || this.visualOffset != visualOffset;
+            if (!changed)
+            {
+                return false;
+            }
+
+            this.displayName = displayName;
+            this.direction = direction;
+            this.signalKind = signalKind;
+            this.maximumConnections = maximumConnections;
+            this.visualOffset = visualOffset;
+            return true;
         }
     }
 

@@ -17,6 +17,12 @@ namespace Neighbor.Main.HouseBuilder
         public HouseBuilderCatalog Catalog => catalog;
         public HouseWireGraph WireGraph => ResolveWireGraph();
 
+        private void Awake()
+        {
+            ResolveWireGraph();
+            EnsureDefinitionFeatures();
+        }
+
         public void Configure(HouseBuilderCatalog sourceCatalog, string name = null)
         {
             catalog = sourceCatalog;
@@ -64,6 +70,39 @@ namespace Neighbor.Main.HouseBuilder
             ResolveWireGraph().InvalidateEndpointCache();
             instance.GetComponent<HouseBuilderMaterialController>()?.Apply(catalog);
             return builderObject;
+        }
+
+        public int EnsureDefinitionFeatures()
+        {
+            if (catalog == null)
+            {
+                return 0;
+            }
+
+            int changed = 0;
+            HouseBuilderObject[] builderObjects = GetComponentsInChildren<HouseBuilderObject>(true);
+            for (int i = 0; i < builderObjects.Length; i++)
+            {
+                HouseBuilderObject builderObject = builderObjects[i];
+                if (builderObject == null
+                    || string.IsNullOrWhiteSpace(builderObject.DefinitionId)
+                    || !catalog.TryGetPlaceable(builderObject.DefinitionId, out HousePlaceableDefinition definition))
+                {
+                    continue;
+                }
+
+                if (ApplyWirePorts(builderObject.gameObject, definition))
+                {
+                    changed++;
+                }
+            }
+
+            if (changed > 0)
+            {
+                ResolveWireGraph().InvalidateEndpointCache();
+            }
+
+            return changed;
         }
 
         public bool TryCreateWallOpening(GameObject placedObject, HousePlaceableDefinition definition, Collider placementSurface)
@@ -286,47 +325,121 @@ namespace Neighbor.Main.HouseBuilder
             return wireGraph;
         }
 
-        private static void ApplyWirePorts(GameObject instance, HousePlaceableDefinition definition)
+        private static bool ApplyWirePorts(GameObject instance, HousePlaceableDefinition definition)
         {
             if (instance == null || definition == null || definition.WirePorts.Count == 0)
             {
-                return;
+                return false;
             }
 
-            HouseWireEndpoint endpoint = instance.GetComponent<HouseWireEndpoint>();
+            bool changed = false;
+            HouseWireEndpoint endpoint = FindBestEndpoint(instance, definition);
             if (endpoint == null)
             {
                 endpoint = instance.AddComponent<HouseWireEndpoint>();
+                changed = true;
             }
 
-            endpoint.ConfigureIdentity($"{definition.Id}.endpoint");
+            string endpointId = $"{definition.Id}.endpoint";
+            if (endpoint.EndpointId != endpointId)
+            {
+                changed = true;
+            }
+
+            endpoint.ConfigureIdentity(endpointId);
             HouseWireInputRelay inputRelay = null;
             for (int i = 0; i < definition.WirePorts.Count; i++)
             {
                 HouseWirePortTemplate template = definition.WirePorts[i];
-                if (template == null || endpoint.TryGetPort(template.Id, out _))
+                if (template == null)
                 {
                     continue;
                 }
 
-                HouseWirePortDefinition port = endpoint.AddPort(
+                if (!endpoint.TryGetPort(template.Id, out HouseWirePortDefinition port))
+                {
+                    port = endpoint.AddPort(
+                        template.DisplayName,
+                        template.Direction,
+                        template.SignalKind,
+                        template.MaximumConnections,
+                        template.VisualOffset,
+                        template.Id);
+                    changed = true;
+                }
+                else if (port.Configure(
                     template.DisplayName,
                     template.Direction,
                     template.SignalKind,
                     template.MaximumConnections,
-                    template.VisualOffset,
-                    template.Id);
+                    template.VisualOffset))
+                {
+                    changed = true;
+                }
+
                 if (template.Direction == HouseWirePortDirection.Input)
                 {
-                    inputRelay ??= instance.GetComponent<HouseWireInputRelay>() ?? instance.AddComponent<HouseWireInputRelay>();
+                    inputRelay ??= instance.GetComponent<HouseWireInputRelay>();
+                    if (inputRelay == null)
+                    {
+                        inputRelay = instance.AddComponent<HouseWireInputRelay>();
+                        changed = true;
+                    }
+
+                    port.OnSignalReceived.RemoveListener(inputRelay.Receive);
                     port.OnSignalReceived.AddListener(inputRelay.Receive);
                 }
                 else
                 {
-                    HouseWireOutputRelay outputRelay = instance.AddComponent<HouseWireOutputRelay>();
+                    HouseWireOutputRelay outputRelay = FindOutputRelay(instance, endpoint, port.Id);
+                    if (outputRelay == null)
+                    {
+                        outputRelay = instance.AddComponent<HouseWireOutputRelay>();
+                        changed = true;
+                    }
+
                     outputRelay.Configure(endpoint, port.Id);
                 }
             }
+
+            return changed;
+        }
+
+        private static HouseWireEndpoint FindBestEndpoint(GameObject instance, HousePlaceableDefinition definition)
+        {
+            HouseWireEndpoint[] endpoints = instance.GetComponents<HouseWireEndpoint>();
+            string endpointId = $"{definition.Id}.endpoint";
+            for (int i = 0; i < endpoints.Length; i++)
+            {
+                if (endpoints[i] != null && endpoints[i].EndpointId == endpointId)
+                {
+                    return endpoints[i];
+                }
+            }
+
+            for (int i = 0; i < endpoints.Length; i++)
+            {
+                if (endpoints[i] != null && endpoints[i].Ports.Count > 0)
+                {
+                    return endpoints[i];
+                }
+            }
+
+            return endpoints.Length > 0 ? endpoints[0] : null;
+        }
+
+        private static HouseWireOutputRelay FindOutputRelay(GameObject instance, HouseWireEndpoint endpoint, string portId)
+        {
+            HouseWireOutputRelay[] relays = instance.GetComponents<HouseWireOutputRelay>();
+            for (int i = 0; i < relays.Length; i++)
+            {
+                if (relays[i] != null && relays[i].IsConfiguredFor(endpoint, portId))
+                {
+                    return relays[i];
+                }
+            }
+
+            return null;
         }
 
         private static List<HouseBuilderComponentState> CaptureComponentStates(HouseBuilderObject builderObject)

@@ -54,12 +54,6 @@ namespace Neighbor.Main.HouseBuilder
                 return;
             }
 
-            if (signal.Kind == HouseSignalKind.Bool)
-            {
-                SetOpen(signal.BoolValue);
-                return;
-            }
-
             Toggle();
         }
 

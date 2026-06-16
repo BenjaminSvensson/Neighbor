@@ -182,6 +182,40 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void Wiring_OutputRelayEmitsFromSignalSourceComponents()
+        {
+            GameObject worldObject = Track(new GameObject("World"));
+            HouseBuilderWorld world = worldObject.AddComponent<HouseBuilderWorld>();
+
+            GameObject sourceObject = Track(new GameObject("Source"));
+            sourceObject.transform.SetParent(worldObject.transform);
+            TestWireSignalSource signalSource = sourceObject.AddComponent<TestWireSignalSource>();
+            HouseBuilderObject sourceOwner = sourceObject.AddComponent<HouseBuilderObject>();
+            sourceOwner.Initialize("source", HouseBuilderCategories.Wiring);
+            HouseWireEndpoint source = sourceObject.AddComponent<HouseWireEndpoint>();
+            source.EnsureIdentity();
+            HouseWirePortDefinition output = source.AddPort("Output", HouseWirePortDirection.Output, HouseSignalKind.Bool);
+            HouseWireOutputRelay relay = sourceObject.AddComponent<HouseWireOutputRelay>();
+            relay.Configure(source, output.Id);
+
+            GameObject targetObject = Track(new GameObject("Target"));
+            targetObject.transform.SetParent(worldObject.transform);
+            HouseBuilderObject targetOwner = targetObject.AddComponent<HouseBuilderObject>();
+            targetOwner.Initialize("target", HouseBuilderCategories.Wiring);
+            HouseWireEndpoint target = targetObject.AddComponent<HouseWireEndpoint>();
+            target.EnsureIdentity();
+            HouseWirePortDefinition input = target.AddPort("Input", HouseWirePortDirection.Input, HouseSignalKind.Bool);
+
+            bool received = false;
+            target.InputReceived += (_, signal) => received = signal.BoolValue;
+            Assert.That(world.WireGraph.TryConnect(source, output, target, input, out string error), Is.True, error);
+
+            signalSource.Emit(HouseSignal.Bool(true));
+
+            Assert.That(received, Is.True);
+        }
+
+        [Test]
         public void Wiring_PrunesUnresolvedAndDuplicateConnections()
         {
             GameObject worldObject = Track(new GameObject("World"));
@@ -231,6 +265,58 @@ namespace Neighbor.Main.Tests
 
             Assert.That(motion.IsOpen, Is.False);
             Assert.That(panelObject.transform.localPosition.y, Is.EqualTo(0f).Within(0.001f));
+        }
+
+        [Test]
+        public void Wiring_WorldRepairsExistingGarageDoorPortsAndListeners()
+        {
+            HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(HouseBuilderAssetInstaller.DefaultCatalogPath);
+            Assert.That(catalog.TryGetPlaceable("neighbor.door.garagedoor", out HousePlaceableDefinition garageDefinition), Is.True);
+
+            GameObject worldObject = Track(new GameObject("World"));
+            HouseBuilderWorld world = worldObject.AddComponent<HouseBuilderWorld>();
+            world.Configure(catalog);
+
+            GameObject garageObject = Track(new GameObject("Existing Garage Door"));
+            garageObject.transform.SetParent(worldObject.transform);
+            HouseBuilderObject builderObject = garageObject.AddComponent<HouseBuilderObject>();
+            builderObject.Initialize(garageDefinition.Id, garageDefinition.CategoryId);
+            HouseWireEndpoint staleEndpoint = garageObject.AddComponent<HouseWireEndpoint>();
+            staleEndpoint.EnsureIdentity();
+
+            GameObject panelObject = Track(new GameObject("Door Panel"));
+            panelObject.transform.SetParent(garageObject.transform, false);
+            HouseGarageDoorMotion motion = garageObject.AddComponent<HouseGarageDoorMotion>();
+            motion.Configure(panelObject.transform, Vector3.zero, Vector3.up, 0.01f, false);
+
+            int repaired = world.EnsureDefinitionFeatures();
+
+            Assert.That(repaired, Is.EqualTo(1));
+            Assert.That(staleEndpoint.EndpointId, Is.EqualTo($"{garageDefinition.Id}.endpoint"));
+            Assert.That(staleEndpoint.TryGetPort("activate", out HouseWirePortDefinition activatePort), Is.True);
+            Assert.That(activatePort.SignalKind, Is.EqualTo(HouseSignalKind.Any));
+            Assert.That(garageObject.GetComponent<HouseWireInputRelay>(), Is.Not.Null);
+
+            staleEndpoint.Receive("activate", HouseSignal.Bool(false));
+
+            Assert.That(motion.IsOpen, Is.True);
+            Assert.That(panelObject.transform.localPosition.y, Is.EqualTo(1f).Within(0.001f));
+        }
+
+        [Test]
+        public void Wiring_LightSwitchEmitsHouseWireSignalWhenToggled()
+        {
+            GameObject switchObject = Track(new GameObject("Light Switch"));
+            switchObject.AddComponent<BoxCollider>();
+            LightSwitch lightSwitch = switchObject.AddComponent<LightSwitch>();
+
+            HouseSignal received = null;
+            lightSwitch.HouseWireSignalEmitted += signal => received = signal;
+
+            lightSwitch.Toggle();
+
+            Assert.That(received, Is.Not.Null);
+            Assert.That(received.Kind, Is.EqualTo(HouseSignalKind.Bool));
         }
 
         [Test]
@@ -1120,6 +1206,16 @@ namespace Neighbor.Main.Tests
             }
 
             return sum.normalized;
+        }
+
+        private sealed class TestWireSignalSource : MonoBehaviour, IHouseWireSignalSource
+        {
+            public event System.Action<HouseSignal> HouseWireSignalEmitted;
+
+            public void Emit(HouseSignal signal)
+            {
+                HouseWireSignalEmitted?.Invoke(signal);
+            }
         }
 
     }
