@@ -4921,12 +4921,24 @@ PrefabInstance:
     m_TransformParent: {fileID: 1221629527}
     m_Modifications:
     - target: {fileID: 8247184155445180904, guid: 8c31a01c1a8ba5d4495ea0455ec5a8d5, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.63318855
+      objectReference: {fileID: 0}
+    - target: {fileID: 8247184155445180904, guid: 8c31a01c1a8ba5d4495ea0455ec5a8d5, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.63318855
+      objectReference: {fileID: 0}
+    - target: {fileID: 8247184155445180904, guid: 8c31a01c1a8ba5d4495ea0455ec5a8d5, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.63318855
+      objectReference: {fileID: 0}
+    - target: {fileID: 8247184155445180904, guid: 8c31a01c1a8ba5d4495ea0455ec5a8d5, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 15.653
+      value: 15.716
       objectReference: {fileID: 0}
     - target: {fileID: 8247184155445180904, guid: 8c31a01c1a8ba5d4495ea0455ec5a8d5, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.55
+      value: 0.769
       objectReference: {fileID: 0}
     - target: {fileID: 8247184155445180904, guid: 8c31a01c1a8ba5d4495ea0455ec5a8d5, type: 3}
       propertyPath: m_LocalPosition.z
@@ -4934,7 +4946,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8247184155445180904, guid: 8c31a01c1a8ba5d4495ea0455ec5a8d5, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 1
+      value: 0.9974424
       objectReference: {fileID: 0}
     - target: {fileID: 8247184155445180904, guid: 8c31a01c1a8ba5d4495ea0455ec5a8d5, type: 3}
       propertyPath: m_LocalRotation.x
@@ -4942,7 +4954,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8247184155445180904, guid: 8c31a01c1a8ba5d4495ea0455ec5a8d5, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0
+      value: -0.071475275
       objectReference: {fileID: 0}
     - target: {fileID: 8247184155445180904, guid: 8c31a01c1a8ba5d4495ea0455ec5a8d5, type: 3}
       propertyPath: m_LocalRotation.z
@@ -4954,7 +4966,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8247184155445180904, guid: 8c31a01c1a8ba5d4495ea0455ec5a8d5, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
+      value: -8.197
       objectReference: {fileID: 0}
     - target: {fileID: 8247184155445180904, guid: 8c31a01c1a8ba5d4495ea0455ec5a8d5, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
@@ -11830,7 +11842,7 @@ Transform:
   m_GameObject: {fileID: 2134961196}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 8.38, y: 0.1, z: 1.75}
+  m_LocalPosition: {x: 8.38, y: 0.1, z: 5.35}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -11928,7 +11940,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
   descriptor:
     kind: 2
-    size: {x: 16, y: 0.4, z: 11}
+    size: {x: 16, y: 0.4, z: 18}
     openingWidth: 1.2
     openingHeight: 2.1
     sillHeight: 0.9
