@@ -200,6 +200,7 @@ namespace Neighbor.Main.Features.Neighbor
         public int VisitedSearchPointCount => visitedSearchPoints.Count;
         public int RequiredSearchPointVisits => requiredSearchPointVisits;
         public NeighborTaskLocation CurrentTaskLocation => currentTaskLocation;
+        public bool IsAtTaskUsePoint => currentState == BehaviorState.Task && IsAtCurrentTaskUseDistance();
         public NeighborSearchPoint CurrentSearchPoint => currentSearchPoint;
         public ClosetHideSpot CurrentHideSpot => currentHideSpot;
         public GameObject CurrentInvestigationSource => currentInvestigationSource;
@@ -934,7 +935,6 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (currentState == BehaviorState.Task
                 && motor.IsAnchoredForTask
-                && !waitingAtGoal
                 && currentTaskAnimationPhase == NeighborTaskLocation.TaskAnimationPhase.None)
             {
                 FinishCurrentTaskUse();
@@ -1252,10 +1252,15 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void FinishCurrentTaskUse()
         {
+            bool wasAnchored = motor != null && motor.IsAnchoredForTask;
             currentTaskAnimationPhase = NeighborTaskLocation.TaskAnimationPhase.None;
             waitingAtGoal = false;
             StopActiveTaskAudio();
             currentTaskLocation?.EndTaskUse(this, motor);
+            if (motor != null && !wasAnchored && motor.IsPaused)
+            {
+                motor.SetPaused(false);
+            }
         }
 
         private void UpdateObjectHandling()
@@ -1347,9 +1352,27 @@ namespace Neighbor.Main.Features.Neighbor
         {
             if (motor == null
                 || currentTaskLocation == null
-                || !motor.HasArrived
                 || motor.IsTraversingSpecialMove
                 || !currentTaskLocation.IsObjectPoseUsable)
+            {
+                return false;
+            }
+
+            bool pausedAtDestination = motor.IsPaused
+                && !float.IsNaN(motor.RemainingDistance)
+                && !float.IsInfinity(motor.RemainingDistance)
+                && motor.RemainingDistance <= currentTaskLocation.ArrivalDistance + 0.1f;
+            if (!motor.HasArrived && !pausedAtDestination)
+            {
+                return false;
+            }
+
+            return IsAtCurrentTaskUseDistance();
+        }
+
+        private bool IsAtCurrentTaskUseDistance()
+        {
+            if (currentTaskLocation == null || !currentTaskLocation.IsObjectPoseUsable)
             {
                 return false;
             }

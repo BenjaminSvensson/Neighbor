@@ -1,4 +1,5 @@
 using Neighbor.Main.Features.Interaction;
+using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using NUnit.Framework;
 using UnityEngine;
@@ -54,6 +55,29 @@ namespace Neighbor.Main.Tests
             GameplaySmokeTestReflection.Invoke(doorInteractor, "UpdateOpenedDoors");
 
             Assert.That(door.IsOpen, Is.True);
+        }
+
+        [Test]
+        public void NeighborDoorInteractor_YieldsWhenNeighborIsAtTaskUsePoint()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            NeighborMotor motor = context.AddInitializedComponent<NeighborMotor>(neighborObject);
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            NeighborDoorInteractor doorInteractor = context.AddInitializedComponent<NeighborDoorInteractor>(neighborObject);
+
+            GameObject car = context.CreateObject("CarTask");
+            NeighborTaskLocation task = context.AddInitializedComponent<NeighborTaskLocation>(car);
+            Assert.That(task.TryReserve(brain), Is.True);
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.Task);
+            GameplaySmokeTestReflection.SetField(brain, "currentTaskLocation", task);
+            GameplaySmokeTestReflection.SetField(doorInteractor, "brain", brain);
+            GameplaySmokeTestReflection.SetField(doorInteractor, "motor", motor);
+
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    doorInteractor,
+                    "ShouldYieldToTaskUse"),
+                Is.True);
         }
 
         [Test]

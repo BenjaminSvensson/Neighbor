@@ -210,7 +210,7 @@ MonoBehaviour:
     size: {x: 2.2, y: 1.56, z: 0.5}
     center: {x: 0, y: 0.73999995, z: 0}
     margin: 0.02
-    centerPlacedObjectInWall: 0
+    placeInsideWallOpening: 0
 --- !u!114 &4358227
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -327,11 +327,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: b66dac0cfa5cf484bab2da51f0cd517a, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 1.25
+      value: 1.406
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: b66dac0cfa5cf484bab2da51f0cd517a, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.3
+      value: 0.521
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: b66dac0cfa5cf484bab2da51f0cd517a, type: 3}
       propertyPath: m_LocalPosition.z
@@ -407,10 +407,10 @@ MonoBehaviour:
   wall: {fileID: 455215124}
   profile:
     enabled: 1
-    size: {x: 1.2, y: 2.3, z: 0.6}
+    size: {x: 1.3, y: 2.8, z: 0.6}
     center: {x: 0, y: 1.1, z: 0}
     margin: 0.02
-    centerPlacedObjectInWall: 0
+    placeInsideWallOpening: 0
 --- !u!114 &124883150
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1555,10 +1555,10 @@ MonoBehaviour:
   wall: {fileID: 826518741}
   profile:
     enabled: 1
-    size: {x: 1.2, y: 2.3, z: 0.6}
+    size: {x: 1.3, y: 2.8, z: 0.6}
     center: {x: 0, y: 1.1, z: 0}
     margin: 0.02
-    centerPlacedObjectInWall: 0
+    placeInsideWallOpening: 0
 --- !u!114 &302401286
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2052,7 +2052,7 @@ MonoBehaviour:
     size: {x: 0.85, y: 1.15, z: 0.5}
     center: {x: 0, y: 0, z: 0}
     margin: 0.02
-    centerPlacedObjectInWall: 1
+    placeInsideWallOpening: 1
 --- !u!114 &430669119
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4054,7 +4054,7 @@ MonoBehaviour:
     size: {x: 2.2, y: 1.56, z: 0.5}
     center: {x: 0, y: 0.73999995, z: 0}
     margin: 0.02
-    centerPlacedObjectInWall: 0
+    placeInsideWallOpening: 0
 --- !u!114 &743156770
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5817,10 +5817,10 @@ MonoBehaviour:
   wall: {fileID: 1521513416}
   profile:
     enabled: 1
-    size: {x: 1.2, y: 2.3, z: 0.6}
+    size: {x: 1.3, y: 2.8, z: 0.6}
     center: {x: 0, y: 1.1, z: 0}
     margin: 0.02
-    centerPlacedObjectInWall: 0
+    placeInsideWallOpening: 0
 --- !u!114 &985425987
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6309,7 +6309,7 @@ MonoBehaviour:
     size: {x: 2.2, y: 1.56, z: 0.5}
     center: {x: 0, y: 0.73999995, z: 0}
     margin: 0.02
-    centerPlacedObjectInWall: 0
+    placeInsideWallOpening: 0
 --- !u!114 &1027670585
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9714,10 +9714,10 @@ MonoBehaviour:
   wall: {fileID: 1993519848}
   profile:
     enabled: 1
-    size: {x: 1.2, y: 2.3, z: 0.6}
+    size: {x: 1.3, y: 2.8, z: 0.6}
     center: {x: 0, y: 1.1, z: 0}
     margin: 0.02
-    centerPlacedObjectInWall: 0
+    placeInsideWallOpening: 0
 --- !u!114 &1582577104
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10154,7 +10154,7 @@ MonoBehaviour:
     size: {x: 0.85, y: 1.15, z: 0.5}
     center: {x: 0, y: 0, z: 0}
     margin: 0.02
-    centerPlacedObjectInWall: 1
+    placeInsideWallOpening: 1
 --- !u!114 &1679250041
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10770,7 +10770,7 @@ MonoBehaviour:
     size: {x: 1.2, y: 2.3, z: 0.6}
     center: {x: 0, y: 1.1, z: 0}
     margin: 0.02
-    centerPlacedObjectInWall: 0
+    placeInsideWallOpening: 0
 --- !u!114 &1748614159
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11836,7 +11836,7 @@ MonoBehaviour:
     size: {x: 0.85, y: 1.15, z: 0.5}
     center: {x: 0, y: 0, z: 0}
     margin: 0.02
-    centerPlacedObjectInWall: 1
+    placeInsideWallOpening: 1
 --- !u!114 &1909510866
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -67,6 +67,12 @@ namespace Neighbor.Main.Features.Interaction
         {
             UpdateOpenedDoors();
 
+            if (ShouldYieldToTaskUse())
+            {
+                CancelCautiousDoorOpen();
+                return;
+            }
+
             if (cautiousDoorPauseActive)
             {
                 UpdateCautiousDoorOpen();
@@ -137,6 +143,29 @@ namespace Neighbor.Main.Features.Interaction
                     return;
                 }
             }
+        }
+
+        private bool ShouldYieldToTaskUse()
+        {
+            return brain != null
+                && brain.CurrentState == NeighborBrain.BehaviorState.Task
+                && brain.CurrentTaskLocation != null
+                && (brain.IsWaitingAtGoal
+                    || brain.ActiveTaskAnimationPhase != NeighborTaskLocation.TaskAnimationPhase.None
+                    || brain.IsAtTaskUsePoint);
+        }
+
+        private void CancelCautiousDoorOpen()
+        {
+            if (!cautiousDoorPauseActive && cautiouslyOpeningDoor == null)
+            {
+                return;
+            }
+
+            cautiouslyOpeningDoor = null;
+            cautiousDoorPauseActive = false;
+            motor?.SetPaused(false);
+            nextInteractionTime = Time.time + interactionCooldown;
         }
 
         private void UpdateCautiousDoorOpen()
