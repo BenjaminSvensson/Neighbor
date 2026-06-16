@@ -280,6 +280,8 @@ GameObject:
   m_Component:
   - component: {fileID: 3631413973671460966}
   - component: {fileID: 1320748652204465763}
+  - component: {fileID: 5149708664988297280}
+  - component: {fileID: 118444333413438591}
   m_Layer: 0
   m_Name: GarageDoor
   m_TagString: Untagged
@@ -297,7 +299,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1.4, y: 1.4, z: 1.4}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 2657613372600579505}
@@ -325,12 +327,53 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 3.2, y: 2.5, z: 0.25}
   m_Center: {x: 0, y: 1.25, z: 0}
+--- !u!114 &5149708664988297280
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2304169882513668701}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04c86c728a3994d419e6a7db1a5409e6, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGarageDoorMotion
+  doorPanel: {fileID: 2657613372600579505}
+  closedLocalPosition: {x: 0, y: 1.25, z: 0}
+  openLocalOffset: {x: 0, y: 2.35, z: 0}
+  travelDuration: 0.8
+  startsOpen: 0
+--- !u!114 &118444333413438591
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2304169882513668701}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8155c721a319d78418c48d0d9a3d987e, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireInputRelay
+  onPulse:
+    m_PersistentCalls:
+      m_Calls: []
+  onBool:
+    m_PersistentCalls:
+      m_Calls: []
+  onFloat:
+    m_PersistentCalls:
+      m_Calls: []
+  onString:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &3670548957078459193
 GameObject:
   m_ObjectHideFlags: 0
@@ -612,6 +655,7 @@ GameObject:
   - component: {fileID: 2657613372600579505}
   - component: {fileID: 2561645424443130934}
   - component: {fileID: 6148237083796015339}
+  - component: {fileID: 2218693589456042849}
   m_Layer: 0
   m_Name: Door Panel
   m_TagString: Untagged
@@ -691,6 +735,27 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!65 &2218693589456042849
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6105442244564162910}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 0.99999994, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &8264562845543577204
 GameObject:
   m_ObjectHideFlags: 0

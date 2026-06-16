@@ -167,47 +167,47 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8277c33751b73a14cb0b2ba9e6b8e109, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderMaterialController
   bindings:
   - faceRole: 0
-    rendererPath: 
+    rendererPath:
     materialIndex: 0
     materialId: neighbor.material.prototype
   - faceRole: 1
-    rendererPath: 
+    rendererPath:
     materialIndex: 1
     materialId: neighbor.material.prototype
   - faceRole: 2
-    rendererPath: 
+    rendererPath:
     materialIndex: 2
     materialId: neighbor.material.prototype
   - faceRole: 3
-    rendererPath: 
+    rendererPath:
     materialIndex: 3
     materialId: neighbor.material.prototype
   - faceRole: 4
-    rendererPath: 
+    rendererPath:
     materialIndex: 4
     materialId: neighbor.material.prototype
   - faceRole: 5
-    rendererPath: 
+    rendererPath:
     materialIndex: 5
     materialId: neighbor.material.prototype
   - faceRole: 6
-    rendererPath: 
+    rendererPath:
     materialIndex: 6
     materialId: neighbor.material.prototype
   - faceRole: 7
-    rendererPath: 
+    rendererPath:
     materialIndex: 7
     materialId: neighbor.material.prototype
   - faceRole: 8
-    rendererPath: 
+    rendererPath:
     materialIndex: 8
     materialId: neighbor.material.prototype
   - faceRole: 9
-    rendererPath: 
+    rendererPath:
     materialIndex: 9
     materialId: neighbor.material.prototype
   - faceRole: 1
@@ -224,10 +224,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: fa183f74317a4710beaf39ae16e15de5
-  definitionId: 
+  definitionId:
   categoryId: wall
   properties: []
 --- !u!114 &17505824
@@ -240,7 +240,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 545487812f5c6524db0ae1be9ce2fab1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
   descriptor:
     kind: 1
@@ -256,14 +256,14 @@ MonoBehaviour:
       submeshes: []
     wallOpenings:
     - ownerObjectId: f703103698664a449e9f264cb186fdf5
-      center: {x: 3.7124271, y: 0}
-      size: {x: 4.5199995, y: 3.5}
+      center: {x: 3.4499998, y: 0.0625}
+      size: {x: 4.6799994, y: 3.5}
     - ownerObjectId: 628d36ebb83e42008b886997977f7f64
-      center: {x: -1.5345163, y: 0}
-      size: {x: 4.5199995, y: 3.5}
+      center: {x: -1.8700001, y: 0.0625}
+      size: {x: 4.68, y: 3.5}
     - ownerObjectId: f552a8dc7ca34a60acd4961aad510dff
-      center: {x: -5.529777, y: -0.6}
-      size: {x: 1.3400002, y: 2.84}
+      center: {x: -5.529777, y: -0.44500005}
+      size: {x: 1.3400002, y: 2.8399997}
     - ownerObjectId: 56f7d598921044a78e9a1d57c1f5a2df
       center: {x: 6.8199997, y: 0.57500005}
       size: {x: 1.3871794, y: 1.54}
@@ -580,7 +580,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
   wall: {fileID: 589278851}
   profile:
@@ -599,7 +599,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: a434337f4f7147a88745df9fc371a116
   definitionId: neighbor.prop.glass
@@ -653,47 +653,47 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8277c33751b73a14cb0b2ba9e6b8e109, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderMaterialController
   bindings:
   - faceRole: 0
-    rendererPath: 
+    rendererPath:
     materialIndex: 0
     materialId: neighbor.material.prototype
   - faceRole: 1
-    rendererPath: 
+    rendererPath:
     materialIndex: 1
     materialId: neighbor.material.prototype
   - faceRole: 2
-    rendererPath: 
+    rendererPath:
     materialIndex: 2
     materialId: neighbor.material.prototype
   - faceRole: 3
-    rendererPath: 
+    rendererPath:
     materialIndex: 3
     materialId: neighbor.material.prototype
   - faceRole: 4
-    rendererPath: 
+    rendererPath:
     materialIndex: 4
     materialId: neighbor.material.prototype
   - faceRole: 5
-    rendererPath: 
+    rendererPath:
     materialIndex: 5
     materialId: neighbor.material.prototype
   - faceRole: 6
-    rendererPath: 
+    rendererPath:
     materialIndex: 6
     materialId: neighbor.material.prototype
   - faceRole: 7
-    rendererPath: 
+    rendererPath:
     materialIndex: 7
     materialId: neighbor.material.prototype
   - faceRole: 8
-    rendererPath: 
+    rendererPath:
     materialIndex: 8
     materialId: neighbor.material.prototype
   - faceRole: 9
-    rendererPath: 
+    rendererPath:
     materialIndex: 9
     materialId: neighbor.material.prototype
 --- !u!114 &148610731
@@ -706,10 +706,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 955efa8f5dd94936b585dae49a04ddc3
-  definitionId: 
+  definitionId:
   categoryId: ceiling
   properties: []
 --- !u!114 &148610732
@@ -722,7 +722,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 545487812f5c6524db0ae1be9ce2fab1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
   descriptor:
     kind: 3
@@ -1050,7 +1050,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
   wall: {fileID: 589278851}
   profile:
@@ -1069,7 +1069,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 73c940fe22f94c759377251793f91647
   definitionId: neighbor.window.windowblinds
@@ -1169,7 +1169,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d805329da59bf1544b0003d63e18b7ed, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireOutputRelay
   endpoint: {fileID: 220297318}
   outputPortId: pressed
@@ -1183,7 +1183,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6d2834eb53930484bb39749e568c6ec5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireEndpoint
   endpointId: neighbor.wiring.doorbell.endpoint
   ports:
@@ -1206,7 +1206,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 746c0d7218af4d57ab8730241bbb4690
   definitionId: neighbor.wiring.doorbell
@@ -1673,7 +1673,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
   wall: {fileID: 589278851}
   profile:
@@ -1692,7 +1692,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 0a2d6e376f30414283eb44d7bd43f25b
   definitionId: neighbor.prop.glass
@@ -1809,47 +1809,47 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8277c33751b73a14cb0b2ba9e6b8e109, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderMaterialController
   bindings:
   - faceRole: 0
-    rendererPath: 
+    rendererPath:
     materialIndex: 0
     materialId: neighbor.material.prototype
   - faceRole: 1
-    rendererPath: 
+    rendererPath:
     materialIndex: 1
     materialId: neighbor.material.prototype
   - faceRole: 2
-    rendererPath: 
+    rendererPath:
     materialIndex: 2
     materialId: neighbor.material.prototype
   - faceRole: 3
-    rendererPath: 
+    rendererPath:
     materialIndex: 3
     materialId: neighbor.material.prototype
   - faceRole: 4
-    rendererPath: 
+    rendererPath:
     materialIndex: 4
     materialId: neighbor.material.prototype
   - faceRole: 5
-    rendererPath: 
+    rendererPath:
     materialIndex: 5
     materialId: neighbor.material.prototype
   - faceRole: 6
-    rendererPath: 
+    rendererPath:
     materialIndex: 6
     materialId: neighbor.material.prototype
   - faceRole: 7
-    rendererPath: 
+    rendererPath:
     materialIndex: 7
     materialId: neighbor.material.prototype
   - faceRole: 8
-    rendererPath: 
+    rendererPath:
     materialIndex: 8
     materialId: neighbor.material.prototype
   - faceRole: 9
-    rendererPath: 
+    rendererPath:
     materialIndex: 9
     materialId: neighbor.material.prototype
 --- !u!114 &429202015
@@ -1862,10 +1862,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 7c0702ac015b40c2890c073c182c438d
-  definitionId: 
+  definitionId:
   categoryId: wall
   properties: []
 --- !u!114 &429202016
@@ -1878,7 +1878,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 545487812f5c6524db0ae1be9ce2fab1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
   descriptor:
     kind: 1
@@ -2075,7 +2075,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
   wall: {fileID: 589278851}
   profile:
@@ -2094,7 +2094,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: f2f95e2e2d564d1aa7f2c7dc4baa2c68
   definitionId: neighbor.prop.glass
@@ -2186,7 +2186,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d805329da59bf1544b0003d63e18b7ed, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireOutputRelay
   endpoint: {fileID: 454515970}
   outputPortId: state
@@ -2200,7 +2200,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6d2834eb53930484bb39749e568c6ec5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireEndpoint
   endpointId: neighbor.wiring.lightswitch.endpoint
   ports:
@@ -2223,7 +2223,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 40afb0f50b624f74819bb6952b467fb2
   definitionId: neighbor.wiring.lightswitch
@@ -2492,47 +2492,47 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8277c33751b73a14cb0b2ba9e6b8e109, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderMaterialController
   bindings:
   - faceRole: 0
-    rendererPath: 
+    rendererPath:
     materialIndex: 0
     materialId: neighbor.material.prototype
   - faceRole: 1
-    rendererPath: 
+    rendererPath:
     materialIndex: 1
     materialId: neighbor.material.prototype
   - faceRole: 2
-    rendererPath: 
+    rendererPath:
     materialIndex: 2
     materialId: neighbor.material.prototype
   - faceRole: 3
-    rendererPath: 
+    rendererPath:
     materialIndex: 3
     materialId: neighbor.material.prototype
   - faceRole: 4
-    rendererPath: 
+    rendererPath:
     materialIndex: 4
     materialId: neighbor.material.prototype
   - faceRole: 5
-    rendererPath: 
+    rendererPath:
     materialIndex: 5
     materialId: neighbor.material.prototype
   - faceRole: 6
-    rendererPath: 
+    rendererPath:
     materialIndex: 6
     materialId: neighbor.material.prototype
   - faceRole: 7
-    rendererPath: 
+    rendererPath:
     materialIndex: 7
     materialId: neighbor.material.prototype
   - faceRole: 8
-    rendererPath: 
+    rendererPath:
     materialIndex: 8
     materialId: neighbor.material.prototype
   - faceRole: 9
-    rendererPath: 
+    rendererPath:
     materialIndex: 9
     materialId: neighbor.material.prototype
   - faceRole: 2
@@ -2553,10 +2553,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 4588828f08bc40b3a01806cf5fc4a30f
-  definitionId: 
+  definitionId:
   categoryId: wall
   properties: []
 --- !u!114 &580664659
@@ -2569,7 +2569,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 545487812f5c6524db0ae1be9ce2fab1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
   descriptor:
     kind: 1
@@ -2729,49 +2729,53 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8277c33751b73a14cb0b2ba9e6b8e109, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderMaterialController
   bindings:
   - faceRole: 0
-    rendererPath: 
+    rendererPath:
     materialIndex: 0
     materialId: neighbor.material.prototype
   - faceRole: 1
-    rendererPath: 
+    rendererPath:
     materialIndex: 1
     materialId: neighbor.material.prototype
   - faceRole: 2
-    rendererPath: 
+    rendererPath:
     materialIndex: 2
     materialId: neighbor.material.prototype
   - faceRole: 3
-    rendererPath: 
+    rendererPath:
     materialIndex: 3
     materialId: neighbor.material.prototype
   - faceRole: 4
-    rendererPath: 
+    rendererPath:
     materialIndex: 4
     materialId: neighbor.material.prototype
   - faceRole: 5
-    rendererPath: 
+    rendererPath:
     materialIndex: 5
     materialId: neighbor.material.prototype
   - faceRole: 6
-    rendererPath: 
+    rendererPath:
     materialIndex: 6
     materialId: neighbor.material.prototype
   - faceRole: 7
-    rendererPath: 
+    rendererPath:
     materialIndex: 7
     materialId: neighbor.material.prototype
   - faceRole: 8
-    rendererPath: 
+    rendererPath:
     materialIndex: 8
     materialId: neighbor.material.prototype
   - faceRole: 9
-    rendererPath: 
+    rendererPath:
     materialIndex: 9
     materialId: neighbor.material.prototype
+  - faceRole: 1
+    rendererPath: Physical Geometry
+    materialIndex: 1
+    materialId: neighbor.material.imported.96cba616558a19d4b975ad6ea464705a
 --- !u!114 &589278850
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2782,10 +2786,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 532867f37bf847c48b0ed0a21306f1b5
-  definitionId: 
+  definitionId:
   categoryId: wall
   properties: []
 --- !u!114 &589278851
@@ -2798,7 +2802,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 545487812f5c6524db0ae1be9ce2fab1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
   descriptor:
     kind: 1
@@ -2823,8 +2827,8 @@ MonoBehaviour:
       center: {x: 5.9799995, y: 0.024999857}
       size: {x: 2.04, y: 2.7858996}
     - ownerObjectId: 73c940fe22f94c759377251793f91647
-      center: {x: 5.7799997, y: -0.31271458}
-      size: {x: 1.7157717, y: 1.3792524}
+      center: {x: -5, y: -0.31271458}
+      size: {x: 1.7157726, y: 1.3792524}
     - ownerObjectId: a434337f4f7147a88745df9fc371a116
       center: {x: -4.8500004, y: 0.07499981}
       size: {x: 1.771781, y: 2.586769}
@@ -3086,47 +3090,47 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8277c33751b73a14cb0b2ba9e6b8e109, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderMaterialController
   bindings:
   - faceRole: 0
-    rendererPath: 
+    rendererPath:
     materialIndex: 0
     materialId: neighbor.material.prototype
   - faceRole: 1
-    rendererPath: 
+    rendererPath:
     materialIndex: 1
     materialId: neighbor.material.prototype
   - faceRole: 2
-    rendererPath: 
+    rendererPath:
     materialIndex: 2
     materialId: neighbor.material.prototype
   - faceRole: 3
-    rendererPath: 
+    rendererPath:
     materialIndex: 3
     materialId: neighbor.material.prototype
   - faceRole: 4
-    rendererPath: 
+    rendererPath:
     materialIndex: 4
     materialId: neighbor.material.prototype
   - faceRole: 5
-    rendererPath: 
+    rendererPath:
     materialIndex: 5
     materialId: neighbor.material.prototype
   - faceRole: 6
-    rendererPath: 
+    rendererPath:
     materialIndex: 6
     materialId: neighbor.material.prototype
   - faceRole: 7
-    rendererPath: 
+    rendererPath:
     materialIndex: 7
     materialId: neighbor.material.prototype
   - faceRole: 8
-    rendererPath: 
+    rendererPath:
     materialIndex: 8
     materialId: neighbor.material.prototype
   - faceRole: 9
-    rendererPath: 
+    rendererPath:
     materialIndex: 9
     materialId: neighbor.material.prototype
   - faceRole: 2
@@ -3143,10 +3147,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 85701ed746c940df9b9c3a6ed65bc665
-  definitionId: 
+  definitionId:
   categoryId: wall
   properties: []
 --- !u!114 &781703371
@@ -3159,7 +3163,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 545487812f5c6524db0ae1be9ce2fab1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
   descriptor:
     kind: 1
@@ -3371,7 +3375,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
   wall: {fileID: 589278851}
   profile:
@@ -3390,7 +3394,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 73c940fe22f94c759377251793f91647
   definitionId: neighbor.window.windowblinds
@@ -3478,7 +3482,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
-  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 96cba616558a19d4b975ad6ea464705a, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
@@ -3790,7 +3794,7 @@ Transform:
   m_GameObject: {fileID: 871280179}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: -0.2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3971,7 +3975,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
   wall: {fileID: 17505824}
   profile:
@@ -3990,7 +3994,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 56f7d598921044a78e9a1d57c1f5a2df
   definitionId: neighbor.prop.glass
@@ -4099,7 +4103,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
   wall: {fileID: 589278851}
   profile:
@@ -4118,7 +4122,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 73c940fe22f94c759377251793f91647
   definitionId: neighbor.window.windowblinds
@@ -4210,7 +4214,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d805329da59bf1544b0003d63e18b7ed, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireOutputRelay
   endpoint: {fileID: 1029682689}
   outputPortId: state
@@ -4224,7 +4228,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6d2834eb53930484bb39749e568c6ec5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireEndpoint
   endpointId: neighbor.wiring.lightswitch.endpoint
   ports:
@@ -4247,7 +4251,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: d9f4317a1c9645189847a7f7628210a7
   definitionId: neighbor.wiring.lightswitch
@@ -4403,7 +4407,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c4069b2298c25b54abd608db0ad6cd10, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderWorld
   documentName: House
   catalog: {fileID: 11400000, guid: 2c5dd966cec62324584e46f775be5031, type: 2}
@@ -4418,7 +4422,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7e0c25c58da8b8e4fb8702465d2739fa, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireGraph
   connections: []
 --- !u!4 &1221629527
@@ -4457,6 +4461,7 @@ Transform:
   - {fileID: 148610729}
   - {fileID: 2055919429}
   - {fileID: 1259069438}
+  - {fileID: 1693776912}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1259069437
@@ -4507,47 +4512,47 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8277c33751b73a14cb0b2ba9e6b8e109, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderMaterialController
   bindings:
   - faceRole: 0
-    rendererPath: 
+    rendererPath:
     materialIndex: 0
     materialId: neighbor.material.prototype
   - faceRole: 1
-    rendererPath: 
+    rendererPath:
     materialIndex: 1
     materialId: neighbor.material.prototype
   - faceRole: 2
-    rendererPath: 
+    rendererPath:
     materialIndex: 2
     materialId: neighbor.material.prototype
   - faceRole: 3
-    rendererPath: 
+    rendererPath:
     materialIndex: 3
     materialId: neighbor.material.prototype
   - faceRole: 4
-    rendererPath: 
+    rendererPath:
     materialIndex: 4
     materialId: neighbor.material.prototype
   - faceRole: 5
-    rendererPath: 
+    rendererPath:
     materialIndex: 5
     materialId: neighbor.material.prototype
   - faceRole: 6
-    rendererPath: 
+    rendererPath:
     materialIndex: 6
     materialId: neighbor.material.prototype
   - faceRole: 7
-    rendererPath: 
+    rendererPath:
     materialIndex: 7
     materialId: neighbor.material.prototype
   - faceRole: 8
-    rendererPath: 
+    rendererPath:
     materialIndex: 8
     materialId: neighbor.material.prototype
   - faceRole: 9
-    rendererPath: 
+    rendererPath:
     materialIndex: 9
     materialId: neighbor.material.prototype
 --- !u!114 &1259069440
@@ -4560,10 +4565,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: b3b8ca09785843959efeff8b75999054
-  definitionId: 
+  definitionId:
   categoryId: wall
   properties: []
 --- !u!114 &1259069441
@@ -4576,7 +4581,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 545487812f5c6524db0ae1be9ce2fab1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
   descriptor:
     kind: 1
@@ -4727,47 +4732,47 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8277c33751b73a14cb0b2ba9e6b8e109, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderMaterialController
   bindings:
   - faceRole: 0
-    rendererPath: 
+    rendererPath:
     materialIndex: 0
     materialId: neighbor.material.prototype
   - faceRole: 1
-    rendererPath: 
+    rendererPath:
     materialIndex: 1
     materialId: neighbor.material.prototype
   - faceRole: 2
-    rendererPath: 
+    rendererPath:
     materialIndex: 2
     materialId: neighbor.material.prototype
   - faceRole: 3
-    rendererPath: 
+    rendererPath:
     materialIndex: 3
     materialId: neighbor.material.prototype
   - faceRole: 4
-    rendererPath: 
+    rendererPath:
     materialIndex: 4
     materialId: neighbor.material.prototype
   - faceRole: 5
-    rendererPath: 
+    rendererPath:
     materialIndex: 5
     materialId: neighbor.material.prototype
   - faceRole: 6
-    rendererPath: 
+    rendererPath:
     materialIndex: 6
     materialId: neighbor.material.prototype
   - faceRole: 7
-    rendererPath: 
+    rendererPath:
     materialIndex: 7
     materialId: neighbor.material.prototype
   - faceRole: 8
-    rendererPath: 
+    rendererPath:
     materialIndex: 8
     materialId: neighbor.material.prototype
   - faceRole: 9
-    rendererPath: 
+    rendererPath:
     materialIndex: 9
     materialId: neighbor.material.prototype
 --- !u!114 &1322476388
@@ -4780,10 +4785,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 6d0996e2870a43ecb999f009601b0e1d
-  definitionId: 
+  definitionId:
   categoryId: floor
   properties: []
 --- !u!114 &1322476389
@@ -4796,7 +4801,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 545487812f5c6524db0ae1be9ce2fab1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
   descriptor:
     kind: 2
@@ -4988,12 +4993,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
   wall: {fileID: 781703371}
   profile:
     enabled: 1
-    size: {x: 1.2, y: 2.3, z: 0.6}
+    size: {x: 1.3, y: 2.8, z: 0.6}
     center: {x: 0, y: 1.1, z: 0}
     margin: 0.02
     placeInsideWallOpening: 0
@@ -5007,7 +5012,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8155c721a319d78418c48d0d9a3d987e, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireInputRelay
   onPulse:
     m_PersistentCalls:
@@ -5031,7 +5036,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6d2834eb53930484bb39749e568c6ec5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireEndpoint
   endpointId: neighbor.door.door.endpoint
   ports:
@@ -5054,7 +5059,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: bf2e2d5241d84e22976d9404f3457488
   definitionId: neighbor.door.door
@@ -5078,7 +5083,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: b66dac0cfa5cf484bab2da51f0cd517a, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.3
+      value: 0.455
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: b66dac0cfa5cf484bab2da51f0cd517a, type: 3}
       propertyPath: m_LocalPosition.z
@@ -5149,12 +5154,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
   wall: {fileID: 17505824}
   profile:
     enabled: 1
-    size: {x: 1.2, y: 2.3, z: 0.6}
+    size: {x: 1.3, y: 2.8, z: 0.6}
     center: {x: 0, y: 1.1, z: 0}
     margin: 0.02
     placeInsideWallOpening: 0
@@ -5168,7 +5173,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8155c721a319d78418c48d0d9a3d987e, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireInputRelay
   onPulse:
     m_PersistentCalls:
@@ -5192,7 +5197,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6d2834eb53930484bb39749e568c6ec5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireEndpoint
   endpointId: neighbor.door.door.endpoint
   ports:
@@ -5215,7 +5220,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: f552a8dc7ca34a60acd4961aad510dff
   definitionId: neighbor.door.door
@@ -5234,8 +5239,20 @@ PrefabInstance:
       value: GarageDoor
       objectReference: {fileID: 0}
     - target: {fileID: 3631413973671460966, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.45
+      objectReference: {fileID: 0}
+    - target: {fileID: 3631413973671460966, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.45
+      objectReference: {fileID: 0}
+    - target: {fileID: 3631413973671460966, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.45
+      objectReference: {fileID: 0}
+    - target: {fileID: 3631413973671460966, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 12.092427
+      value: 11.83
       objectReference: {fileID: 0}
     - target: {fileID: 3631413973671460966, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
       propertyPath: m_LocalPosition.y
@@ -5304,7 +5321,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
   wall: {fileID: 17505824}
   profile:
@@ -5323,7 +5340,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: f703103698664a449e9f264cb186fdf5
   definitionId: neighbor.door.garagedoor
@@ -5432,7 +5449,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
   wall: {fileID: 589278851}
   profile:
@@ -5451,7 +5468,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: a434337f4f7147a88745df9fc371a116
   definitionId: neighbor.prop.glass
@@ -5579,6 +5596,242 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1682556663}
   m_Mesh: {fileID: 0}
+--- !u!1 &1693776911
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1693776912}
+  - component: {fileID: 1693776918}
+  - component: {fileID: 1693776917}
+  - component: {fileID: 1693776916}
+  - component: {fileID: 1693776915}
+  - component: {fileID: 1693776914}
+  - component: {fileID: 1693776913}
+  m_Layer: 0
+  m_Name: Wall
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1693776912
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1693776911}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 9.125, y: 2.173, z: -4}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1911631883}
+  m_Father: {fileID: 1221629527}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1693776913
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1693776911}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8277c33751b73a14cb0b2ba9e6b8e109, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderMaterialController
+  bindings:
+  - faceRole: 0
+    rendererPath:
+    materialIndex: 0
+    materialId: neighbor.material.prototype
+  - faceRole: 1
+    rendererPath:
+    materialIndex: 1
+    materialId: neighbor.material.prototype
+  - faceRole: 2
+    rendererPath:
+    materialIndex: 2
+    materialId: neighbor.material.prototype
+  - faceRole: 3
+    rendererPath:
+    materialIndex: 3
+    materialId: neighbor.material.prototype
+  - faceRole: 4
+    rendererPath:
+    materialIndex: 4
+    materialId: neighbor.material.prototype
+  - faceRole: 5
+    rendererPath:
+    materialIndex: 5
+    materialId: neighbor.material.prototype
+  - faceRole: 6
+    rendererPath:
+    materialIndex: 6
+    materialId: neighbor.material.prototype
+  - faceRole: 7
+    rendererPath:
+    materialIndex: 7
+    materialId: neighbor.material.prototype
+  - faceRole: 8
+    rendererPath:
+    materialIndex: 8
+    materialId: neighbor.material.prototype
+  - faceRole: 9
+    rendererPath:
+    materialIndex: 9
+    materialId: neighbor.material.prototype
+  - faceRole: 1
+    rendererPath: Physical Geometry
+    materialIndex: 1
+    materialId: neighbor.material.brick
+  - faceRole: 5
+    rendererPath: Physical Geometry
+    materialIndex: 5
+    materialId: neighbor.material.brick
+  - faceRole: 6
+    rendererPath: Physical Geometry
+    materialIndex: 6
+    materialId: neighbor.material.brick
+  - faceRole: 3
+    rendererPath: Physical Geometry
+    materialIndex: 3
+    materialId: neighbor.material.brick
+--- !u!114 &1693776914
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1693776911}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
+  instanceId: 76fab6e793984c8380e024c8def4c615
+  definitionId:
+  categoryId: wall
+  properties: []
+--- !u!114 &1693776915
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1693776911}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 545487812f5c6524db0ae1be9ce2fab1, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
+  descriptor:
+    kind: 1
+    size: {x: 0.75, y: 4.4, z: 0.25}
+    openingWidth: 1.2
+    openingHeight: 2.1
+    sillHeight: 0.9
+    stairCount: 16
+    bakedMesh:
+      vertices: []
+      normals: []
+      uv: []
+      submeshes: []
+    wallOpenings: []
+--- !u!64 &1693776916
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1693776911}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 0
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 0}
+--- !u!23 &1693776917
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1693776911}
+  m_Enabled: 0
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1693776918
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1693776911}
+  m_Mesh: {fileID: 0}
 --- !u!1 &1703261203
 GameObject:
   m_ObjectHideFlags: 0
@@ -5627,47 +5880,47 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8277c33751b73a14cb0b2ba9e6b8e109, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderMaterialController
   bindings:
   - faceRole: 0
-    rendererPath: 
+    rendererPath:
     materialIndex: 0
     materialId: neighbor.material.prototype
   - faceRole: 1
-    rendererPath: 
+    rendererPath:
     materialIndex: 1
     materialId: neighbor.material.prototype
   - faceRole: 2
-    rendererPath: 
+    rendererPath:
     materialIndex: 2
     materialId: neighbor.material.prototype
   - faceRole: 3
-    rendererPath: 
+    rendererPath:
     materialIndex: 3
     materialId: neighbor.material.prototype
   - faceRole: 4
-    rendererPath: 
+    rendererPath:
     materialIndex: 4
     materialId: neighbor.material.prototype
   - faceRole: 5
-    rendererPath: 
+    rendererPath:
     materialIndex: 5
     materialId: neighbor.material.prototype
   - faceRole: 6
-    rendererPath: 
+    rendererPath:
     materialIndex: 6
     materialId: neighbor.material.prototype
   - faceRole: 7
-    rendererPath: 
+    rendererPath:
     materialIndex: 7
     materialId: neighbor.material.prototype
   - faceRole: 8
-    rendererPath: 
+    rendererPath:
     materialIndex: 8
     materialId: neighbor.material.prototype
   - faceRole: 9
-    rendererPath: 
+    rendererPath:
     materialIndex: 9
     materialId: neighbor.material.prototype
   - faceRole: 1
@@ -5684,10 +5937,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 91f0ee5d41474e48ad2f98b923197097
-  definitionId: 
+  definitionId:
   categoryId: wall
   properties: []
 --- !u!114 &1703261207
@@ -5700,7 +5953,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 545487812f5c6524db0ae1be9ce2fab1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
   descriptor:
     kind: 1
@@ -5816,8 +6069,20 @@ PrefabInstance:
       value: GarageDoor
       objectReference: {fileID: 0}
     - target: {fileID: 3631413973671460966, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.45
+      objectReference: {fileID: 0}
+    - target: {fileID: 3631413973671460966, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.45
+      objectReference: {fileID: 0}
+    - target: {fileID: 3631413973671460966, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.45
+      objectReference: {fileID: 0}
+    - target: {fileID: 3631413973671460966, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 6.845484
+      value: 6.51
       objectReference: {fileID: 0}
     - target: {fileID: 3631413973671460966, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
       propertyPath: m_LocalPosition.y
@@ -5886,7 +6151,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
   wall: {fileID: 17505824}
   profile:
@@ -5905,7 +6170,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 628d36ebb83e42008b886997977f7f64
   definitionId: neighbor.door.garagedoor
@@ -6006,7 +6271,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
   wall: {fileID: 589278851}
   profile:
@@ -6025,7 +6290,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 40a8a3d6245f4793ba65613f67ae47f9
   definitionId: neighbor.prop.glass
@@ -6134,7 +6399,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
   wall: {fileID: 589278851}
   profile:
@@ -6153,7 +6418,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 73c940fe22f94c759377251793f91647
   definitionId: neighbor.window.windowblinds
@@ -6236,7 +6501,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
   wall: {fileID: 781703371}
   profile:
@@ -6255,12 +6520,134 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 9c914bcc215944f792bd881c7b14e6cf
   definitionId: neighbor.prop.glass
   categoryId: prop
   properties: []
+--- !u!1 &1911631882
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1911631883}
+  - component: {fileID: 1911631886}
+  - component: {fileID: 1911631885}
+  - component: {fileID: 1911631884}
+  m_Layer: 0
+  m_Name: Physical Geometry
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1911631883
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1911631882}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1693776912}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!64 &1911631884
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1911631882}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 0}
+--- !u!23 &1911631885
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1911631882}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: f1882fe7fe1efda4d97b6cb3008a6c5e, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: f1882fe7fe1efda4d97b6cb3008a6c5e, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: f1882fe7fe1efda4d97b6cb3008a6c5e, type: 2}
+  - {fileID: 2100000, guid: f1882fe7fe1efda4d97b6cb3008a6c5e, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1911631886
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1911631882}
+  m_Mesh: {fileID: 0}
 --- !u!1 &1921739781
 GameObject:
   m_ObjectHideFlags: 0
@@ -6309,47 +6696,47 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8277c33751b73a14cb0b2ba9e6b8e109, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderMaterialController
   bindings:
   - faceRole: 0
-    rendererPath: 
+    rendererPath:
     materialIndex: 0
     materialId: neighbor.material.prototype
   - faceRole: 1
-    rendererPath: 
+    rendererPath:
     materialIndex: 1
     materialId: neighbor.material.prototype
   - faceRole: 2
-    rendererPath: 
+    rendererPath:
     materialIndex: 2
     materialId: neighbor.material.prototype
   - faceRole: 3
-    rendererPath: 
+    rendererPath:
     materialIndex: 3
     materialId: neighbor.material.prototype
   - faceRole: 4
-    rendererPath: 
+    rendererPath:
     materialIndex: 4
     materialId: neighbor.material.prototype
   - faceRole: 5
-    rendererPath: 
+    rendererPath:
     materialIndex: 5
     materialId: neighbor.material.prototype
   - faceRole: 6
-    rendererPath: 
+    rendererPath:
     materialIndex: 6
     materialId: neighbor.material.prototype
   - faceRole: 7
-    rendererPath: 
+    rendererPath:
     materialIndex: 7
     materialId: neighbor.material.prototype
   - faceRole: 8
-    rendererPath: 
+    rendererPath:
     materialIndex: 8
     materialId: neighbor.material.prototype
   - faceRole: 9
-    rendererPath: 
+    rendererPath:
     materialIndex: 9
     materialId: neighbor.material.prototype
 --- !u!114 &1921739784
@@ -6362,10 +6749,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 6b2b2ff9e4bf4e3e8486a61c93842751
-  definitionId: 
+  definitionId:
   categoryId: wall
   properties: []
 --- !u!114 &1921739785
@@ -6378,7 +6765,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 545487812f5c6524db0ae1be9ce2fab1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
   descriptor:
     kind: 1
@@ -6589,7 +6976,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalLightData
   m_UsePipelineSettings: 1
   m_AdditionalLightsShadowResolutionTier: 2
@@ -6656,47 +7043,47 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8277c33751b73a14cb0b2ba9e6b8e109, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderMaterialController
   bindings:
   - faceRole: 0
-    rendererPath: 
+    rendererPath:
     materialIndex: 0
     materialId: neighbor.material.prototype
   - faceRole: 1
-    rendererPath: 
+    rendererPath:
     materialIndex: 1
     materialId: neighbor.material.prototype
   - faceRole: 2
-    rendererPath: 
+    rendererPath:
     materialIndex: 2
     materialId: neighbor.material.prototype
   - faceRole: 3
-    rendererPath: 
+    rendererPath:
     materialIndex: 3
     materialId: neighbor.material.prototype
   - faceRole: 4
-    rendererPath: 
+    rendererPath:
     materialIndex: 4
     materialId: neighbor.material.prototype
   - faceRole: 5
-    rendererPath: 
+    rendererPath:
     materialIndex: 5
     materialId: neighbor.material.prototype
   - faceRole: 6
-    rendererPath: 
+    rendererPath:
     materialIndex: 6
     materialId: neighbor.material.prototype
   - faceRole: 7
-    rendererPath: 
+    rendererPath:
     materialIndex: 7
     materialId: neighbor.material.prototype
   - faceRole: 8
-    rendererPath: 
+    rendererPath:
     materialIndex: 8
     materialId: neighbor.material.prototype
   - faceRole: 9
-    rendererPath: 
+    rendererPath:
     materialIndex: 9
     materialId: neighbor.material.prototype
   - faceRole: 3
@@ -6713,10 +7100,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 65e8e9055cc6421b87507ccbe69fa8fa
-  definitionId: 
+  definitionId:
   categoryId: floor
   properties: []
 --- !u!114 &2017992487
@@ -6729,7 +7116,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 545487812f5c6524db0ae1be9ce2fab1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
   descriptor:
     kind: 2
@@ -6880,47 +7267,47 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8277c33751b73a14cb0b2ba9e6b8e109, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderMaterialController
   bindings:
   - faceRole: 0
-    rendererPath: 
+    rendererPath:
     materialIndex: 0
     materialId: neighbor.material.prototype
   - faceRole: 1
-    rendererPath: 
+    rendererPath:
     materialIndex: 1
     materialId: neighbor.material.prototype
   - faceRole: 2
-    rendererPath: 
+    rendererPath:
     materialIndex: 2
     materialId: neighbor.material.prototype
   - faceRole: 3
-    rendererPath: 
+    rendererPath:
     materialIndex: 3
     materialId: neighbor.material.prototype
   - faceRole: 4
-    rendererPath: 
+    rendererPath:
     materialIndex: 4
     materialId: neighbor.material.prototype
   - faceRole: 5
-    rendererPath: 
+    rendererPath:
     materialIndex: 5
     materialId: neighbor.material.prototype
   - faceRole: 6
-    rendererPath: 
+    rendererPath:
     materialIndex: 6
     materialId: neighbor.material.prototype
   - faceRole: 7
-    rendererPath: 
+    rendererPath:
     materialIndex: 7
     materialId: neighbor.material.prototype
   - faceRole: 8
-    rendererPath: 
+    rendererPath:
     materialIndex: 8
     materialId: neighbor.material.prototype
   - faceRole: 9
-    rendererPath: 
+    rendererPath:
     materialIndex: 9
     materialId: neighbor.material.prototype
   - faceRole: 1
@@ -6937,10 +7324,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 4d18db41ee524a349f30028277cf749e
-  definitionId: 
+  definitionId:
   categoryId: wall
   properties: []
 --- !u!114 &2055919432
@@ -6953,7 +7340,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 545487812f5c6524db0ae1be9ce2fab1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
   descriptor:
     kind: 1
@@ -7145,12 +7532,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d41be8bd558e68d48b60c58731201865, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWallOpeningLink
   wall: {fileID: 429202016}
   profile:
     enabled: 1
-    size: {x: 1.2, y: 2.3, z: 0.6}
+    size: {x: 1.3, y: 2.8, z: 0.6}
     center: {x: 0, y: 1.1, z: 0}
     margin: 0.02
     placeInsideWallOpening: 0
@@ -7164,7 +7551,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8155c721a319d78418c48d0d9a3d987e, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireInputRelay
   onPulse:
     m_PersistentCalls:
@@ -7188,7 +7575,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6d2834eb53930484bb39749e568c6ec5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireEndpoint
   endpointId: neighbor.door.door.endpoint
   ports:
@@ -7211,7 +7598,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: 3084de8f36884090b9741c69449eb0be
   definitionId: neighbor.door.door
@@ -7248,7 +7635,7 @@ Transform:
   m_GameObject: {fileID: 2134961196}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 10.5, y: 0.1, z: 1.75}
+  m_LocalPosition: {x: 8.38, y: 0.1, z: 1.75}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -7265,47 +7652,47 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8277c33751b73a14cb0b2ba9e6b8e109, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderMaterialController
   bindings:
   - faceRole: 0
-    rendererPath: 
+    rendererPath:
     materialIndex: 0
     materialId: neighbor.material.prototype
   - faceRole: 1
-    rendererPath: 
+    rendererPath:
     materialIndex: 1
     materialId: neighbor.material.prototype
   - faceRole: 2
-    rendererPath: 
+    rendererPath:
     materialIndex: 2
     materialId: neighbor.material.prototype
   - faceRole: 3
-    rendererPath: 
+    rendererPath:
     materialIndex: 3
     materialId: neighbor.material.prototype
   - faceRole: 4
-    rendererPath: 
+    rendererPath:
     materialIndex: 4
     materialId: neighbor.material.prototype
   - faceRole: 5
-    rendererPath: 
+    rendererPath:
     materialIndex: 5
     materialId: neighbor.material.prototype
   - faceRole: 6
-    rendererPath: 
+    rendererPath:
     materialIndex: 6
     materialId: neighbor.material.prototype
   - faceRole: 7
-    rendererPath: 
+    rendererPath:
     materialIndex: 7
     materialId: neighbor.material.prototype
   - faceRole: 8
-    rendererPath: 
+    rendererPath:
     materialIndex: 8
     materialId: neighbor.material.prototype
   - faceRole: 9
-    rendererPath: 
+    rendererPath:
     materialIndex: 9
     materialId: neighbor.material.prototype
 --- !u!114 &2134961199
@@ -7318,10 +7705,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: bcafb8c847564400acbd5b1cc11e51da
-  definitionId: 
+  definitionId:
   categoryId: floor
   properties: []
 --- !u!114 &2134961200
@@ -7334,11 +7721,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 545487812f5c6524db0ae1be9ce2fab1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
   descriptor:
     kind: 2
-    size: {x: 20, y: 0.2, z: 11}
+    size: {x: 16, y: 0.4, z: 11}
     openingWidth: 1.2
     openingHeight: 2.1
     sillHeight: 0.9

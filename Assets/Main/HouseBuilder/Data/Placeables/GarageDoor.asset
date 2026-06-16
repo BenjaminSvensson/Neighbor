@@ -36,5 +36,11 @@ MonoBehaviour:
     center: {x: 0, y: 1.25, z: 0}
     margin: 0.02
     placeInsideWallOpening: 1
-  wirePorts: []
+  wirePorts:
+  - id: activate
+    displayName: Open / Toggle
+    direction: 0
+    signalKind: 0
+    maximumConnections: 0
+    visualOffset: {x: 0, y: 1.25, z: -0.2}
   tags: []

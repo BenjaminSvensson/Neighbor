@@ -19,6 +19,11 @@ namespace Neighbor.Main.HouseBuilder
         Output
     }
 
+    public interface IHouseWireSignalReceiver
+    {
+        void ReceiveHouseWireSignal(HouseSignal signal);
+    }
+
     [Serializable]
     public sealed class HouseSignal
     {

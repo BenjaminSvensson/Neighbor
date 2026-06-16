@@ -213,6 +213,27 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void Wiring_InputRelayDispatchesToSignalReceiverComponents()
+        {
+            GameObject targetObject = Track(new GameObject("Target"));
+            GameObject panelObject = Track(new GameObject("Door Panel"));
+            panelObject.transform.SetParent(targetObject.transform, false);
+            HouseWireInputRelay relay = targetObject.AddComponent<HouseWireInputRelay>();
+            HouseGarageDoorMotion motion = targetObject.AddComponent<HouseGarageDoorMotion>();
+            motion.Configure(panelObject.transform, Vector3.zero, Vector3.up, 0.01f, false);
+
+            relay.Receive(HouseSignal.Bool(true));
+
+            Assert.That(motion.IsOpen, Is.True);
+            Assert.That(panelObject.transform.localPosition.y, Is.EqualTo(1f).Within(0.001f));
+
+            relay.Receive(HouseSignal.Bool(false));
+
+            Assert.That(motion.IsOpen, Is.False);
+            Assert.That(panelObject.transform.localPosition.y, Is.EqualTo(0f).Within(0.001f));
+        }
+
+        [Test]
         public void SaveLoad_RoundTripsGeometryOpeningsMaterialsAndConnections()
         {
             GameObject worldObject = Track(new GameObject("World"));
@@ -858,8 +879,21 @@ namespace Neighbor.Main.Tests
             Assert.That(garageDoor.WallOpening.PlaceInsideWallOpening, Is.True);
             BoxCollider collider = garageDoor.Prefab.GetComponent<BoxCollider>();
             Assert.That(collider, Is.Not.Null);
+            Assert.That(collider.isTrigger, Is.True);
             Assert.That(collider.size.x, Is.EqualTo(3.2f).Within(0.001f));
             Assert.That(collider.size.y, Is.EqualTo(2.5f).Within(0.001f));
+            Assert.That(garageDoor.Prefab.GetComponent<HouseGarageDoorMotion>(), Is.Not.Null);
+
+            bool hasActivateInput = false;
+            for (int i = 0; i < garageDoor.WirePorts.Count; i++)
+            {
+                HouseWirePortTemplate port = garageDoor.WirePorts[i];
+                hasActivateInput |= port.Id == "activate"
+                    && port.Direction == HouseWirePortDirection.Input
+                    && port.SignalKind == HouseSignalKind.Any;
+            }
+
+            Assert.That(hasActivateInput, Is.True);
         }
 
         [Test]
@@ -1047,5 +1081,6 @@ namespace Neighbor.Main.Tests
             created.Add(value);
             return value;
         }
+
     }
 }

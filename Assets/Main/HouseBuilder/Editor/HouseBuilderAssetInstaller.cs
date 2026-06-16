@@ -11,7 +11,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
         public const string RootPath = "Assets/Main/HouseBuilder";
         public const string DataPath = RootPath + "/Data";
         public const string DefaultCatalogPath = DataPath + "/DefaultHouseBuilderCatalog.asset";
-        private const int InstallerVersion = 18;
+        private const int InstallerVersion = 19;
         private const string InstallerVersionKey = "Neighbor.HouseBuilder.DefaultAssetsVersion";
         private const string CategoryPath = DataPath + "/Categories";
         private const string DefinitionPath = DataPath + "/Placeables";
@@ -151,6 +151,7 @@ namespace Neighbor.Main.HouseBuilder.Editor
             ConfigureWirePorts("CeilingLight", new WirePortSetup("power", "Power", HouseWirePortDirection.Input, HouseSignalKind.Bool, Vector3.down * 0.1f));
             ConfigureWirePorts("Door", new WirePortSetup("activate", "Activate", HouseWirePortDirection.Input, HouseSignalKind.Pulse, Vector3.up));
             ConfigureWirePorts("LockedDoor", new WirePortSetup("activate", "Activate", HouseWirePortDirection.Input, HouseSignalKind.Pulse, Vector3.up));
+            ConfigureWirePorts("GarageDoor", new WirePortSetup("activate", "Open / Toggle", HouseWirePortDirection.Input, HouseSignalKind.Any, new Vector3(0f, 1.25f, -0.2f)));
             ConfigureWirePorts("Doorbell", new WirePortSetup("pressed", "Pressed", HouseWirePortDirection.Output, HouseSignalKind.Pulse, Vector3.up * 0.15f));
             ConfigureWirePorts("BoxingGloveTrap", new WirePortSetup("trigger", "Trigger", HouseWirePortDirection.Input, HouseSignalKind.Pulse, Vector3.up * 0.25f));
             ConfigureWirePorts("SawBladeTrap", new WirePortSetup("active", "Active", HouseWirePortDirection.Input, HouseSignalKind.Bool, Vector3.up * 0.25f));
@@ -472,17 +473,40 @@ namespace Neighbor.Main.HouseBuilder.Editor
         {
             string path = $"{StructurePrefabPath}/GarageDoor.prefab";
             GameObject existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-            if (existing != null)
+            if (existing == null)
             {
-                return existing;
+                GameObject root = new("GarageDoor");
+                PrefabUtility.SaveAsPrefabAsset(root, path);
+                Object.DestroyImmediate(root);
             }
 
-            GameObject root = new("GarageDoor");
-            BoxCollider openingCollider = root.AddComponent<BoxCollider>();
+            GameObject prefabContents = PrefabUtility.LoadPrefabContents(path);
+            try
+            {
+                ConfigureGarageDoorPrefabContents(prefabContents, material);
+                PrefabUtility.SaveAsPrefabAsset(prefabContents, path);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(prefabContents);
+            }
+
+            return AssetDatabase.LoadAssetAtPath<GameObject>(path);
+        }
+
+        private static void ConfigureGarageDoorPrefabContents(GameObject root, Material material)
+        {
+            root.name = "GarageDoor";
+            root.transform.localPosition = Vector3.zero;
+            root.transform.localRotation = Quaternion.identity;
+            root.transform.localScale = Vector3.one;
+
+            BoxCollider openingCollider = root.GetComponent<BoxCollider>() ?? root.AddComponent<BoxCollider>();
             openingCollider.center = new Vector3(0f, 1.25f, 0f);
             openingCollider.size = new Vector3(3.2f, 2.5f, 0.25f);
+            openingCollider.isTrigger = true;
 
-            CreateGarageDoorPart(root.transform, "Door Panel", new Vector3(0f, 1.25f, 0f), new Vector3(3f, 2.3f, 0.12f), material);
+            Transform panel = CreateGarageDoorPart(root.transform, "Door Panel", new Vector3(0f, 1.25f, 0f), new Vector3(3f, 2.3f, 0.12f), material, true);
             CreateGarageDoorPart(root.transform, "Left Frame", new Vector3(-1.575f, 1.25f, 0f), new Vector3(0.15f, 2.5f, 0.22f), material);
             CreateGarageDoorPart(root.transform, "Right Frame", new Vector3(1.575f, 1.25f, 0f), new Vector3(0.15f, 2.5f, 0.22f), material);
             CreateGarageDoorPart(root.transform, "Top Frame", new Vector3(0f, 2.425f, 0f), new Vector3(3f, 0.15f, 0.22f), material);
@@ -491,23 +515,52 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 CreateGarageDoorPart(root.transform, $"Panel Seam {i}", new Vector3(0f, i * 0.48f, -0.07f), new Vector3(3f, 0.035f, 0.025f), material);
             }
 
-            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
-            Object.DestroyImmediate(root);
-            return prefab;
+            HouseGarageDoorMotion motion = root.GetComponent<HouseGarageDoorMotion>() ?? root.AddComponent<HouseGarageDoorMotion>();
+            motion.Configure(panel, new Vector3(0f, 1.25f, 0f), new Vector3(0f, 2.35f, 0f), 0.8f, false);
+
+            if (root.GetComponent<HouseWireInputRelay>() == null)
+            {
+                root.AddComponent<HouseWireInputRelay>();
+            }
         }
 
-        private static void CreateGarageDoorPart(Transform parent, string name, Vector3 localPosition, Vector3 localScale, Material material)
+        private static Transform CreateGarageDoorPart(
+            Transform parent,
+            string name,
+            Vector3 localPosition,
+            Vector3 localScale,
+            Material material,
+            bool keepCollider = false)
         {
-            GameObject part = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Transform existing = parent.Find(name);
+            GameObject part = existing != null ? existing.gameObject : GameObject.CreatePrimitive(PrimitiveType.Cube);
             part.name = name;
             part.transform.SetParent(parent, false);
             part.transform.localPosition = localPosition;
+            part.transform.localRotation = Quaternion.identity;
             part.transform.localScale = localScale;
-            Object.DestroyImmediate(part.GetComponent<Collider>());
+            if (keepCollider)
+            {
+                if (part.GetComponent<BoxCollider>() == null)
+                {
+                    part.AddComponent<BoxCollider>();
+                }
+            }
+            else
+            {
+                Collider collider = part.GetComponent<Collider>();
+                if (collider != null)
+                {
+                    Object.DestroyImmediate(collider);
+                }
+            }
+
             if (material != null)
             {
                 part.GetComponent<MeshRenderer>().sharedMaterial = material;
             }
+
+            return part.transform;
         }
 
         private static GameObject CreateStructurePrefab(string name, HouseGeometryKind kind, Vector3 size, Material material)

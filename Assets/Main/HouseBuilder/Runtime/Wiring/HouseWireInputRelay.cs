@@ -33,6 +33,26 @@ namespace Neighbor.Main.HouseBuilder
                     onString.Invoke(signal.StringValue);
                     break;
             }
+
+            NotifySignalReceivers(signal);
+        }
+
+        private void NotifySignalReceivers(HouseSignal signal)
+        {
+            MonoBehaviour[] behaviours = GetComponents<MonoBehaviour>();
+            for (int i = 0; i < behaviours.Length; i++)
+            {
+                MonoBehaviour behaviour = behaviours[i];
+                if (behaviour == null || ReferenceEquals(behaviour, this) || !behaviour.isActiveAndEnabled)
+                {
+                    continue;
+                }
+
+                if (behaviour is IHouseWireSignalReceiver receiver)
+                {
+                    receiver.ReceiveHouseWireSignal(signal);
+                }
+            }
         }
     }
 }
