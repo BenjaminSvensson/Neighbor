@@ -777,7 +777,8 @@ namespace Neighbor.Main.HouseBuilder.Editor
                 placingDefinition.Placement,
                 placementSettings,
                 lastPlacement,
-                GetPlacementValidationIgnoreRoot(lastSurfaceCollider));
+                GetPlacementValidationIgnoreRoot(lastSurfaceCollider),
+                ShouldSkipCollisionValidationForWallOpening(lastSurfaceCollider));
 
             ghostObject.transform.SetPositionAndRotation(lastPlacement.Position, lastPlacement.Rotation);
             ghost.SetValid(lastValidation.IsValid);
@@ -817,6 +818,15 @@ namespace Neighbor.Main.HouseBuilder.Editor
             }
 
             return surfaceCollider.transform;
+        }
+
+        private bool ShouldSkipCollisionValidationForWallOpening(Collider surfaceCollider)
+        {
+            return placingDefinition?.WallOpening != null
+                && placingDefinition.WallOpening.Enabled
+                && surfaceCollider != null
+                && surfaceCollider.GetComponentInParent<HouseGeometryObject>() is { } wall
+                && wall.Descriptor.Kind == HouseGeometryKind.Wall;
         }
 
         private void HandleGeometryDrawing(SceneView sceneView)

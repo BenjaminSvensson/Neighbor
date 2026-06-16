@@ -355,7 +355,8 @@ namespace Neighbor.Main.HouseBuilder
             HousePlacementProfile profile,
             HouseBuilderPlacementSettings settings,
             HousePlacementResult placement,
-            Transform ignoreRoot = null)
+            Transform ignoreRoot = null,
+            bool skipCollisionValidation = false)
         {
             profile ??= new HousePlacementProfile();
             settings ??= new HouseBuilderPlacementSettings();
@@ -370,7 +371,7 @@ namespace Neighbor.Main.HouseBuilder
                 return new HousePlacementValidationResult(false, $"Cannot place on {placement.SurfaceType} surfaces.");
             }
 
-            if (!profile.ValidateCollisions)
+            if (skipCollisionValidation || !profile.ValidateCollisions)
             {
                 return new HousePlacementValidationResult(true, "Valid");
             }
