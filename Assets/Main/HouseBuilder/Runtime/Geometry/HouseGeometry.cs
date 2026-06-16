@@ -395,11 +395,11 @@ namespace Neighbor.Main.HouseBuilder
                 new(-h.x, h.y, h.z), new(h.x, h.y, h.z)
             };
 
-            builder.AddQuad(vertices[3], vertices[2], vertices[1], vertices[0], HouseFaceRole.Underside);
-            builder.AddQuad(vertices[0], vertices[1], vertices[5], vertices[4], HouseFaceRole.Top);
-            builder.AddQuad(vertices[3], vertices[4], vertices[5], vertices[2], HouseFaceRole.Front);
-            builder.AddTriangle(vertices[0], vertices[4], vertices[3], HouseFaceRole.Left);
-            builder.AddTriangle(vertices[1], vertices[2], vertices[5], HouseFaceRole.Right);
+            builder.AddQuad(vertices[0], vertices[1], vertices[2], vertices[3], HouseFaceRole.Underside);
+            builder.AddQuad(vertices[0], vertices[4], vertices[5], vertices[1], HouseFaceRole.Top);
+            builder.AddQuad(vertices[3], vertices[2], vertices[5], vertices[4], HouseFaceRole.Front);
+            builder.AddTriangle(vertices[0], vertices[3], vertices[4], HouseFaceRole.Left);
+            builder.AddTriangle(vertices[1], vertices[5], vertices[2], HouseFaceRole.Right);
         }
 
         private static FaceRoles RolesFor(HouseGeometryKind kind)

@@ -397,6 +397,19 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void Geometry_RampFacesWindOutward()
+        {
+            Mesh mesh = Track(HouseGeometryFactory.BuildMesh(new HouseGeometryDescriptor(HouseGeometryKind.Ramp, new Vector3(2f, 1f, 4f))));
+
+            Assert.That(AverageSubmeshNormal(mesh, HouseFaceRole.Underside).y, Is.LessThan(-0.99f));
+            Assert.That(AverageSubmeshNormal(mesh, HouseFaceRole.Top).y, Is.GreaterThan(0.5f));
+            Assert.That(AverageSubmeshNormal(mesh, HouseFaceRole.Top).z, Is.LessThan(-0.1f));
+            Assert.That(AverageSubmeshNormal(mesh, HouseFaceRole.Front).z, Is.GreaterThan(0.99f));
+            Assert.That(AverageSubmeshNormal(mesh, HouseFaceRole.Left).x, Is.LessThan(-0.99f));
+            Assert.That(AverageSubmeshNormal(mesh, HouseFaceRole.Right).x, Is.GreaterThan(0.99f));
+        }
+
+        [Test]
         public void Geometry_ResizePreservesLinkedWallOpenings()
         {
             GameObject wallObject = Track(HouseGeometryFactory.Create(new HouseGeometryDescriptor(HouseGeometryKind.Wall, new Vector3(4f, 3f, 0.25f))));
@@ -1091,6 +1104,22 @@ namespace Neighbor.Main.Tests
         {
             created.Add(value);
             return value;
+        }
+
+        private static Vector3 AverageSubmeshNormal(Mesh mesh, HouseFaceRole role)
+        {
+            Vector3[] vertices = mesh.vertices;
+            int[] triangles = mesh.GetTriangles((int)role);
+            Vector3 sum = Vector3.zero;
+            for (int i = 0; i + 2 < triangles.Length; i += 3)
+            {
+                Vector3 a = vertices[triangles[i]];
+                Vector3 b = vertices[triangles[i + 1]];
+                Vector3 c = vertices[triangles[i + 2]];
+                sum += Vector3.Cross(b - a, c - a).normalized;
+            }
+
+            return sum.normalized;
         }
 
     }

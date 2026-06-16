@@ -383,7 +383,7 @@ Transform:
   m_GameObject: {fileID: 75432063}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: -0.1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -818,6 +818,10 @@ MonoBehaviour:
     rendererPath:
     materialIndex: 9
     materialId: neighbor.material.prototype
+  - faceRole: 4
+    rendererPath: Physical Geometry
+    materialIndex: 4
+    materialId: neighbor.material.wallpaper001a
 --- !u!114 &148610731
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1029,7 +1033,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
-  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 7f31df81ab797c54eac98b5f19702c3c, type: 2}
   - {fileID: 2100000, guid: f1882fe7fe1efda4d97b6cb3008a6c5e, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
@@ -1416,7 +1420,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
-  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 7f31df81ab797c54eac98b5f19702c3c, type: 2}
   - {fileID: 2100000, guid: f1882fe7fe1efda4d97b6cb3008a6c5e, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
@@ -1539,7 +1543,7 @@ MeshRenderer:
   m_Materials:
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
-  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 7f31df81ab797c54eac98b5f19702c3c, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
@@ -1974,6 +1978,18 @@ MonoBehaviour:
     rendererPath:
     materialIndex: 9
     materialId: neighbor.material.prototype
+  - faceRole: 2
+    rendererPath: Physical Geometry
+    materialIndex: 2
+    materialId: neighbor.material.wallpaper001a
+  - faceRole: 5
+    rendererPath: Physical Geometry
+    materialIndex: 5
+    materialId: neighbor.material.wallpaper001a
+  - faceRole: 6
+    rendererPath: Physical Geometry
+    materialIndex: 6
+    materialId: neighbor.material.wallpaper001a
 --- !u!114 &429202015
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2665,6 +2681,10 @@ MonoBehaviour:
     rendererPath: Physical Geometry
     materialIndex: 5
     materialId: neighbor.material.brick
+  - faceRole: 1
+    rendererPath: Physical Geometry
+    materialIndex: 1
+    materialId: neighbor.material.wallpaper001a
 --- !u!114 &580664658
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3259,6 +3279,10 @@ MonoBehaviour:
     rendererPath: Physical Geometry
     materialIndex: 2
     materialId: neighbor.material.brick
+  - faceRole: 1
+    rendererPath: Physical Geometry
+    materialIndex: 1
+    materialId: neighbor.material.wallpaper001a
 --- !u!114 &781703370
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4804,11 +4828,11 @@ MeshRenderer:
   m_Materials:
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 7f31df81ab797c54eac98b5f19702c3c, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
-  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
-  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
-  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 7f31df81ab797c54eac98b5f19702c3c, type: 2}
+  - {fileID: 2100000, guid: 7f31df81ab797c54eac98b5f19702c3c, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
@@ -6188,7 +6212,7 @@ Transform:
   m_GameObject: {fileID: 1682556663}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: -0.1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6245,7 +6269,7 @@ MeshRenderer:
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
-  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 7f31df81ab797c54eac98b5f19702c3c, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
@@ -7425,6 +7449,10 @@ MonoBehaviour:
     rendererPath:
     materialIndex: 9
     materialId: neighbor.material.prototype
+  - faceRole: 2
+    rendererPath: Physical Geometry
+    materialIndex: 2
+    materialId: neighbor.material.wallpaper001a
 --- !u!114 &1921739784
 MonoBehaviour:
   m_ObjectHideFlags: 0
