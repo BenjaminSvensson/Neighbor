@@ -255,18 +255,18 @@ MonoBehaviour:
       uv: []
       submeshes: []
     wallOpenings:
+    - ownerObjectId: f552a8dc7ca34a60acd4961aad510dff
+      center: {x: -5.7390003, y: -0.44500005}
+      size: {x: 1.3399992, y: 2.8399997}
+    - ownerObjectId: 56f7d598921044a78e9a1d57c1f5a2df
+      center: {x: 6.8199997, y: 0.57500005}
+      size: {x: 1.3871794, y: 1.54}
     - ownerObjectId: f703103698664a449e9f264cb186fdf5
       center: {x: 3.4499998, y: 0.0625}
       size: {x: 4.6799994, y: 3.5}
     - ownerObjectId: 628d36ebb83e42008b886997977f7f64
-      center: {x: -1.8700001, y: 0.0625}
+      center: {x: -2.2100003, y: 0.0625}
       size: {x: 4.68, y: 3.5}
-    - ownerObjectId: f552a8dc7ca34a60acd4961aad510dff
-      center: {x: -5.529777, y: -0.44500005}
-      size: {x: 1.3400002, y: 2.8399997}
-    - ownerObjectId: 56f7d598921044a78e9a1d57c1f5a2df
-      center: {x: 6.8199997, y: 0.57500005}
-      size: {x: 1.3871794, y: 1.54}
 --- !u!64 &17505825
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -2252,7 +2252,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 3.834
+      value: 3.545
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: d62ed5929af84a1281e1d2bb630e3967, type: 3}
       propertyPath: m_LocalPosition.y
@@ -4912,7 +4912,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7e0c25c58da8b8e4fb8702465d2739fa, type: 3}
   m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireGraph
-  connections: []
+  connections:
+  - id: 32097740875f4f2b9957716a47fc1fdc
+    outputObjectId: 40afb0f50b624f74819bb6952b467fb2
+    outputEndpointId: neighbor.wiring.lightswitch.endpoint
+    outputPortId: state
+    inputObjectId: f703103698664a449e9f264cb186fdf5
+    inputEndpointId: neighbor.door.garagedoor.endpoint
+    inputPortId: activate
 --- !u!4 &1221629527
 Transform:
   m_ObjectHideFlags: 0
@@ -5789,7 +5796,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: b66dac0cfa5cf484bab2da51f0cd517a, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 2.850223
+      value: 2.641
       objectReference: {fileID: 0}
     - target: {fileID: 100001, guid: b66dac0cfa5cf484bab2da51f0cd517a, type: 3}
       propertyPath: m_LocalPosition.y
@@ -6792,7 +6799,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3631413973671460966, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 6.51
+      value: 6.17
       objectReference: {fileID: 0}
     - target: {fileID: 3631413973671460966, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
       propertyPath: m_LocalPosition.y
@@ -6840,6 +6847,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 2304169882513668701, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1745460923}
+    - targetCorrespondingSourceObject: {fileID: 2304169882513668701, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1745460928}
   m_SourcePrefab: {fileID: 100100000, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
 --- !u!4 &1745460921 stripped
 Transform:
@@ -6886,6 +6896,20 @@ MonoBehaviour:
   definitionId: neighbor.door.garagedoor
   categoryId: door
   properties: []
+--- !u!114 &1745460928
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1745460922}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d2834eb53930484bb39749e568c6ec5, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireEndpoint
+  endpointId: 62aea6d0c9c34a5a91ab8c1174fbe82e
+  ports: []
 --- !u!1001 &1814965483
 PrefabInstance:
   m_ObjectHideFlags: 0
