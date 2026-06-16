@@ -4919,15 +4919,19 @@ MonoBehaviour:
   - faceRole: 3
     rendererPath: Physical Geometry
     materialIndex: 3
-    materialId: neighbor.material.marble
+    materialId: neighbor.material.imported.1985a76b6ca69e34295791b1836d4198
   - faceRole: 6
     rendererPath: Physical Geometry
     materialIndex: 6
-    materialId: neighbor.material.marble
+    materialId: neighbor.material.imported.ef2dba3d09c9a0d4fb49571e10a87231
   - faceRole: 8
     rendererPath: Physical Geometry
     materialIndex: 8
-    materialId: neighbor.material.marble
+    materialId: neighbor.material.imported.1985a76b6ca69e34295791b1836d4198
+  - faceRole: 7
+    rendererPath: Physical Geometry
+    materialIndex: 7
+    materialId: neighbor.material.imported.ef2dba3d09c9a0d4fb49571e10a87231
 --- !u!114 &532338407
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10082,12 +10086,12 @@ MeshRenderer:
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
-  - {fileID: 2100000, guid: d640834a38e7c8444b9e1d4f6cf7fd12, type: 2}
+  - {fileID: 2100000, guid: 1985a76b6ca69e34295791b1836d4198, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
-  - {fileID: 2100000, guid: d640834a38e7c8444b9e1d4f6cf7fd12, type: 2}
-  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
-  - {fileID: 2100000, guid: d640834a38e7c8444b9e1d4f6cf7fd12, type: 2}
+  - {fileID: 2100000, guid: ef2dba3d09c9a0d4fb49571e10a87231, type: 2}
+  - {fileID: 2100000, guid: ef2dba3d09c9a0d4fb49571e10a87231, type: 2}
+  - {fileID: 2100000, guid: 1985a76b6ca69e34295791b1836d4198, type: 2}
   - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
