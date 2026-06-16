@@ -1,4 +1,5 @@
 using System.Collections;
+using Neighbor.Main.Features.Interaction;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -87,6 +88,8 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0.01f)] private float ledgeClimbDuration = 0.3f;
         [SerializeField, Min(0f)] private float postClimbNavMeshVerticalSnapTolerance = 0.35f;
         [SerializeField] private LayerMask climbMask = ~0;
+        [SerializeField] private LayerMask traversalGlassBreakMask = ~0;
+        [SerializeField, Min(0.01f)] private float traversalGlassBreakRadius = 0.35f;
 
         [Header("Chase Climb Assist")]
         [SerializeField] private bool enableTargetClimbAssist = true;
@@ -126,6 +129,7 @@ namespace Neighbor.Main.Features.Neighbor
         private float nextDropRecoveryTime;
         private float offMeshChaseUntilTime;
         private readonly RaycastHit[] climbProbeHits = new RaycastHit[10];
+        private readonly RaycastHit[] traversalGlassHits = new RaycastHit[12];
         private readonly RaycastHit[] dynamicObstacleHits = new RaycastHit[12];
         private readonly Collider[] recoveryOverlapHits = new Collider[16];
         private readonly Collider[] lowClearanceOverlapHits = new Collider[16];
@@ -153,6 +157,7 @@ namespace Neighbor.Main.Features.Neighbor
         private float pendingKnockbackDistance;
         private float pendingKnockbackDuration;
         private CharacterController characterController;
+        private NeighborBrain brain;
         private MoveMode currentMoveMode = MoveMode.Walk;
         private bool isCrouchingForClearance;
         private float standingAgentHeight;
@@ -194,6 +199,7 @@ namespace Neighbor.Main.Features.Neighbor
             recoveryPath = new NavMeshPath();
             agent = GetComponent<NavMeshAgent>();
             characterController = GetComponent<CharacterController>();
+            brain = GetComponent<NeighborBrain>();
             ownColliders = GetComponentsInChildren<Collider>(true);
             CaptureStandingDimensions();
             ConfigureAgent();
@@ -1675,6 +1681,7 @@ namespace Neighbor.Main.Features.Neighbor
 
             while (timer < offMeshTraverseDuration)
             {
+                Vector3 previousPosition = transform.position;
                 timer += Time.deltaTime;
                 float t = Mathf.Clamp01(timer / offMeshTraverseDuration);
                 if (t >= traversalStartPortion)
@@ -1683,11 +1690,14 @@ namespace Neighbor.Main.Features.Neighbor
                 }
 
                 float arc = Mathf.Sin(t * Mathf.PI) * offMeshJumpHeight;
-                transform.position = Vector3.Lerp(start, end, t) + Vector3.up * arc;
+                Vector3 nextPosition = Vector3.Lerp(start, end, t) + Vector3.up * arc;
+                BreakGlassAlongTraversal(previousPosition, nextPosition);
+                transform.position = nextPosition;
                 FaceTowards(end, 16f);
                 yield return null;
             }
 
+            BreakGlassAlongTraversal(transform.position, end);
             transform.position = end;
             agent.updatePosition = true;
             agent.updateRotation = true;
@@ -1974,18 +1984,22 @@ namespace Neighbor.Main.Features.Neighbor
             float moveDuration = Mathf.Max(0.01f, duration);
             while (timer < moveDuration)
             {
+                Vector3 previousPosition = transform.position;
                 timer += Time.deltaTime;
                 float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(timer / moveDuration));
                 float arc = Mathf.Sin(t * Mathf.PI) * arcHeight;
                 Vector3 currentTarget = climbAnchor != null
                     ? climbAnchor.TransformPoint(localTarget)
                     : target;
-                transform.position = Vector3.Lerp(start, currentTarget, t) + Vector3.up * arc;
+                Vector3 nextPosition = Vector3.Lerp(start, currentTarget, t) + Vector3.up * arc;
+                BreakGlassAlongTraversal(previousPosition, nextPosition);
+                transform.position = nextPosition;
                 FaceTowards(currentTarget, 16f);
                 yield return null;
             }
 
             target = climbAnchor != null ? climbAnchor.TransformPoint(localTarget) : target;
+            BreakGlassAlongTraversal(transform.position, target);
             transform.position = target;
 
             bool warpedToNavMesh = false;
@@ -2033,6 +2047,7 @@ namespace Neighbor.Main.Features.Neighbor
             float moveDuration = Mathf.Max(0.01f, duration);
             while (timer < moveDuration)
             {
+                Vector3 previousPosition = transform.position;
                 timer += Time.deltaTime;
                 float t = Mathf.Clamp01(timer / moveDuration);
                 if (t >= traversalStartPortion)
@@ -2041,11 +2056,14 @@ namespace Neighbor.Main.Features.Neighbor
                 }
 
                 float arc = Mathf.Sin(t * Mathf.PI) * arcHeight;
-                transform.position = Vector3.Lerp(start, target, t) + Vector3.up * arc;
+                Vector3 nextPosition = Vector3.Lerp(start, target, t) + Vector3.up * arc;
+                BreakGlassAlongTraversal(previousPosition, nextPosition);
+                transform.position = nextPosition;
                 FaceTowards(target, 18f);
                 yield return null;
             }
 
+            BreakGlassAlongTraversal(transform.position, target);
             transform.position = target;
             if (NavMesh.SamplePosition(target, out NavMeshHit navMeshHit, startNavMeshSnapRadius, agent.areaMask))
             {
@@ -2064,6 +2082,39 @@ namespace Neighbor.Main.Features.Neighbor
             yield return PlayLandingReaction();
             ResumeNavigationGoalAfterTraversal();
             FinishTraversal();
+        }
+
+        private void BreakGlassAlongTraversal(Vector3 start, Vector3 end)
+        {
+            Vector3 movement = end - start;
+            float distance = movement.magnitude;
+            if (distance <= 0.001f || traversalGlassBreakRadius <= 0f)
+            {
+                return;
+            }
+
+            int hitCount = Physics.SphereCastNonAlloc(
+                start,
+                traversalGlassBreakRadius,
+                movement / distance,
+                traversalGlassHits,
+                distance,
+                traversalGlassBreakMask,
+                QueryTriggerInteraction.Collide);
+            Vector3 incomingVelocity = movement / Mathf.Max(Time.deltaTime, 0.001f);
+            for (int i = 0; i < hitCount; i++)
+            {
+                RaycastHit hit = traversalGlassHits[i];
+                if (hit.collider == null
+                    || hit.transform.IsChildOf(transform)
+                    || transform.IsChildOf(hit.transform))
+                {
+                    continue;
+                }
+
+                GlassShatter glass = hit.collider.GetComponentInParent<GlassShatter>();
+                glass?.ShatterFromNeighbor(hit.point, incomingVelocity, brain);
+            }
         }
 
         private void ResumeNavigationGoalAfterTraversal()

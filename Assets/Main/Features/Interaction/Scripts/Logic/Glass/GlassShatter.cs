@@ -77,10 +77,20 @@ namespace Neighbor.Main.Features.Interaction
             Shatter(contact.point, collision.relativeVelocity);
         }
 
-        private void Shatter(Vector3 origin, Vector3 incomingVelocity)
+        public void ShatterFromNeighbor(Vector3 origin, Vector3 incomingVelocity, NeighborBrain instigator)
         {
+            Shatter(origin, incomingVelocity, instigator != null ? instigator.gameObject : null);
+        }
+
+        private void Shatter(Vector3 origin, Vector3 incomingVelocity, GameObject instigator = null)
+        {
+            if (isShattered)
+            {
+                return;
+            }
+
             isShattered = true;
-            NeighborEnvironmentalAwareness.Report(origin, 0.8f, gameObject);
+            NeighborEnvironmentalAwareness.Report(origin, 0.8f, instigator != null ? instigator : gameObject);
 
             if (intactVisualRoot != null)
             {
@@ -97,7 +107,7 @@ namespace Neighbor.Main.Features.Interaction
 
             ReleaseShards(origin, incomingVelocity);
             PlayShatterAudio(origin);
-            SpawnNoiseEvent(origin);
+            SpawnNoiseEvent(origin, instigator);
         }
 
         private void ReleaseShards(Vector3 origin, Vector3 incomingVelocity)
@@ -201,7 +211,7 @@ namespace Neighbor.Main.Features.Interaction
             return clip;
         }
 
-        private void SpawnNoiseEvent(Vector3 origin)
+        private void SpawnNoiseEvent(Vector3 origin, GameObject instigator)
         {
             if (hearingRadius <= 0f || loudness <= 0f)
             {
@@ -220,7 +230,7 @@ namespace Neighbor.Main.Features.Interaction
             noiseBody.useGravity = false;
 
             NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
-            noiseEvent.Initialize(origin, hearingRadius, loudness, gameObject, noiseLifetime, alertUrgency);
+            noiseEvent.Initialize(origin, hearingRadius, loudness, gameObject, noiseLifetime, alertUrgency, instigator);
         }
 
         private void OnValidate()
