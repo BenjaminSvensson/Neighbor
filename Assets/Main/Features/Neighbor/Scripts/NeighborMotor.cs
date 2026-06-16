@@ -34,6 +34,10 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float destinationSampleRadius = 1.5f;
         [SerializeField, Min(0f)] private float startNavMeshSnapRadius = 3f;
 
+        [Header("Chase Pursuit")]
+        [SerializeField, Min(0f)] private float chaseStoppingDistance = 0.08f;
+        [SerializeField, Min(1f)] private float chaseAccelerationMultiplier = 1.6f;
+
         [Header("Low Clearance Crouching")]
         [SerializeField] private bool enableLowClearanceCrouching = true;
         [SerializeField] private LayerMask lowClearanceMask = ~0;
@@ -138,6 +142,7 @@ namespace Neighbor.Main.Features.Neighbor
         private NavMeshPath recoveryPath;
         private bool isAvoidingDynamicObstacle;
         private bool isPaused;
+        private bool chasePursuitActive;
         private Vector3 dynamicObstacleDetour;
         private float dynamicObstacleDetourUntilTime;
         private float nextDynamicObstacleProbeTime;
@@ -265,6 +270,17 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            ApplyMoveSpeed();
+        }
+
+        public void SetChasePursuitActive(bool active)
+        {
+            if (chasePursuitActive == active)
+            {
+                return;
+            }
+
+            chasePursuitActive = active;
             ApplyMoveSpeed();
         }
 
@@ -974,10 +990,7 @@ namespace Neighbor.Main.Features.Neighbor
         private void ConfigureAgent()
         {
             ApplyMoveSpeed();
-            agent.acceleration = acceleration;
             agent.angularSpeed = angularSpeed;
-            agent.stoppingDistance = stoppingDistance;
-            agent.autoBraking = true;
             agent.autoRepath = true;
             agent.autoTraverseOffMeshLink = false;
         }
@@ -1136,6 +1149,13 @@ namespace Neighbor.Main.Features.Neighbor
             if (agent != null)
             {
                 agent.speed = GetMoveSpeed(currentMoveMode);
+                agent.acceleration = chasePursuitActive
+                    ? acceleration * chaseAccelerationMultiplier
+                    : acceleration;
+                agent.stoppingDistance = chasePursuitActive
+                    ? chaseStoppingDistance
+                    : stoppingDistance;
+                agent.autoBraking = !chasePursuitActive;
             }
         }
 

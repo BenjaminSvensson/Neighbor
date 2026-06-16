@@ -1725,6 +1725,7 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             currentState = state;
+            motor?.SetChasePursuitActive(state == BehaviorState.Chase);
             if (state == BehaviorState.Chase)
             {
                 AdaptiveSecurityDirector.ReportChaseStarted();
