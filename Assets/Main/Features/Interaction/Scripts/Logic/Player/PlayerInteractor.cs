@@ -1554,6 +1554,7 @@ namespace Neighbor.Main.Features.Interaction
                     || blocker.isTrigger
                     || blockerHit.distance >= candidateDistance - blockerDistanceTolerance
                     || IsPlayerCollider(blocker)
+                    || AllowsSecurityCameraWallPickupThroughBlocker(blocker, candidateDistance - blockerHit.distance, candidateInteractable)
                     || BelongsToCandidate(blocker, candidateInteractable))
                 {
                     continue;
@@ -1576,6 +1577,26 @@ namespace Neighbor.Main.Features.Interaction
             return collider.transform == candidateTransform
                 || collider.transform.IsChildOf(candidateTransform)
                 || candidateTransform.IsChildOf(collider.transform);
+        }
+
+        private static bool AllowsSecurityCameraWallPickupThroughBlocker(
+            Collider blocker,
+            float blockerLeadDistance,
+            object candidateInteractable)
+        {
+            if (candidateInteractable is not Component candidateComponent)
+            {
+                return false;
+            }
+
+            Pickupable pickupable = candidateComponent as Pickupable
+                ?? candidateComponent.GetComponentInParent<Pickupable>()
+                ?? candidateComponent.GetComponentInChildren<Pickupable>();
+            SecurityCamera securityCamera = pickupable != null
+                ? pickupable.GetComponentInChildren<SecurityCamera>()
+                : candidateComponent.GetComponentInParent<SecurityCamera>() ?? candidateComponent.GetComponentInChildren<SecurityCamera>();
+
+            return securityCamera != null && securityCamera.ShouldAllowPickupThroughBlocker(blocker, blockerLeadDistance);
         }
 
         private static float GetViewAlignment(Ray ray, RaycastHit hit)

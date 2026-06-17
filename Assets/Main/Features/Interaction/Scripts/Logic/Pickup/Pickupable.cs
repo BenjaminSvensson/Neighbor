@@ -22,7 +22,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private bool disableCollidersWhileHeld = true;
         [SerializeField, Min(0f)] private float supportWakePadding = 0.12f;
         [SerializeField, Min(0f)] private float postThrowPlayerCollisionIgnoreTime = 0.35f;
-        [SerializeField, Min(0f)] private float recentThrowImpactWindow = 2f;
+        [SerializeField, Min(0f)] private float recentThrowImpactWindow = 5f;
 
         [Header("Pickup Audio")]
         [SerializeField] private AudioClip[] pickupClips;

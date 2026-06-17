@@ -7,7 +7,7 @@ namespace Neighbor.Main.Features.Interaction
 {
     [RequireComponent(typeof(Rigidbody))]
     [RequireComponent(typeof(Pickupable))]
-    public sealed class SecurityCamera : MonoBehaviour, IPrimaryUseInteractable, IPickupLifecycleReceiver
+    public sealed class SecurityCamera : MonoBehaviour, IPrimaryUseInteractable, IPickupLifecycleReceiver, IPhysicsImpactReceiver
     {
         private const int MaximumNeighborPlacedCameras = 5;
         private static readonly HashSet<SecurityCamera> NeighborPlacedCameras = new();
@@ -16,6 +16,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0.1f)] private float attachRange = 3.2f;
         [SerializeField, Min(0f)] private float wallOffset = 0.08f;
         [SerializeField, Range(0f, 1f)] private float maximumWallUpDot = 0.35f;
+        [SerializeField, Min(0f)] private float wallPickupBlockerBypassDistance = 0.75f;
         [SerializeField] private LayerMask attachMask = ~0;
 
         [Header("Vision")]
@@ -83,6 +84,7 @@ namespace Neighbor.Main.Features.Interaction
 
         public bool IsBlinded => Time.time < blindedUntilTime;
         public bool IsDisabled => isDisabled;
+        public bool IsAttached => isAttached;
         public bool IsNeighborPlaced => isNeighborPlaced;
         public static int NeighborPlacedCameraCount
         {
@@ -248,13 +250,30 @@ namespace Neighbor.Main.Features.Interaction
             Pickupable thrownPickup = collision.collider != null
                 ? collision.collider.GetComponentInParent<Pickupable>()
                 : null;
-            if (thrownPickup == null || thrownPickup == pickupable || !thrownPickup.IsRecentlyThrown)
+            ReceivePhysicsImpact(
+                thrownPickup,
+                collision.GetContact(0).point,
+                collision.relativeVelocity,
+                collision.impulse.magnitude,
+                1f);
+        }
+
+        public void ReceivePhysicsImpact(
+            Pickupable impactingPickup,
+            Vector3 hitPoint,
+            Vector3 incomingVelocity,
+            float impulse,
+            float loudness01)
+        {
+            if (isDisabled
+                || impactingPickup == null
+                || impactingPickup == pickupable
+                || !impactingPickup.IsRecentlyThrown)
             {
                 return;
             }
 
-            float impulse = collision.impulse.magnitude;
-            float relativeSpeed = collision.relativeVelocity.magnitude;
+            float relativeSpeed = incomingVelocity.magnitude;
             if (impulse < minimumDisableImpactImpulse && relativeSpeed < minimumDisableRelativeSpeed)
             {
                 return;
@@ -270,6 +289,24 @@ namespace Neighbor.Main.Features.Interaction
             DetachFromSurface(true);
             ResetEyeRotation();
             ConfigureSightBeam();
+        }
+
+        public bool ShouldAllowPickupThroughBlocker(Collider blocker, float blockerLeadDistance)
+        {
+            if (!isAttached
+                || attachedPickupable != null
+                || blocker == null
+                || blockerLeadDistance < 0f
+                || blockerLeadDistance > wallPickupBlockerBypassDistance
+                || IsOwnCollider(blocker)
+                || blocker.GetComponentInParent<Pickupable>() != null)
+            {
+                return false;
+            }
+
+            Vector3 closestPoint = blocker.ClosestPoint(transform.position);
+            float maximumSurfaceDistance = Mathf.Max(wallOffset + 0.2f, 0.35f);
+            return (closestPoint - transform.position).sqrMagnitude <= maximumSurfaceDistance * maximumSurfaceDistance;
         }
 
         public void OnPickupPlaced(Pickupable _)
@@ -794,6 +831,7 @@ namespace Neighbor.Main.Features.Interaction
         {
             attachRange = Mathf.Max(0.1f, attachRange);
             wallOffset = Mathf.Max(0f, wallOffset);
+            wallPickupBlockerBypassDistance = Mathf.Max(0f, wallPickupBlockerBypassDistance);
             viewDistance = Mathf.Max(0.1f, viewDistance);
             viewAngle = Mathf.Clamp(viewAngle, 1f, 180f);
             scanInterval = Mathf.Max(0.02f, scanInterval);

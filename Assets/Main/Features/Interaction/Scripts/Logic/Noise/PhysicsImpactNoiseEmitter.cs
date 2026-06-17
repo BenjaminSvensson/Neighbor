@@ -3,6 +3,16 @@ using UnityEngine;
 
 namespace Neighbor.Main.Features.Interaction
 {
+    public interface IPhysicsImpactReceiver
+    {
+        void ReceivePhysicsImpact(
+            Pickupable impactingPickup,
+            Vector3 hitPoint,
+            Vector3 incomingVelocity,
+            float impulse,
+            float loudness01);
+    }
+
     [RequireComponent(typeof(Rigidbody))]
     public sealed class PhysicsImpactNoiseEmitter : MonoBehaviour
     {
@@ -27,6 +37,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float generatedClipDuration = 0.16f;
 
         private Rigidbody body;
+        private Pickupable pickupable;
         private AudioSource audioSource;
         private AudioClip generatedImpactClip;
         private float lastImpactTime;
@@ -37,6 +48,7 @@ namespace Neighbor.Main.Features.Interaction
         private void Awake()
         {
             body = GetComponent<Rigidbody>();
+            pickupable = GetComponentInParent<Pickupable>();
             audioSource = GetComponent<AudioSource>();
             if (audioSource == null)
             {
@@ -64,6 +76,7 @@ namespace Neighbor.Main.Features.Interaction
         private void EmitCollisionNoise(Collision collision)
         {
             UpdateNoiseAttribution(collision);
+            NotifyPhysicsImpactReceivers(collision);
 
             if (Time.time - lastImpactTime < impactCooldown)
             {
@@ -85,6 +98,31 @@ namespace Neighbor.Main.Features.Interaction
             SpawnNoiseTrigger(origin, loudness01, ResolveNoiseInstigator());
             NotifyImpactReceiver(collision, origin, loudness01);
             NotifyDoorImpact(collision);
+        }
+
+        private void NotifyPhysicsImpactReceivers(Collision collision)
+        {
+            if (collision == null || collision.collider == null || collision.contactCount == 0)
+            {
+                return;
+            }
+
+            IPhysicsImpactReceiver[] receivers = collision.collider.GetComponentsInParent<IPhysicsImpactReceiver>();
+            if (receivers == null || receivers.Length == 0)
+            {
+                return;
+            }
+
+            Pickupable impactPickup = pickupable != null ? pickupable : GetComponentInParent<Pickupable>();
+            float impulse = collision.impulse.magnitude;
+            float loudness01 = Mathf.InverseLerp(minimumImpactImpulse, maximumImpactImpulse, impulse);
+            Vector3 incomingVelocity = collision.relativeVelocity;
+            Vector3 origin = collision.GetContact(0).point;
+
+            for (int i = 0; i < receivers.Length; i++)
+            {
+                receivers[i]?.ReceivePhysicsImpact(impactPickup, origin, incomingVelocity, impulse, loudness01);
+            }
         }
 
         private void UpdateNoiseAttribution(Collision collision)

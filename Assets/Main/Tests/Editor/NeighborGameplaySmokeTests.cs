@@ -646,14 +646,34 @@ namespace Neighbor.Main.Tests
             cameraObject.AddComponent<BoxCollider>();
             SecurityCamera camera = context.AddInitializedComponent<SecurityCamera>(cameraObject);
             GameplaySmokeTestReflection.InvokeIfPresent(cameraObject.GetComponent<Pickupable>(), "Awake");
+            GameObject thrownObject = context.CreateObject("ThrownPickup");
+            thrownObject.AddComponent<BoxCollider>();
+            Pickupable thrownPickup = context.AddInitializedComponent<Pickupable>(thrownObject);
 
             Assert.That(camera.TryAttachByNeighbor(Vector3.zero, Vector3.forward), Is.True);
 
-            GameplaySmokeTestReflection.Invoke(camera, "DisableFromImpact");
+            thrownPickup.Throw(Vector3.forward * 4f);
+            camera.ReceivePhysicsImpact(thrownPickup, Vector3.zero, Vector3.forward * 4f, 0f, 1f);
 
             Assert.That(camera.IsDisabled, Is.True);
             Assert.That(camera.IsNeighborPlaced, Is.False);
             Assert.That(SecurityCamera.IsNeighborCameraWithinDistance(Vector3.zero, 2f), Is.False);
+        }
+
+        [Test]
+        public void SecurityCameraWallMount_AllowsPickupThroughMountingWall()
+        {
+            GameObject wallObject = context.CreateObject("WallBlocker");
+            BoxCollider wallCollider = wallObject.AddComponent<BoxCollider>();
+            wallCollider.size = new Vector3(4f, 4f, 0.1f);
+            GameObject cameraObject = context.CreateObject("SecurityCamera");
+            cameraObject.AddComponent<BoxCollider>();
+            SecurityCamera camera = context.AddInitializedComponent<SecurityCamera>(cameraObject);
+            GameplaySmokeTestReflection.InvokeIfPresent(cameraObject.GetComponent<Pickupable>(), "Awake");
+
+            Assert.That(camera.TryAttachByNeighbor(Vector3.zero, Vector3.forward), Is.True);
+
+            Assert.That(camera.ShouldAllowPickupThroughBlocker(wallCollider, 0.1f), Is.True);
         }
 
         [Test]
