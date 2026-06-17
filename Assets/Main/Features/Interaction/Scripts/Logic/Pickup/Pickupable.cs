@@ -73,6 +73,17 @@ namespace Neighbor.Main.Features.Interaction
             originalColliderEnabled = new bool[ownColliders.Length];
             inventoryColliderEnabled = new bool[ownColliders.Length];
             originalRendererEnabled = new bool[ownRenderers.Length];
+
+            for (int i = 0; i < ownColliders.Length; i++)
+            {
+                originalColliderEnabled[i] = ownColliders[i] != null && ownColliders[i].enabled;
+                inventoryColliderEnabled[i] = originalColliderEnabled[i];
+            }
+
+            for (int i = 0; i < ownRenderers.Length; i++)
+            {
+                originalRendererEnabled[i] = ownRenderers[i] != null && ownRenderers[i].enabled;
+            }
         }
 
         private void OnDisable()

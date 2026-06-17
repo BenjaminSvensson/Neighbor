@@ -613,11 +613,12 @@ namespace Neighbor.Main.Tests
         public void NeighborPlacedCameraSpacing_PreventsOverlappingMounts()
         {
             GameObject cameraObject = context.CreateObject("NeighborPlacedCamera");
-            cameraObject.AddComponent<BoxCollider>();
+            BoxCollider cameraCollider = cameraObject.AddComponent<BoxCollider>();
             SecurityCamera camera = context.AddInitializedComponent<SecurityCamera>(cameraObject);
             GameplaySmokeTestReflection.InvokeIfPresent(cameraObject.GetComponent<Pickupable>(), "Awake");
 
             Assert.That(camera.TryAttachByNeighbor(Vector3.zero, Vector3.forward), Is.True);
+            Assert.That(cameraCollider.enabled, Is.True);
             Assert.That(SecurityCamera.IsNeighborCameraWithinDistance(Vector3.right, 2f), Is.True);
             Assert.That(SecurityCamera.IsNeighborCameraWithinDistance(Vector3.right * 3f, 2f), Is.False);
         }
