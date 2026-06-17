@@ -48,6 +48,10 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float alertSoundMinDistance = 3f;
         [SerializeField, Min(0.1f)] private float alertSoundMaxDistance = 35f;
 
+        [Header("Impact Disable")]
+        [SerializeField, Min(0f)] private float minimumDisableImpactImpulse = 1.5f;
+        [SerializeField, Min(0f)] private float minimumDisableRelativeSpeed = 2.5f;
+
         private Pickupable pickupable;
         private Rigidbody body;
         private PlayerController player;
@@ -75,8 +79,10 @@ namespace Neighbor.Main.Features.Interaction
         private float blindedUntilTime;
         private bool isAttached;
         private bool isNeighborPlaced;
+        private bool isDisabled;
 
         public bool IsBlinded => Time.time < blindedUntilTime;
+        public bool IsDisabled => isDisabled;
         public bool IsNeighborPlaced => isNeighborPlaced;
         public static int NeighborPlacedCameraCount
         {
@@ -129,7 +135,7 @@ namespace Neighbor.Main.Features.Interaction
         {
             ConfigureSightBeam();
 
-            if (IsBlinded || !isAttached || pickupable != null && pickupable.IsHeld)
+            if (isDisabled || IsBlinded || !isAttached || pickupable != null && pickupable.IsHeld)
             {
                 trackingUntilTime = 0f;
                 UpdateScanningRotation();
@@ -194,12 +200,33 @@ namespace Neighbor.Main.Features.Interaction
 
         public void OnPickupStarted(Pickupable _, PlayerInteractor __)
         {
+            DetachFromSurface(true);
+            ResetEyeRotation();
+            trackingUntilTime = 0f;
+        }
+
+        private void OnCollisionEnter(Collision collision)
+        {
+            TryDisableFromThrownImpact(collision);
+        }
+
+        private void OnCollisionStay(Collision collision)
+        {
+            TryDisableFromThrownImpact(collision);
+        }
+
+        private void DetachFromSurface(bool releasePhysics)
+        {
             isAttached = false;
+            MarkNoLongerNeighborPlaced();
             RestoreAttachedPickupableCollision();
             attachedPickupable = null;
             transform.SetParent(originalParent, true);
-            ResetEyeRotation();
-            trackingUntilTime = 0f;
+
+            if (!releasePhysics)
+            {
+                return;
+            }
 
             if (body == null)
             {
@@ -209,6 +236,40 @@ namespace Neighbor.Main.Features.Interaction
             body.constraints = RigidbodyConstraints.None;
             body.isKinematic = false;
             body.useGravity = true;
+        }
+
+        private void TryDisableFromThrownImpact(Collision collision)
+        {
+            if (isDisabled || collision == null || collision.contactCount == 0)
+            {
+                return;
+            }
+
+            Pickupable thrownPickup = collision.collider != null
+                ? collision.collider.GetComponentInParent<Pickupable>()
+                : null;
+            if (thrownPickup == null || thrownPickup == pickupable || !thrownPickup.IsRecentlyThrown)
+            {
+                return;
+            }
+
+            float impulse = collision.impulse.magnitude;
+            float relativeSpeed = collision.relativeVelocity.magnitude;
+            if (impulse < minimumDisableImpactImpulse && relativeSpeed < minimumDisableRelativeSpeed)
+            {
+                return;
+            }
+
+            DisableFromImpact();
+        }
+
+        private void DisableFromImpact()
+        {
+            isDisabled = true;
+            trackingUntilTime = 0f;
+            DetachFromSurface(true);
+            ResetEyeRotation();
+            ConfigureSightBeam();
         }
 
         public void OnPickupPlaced(Pickupable _)
@@ -249,6 +310,7 @@ namespace Neighbor.Main.Features.Interaction
         {
             RestoreAttachedPickupableCollision();
             isAttached = true;
+            isDisabled = false;
             attachedPickupable = parentPickupable;
             transform.SetParent(attachedPickupable != null ? attachedPickupable.transform : originalParent, true);
             attachedLocalPosition = transform.localPosition;
@@ -710,7 +772,7 @@ namespace Neighbor.Main.Features.Interaction
 
         private void OnDestroy()
         {
-            NeighborPlacedCameras.Remove(this);
+            MarkNoLongerNeighborPlaced();
 
             if (generatedSightBeamMesh != null)
             {
@@ -747,6 +809,14 @@ namespace Neighbor.Main.Features.Interaction
             alertCooldown = Mathf.Max(0f, alertCooldown);
             alertSoundMinDistance = Mathf.Max(0f, alertSoundMinDistance);
             alertSoundMaxDistance = Mathf.Max(0.1f, alertSoundMaxDistance);
+            minimumDisableImpactImpulse = Mathf.Max(0f, minimumDisableImpactImpulse);
+            minimumDisableRelativeSpeed = Mathf.Max(0f, minimumDisableRelativeSpeed);
+        }
+
+        private void MarkNoLongerNeighborPlaced()
+        {
+            isNeighborPlaced = false;
+            NeighborPlacedCameras.Remove(this);
         }
     }
 }

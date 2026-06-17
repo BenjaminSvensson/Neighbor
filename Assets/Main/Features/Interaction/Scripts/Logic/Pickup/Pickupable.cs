@@ -22,6 +22,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private bool disableCollidersWhileHeld = true;
         [SerializeField, Min(0f)] private float supportWakePadding = 0.12f;
         [SerializeField, Min(0f)] private float postThrowPlayerCollisionIgnoreTime = 0.35f;
+        [SerializeField, Min(0f)] private float recentThrowImpactWindow = 2f;
 
         [Header("Pickup Audio")]
         [SerializeField] private AudioClip[] pickupClips;
@@ -54,9 +55,11 @@ namespace Neighbor.Main.Features.Interaction
         private RigidbodyInterpolation originalInterpolation;
         private Collider[] ignoredPlayerColliders;
         private float restorePlayerCollisionTime;
+        private float recentlyThrownUntilTime;
 
         public bool IsHeld { get; private set; }
         public bool IsInventoryStored { get; private set; }
+        public bool IsRecentlyThrown => Time.time < recentlyThrownUntilTime;
         public HoldPointSize AssignedHoldPointSize => holdPointSize;
         public Vector3 ThrowOrigin => body != null ? body.worldCenterOfMass : transform.position;
 
@@ -125,6 +128,7 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
+            recentlyThrownUntilTime = 0f;
             NotifyPickupStarted(interactor);
             IsHeld = true;
             CapturePhysicsState();
@@ -191,12 +195,14 @@ namespace Neighbor.Main.Features.Interaction
 
         public void Drop()
         {
+            recentlyThrownUntilTime = 0f;
             RestoreInventoryState();
             RestorePhysics();
         }
 
         public void Place(Vector3 position, Quaternion rotation, bool sleepAfterPlacing = true)
         {
+            recentlyThrownUntilTime = 0f;
             RestoreInventoryState();
             transform.SetPositionAndRotation(position, rotation);
 
@@ -238,6 +244,7 @@ namespace Neighbor.Main.Features.Interaction
         {
             RestoreInventoryState();
             RestorePhysics();
+            MarkRecentlyThrown();
             SetBodyLinearVelocity(velocity);
         }
 
@@ -246,6 +253,7 @@ namespace Neighbor.Main.Features.Interaction
             RestoreInventoryState();
             RestorePhysics();
             IgnorePlayerCollisionsTemporarily(playerColliders);
+            MarkRecentlyThrown();
             SetBodyLinearVelocity(velocity);
         }
 
@@ -256,6 +264,7 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
+            recentlyThrownUntilTime = 0f;
             if (IsHeld)
             {
                 IsHeld = false;
@@ -419,6 +428,11 @@ namespace Neighbor.Main.Features.Interaction
         private void SetBodyLinearVelocity(Vector3 velocity)
         {
             RigidbodyVelocityUtility.SetLinearIfDynamic(body, velocity);
+        }
+
+        private void MarkRecentlyThrown()
+        {
+            recentlyThrownUntilTime = Time.time + recentThrowImpactWindow;
         }
 
         private void SetBodyPose(Vector3 position, Quaternion rotation)

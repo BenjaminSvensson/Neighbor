@@ -623,6 +623,40 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NeighborPlacedCameraPickup_RemovesReinforcementPlacement()
+        {
+            GameObject cameraObject = context.CreateObject("NeighborPlacedCamera");
+            cameraObject.AddComponent<BoxCollider>();
+            SecurityCamera camera = context.AddInitializedComponent<SecurityCamera>(cameraObject);
+            Pickupable pickupable = cameraObject.GetComponent<Pickupable>();
+            GameplaySmokeTestReflection.InvokeIfPresent(pickupable, "Awake");
+
+            Assert.That(camera.TryAttachByNeighbor(Vector3.zero, Vector3.forward), Is.True);
+
+            pickupable.Pickup(null, false);
+
+            Assert.That(camera.IsNeighborPlaced, Is.False);
+            Assert.That(SecurityCamera.IsNeighborCameraWithinDistance(Vector3.zero, 2f), Is.False);
+        }
+
+        [Test]
+        public void SecurityCameraImpactDisable_DetachesAndStopsDetection()
+        {
+            GameObject cameraObject = context.CreateObject("SecurityCamera");
+            cameraObject.AddComponent<BoxCollider>();
+            SecurityCamera camera = context.AddInitializedComponent<SecurityCamera>(cameraObject);
+            GameplaySmokeTestReflection.InvokeIfPresent(cameraObject.GetComponent<Pickupable>(), "Awake");
+
+            Assert.That(camera.TryAttachByNeighbor(Vector3.zero, Vector3.forward), Is.True);
+
+            GameplaySmokeTestReflection.Invoke(camera, "DisableFromImpact");
+
+            Assert.That(camera.IsDisabled, Is.True);
+            Assert.That(camera.IsNeighborPlaced, Is.False);
+            Assert.That(SecurityCamera.IsNeighborCameraWithinDistance(Vector3.zero, 2f), Is.False);
+        }
+
+        [Test]
         public void HuntEnding_StartsPostEncounterTaskSuppression()
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>();
