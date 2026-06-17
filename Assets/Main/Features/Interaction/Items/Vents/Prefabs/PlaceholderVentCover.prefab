@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 2315365973131718966}
   - component: {fileID: 3463286770202911030}
   - component: {fileID: 8315561322068804333}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: Screw_2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -101,7 +101,7 @@ GameObject:
   - component: {fileID: 129493121446228063}
   - component: {fileID: 2268215116134669419}
   - component: {fileID: 1019795609296075111}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: RemovedScrew_4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -191,7 +191,7 @@ GameObject:
   - component: {fileID: 6646495083075743242}
   - component: {fileID: 7391731734175972394}
   - component: {fileID: 6215836046470548815}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: PlaceholderVentCover
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -271,7 +271,7 @@ MonoBehaviour:
   - {fileID: 2552852750661381313}
   detachWhenOpen: 1
   addPickupableWhenOpen: 1
-  detachForwardImpulse: 1.2
+  detachForwardImpulse: 6
   detachDownImpulse: 0.3
   coverRenderer: {fileID: 2535660495678526628}
   lockedColor: {r: 0.42, g: 0.46, b: 0.5, a: 1}
@@ -287,7 +287,7 @@ GameObject:
   - component: {fileID: 7867877456322715883}
   - component: {fileID: 5586346085554519645}
   - component: {fileID: 3064664955462136073}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: RemovedScrew_3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -377,7 +377,7 @@ GameObject:
   - component: {fileID: 5025609784569514119}
   - component: {fileID: 8636384491367223194}
   - component: {fileID: 5063815489720589156}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: MiddleSlat
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -467,7 +467,7 @@ GameObject:
   - component: {fileID: 2354773786376310075}
   - component: {fileID: 2758403106699457448}
   - component: {fileID: 357511921155457986}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: Screw_3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -557,7 +557,7 @@ GameObject:
   - component: {fileID: 6092261656284437284}
   - component: {fileID: 6714166980027820677}
   - component: {fileID: 4319608788489285935}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: RemovedScrew_2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -647,7 +647,7 @@ GameObject:
   - component: {fileID: 3997915296147474706}
   - component: {fileID: 9096560873919600562}
   - component: {fileID: 2535660495678526628}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: CoverPanel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -737,7 +737,7 @@ GameObject:
   - component: {fileID: 8511623852434115583}
   - component: {fileID: 8210171938065986306}
   - component: {fileID: 6140778882807109808}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: Screw_4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -827,7 +827,7 @@ GameObject:
   - component: {fileID: 4846098868258607351}
   - component: {fileID: 2063070997304134460}
   - component: {fileID: 8202560874780328653}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: RemovedScrew_1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -917,7 +917,7 @@ GameObject:
   - component: {fileID: 4547670422931127444}
   - component: {fileID: 1442633309899920395}
   - component: {fileID: 4786535516026051828}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: TopSlat
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1007,7 +1007,7 @@ GameObject:
   - component: {fileID: 3700739967071367512}
   - component: {fileID: 7571854276960967842}
   - component: {fileID: 1993205560497688633}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: Screw_1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1097,7 +1097,7 @@ GameObject:
   - component: {fileID: 7357532825155707651}
   - component: {fileID: 8271166296103669470}
   - component: {fileID: 4827084342060399173}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: BottomSlat
   m_TagString: Untagged
   m_Icon: {fileID: 0}

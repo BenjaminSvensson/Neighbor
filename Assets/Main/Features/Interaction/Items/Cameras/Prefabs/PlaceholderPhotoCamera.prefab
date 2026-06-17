@@ -135,7 +135,10 @@ MonoBehaviour:
   impactCooldown: 0.08
   minimumNoiseRadius: 1
   maximumNoiseRadius: 9
+  alertUrgency: 0.7
   noiseLifetime: 0.22
+  neighborAttributionTime: 1
+  neighborAttributionMaximumObjectSpeed: 0.75
   impactClips: []
   minimumVolume: 0.02
   maximumVolume: 0.7
@@ -165,7 +168,8 @@ MonoBehaviour:
   flashDuration: 0.08
   flashIntensity: 9
   audioSource: {fileID: 0}
-  shutterClips: []
+  shutterClips:
+  - {fileID: 8300000, guid: 5d371749b45c32c478292ca02e3b0761, type: 3}
   shutterVolume: 0.75
   pitchRandomness: 0.035
 --- !u!1 &200000

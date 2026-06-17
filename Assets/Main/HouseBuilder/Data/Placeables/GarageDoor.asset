@@ -27,7 +27,7 @@ MonoBehaviour:
     groundOnFeatureSnaps: 0
     validateCollisions: 1
     allowTriggerOverlap: 1
-    boundsSize: {x: 3.3000002, y: 2.5, z: 0.22}
+    boundsSize: {x: 3.3000002, y: 2.5, z: 0.22000001}
     boundsCenter: {x: 0, y: 1.25, z: 0}
     placementOffset: {x: 0, y: 0, z: 0}
   wallOpening:

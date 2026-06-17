@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 100001}
   - component: {fileID: 100005}
   - component: {fileID: 817573911808841759}
-  m_Layer: 6
+  m_Layer: 3
   m_Name: PlaceholderGlass
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -55,9 +55,9 @@ MonoBehaviour:
   shardImpulse: 2.5
   shardTorque: 5
   shardLifetime: 12
-  hearingRadius: 13
+  hearingRadius: 50
   loudness: 0.75
-  alertUrgency: 0.85
+  alertUrgency: 1
   noiseLifetime: 0.45
   shatterClips:
   - {fileID: 8300000, guid: 928637fececf2f842b87cbd84b055f28, type: 3}
@@ -95,7 +95,7 @@ GameObject:
   - component: {fileID: 200001}
   - component: {fileID: 200002}
   - component: {fileID: 200003}
-  m_Layer: 6
+  m_Layer: 3
   m_Name: IntactGlassPane
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -183,7 +183,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 300001}
-  m_Layer: 6
+  m_Layer: 3
   m_Name: Shards
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -224,7 +224,7 @@ GameObject:
   - component: {fileID: 310003}
   - component: {fileID: 310004}
   - component: {fileID: 310005}
-  m_Layer: 6
+  m_Layer: 3
   m_Name: Shard_TopLeft
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -364,7 +364,7 @@ GameObject:
   - component: {fileID: 320003}
   - component: {fileID: 320004}
   - component: {fileID: 320005}
-  m_Layer: 6
+  m_Layer: 3
   m_Name: 
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -504,7 +504,7 @@ GameObject:
   - component: {fileID: 330003}
   - component: {fileID: 330004}
   - component: {fileID: 330005}
-  m_Layer: 6
+  m_Layer: 3
   m_Name: 
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -644,7 +644,7 @@ GameObject:
   - component: {fileID: 340003}
   - component: {fileID: 340004}
   - component: {fileID: 340005}
-  m_Layer: 6
+  m_Layer: 3
   m_Name: 
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -784,7 +784,7 @@ GameObject:
   - component: {fileID: 350003}
   - component: {fileID: 350004}
   - component: {fileID: 350005}
-  m_Layer: 6
+  m_Layer: 3
   m_Name: 
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -924,7 +924,7 @@ GameObject:
   - component: {fileID: 360003}
   - component: {fileID: 360004}
   - component: {fileID: 360005}
-  m_Layer: 6
+  m_Layer: 3
   m_Name: 
   m_TagString: Untagged
   m_Icon: {fileID: 0}

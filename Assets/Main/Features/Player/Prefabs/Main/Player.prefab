@@ -402,7 +402,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1327355640084703705}
-  - component: {fileID: 6967929167352787066}
   - component: {fileID: 2801324474213207061}
   - component: {fileID: 2098546478872310776}
   - component: {fileID: 144846750235035850}
@@ -433,29 +432,6 @@ Transform:
   - {fileID: 7380132252857314632}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!136 &6967929167352787066
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4793360982295166136}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.5
-  m_Height: 2
-  m_Direction: 1
-  m_Center: {x: 0, y: 1, z: 0}
 --- !u!114 &2801324474213207061
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -471,10 +447,10 @@ MonoBehaviour:
   playerHead: {fileID: 1357196244085932726}
   deathController: {fileID: 8082241173593974563}
   walkSpeed: 5
-  runSpeed: 8
+  runSpeed: 11
   crouchSpeed: 2.3
-  groundAcceleration: 22
-  airAcceleration: 6
+  groundAcceleration: 34
+  airAcceleration: 18
   jumpHeight: 1.15
   coyoteTime: 0.12
   gravity: -24
@@ -488,7 +464,7 @@ MonoBehaviour:
   enableLedgeClimb: 1
   ledgeCheckDistance: 0.75
   ledgeMinimumHeight: 0.45
-  ledgeMaximumHeight: 1.6
+  ledgeMaximumHeight: 2
   ledgeTopProbeForwardOffset: 0.35
   ledgeTopSurfaceProbeStartDistance: 0.32
   ledgeTopSurfaceProbeSpacing: 0.18
@@ -497,9 +473,9 @@ MonoBehaviour:
   ledgeClimbDuration: 0.24
   ledgeClimbMask:
     serializedVersion: 2
-    m_Bits: 65
+    m_Bits: 321
   standingHeight: 2
-  crouchingHeight: 1.2
+  crouchingHeight: 0.2
   stanceSmoothTime: 0.08
   crouchObstructionMask:
     serializedVersion: 2

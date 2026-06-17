@@ -7,11 +7,11 @@ namespace Neighbor.Main.Features.Interaction
     public sealed class PhotoCamera : MonoBehaviour, IPrimaryUseInteractable
     {
         [Header("Capture")]
-        [SerializeField, Min(64)] private int captureWidth = 512;
-        [SerializeField, Min(64)] private int captureHeight = 384;
+        [SerializeField, Min(64)] private int captureWidth = 620;
+        [SerializeField, Min(64)] private int captureHeight = 480;
         [SerializeField, Min(0f)] private float shutterCooldown = 0.45f;
         [SerializeField, Min(0.05f)] private float photoEjectDistance = 0.65f;
-        [SerializeField, Min(0f)] private float photoEjectImpulse = 1.4f;
+        [SerializeField, Min(0f)] private float photoEjectImpulse = 0.02f;
         [SerializeField] private LayerMask captureMask = ~0;
 
         [Header("Flash")]

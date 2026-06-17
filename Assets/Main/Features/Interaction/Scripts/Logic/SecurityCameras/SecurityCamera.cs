@@ -22,7 +22,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private Transform eye;
         [SerializeField] private Transform sightBeam;
         [SerializeField, Min(0.1f)] private float viewDistance = 24f;
-        [SerializeField, Range(1f, 180f)] private float viewAngle = 76f;
+        [SerializeField, Range(1f, 180f)] private float viewAngle = 20f;
         [SerializeField, Min(0.02f)] private float scanInterval = 0.12f;
         [SerializeField] private LayerMask lineOfSightMask = ~0;
         [SerializeField, Min(0.02f)] private float sightOcclusionRefreshInterval = 0.08f;

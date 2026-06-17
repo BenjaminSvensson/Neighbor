@@ -139,7 +139,7 @@ MonoBehaviour:
   eye: {fileID: 210001}
   sightBeam: {fileID: 230001}
   viewDistance: 12
-  viewAngle: 50
+  viewAngle: 20
   scanInterval: 0.12
   lineOfSightMask:
     serializedVersion: 2
@@ -148,7 +148,7 @@ MonoBehaviour:
   sightWallPadding: 0.08
   sweepWhenAttached: 1
   sweepAngle: 55
-  sweepPeriod: 3.5
+  sweepPeriod: 8
   downwardScanAngle: 17.1
   trackingTurnSpeed: 7.92
   trackingMemory: 1

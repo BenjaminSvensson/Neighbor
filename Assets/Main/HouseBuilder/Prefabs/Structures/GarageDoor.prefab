@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 6205417900579895622}
   - component: {fileID: 4034109662266838955}
   - component: {fileID: 1931983898624975624}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Panel Seam 3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -26,12 +26,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 818039555909985740}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.4399999, z: -0.07}
-  m_LocalScale: {x: 3, y: 0.035, z: 0.025}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.08260866, z: -0.5833334}
+  m_LocalScale: {x: 1, y: 0.015217391, z: 0.20833336}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 3631413973671460966}
+  m_Father: {fileID: 2657613372600579505}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &4034109662266838955
 MeshFilter:
@@ -101,7 +101,7 @@ GameObject:
   - component: {fileID: 2055123768568361677}
   - component: {fileID: 2624436201257379100}
   - component: {fileID: 4723629420154588616}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Panel Seam 1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -116,12 +116,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1904320410055547032}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.48, z: -0.07}
-  m_LocalScale: {x: 3, y: 0.035, z: 0.025}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: -0.3347826, z: -0.5833334}
+  m_LocalScale: {x: 1, y: 0.015217391, z: 0.20833336}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 3631413973671460966}
+  m_Father: {fileID: 2657613372600579505}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &2624436201257379100
 MeshFilter:
@@ -191,7 +191,7 @@ GameObject:
   - component: {fileID: 1213609988844966991}
   - component: {fileID: 3250422620485699026}
   - component: {fileID: 8346468348905976996}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Top Frame
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -206,12 +206,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1913435542797611725}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 2.425, z: 0}
-  m_LocalScale: {x: 3, y: 0.15, z: 0.22}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.5108695, z: 0}
+  m_LocalScale: {x: 1, y: 0.06521739, z: 1.8333335}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 3631413973671460966}
+  m_Father: {fileID: 2657613372600579505}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &3250422620485699026
 MeshFilter:
@@ -283,7 +283,7 @@ GameObject:
   - component: {fileID: 5149708664988297280}
   - component: {fileID: 118444333413438591}
   - component: {fileID: 624583146737946733}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: GarageDoor
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -304,13 +304,6 @@ Transform:
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 2657613372600579505}
-  - {fileID: 8448855220613439388}
-  - {fileID: 4177423736198597425}
-  - {fileID: 1213609988844966991}
-  - {fileID: 2055123768568361677}
-  - {fileID: 2199564972939848421}
-  - {fileID: 6205417900579895622}
-  - {fileID: 4352609483500646244}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!65 &1320748652204465763
@@ -344,7 +337,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 04c86c728a3994d419e6a7db1a5409e6, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGarageDoorMotion
   doorPanel: {fileID: 2657613372600579505}
   closedLocalPosition: {x: 0, y: 1.25, z: 0}
@@ -361,7 +354,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8155c721a319d78418c48d0d9a3d987e, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireInputRelay
   onPulse:
     m_PersistentCalls:
@@ -385,7 +378,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6d2834eb53930484bb39749e568c6ec5, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseWireEndpoint
   endpointId: neighbor.door.garagedoor.endpoint
   ports:
@@ -409,7 +402,7 @@ GameObject:
   - component: {fileID: 4177423736198597425}
   - component: {fileID: 7016748000767637103}
   - component: {fileID: 1198165944115270197}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Right Frame
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -424,12 +417,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3670548957078459193}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.575, y: 1.25, z: 0}
-  m_LocalScale: {x: 0.15, y: 2.5, z: 0.22}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0.52500004, y: 0, z: 0}
+  m_LocalScale: {x: 0.050000004, y: 1.0869565, z: 1.8333335}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 3631413973671460966}
+  m_Father: {fileID: 2657613372600579505}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &7016748000767637103
 MeshFilter:
@@ -499,7 +492,7 @@ GameObject:
   - component: {fileID: 2199564972939848421}
   - component: {fileID: 6503061727258477129}
   - component: {fileID: 27048674007885259}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Panel Seam 2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -514,12 +507,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4323964248858868682}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.96, z: -0.07}
-  m_LocalScale: {x: 3, y: 0.035, z: 0.025}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: -0.12608697, z: -0.5833334}
+  m_LocalScale: {x: 1, y: 0.015217391, z: 0.20833336}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 3631413973671460966}
+  m_Father: {fileID: 2657613372600579505}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &6503061727258477129
 MeshFilter:
@@ -589,7 +582,7 @@ GameObject:
   - component: {fileID: 8448855220613439388}
   - component: {fileID: 4930318987185055206}
   - component: {fileID: 4888919474795703044}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Left Frame
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -604,12 +597,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5410239876278318176}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.575, y: 1.25, z: 0}
-  m_LocalScale: {x: 0.15, y: 2.5, z: 0.22}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -0.52500004, y: 0, z: 0}
+  m_LocalScale: {x: 0.050000004, y: 1.0869565, z: 1.8333335}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 3631413973671460966}
+  m_Father: {fileID: 2657613372600579505}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &4930318987185055206
 MeshFilter:
@@ -680,7 +673,7 @@ GameObject:
   - component: {fileID: 2561645424443130934}
   - component: {fileID: 6148237083796015339}
   - component: {fileID: 2218693589456042849}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Door Panel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -699,7 +692,14 @@ Transform:
   m_LocalPosition: {x: 0, y: 1.25, z: 0}
   m_LocalScale: {x: 3, y: 2.3, z: 0.12}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 8448855220613439388}
+  - {fileID: 4177423736198597425}
+  - {fileID: 1213609988844966991}
+  - {fileID: 2055123768568361677}
+  - {fileID: 2199564972939848421}
+  - {fileID: 6205417900579895622}
+  - {fileID: 4352609483500646244}
   m_Father: {fileID: 3631413973671460966}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &2561645424443130934
@@ -791,7 +791,7 @@ GameObject:
   - component: {fileID: 4352609483500646244}
   - component: {fileID: 7044647875183976497}
   - component: {fileID: 1761001979786788829}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Panel Seam 4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -806,12 +806,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8264562845543577204}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.92, z: -0.07}
-  m_LocalScale: {x: 3, y: 0.035, z: 0.025}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.29130432, z: -0.5833334}
+  m_LocalScale: {x: 1, y: 0.015217391, z: 0.20833336}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 3631413973671460966}
+  m_Father: {fileID: 2657613372600579505}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &7044647875183976497
 MeshFilter:

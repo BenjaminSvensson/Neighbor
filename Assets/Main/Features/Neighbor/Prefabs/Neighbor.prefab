@@ -467,6 +467,8 @@ MonoBehaviour:
   stoppingDistance: 0.45
   destinationSampleRadius: 1.5
   startNavMeshSnapRadius: 3
+  chaseStoppingDistance: 0.08
+  chaseAccelerationMultiplier: 1.6
   enableLowClearanceCrouching: 1
   lowClearanceMask:
     serializedVersion: 2
@@ -517,7 +519,11 @@ MonoBehaviour:
   postClimbNavMeshVerticalSnapTolerance: 0.35
   climbMask:
     serializedVersion: 2
-    m_Bits: 65
+    m_Bits: 321
+  traversalGlassBreakMask:
+    serializedVersion: 2
+    m_Bits: 8
+  traversalGlassBreakRadius: 0.35
   enableTargetClimbAssist: 1
   targetClimbHorizontalReach: 2.4
   targetClimbVerticalPadding: 0.25

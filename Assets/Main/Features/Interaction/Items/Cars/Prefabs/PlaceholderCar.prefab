@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 100004}
   - component: {fileID: 100005}
   - component: {fileID: 9100000000000000003}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: PlaceholderCar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -223,7 +223,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6b8797e97910440e9c12f7f42f0a7c40, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Neighbor.NeighborTaskLocation
   minimumWaitTime: 5
   maximumWaitTime: 11
@@ -246,6 +246,10 @@ MonoBehaviour:
   anchorNeighborAtUsePose: 0
   ignoreTaskObjectCollisions: 0
   stabilizeTaskObject: 0
+  minimumUprightDot: 0.9
+  maximumUseVerticalOffset: 0.45
+  maximumObjectSpeedForUse: 0.2
+  maximumObjectAngularSpeedForUse: 0.35
   startTaskAnimation: {fileID: 0}
   startAnimationPlaybackSpeed: 1
   taskAnimation: {fileID: 3659977189094709723, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
@@ -272,7 +276,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1070253622267910288}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -343,9 +347,33 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -2655118776506212913, guid: 75d90340bcb3e8d4ab89377581efe13e, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: -1892422896168899638, guid: 75d90340bcb3e8d4ab89377581efe13e, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: -163186365112736066, guid: 75d90340bcb3e8d4ab89377581efe13e, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 718294663872998782, guid: 75d90340bcb3e8d4ab89377581efe13e, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 75d90340bcb3e8d4ab89377581efe13e, type: 3}
       propertyPath: m_Name
       value: CoveredCar
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 75d90340bcb3e8d4ab89377581efe13e, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 5119048372944291378, guid: 75d90340bcb3e8d4ab89377581efe13e, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
