@@ -4,8 +4,10 @@ using Neighbor.Main.HouseBuilder;
 using Neighbor.Main.HouseBuilder.Editor;
 using Neighbor.Main.Features.Neighbor;
 using NUnit.Framework;
+using Unity.AI.Navigation;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.AI;
 using Object = UnityEngine.Object;
 
 namespace Neighbor.Main.Tests
@@ -265,6 +267,46 @@ namespace Neighbor.Main.Tests
 
             Assert.That(motion.IsOpen, Is.False);
             Assert.That(panelObject.transform.localPosition.y, Is.EqualTo(0f).Within(0.001f));
+        }
+
+        [Test]
+        public void GarageDoorNavigation_ActivatesPassageOnlyWhenOpen()
+        {
+            GameObject garageObject = Track(new GameObject("Garage Door"));
+            BoxCollider garageTrigger = garageObject.AddComponent<BoxCollider>();
+            garageTrigger.isTrigger = true;
+            garageTrigger.size = new Vector3(3.2f, 2.5f, 0.25f);
+            garageTrigger.center = new Vector3(0f, 1.25f, 0f);
+
+            GameObject panelObject = Track(new GameObject("Door Panel"));
+            panelObject.transform.SetParent(garageObject.transform, false);
+            panelObject.transform.localScale = new Vector3(3f, 2.3f, 0.12f);
+            panelObject.AddComponent<BoxCollider>();
+
+            HouseGarageDoorMotion motion = garageObject.AddComponent<HouseGarageDoorMotion>();
+            motion.Configure(panelObject.transform, new Vector3(0f, 1.25f, 0f), new Vector3(0f, 2.35f, 0f), 0.01f, false);
+
+            NavMeshLink link = garageObject.GetComponent<NavMeshLink>();
+            NavMeshObstacle obstacle = panelObject.GetComponent<NavMeshObstacle>();
+            Assert.That(link, Is.Not.Null);
+            Assert.That(obstacle, Is.Not.Null);
+            Assert.That(motion.AllowsNavigationPassage, Is.False);
+            Assert.That(link.activated, Is.False);
+            Assert.That(obstacle.enabled, Is.True);
+
+            motion.Open();
+
+            Assert.That(motion.AllowsNavigationPassage, Is.True);
+            Assert.That(link.activated, Is.True);
+            Assert.That(link.bidirectional, Is.True);
+            Assert.That(link.width, Is.EqualTo(2.6f).Within(0.001f));
+            Assert.That(obstacle.enabled, Is.False);
+
+            motion.Close();
+
+            Assert.That(motion.AllowsNavigationPassage, Is.False);
+            Assert.That(link.activated, Is.False);
+            Assert.That(obstacle.enabled, Is.True);
         }
 
         [Test]

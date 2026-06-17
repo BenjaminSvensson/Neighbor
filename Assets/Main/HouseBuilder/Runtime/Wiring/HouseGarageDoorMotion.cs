@@ -1,4 +1,6 @@
+using Unity.AI.Navigation;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace Neighbor.Main.HouseBuilder
 {
@@ -26,6 +28,16 @@ namespace Neighbor.Main.HouseBuilder
         [SerializeField, Range(0f, 0.25f)] private float pitchRandomness = 0.04f;
         [SerializeField, Min(0.01f)] private float audioMinDistance = 0.8f;
         [SerializeField, Min(0.01f)] private float audioMaxDistance = 12f;
+        [Header("Navigation")]
+        [SerializeField] private bool enableNavigationPassage = true;
+        [SerializeField, Min(0.1f)] private float navigationLinkWidth = 2.6f;
+        [SerializeField, Min(0.1f)] private float navigationLinkHalfDepth = 1.15f;
+        [SerializeField, Min(0f)] private float navigationLinkHeight = 0.05f;
+        [SerializeField, Range(0f, 1f)] private float navigationOpenProgress = 0.78f;
+        [SerializeField] private NavMeshLink navigationLink;
+        [SerializeField] private bool carveClosedPanel = true;
+        [SerializeField, Min(0f)] private float navigationObstaclePadding = 0.05f;
+        [SerializeField] private NavMeshObstacle panelNavigationObstacle;
 
         private float progress;
         private float targetProgress;
@@ -36,6 +48,7 @@ namespace Neighbor.Main.HouseBuilder
         private AudioClip generatedStopClip;
 
         public bool IsOpen => targetProgress >= 1f;
+        public bool AllowsNavigationPassage => IsNavigationPassageOpen();
 
         public void Configure(Transform panel, Vector3 closedPosition, Vector3 openOffset, float duration, bool initiallyOpen)
         {
@@ -68,6 +81,8 @@ namespace Neighbor.Main.HouseBuilder
                 progress = targetProgress;
                 ApplyPanelPosition();
             }
+
+            UpdateNavigationState();
         }
 
         public void ReceiveHouseWireSignal(HouseSignal signal)
@@ -87,12 +102,14 @@ namespace Neighbor.Main.HouseBuilder
             if (doorPanel == null || Mathf.Approximately(progress, targetProgress))
             {
                 StopMovingLoop(false);
+                UpdateNavigationState();
                 return;
             }
 
             StartMovingLoop();
             progress = Mathf.MoveTowards(progress, targetProgress, Time.deltaTime / Mathf.Max(0.01f, travelDuration));
             ApplyPanelPosition();
+            UpdateNavigationState();
             if (Mathf.Approximately(progress, targetProgress))
             {
                 StopMovingLoop(true);
@@ -118,6 +135,7 @@ namespace Neighbor.Main.HouseBuilder
                 progress = startsOpen ? 1f : 0f;
                 targetProgress = progress;
                 ApplyPanelPosition();
+                ConfigureExistingNavigationComponents();
             }
         }
 
@@ -132,6 +150,9 @@ namespace Neighbor.Main.HouseBuilder
             progress = startsOpen ? 1f : 0f;
             targetProgress = progress;
             ApplyPanelPosition();
+            ResolveNavigationComponents();
+            ConfigureNavigationComponents();
+            UpdateNavigationState();
             initialized = true;
         }
 
@@ -162,6 +183,126 @@ namespace Neighbor.Main.HouseBuilder
         private void OnDisable()
         {
             StopMovingLoop(false);
+            if (navigationLink != null)
+            {
+                navigationLink.activated = false;
+            }
+
+            if (panelNavigationObstacle != null)
+            {
+                panelNavigationObstacle.enabled = false;
+            }
+        }
+
+        private void ResolveNavigationComponents()
+        {
+            if (!enableNavigationPassage)
+            {
+                return;
+            }
+
+            ResolvePanel();
+            if (navigationLink == null)
+            {
+                navigationLink = GetComponent<NavMeshLink>();
+            }
+
+            if (navigationLink == null)
+            {
+                navigationLink = gameObject.AddComponent<NavMeshLink>();
+            }
+
+            if (panelNavigationObstacle == null && doorPanel != null)
+            {
+                panelNavigationObstacle = doorPanel.GetComponent<NavMeshObstacle>();
+            }
+
+            if (panelNavigationObstacle == null && doorPanel != null)
+            {
+                BoxCollider panelCollider = doorPanel.GetComponent<BoxCollider>();
+                if (panelCollider != null && !panelCollider.isTrigger)
+                {
+                    panelNavigationObstacle = doorPanel.gameObject.AddComponent<NavMeshObstacle>();
+                }
+            }
+        }
+
+        private void ConfigureExistingNavigationComponents()
+        {
+            if (navigationLink == null)
+            {
+                navigationLink = GetComponent<NavMeshLink>();
+            }
+
+            if (panelNavigationObstacle == null && doorPanel != null)
+            {
+                panelNavigationObstacle = doorPanel.GetComponent<NavMeshObstacle>();
+            }
+
+            ConfigureNavigationComponents();
+            UpdateNavigationState();
+        }
+
+        private void ConfigureNavigationComponents()
+        {
+            if (navigationLink != null)
+            {
+                navigationLink.startPoint = new Vector3(0f, navigationLinkHeight, -navigationLinkHalfDepth);
+                navigationLink.endPoint = new Vector3(0f, navigationLinkHeight, navigationLinkHalfDepth);
+                navigationLink.width = navigationLinkWidth;
+                navigationLink.bidirectional = true;
+                navigationLink.costModifier = -1f;
+                navigationLink.autoUpdate = false;
+            }
+
+            if (panelNavigationObstacle == null)
+            {
+                return;
+            }
+
+            BoxCollider panelCollider = panelNavigationObstacle.GetComponent<BoxCollider>();
+            if (panelCollider == null)
+            {
+                return;
+            }
+
+            panelNavigationObstacle.shape = NavMeshObstacleShape.Box;
+            panelNavigationObstacle.center = panelCollider.center;
+            panelNavigationObstacle.size = panelCollider.size + Vector3.one * navigationObstaclePadding;
+            panelNavigationObstacle.carving = true;
+            panelNavigationObstacle.carveOnlyStationary = false;
+            panelNavigationObstacle.carvingMoveThreshold = 0.03f;
+            panelNavigationObstacle.carvingTimeToStationary = 0.03f;
+        }
+
+        private void UpdateNavigationState()
+        {
+            bool passageOpen = IsNavigationPassageOpen();
+            if (navigationLink != null)
+            {
+                if (!enableNavigationPassage)
+                {
+                    navigationLink.activated = false;
+                    navigationLink.enabled = false;
+                }
+                else
+                {
+                    navigationLink.enabled = true;
+                    navigationLink.activated = passageOpen;
+                }
+            }
+
+            if (panelNavigationObstacle != null)
+            {
+                panelNavigationObstacle.enabled = enableNavigationPassage && carveClosedPanel && !passageOpen;
+            }
+        }
+
+        private bool IsNavigationPassageOpen()
+        {
+            return enableNavigationPassage
+                && targetProgress >= 1f
+                && progress >= navigationOpenProgress;
         }
 
         private void PlayStartSound(bool opening)
