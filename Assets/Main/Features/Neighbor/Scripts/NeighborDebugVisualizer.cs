@@ -243,6 +243,13 @@ namespace Neighbor.Main.Features.Neighbor
                 return $"Object handling ({objectHandling.CurrentPhase})";
             }
 
+            if (brain.CurrentState == NeighborBrain.BehaviorState.LightSwitchUse
+                && brain.LightSwitchInteractor != null
+                && brain.LightSwitchInteractor.TargetSwitch != null)
+            {
+                return $"Using light switch {brain.LightSwitchInteractor.TargetSwitch.name}";
+            }
+
             if (brain.CurrentSearchPoint != null)
             {
                 return brain.CurrentUnexpectedOpenDoor != null
@@ -494,6 +501,7 @@ namespace Neighbor.Main.Features.Neighbor
                 NeighborBrain.BehaviorState.Investigate => new Color(1f, 0.8f, 0.08f),
                 NeighborBrain.BehaviorState.Stunned => new Color(0.8f, 0.25f, 1f),
                 NeighborBrain.BehaviorState.Task => new Color(0.25f, 0.9f, 1f),
+                NeighborBrain.BehaviorState.LightSwitchUse => new Color(0.95f, 0.95f, 0.35f),
                 NeighborBrain.BehaviorState.Wander => new Color(0.25f, 1f, 0.45f),
                 _ => new Color(0.75f, 0.85f, 1f)
             };

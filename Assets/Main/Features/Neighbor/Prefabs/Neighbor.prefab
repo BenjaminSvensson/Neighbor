@@ -270,6 +270,7 @@ GameObject:
   - component: {fileID: 6835100427796417406}
   - component: {fileID: 3418586483215124470}
   - component: {fileID: 8773311825000123456}
+  - component: {fileID: 5488743458123456789}
   - component: {fileID: 1396788348566312222}
   - component: {fileID: 4166624945201646064}
   - component: {fileID: 6627152104098474557}
@@ -343,6 +344,7 @@ MonoBehaviour:
   vision: {fileID: 4166624945201646064}
   hearing: {fileID: 6627152104098474557}
   objectHandling: {fileID: 8773311825000123456}
+  lightSwitchInteractor: {fileID: 5488743458123456789}
   player: {fileID: 0}
   wanderChance: 0.65
   wanderRadius: 8
@@ -430,6 +432,7 @@ MonoBehaviour:
   ignoreDoorBlockers: 1
   ignoreNeighborPlacedCameras: 1
   carryAnchor: {fileID: 0}
+  useAnimatedHandCarryAnchor: 0
   handCarryOffset: {x: 0.08, y: 0.05, z: 0.12}
   fallbackCarryOffset: {x: 0.38, y: 1.15, z: 0.42}
   carryRotationEuler: {x: 0, y: 0, z: 0}
@@ -447,6 +450,26 @@ MonoBehaviour:
   placementMask:
     serializedVersion: 2
     m_Bits: 4294967295
+--- !u!114 &5488743458123456789
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5206360911464809966}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5eab2d8187b7429d862f125974539543, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Neighbor.NeighborLightSwitchInteractor
+  enableLightSwitchUse: 1
+  routineChance: 0.08
+  retryCooldown: 14
+  switchSearchRadius: 9
+  switchApproachDistance: 1.2
+  switchDestinationSampleRadius: 1.5
+  usePause: 0.35
+  faceTurnSharpness: 10
 --- !u!114 &1396788348566312222
 MonoBehaviour:
   m_ObjectHideFlags: 0

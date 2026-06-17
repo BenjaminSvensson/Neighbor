@@ -238,11 +238,6 @@ namespace Neighbor.Main.Features.Neighbor
                     : WalkState;
             }
 
-            if (brain != null && brain.CurrentState == NeighborBrain.BehaviorState.Task)
-            {
-                return TaskState;
-            }
-
             return IdleState;
         }
 

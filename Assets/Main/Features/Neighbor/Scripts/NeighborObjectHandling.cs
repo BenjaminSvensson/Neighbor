@@ -35,6 +35,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         [Header("Carry")]
         [SerializeField] private Transform carryAnchor;
+        [SerializeField] private bool useAnimatedHandCarryAnchor;
         [SerializeField] private Vector3 handCarryOffset = new(0.08f, 0.05f, 0.12f);
         [SerializeField] private Vector3 fallbackCarryOffset = new(0.38f, 1.15f, 0.42f);
         [SerializeField] private Vector3 carryRotationEuler = new(0f, 0f, 0f);
@@ -502,6 +503,12 @@ namespace Neighbor.Main.Features.Neighbor
             if (carryAnchor != null)
             {
                 resolvedCarryAnchor = carryAnchor;
+                return;
+            }
+
+            if (!useAnimatedHandCarryAnchor)
+            {
+                resolvedCarryAnchor = null;
                 return;
             }
 

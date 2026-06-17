@@ -43,6 +43,7 @@ namespace Neighbor.Main.Features.Neighbor
             Task,
             Wander,
             ObjectHandling,
+            LightSwitchUse,
             Investigate,
             Chase,
             Catching,
@@ -55,6 +56,7 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField] private NeighborVision vision;
         [SerializeField] private NeighborHearing hearing;
         [SerializeField] private NeighborObjectHandling objectHandling;
+        [SerializeField] private NeighborLightSwitchInteractor lightSwitchInteractor;
         [SerializeField] private Transform player;
 
         [Header("Routine")]
@@ -233,6 +235,7 @@ namespace Neighbor.Main.Features.Neighbor
             && motor != null
             && motor.HasArrived;
         public NeighborObjectHandling ObjectHandling => objectHandling;
+        public NeighborLightSwitchInteractor LightSwitchInteractor => lightSwitchInteractor;
         public bool IsAtInvestigationGoal => currentState == BehaviorState.Investigate
             && waitingAtGoal
             && motor != null
@@ -246,6 +249,14 @@ namespace Neighbor.Main.Features.Neighbor
             vision = vision != null ? vision : GetComponent<NeighborVision>();
             hearing = hearing != null ? hearing : GetComponent<NeighborHearing>();
             objectHandling = objectHandling != null ? objectHandling : GetComponent<NeighborObjectHandling>();
+            lightSwitchInteractor = lightSwitchInteractor != null
+                ? lightSwitchInteractor
+                : GetComponent<NeighborLightSwitchInteractor>();
+            if (lightSwitchInteractor == null)
+            {
+                lightSwitchInteractor = gameObject.AddComponent<NeighborLightSwitchInteractor>();
+            }
+
             animationController = GetComponent<NeighborAnimationController>();
             ResolvePlayer();
         }
@@ -421,6 +432,9 @@ namespace Neighbor.Main.Features.Neighbor
                     break;
                 case BehaviorState.ObjectHandling:
                     UpdateObjectHandling();
+                    break;
+                case BehaviorState.LightSwitchUse:
+                    UpdateLightSwitchUse();
                     break;
                 case BehaviorState.Task:
                 case BehaviorState.Wander:
@@ -1073,6 +1087,10 @@ namespace Neighbor.Main.Features.Neighbor
                     objectHandling?.CancelActivity();
                     ChooseNextRoutineGoal();
                     return;
+                case BehaviorState.LightSwitchUse:
+                    lightSwitchInteractor?.CancelActivity();
+                    ChooseNextRoutineGoal();
+                    return;
             }
         }
 
@@ -1126,6 +1144,15 @@ namespace Neighbor.Main.Features.Neighbor
                 currentTaskLocation = null;
                 waitingAtGoal = false;
                 SetState(BehaviorState.ObjectHandling);
+                return;
+            }
+
+            if (lightSwitchInteractor != null && lightSwitchInteractor.TryBeginRoutine(out Vector3 lightSwitchGoal))
+            {
+                currentGoal = lightSwitchGoal;
+                currentTaskLocation = null;
+                waitingAtGoal = false;
+                SetState(BehaviorState.LightSwitchUse);
                 return;
             }
 
@@ -1274,6 +1301,17 @@ namespace Neighbor.Main.Features.Neighbor
             ChooseNextRoutineGoal();
         }
 
+        private void UpdateLightSwitchUse()
+        {
+            if (lightSwitchInteractor != null && lightSwitchInteractor.UpdateActivity(out Vector3 activityGoal))
+            {
+                currentGoal = activityGoal;
+                return;
+            }
+
+            ChooseNextRoutineGoal();
+        }
+
         private void BeginTaskAnimationPhase(
             NeighborTaskLocation.TaskAnimationPhase phase,
             float overrideDuration = -1f)
@@ -1367,7 +1405,18 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
-            return IsAtCurrentTaskUseDistance();
+            return IsAtCurrentTaskUseHeight();
+        }
+
+        private bool IsAtCurrentTaskUseHeight()
+        {
+            if (currentTaskLocation == null || !currentTaskLocation.IsObjectPoseUsable)
+            {
+                return false;
+            }
+
+            return Mathf.Abs(currentTaskLocation.Position.y - transform.position.y)
+                <= currentTaskLocation.MaximumUseVerticalOffset;
         }
 
         private bool IsAtCurrentTaskUseDistance()
@@ -1739,6 +1788,11 @@ namespace Neighbor.Main.Features.Neighbor
             if (currentState == BehaviorState.ObjectHandling && state != BehaviorState.ObjectHandling)
             {
                 objectHandling?.CancelActivity();
+            }
+
+            if (currentState == BehaviorState.LightSwitchUse && state != BehaviorState.LightSwitchUse)
+            {
+                lightSwitchInteractor?.CancelActivity();
             }
 
             if (currentState == BehaviorState.Chase && state != BehaviorState.Chase)

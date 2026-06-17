@@ -304,6 +304,28 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void TaskArrival_UsesSampledDestinationInsteadOfObjectCenter()
+        {
+            GameObject car = context.CreateObject("CarTask");
+            NeighborTaskLocation task = context.AddInitializedComponent<NeighborTaskLocation>(car);
+            GameplaySmokeTestReflection.SetField(task, "arrivalDistance", 0.25f);
+            GameplaySmokeTestReflection.SetField(task, "maximumUseVerticalOffset", 0.45f);
+
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            neighborObject.transform.position = car.transform.position + Vector3.right * 2f;
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.Task);
+            GameplaySmokeTestReflection.SetField(brain, "currentTaskLocation", task);
+
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    brain,
+                    "IsAtCurrentTaskUseHeight"),
+                Is.True);
+            Assert.That(brain.IsAtTaskUsePoint, Is.False);
+        }
+
+        [Test]
         public void ObjectHandling_RejectsHeavyAndTaskObjects()
         {
             GameObject neighborObject = context.CreateObject("Neighbor");
@@ -421,6 +443,54 @@ namespace Neighbor.Main.Tests
             Assert.That(pickup.IsHeld, Is.False);
             Assert.That(pickup.transform.position.y, Is.GreaterThan(0.45f));
             Assert.That(pickup.transform.position.y, Is.LessThan(0.6f));
+        }
+
+        [Test]
+        public void ObjectHandling_DefaultCarryPoseUsesRootFallback()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            neighborObject.transform.position = new Vector3(3f, 0f, -2f);
+            context.AddInitializedComponent<NeighborMotor>(neighborObject);
+            context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            NeighborObjectHandling objectHandling = context.AddInitializedComponent<NeighborObjectHandling>(neighborObject);
+            Transform unstableHand = context.CreateObject("AnimatedHand").transform;
+            unstableHand.SetParent(neighborObject.transform);
+            unstableHand.localPosition = Vector3.up * 9f;
+            GameplaySmokeTestReflection.SetField(objectHandling, "resolvedCarryAnchor", unstableHand);
+            GameplaySmokeTestReflection.SetField(objectHandling, "fallbackCarryOffset", new Vector3(0.4f, 1.1f, 0.3f));
+
+            GameObject pickupObject = context.CreateObject("Pickup");
+            pickupObject.AddComponent<Rigidbody>();
+            pickupObject.AddComponent<BoxCollider>();
+            Pickupable pickup = context.AddInitializedComponent<Pickupable>(pickupObject);
+            pickup.Pickup(null, false);
+            GameplaySmokeTestReflection.SetField(objectHandling, "heldPickup", pickup);
+            GameplaySmokeTestReflection.Invoke(objectHandling, "CacheHeldBounds", pickup);
+            GameplaySmokeTestReflection.Invoke(objectHandling, "UpdateHeldPose");
+
+            Vector3 expected = neighborObject.transform.TransformPoint(new Vector3(0.4f, 1.1f, 0.3f));
+            Assert.That(pickup.transform.position.x, Is.EqualTo(expected.x).Within(0.001f));
+            Assert.That(pickup.transform.position.y, Is.EqualTo(expected.y).Within(0.001f));
+            Assert.That(pickup.transform.position.z, Is.EqualTo(expected.z).Within(0.001f));
+        }
+
+        [Test]
+        public void LightSwitchInteractor_TogglesSwitchWithoutAlertingNeighbor()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>();
+            NeighborLightSwitchInteractor interactor = brain.LightSwitchInteractor;
+            Assert.That(interactor, Is.Not.Null);
+
+            GameObject switchObject = context.CreateObject("LightSwitch");
+            switchObject.AddComponent<BoxCollider>();
+            LightSwitch lightSwitch = context.AddInitializedComponent<LightSwitch>(switchObject);
+            bool emittedState = true;
+            lightSwitch.HouseWireSignalEmitted += signal => emittedState = signal.BoolValue;
+
+            GameplaySmokeTestReflection.Invoke(interactor, "UseSwitch", lightSwitch);
+
+            Assert.That(emittedState, Is.False);
+            Assert.That(brain.Suspicion, Is.Zero);
         }
 
         [Test]
