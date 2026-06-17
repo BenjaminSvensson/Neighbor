@@ -7,3 +7,10 @@
 5. Increase an area's priority when it should override an overlapping area.
 
 The manager follows the scene's `AudioListener` automatically and smoothly crossfades profiles using the incoming profile's transition duration.
+
+Prefab starters live in `Prefabs/`:
+
+- `AreaSpecificAmbienceArea` covers a standard room-sized area.
+- `LargeAreaSpecificAmbienceArea` covers larger rooms or outdoor regions.
+
+Drop a prefab into the scene, resize its trigger collider to match the space, and assign the area's `AmbienceProfile`. While the player listener is inside that collider, the assigned ambience profile plays.
