@@ -4,6 +4,7 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Neighbor.Main.Tests
 {
@@ -122,6 +123,62 @@ namespace Neighbor.Main.Tests
             Assert.That(
                 cameraSettings.FindProperty("maximumAnimatedHeadDistanceFromAnchor").floatValue,
                 Is.InRange(0.1f, 3f));
+        }
+
+        [Test]
+        public void PlayerCamera_HasWallPeekProtectionDefaults()
+        {
+            GameObject playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
+            PlayerCameraController cameraController = playerPrefab.GetComponentInChildren<PlayerCameraController>(true);
+            int playerLayer = LayerMask.NameToLayer("Player");
+
+            Assert.That(cameraController, Is.Not.Null);
+            Assert.That(playerLayer, Is.GreaterThanOrEqualTo(0));
+
+            SerializedObject cameraSettings = new(cameraController);
+            int obstructionMask = cameraSettings.FindProperty("cameraObstructionMask").intValue;
+            Assert.That(obstructionMask & (1 << playerLayer), Is.Zero);
+            Assert.That(obstructionMask & Physics.IgnoreRaycastLayer, Is.Zero);
+            Assert.That(cameraSettings.FindProperty("cameraCollisionRadius").floatValue, Is.GreaterThan(0f));
+            Assert.That(cameraSettings.FindProperty("antiPeekNearClipPlane").floatValue, Is.InRange(0.01f, 0.1f));
+        }
+
+        [Test]
+        public void PlayerCamera_ClampsProceduralLeanBeforeWall()
+        {
+            GameObject root = new("CameraCollisionRoot");
+            GameObject head = new("CameraCollisionHead");
+            GameObject cameraObject = new("Camera");
+            GameObject wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+
+            try
+            {
+                head.transform.SetParent(root.transform, false);
+                cameraObject.transform.SetParent(head.transform, false);
+
+                Camera camera = cameraObject.AddComponent<Camera>();
+                camera.nearClipPlane = 0.3f;
+                PlayerCameraController cameraController = cameraObject.AddComponent<PlayerCameraController>();
+
+                wall.name = "CameraCollisionWall";
+                wall.transform.position = new Vector3(0.45f, 0f, 0f);
+                wall.transform.localScale = new Vector3(0.1f, 2f, 2f);
+                Physics.SyncTransforms();
+
+                GameplaySmokeTestReflection.InvokeIfPresent(cameraController, "Awake");
+                GameplaySmokeTestReflection.Invoke(cameraController, "UpdateCameraPosition", Vector3.right * 0.7f);
+
+                Assert.That(camera.nearClipPlane, Is.LessThanOrEqualTo(0.08f));
+                Assert.That(cameraObject.transform.position.x, Is.GreaterThanOrEqualTo(0f));
+                Assert.That(cameraObject.transform.position.x, Is.LessThan(0.32f));
+            }
+            finally
+            {
+                Object.DestroyImmediate(wall);
+                Object.DestroyImmediate(cameraObject);
+                Object.DestroyImmediate(head);
+                Object.DestroyImmediate(root);
+            }
         }
     }
 }

@@ -8,6 +8,10 @@ namespace Neighbor.Main.Features.Player
     [DefaultExecutionOrder(1000)]
     public sealed class PlayerCameraController : MonoBehaviour
     {
+        private const int IgnoreRaycastLayer = 2;
+        private const int PlayerLayer = 9;
+        private const int DefaultCameraObstructionMask = ~((1 << IgnoreRaycastLayer) | (1 << PlayerLayer));
+
         [Header("References")]
         [SerializeField] private PlayerController playerController;
         [SerializeField] private Transform yawRoot;
@@ -46,6 +50,12 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float wobbleFrequency = 1.7f;
         [SerializeField, Min(0f)] private float bobPositionAmount = 0.055f;
         [SerializeField, Min(0f)] private float bobRollAmount = 1.4f;
+
+        [Header("Camera Collision")]
+        [SerializeField] private LayerMask cameraObstructionMask = DefaultCameraObstructionMask;
+        [SerializeField, Min(0f)] private float cameraCollisionRadius = 0.12f;
+        [SerializeField, Min(0f)] private float cameraCollisionSkin = 0.03f;
+        [SerializeField, Min(0.01f)] private float antiPeekNearClipPlane = 0.08f;
 
         [Header("Jump Camera")]
         [SerializeField, Min(0f)] private float jumpTakeoffKick = 0.1f;
@@ -116,6 +126,7 @@ namespace Neighbor.Main.Features.Player
         private bool gameplayInputBlocked;
         private Transform cinematicLookTarget;
         private Vector3 cinematicLookOffset;
+        private readonly RaycastHit[] cameraCollisionHits = new RaycastHit[8];
 
         public int ZoomDirection { get; private set; }
         public event System.Action<int> ZoomDirectionChanged;
@@ -125,6 +136,7 @@ namespace Neighbor.Main.Features.Player
             playerCamera = GetComponent<Camera>();
             baseLocalPosition = transform.localPosition;
             noiseSeed = Random.Range(0f, 1000f);
+            ApplyAntiPeekNearClipPlane();
 
             if (playerController == null)
             {
@@ -361,9 +373,20 @@ namespace Neighbor.Main.Features.Player
             }
 
             Vector3 fallbackLocalPosition = baseLocalPosition + proceduralOffset;
+            Vector3 fallbackAnchorPosition = transform.parent != null
+                ? transform.parent.TransformPoint(baseLocalPosition)
+                : transform.position;
+
             if (animatedHead == null || yawRoot == null || transform.parent == null)
             {
-                transform.localPosition = fallbackLocalPosition;
+                if (transform.parent == null)
+                {
+                    transform.localPosition = fallbackLocalPosition;
+                    return;
+                }
+
+                Vector3 fallbackDesiredPosition = transform.parent.TransformPoint(fallbackLocalPosition);
+                transform.position = ResolveCameraObstruction(fallbackAnchorPosition, fallbackDesiredPosition);
                 return;
             }
 
@@ -372,10 +395,105 @@ namespace Neighbor.Main.Features.Player
                 + yawRoot.TransformVector(headViewOffset + proceduralOffset);
             float maximumDistance = Mathf.Max(0f, maximumAnimatedHeadDistanceFromAnchor);
 
-            transform.position = maximumDistance > 0f
+            Vector3 desiredPosition = maximumDistance > 0f
                 && Vector3.SqrMagnitude(animatedHeadPosition - fallbackPosition) <= maximumDistance * maximumDistance
                     ? animatedHeadPosition
                     : fallbackPosition;
+
+            transform.position = ResolveCameraObstruction(fallbackAnchorPosition, desiredPosition);
+        }
+
+        private Vector3 ResolveCameraObstruction(Vector3 anchorPosition, Vector3 desiredPosition)
+        {
+            Vector3 offset = desiredPosition - anchorPosition;
+            float distance = offset.magnitude;
+            if (distance <= 0.0001f || cameraObstructionMask.value == 0)
+            {
+                return desiredPosition;
+            }
+
+            Vector3 direction = offset / distance;
+            if (!TryGetNearestCameraObstruction(anchorPosition, direction, distance, GetCameraCollisionRadius(), out RaycastHit hit))
+            {
+                return desiredPosition;
+            }
+
+            return anchorPosition + direction * Mathf.Max(0f, hit.distance - cameraCollisionSkin);
+        }
+
+        private bool TryGetNearestCameraObstruction(
+            Vector3 origin,
+            Vector3 direction,
+            float distance,
+            float radius,
+            out RaycastHit nearestHit)
+        {
+            int hitCount = radius > 0f
+                ? Physics.SphereCastNonAlloc(
+                    origin,
+                    radius,
+                    direction,
+                    cameraCollisionHits,
+                    distance,
+                    cameraObstructionMask,
+                    QueryTriggerInteraction.Ignore)
+                : Physics.RaycastNonAlloc(
+                    origin,
+                    direction,
+                    cameraCollisionHits,
+                    distance,
+                    cameraObstructionMask,
+                    QueryTriggerInteraction.Ignore);
+
+            nearestHit = default;
+            float nearestDistance = float.PositiveInfinity;
+            bool foundHit = false;
+
+            for (int i = 0; i < hitCount; i++)
+            {
+                RaycastHit hit = cameraCollisionHits[i];
+                if (hit.collider == null || ShouldIgnoreCameraObstruction(hit.collider) || hit.distance >= nearestDistance)
+                {
+                    continue;
+                }
+
+                nearestHit = hit;
+                nearestDistance = hit.distance;
+                foundHit = true;
+            }
+
+            return foundHit;
+        }
+
+        private bool ShouldIgnoreCameraObstruction(Collider hit)
+        {
+            return hit.transform == transform
+                || hit.transform.IsChildOf(transform)
+                || (yawRoot != null && hit.transform.IsChildOf(yawRoot));
+        }
+
+        private float GetCameraCollisionRadius()
+        {
+            float radius = Mathf.Max(0f, cameraCollisionRadius);
+            if (playerCamera == null)
+            {
+                return radius;
+            }
+
+            float nearClip = Mathf.Max(0.01f, playerCamera.nearClipPlane);
+            float halfHeight = Mathf.Tan(playerCamera.fieldOfView * 0.5f * Mathf.Deg2Rad) * nearClip;
+            float halfWidth = halfHeight * Mathf.Max(1f, playerCamera.aspect);
+            return Mathf.Max(radius, Mathf.Sqrt(halfHeight * halfHeight + halfWidth * halfWidth));
+        }
+
+        private void ApplyAntiPeekNearClipPlane()
+        {
+            if (playerCamera == null || antiPeekNearClipPlane <= 0f)
+            {
+                return;
+            }
+
+            playerCamera.nearClipPlane = Mathf.Min(playerCamera.nearClipPlane, antiPeekNearClipPlane);
         }
 
         private void UpdateImpactFeedback()
