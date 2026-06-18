@@ -10417,7 +10417,7 @@ MonoBehaviour:
   m_VoxelSize: 0.1
   m_MinRegionArea: 2
   m_NavMeshData: {fileID: 23800000, guid: 2eb7f89068acb6c458caee4fcfb0fd23, type: 2}
-  m_BuildHeightMesh: 0
+  m_BuildHeightMesh: 1
 --- !u!4 &526875364
 Transform:
   m_ObjectHideFlags: 0
@@ -32591,6 +32591,18 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5149708664988297280, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
+      propertyPath: loopVolume
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5149708664988297280, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
+      propertyPath: stopVolume
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5149708664988297280, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
+      propertyPath: startVolume
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5149708664988297280, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
       propertyPath: travelDuration
       value: 6
       objectReference: {fileID: 0}
@@ -33961,6 +33973,18 @@ PrefabInstance:
     - target: {fileID: 3631413973671460966, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5149708664988297280, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
+      propertyPath: loopVolume
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5149708664988297280, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
+      propertyPath: stopVolume
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5149708664988297280, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
+      propertyPath: startVolume
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5149708664988297280, guid: f281376fa6961b344958ae5cd92331bb, type: 3}
       propertyPath: travelDuration

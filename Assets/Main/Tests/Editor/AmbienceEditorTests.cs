@@ -88,7 +88,7 @@ namespace Neighbor.Main.Tests
             {
                 AmbienceManager manager = managerObject.AddComponent<AmbienceManager>();
                 GameplaySmokeTestReflection.SetField(manager, "listener", listenerObject.transform);
-                GameplaySmokeTestReflection.SetField(manager, "player", null);
+                GameplaySmokeTestReflection.SetField<PlayerController>(manager, "player", null);
 
                 AmbienceArea activeArea = CreateArea(activeAreaObject, activeProfile, false, Vector3.zero);
                 AmbienceArea defaultArea = CreateArea(defaultAreaObject, defaultAreaProfile, true, new Vector3(20f, 0f, 0f));
