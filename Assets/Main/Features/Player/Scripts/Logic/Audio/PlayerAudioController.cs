@@ -9,17 +9,20 @@ namespace Neighbor.Main.Features.Player
         [SerializeField] private PlayerCameraController cameraController;
         [SerializeField] private Transform audioAnchor;
         [SerializeField] private AudioSource oneShotSource;
+        [SerializeField] private AudioSource footstepLoopSource;
         [SerializeField] private AudioSource slideLoopSource;
         [SerializeField] private AudioSource zoomLoopSource;
 
         [Header("Footsteps")]
-        [SerializeField] private AudioClip[] walkFootsteps;
-        [SerializeField] private AudioClip[] runFootsteps;
-        [SerializeField] private AudioClip[] crouchFootsteps;
-        [SerializeField, Min(0.05f)] private float walkStepInterval = 0.48f;
-        [SerializeField, Min(0.05f)] private float runStepInterval = 0.32f;
-        [SerializeField, Min(0.05f)] private float crouchStepInterval = 0.62f;
+        [SerializeField] private AudioClip walkFootstepLoop;
+        [SerializeField] private AudioClip runFootstepLoop;
+        [SerializeField] private AudioClip crouchFootstepLoop;
+        [SerializeField, Range(0f, 1f)] private float footstepMinimumVolume = 0.2f;
         [SerializeField, Range(0f, 1f)] private float footstepVolume = 0.55f;
+        [SerializeField, Min(0f)] private float footstepLoopFadeSharpness = 12f;
+        [SerializeField, HideInInspector] private AudioClip[] walkFootsteps;
+        [SerializeField, HideInInspector] private AudioClip[] runFootsteps;
+        [SerializeField, HideInInspector] private AudioClip[] crouchFootsteps;
 
         [Header("Movement Actions")]
         [SerializeField] private AudioClip[] jumpClips;
@@ -57,7 +60,8 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0.1f)] private float maxDistance = 12f;
         [SerializeField, Min(0f)] private float pitchRandomness = 0.04f;
 
-        private float footstepTimer;
+        private AudioClip activeFootstepLoopClip;
+        private float activeFootstepLoopPitch = 1f;
         private bool wasCrouching;
         private bool wasSliding;
         private bool wasLedgeClimbing;
@@ -92,16 +96,23 @@ namespace Neighbor.Main.Features.Player
                 slideLoopSource = audioAnchor.gameObject.AddComponent<AudioSource>();
             }
 
+            if (footstepLoopSource == null)
+            {
+                footstepLoopSource = audioAnchor.gameObject.AddComponent<AudioSource>();
+            }
+
             if (zoomLoopSource == null)
             {
                 zoomLoopSource = audioAnchor.gameObject.AddComponent<AudioSource>();
             }
 
             ConfigureSource(oneShotSource, false);
+            ConfigureSource(footstepLoopSource, true);
             ConfigureSource(slideLoopSource, true);
             ConfigureSource(zoomLoopSource, true);
             zoomLoopSource.spatialBlend = 0f;
             zoomLoopSource.dopplerLevel = 0f;
+            MigrateFootstepLoopClips();
             SubscribeToCameraZoom();
             wasCrouching = playerController != null && playerController.IsCrouching;
             wasSliding = playerController != null && playerController.IsSliding;
@@ -187,33 +198,98 @@ namespace Neighbor.Main.Features.Player
 
         private void UpdateFootsteps()
         {
-            bool shouldStep = playerController.IsGrounded
+            bool shouldLoopFootsteps = playerController.IsGrounded
                 && !playerController.IsSliding
                 && !playerController.IsLedgeClimbing
                 && playerController.MoveAmount > 0.08f;
 
-            if (!shouldStep)
+            AudioClip targetClip = shouldLoopFootsteps ? GetFootstepLoopClip() : null;
+            if (targetClip != null && targetClip != activeFootstepLoopClip)
             {
-                footstepTimer = 0f;
+                SwitchFootstepLoop(targetClip);
+            }
+
+            float targetVolume = shouldLoopFootsteps && targetClip != null
+                ? Mathf.Lerp(footstepMinimumVolume, footstepVolume, playerController.Speed01)
+                : 0f;
+            float targetPitch = activeFootstepLoopPitch * Mathf.Lerp(0.96f, 1.04f, playerController.Speed01);
+            FadeFootstepLoop(targetVolume, targetPitch);
+        }
+
+        private void MigrateFootstepLoopClips()
+        {
+            walkFootstepLoop = walkFootstepLoop != null ? walkFootstepLoop : GetFirstAssignedClip(walkFootsteps);
+            runFootstepLoop = runFootstepLoop != null ? runFootstepLoop : GetFirstAssignedClip(runFootsteps);
+            crouchFootstepLoop = crouchFootstepLoop != null ? crouchFootstepLoop : GetFirstAssignedClip(crouchFootsteps);
+        }
+
+        private static AudioClip GetFirstAssignedClip(AudioClip[] clips)
+        {
+            if (clips == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < clips.Length; i++)
+            {
+                if (clips[i] != null)
+                {
+                    return clips[i];
+                }
+            }
+
+            return null;
+        }
+
+        private AudioClip GetFootstepLoopClip()
+        {
+            if (playerController.IsCrouching)
+            {
+                return crouchFootstepLoop != null ? crouchFootstepLoop : walkFootstepLoop;
+            }
+
+            return playerController.IsRunning && runFootstepLoop != null ? runFootstepLoop : walkFootstepLoop;
+        }
+
+        private void SwitchFootstepLoop(AudioClip clip)
+        {
+            if (footstepLoopSource == null || clip == null)
+            {
+                activeFootstepLoopClip = null;
                 return;
             }
 
-            float interval = playerController.IsCrouching
-                ? crouchStepInterval
-                : playerController.IsRunning ? runStepInterval : walkStepInterval;
+            activeFootstepLoopClip = clip;
+            activeFootstepLoopPitch = Random.Range(1f - pitchRandomness, 1f + pitchRandomness);
+            footstepLoopSource.Stop();
+            footstepLoopSource.clip = clip;
+            footstepLoopSource.loop = true;
+            footstepLoopSource.volume = 0f;
+            footstepLoopSource.pitch = activeFootstepLoopPitch;
+            footstepLoopSource.Play();
+        }
 
-            footstepTimer -= Time.deltaTime;
-            if (footstepTimer > 0f)
+        private void FadeFootstepLoop(float targetVolume, float targetPitch)
+        {
+            if (footstepLoopSource == null)
             {
+                activeFootstepLoopClip = null;
                 return;
             }
 
-            AudioClip[] clips = playerController.IsCrouching
-                ? crouchFootsteps
-                : playerController.IsRunning ? runFootsteps : walkFootsteps;
+            float fade = 1f - Mathf.Exp(-footstepLoopFadeSharpness * Time.deltaTime);
+            footstepLoopSource.volume = Mathf.Lerp(footstepLoopSource.volume, targetVolume, fade);
+            footstepLoopSource.pitch = Mathf.Lerp(footstepLoopSource.pitch, targetPitch, fade);
 
-            PlayRandom(clips, footstepVolume);
-            footstepTimer = interval;
+            if (targetVolume <= 0.001f && footstepLoopSource.isPlaying && footstepLoopSource.volume <= 0.01f)
+            {
+                footstepLoopSource.Stop();
+                activeFootstepLoopClip = null;
+            }
+            else if (targetVolume > 0.001f && footstepLoopSource.clip != null && !footstepLoopSource.isPlaying)
+            {
+                footstepLoopSource.Play();
+            }
         }
 
         private void UpdateSlideLoop()
@@ -302,11 +378,17 @@ namespace Neighbor.Main.Features.Player
                 slideLoopSource.Stop();
             }
 
+            if (footstepLoopSource != null)
+            {
+                footstepLoopSource.Stop();
+            }
+
             if (zoomLoopSource != null)
             {
                 zoomLoopSource.Stop();
             }
 
+            activeFootstepLoopClip = null;
             pausedZoomClip = null;
             pausedZoomSample = 0;
             zoomPausedAt = float.NegativeInfinity;
