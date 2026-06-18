@@ -63,6 +63,17 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 928637fececf2f842b87cbd84b055f28, type: 3}
   shatterVolume: 0.8
   pitchRandomness: 0.12
+  trackPlayerBreakForReinforcement: 1
+  playerBreakWeight: 1.25
+  reinforcementCanBoardOpening: 1
+  reinforcementBoardCount: 2
+  blockerReinforcementOptions:
+  - prefab: {fileID: 100000, guid: 937625480ade4a69a0f15d5d56f3a830, type: 3}
+    cost: 1
+  legacyBlockerReinforcementPrefabs: []
+  reinforcementBoardSurfaceOffset: 0.035
+  reinforcementBoardVerticalSpacing: 0.38
+  reinforcementBoardRollVariation: 7
 --- !u!65 &817573911808841759
 BoxCollider:
   m_ObjectHideFlags: 0

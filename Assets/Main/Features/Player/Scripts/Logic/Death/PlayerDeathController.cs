@@ -181,12 +181,14 @@ namespace Neighbor.Main.Features.Player
             }
 
             Door.ResetAllToStartingState();
+            GlassShatter.ResetAllToStartingState();
             AdaptiveSecurityPlan securityPlan = AdaptiveSecurityDirector.CompleteRun(
                 reinforcementBudgetPerDeath,
                 reinforcementLocationsPerDeath,
                 reinforcedDoorsPerDeath);
             ReinforcementBudget reinforcementBudget = new ReinforcementBudget(securityPlan.Budget);
             Door.ApplyRunReinforcements(securityPlan.DoorCount, reinforcementBudget);
+            GlassShatter.ApplyRunReinforcements(securityPlan.DoorCount, reinforcementBudget);
             ReinforcementTrigger.ApplyRunReinforcements(securityPlan.LocationCount, reinforcementBudget);
             ResetRun();
 

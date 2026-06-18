@@ -72,8 +72,10 @@ MonoBehaviour:
   reinforcementCanLockDoor: 0
   reinforcementLockCost: 1
   reinforcementCanBlockDoor: 1
+  maximumBlockers: 3
+  blockerReinforcementCount: 2
   blockerReinforcementOptions:
-  - prefab: {fileID: 0}
+  - prefab: {fileID: 100000, guid: 937625480ade4a69a0f15d5d56f3a830, type: 3}
     cost: 1
   legacyBlockerReinforcementPrefabs: []
   blockerReinforcementSpawnPoint: {fileID: 0}

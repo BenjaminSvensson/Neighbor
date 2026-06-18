@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
@@ -78,6 +79,63 @@ namespace Neighbor.Main.Tests
                     doorInteractor,
                     "ShouldYieldToTaskUse"),
                 Is.True);
+        }
+
+        [Test]
+        public void Door_AllowsMultipleReinforcementBoardsWithStaggeredPose()
+        {
+            Door door = context.AddInitializedComponent<Door>();
+            DoorBlockerChair firstBoard = CreateBoardBlocker("FirstBoard");
+            DoorBlockerChair secondBoard = CreateBoardBlocker("SecondBoard");
+
+            Assert.That(firstBoard.TryBlockDoorAsReinforcement(door, 0), Is.True);
+            Assert.That(secondBoard.TryBlockDoorAsReinforcement(door, 1), Is.True);
+
+            Assert.That(door.IsBlocked, Is.True);
+            Assert.That(door.ActiveBlockerCount, Is.EqualTo(2));
+            Assert.That(Mathf.Abs(firstBoard.transform.position.y - secondBoard.transform.position.y), Is.GreaterThan(0.2f));
+            Assert.That(Quaternion.Angle(firstBoard.transform.rotation, secondBoard.transform.rotation), Is.GreaterThan(1f));
+        }
+
+        [Test]
+        public void Glass_PlayerBreakReinforcementRestoresPaneAndBoardsOpening()
+        {
+            GameObject boardPrefab = CreateBoardObject("BoardPrefab");
+            GameObject glassObject = context.CreateObject("Glass");
+            BoxCollider glassCollider = glassObject.AddComponent<BoxCollider>();
+            glassCollider.size = new Vector3(0.08f, 1.5f, 2f);
+            GlassShatter glass = context.AddInitializedComponent<GlassShatter>(glassObject);
+            ConfigureQuietGlass(glass);
+            ConfigureReinforcementOption(glass, boardPrefab);
+            GameplaySmokeTestReflection.SetField(glass, "reinforcementBoardCount", 2);
+
+            glass.ShatterFromPlayer(glass.transform.position, Vector3.forward * 4f, null);
+
+            Assert.That(glassCollider.enabled, Is.False);
+
+            GlassShatter.ResetAllToStartingState();
+            GlassShatter.ApplyRunReinforcements(1, new ReinforcementBudget(3));
+
+            List<GameObject> spawnedReinforcements =
+                GameplaySmokeTestReflection.GetField<List<GameObject>>(glass, "spawnedReinforcements");
+            Assert.That(glassCollider.enabled, Is.True);
+            Assert.That(spawnedReinforcements, Has.Count.EqualTo(2));
+            Assert.That(spawnedReinforcements[0].GetComponent<DoorBlockerChair>().IsBlockingDoor, Is.True);
+            Assert.That(spawnedReinforcements[1].GetComponent<DoorBlockerChair>().IsBlockingDoor, Is.True);
+            Assert.That(
+                Mathf.Abs(spawnedReinforcements[0].transform.position.y - spawnedReinforcements[1].transform.position.y),
+                Is.GreaterThan(0.2f));
+            Assert.That(
+                Quaternion.Angle(spawnedReinforcements[0].transform.rotation, spawnedReinforcements[1].transform.rotation),
+                Is.GreaterThan(1f));
+
+            for (int i = 0; i < spawnedReinforcements.Count; i++)
+            {
+                if (spawnedReinforcements[i] != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(spawnedReinforcements[i]);
+                }
+            }
         }
 
         [Test]
@@ -234,6 +292,44 @@ namespace Neighbor.Main.Tests
             pickupObject.AddComponent<Rigidbody>();
             pickupObject.AddComponent<BoxCollider>();
             return context.AddInitializedComponent<Pickupable>(pickupObject);
+        }
+
+        private DoorBlockerChair CreateBoardBlocker(string name)
+        {
+            DoorBlockerChair blocker = CreateBoardObject(name).GetComponent<DoorBlockerChair>();
+            GameplaySmokeTestReflection.SetField(blocker, "attachToDoorSurface", true);
+            GameplaySmokeTestReflection.SetField(blocker, "leanAngle", 0f);
+            return blocker;
+        }
+
+        private GameObject CreateBoardObject(string name)
+        {
+            GameObject boardObject = context.CreateObject(name);
+            Rigidbody body = boardObject.AddComponent<Rigidbody>();
+            body.isKinematic = true;
+            BoxCollider collider = boardObject.AddComponent<BoxCollider>();
+            collider.size = new Vector3(2.3f, 0.22f, 0.22f);
+            Pickupable pickupable = boardObject.AddComponent<Pickupable>();
+            DoorBlockerChair blocker = boardObject.AddComponent<DoorBlockerChair>();
+            WoodBoardPryTarget pryTarget = boardObject.AddComponent<WoodBoardPryTarget>();
+
+            GameplaySmokeTestReflection.InvokeIfPresent(pickupable, "Awake");
+            GameplaySmokeTestReflection.InvokeIfPresent(blocker, "Awake");
+            GameplaySmokeTestReflection.InvokeIfPresent(pryTarget, "Awake");
+            return boardObject;
+        }
+
+        private static void ConfigureQuietGlass(GlassShatter glass)
+        {
+            GameplaySmokeTestReflection.SetField(glass, "shatterClips", new AudioClip[] { null });
+            GameplaySmokeTestReflection.SetField(glass, "hearingRadius", 0f);
+        }
+
+        private static void ConfigureReinforcementOption(GlassShatter glass, GameObject prefab)
+        {
+            ReinforcementPrefabOption option = new();
+            GameplaySmokeTestReflection.SetField(option, "prefab", prefab);
+            GameplaySmokeTestReflection.SetField(glass, "blockerReinforcementOptions", new[] { option });
         }
     }
 }

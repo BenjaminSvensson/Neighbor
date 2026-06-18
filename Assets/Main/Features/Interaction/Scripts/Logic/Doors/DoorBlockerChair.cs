@@ -21,6 +21,8 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private bool attachToDoorSurface;
         [SerializeField, Min(0f)] private float doorSurfaceOffset = 0.03f;
         [SerializeField] private float doorSurfaceHeight = 1.15f;
+        [SerializeField, Min(0f)] private float reinforcementBoardVerticalSpacing = 0.42f;
+        [SerializeField, Range(0f, 25f)] private float reinforcementBoardRollVariation = 7f;
         [SerializeField] private LayerMask groundMask = ~0;
         [SerializeField] private LayerMask doorMask = ~0;
 
@@ -31,13 +33,14 @@ namespace Neighbor.Main.Features.Interaction
         private RigidbodyConstraints originalConstraints;
         private bool hasFrozenBlockedBody;
         private bool blockDisabledUntilPlaced;
+        private bool isBlockingReinforcedOpening;
         [SerializeField, Tooltip("Who placed this blocker. Reinforcement spawns set this automatically.")]
         private BlockerPlacementOrigin placementOrigin = BlockerPlacementOrigin.Player;
         private readonly Collider[] nearbyDoorHits = new Collider[8];
         private readonly RaycastHit[] groundHits = new RaycastHit[12];
         private ItemAudioFeedback audioFeedback;
 
-        public bool IsBlockingDoor => blockedDoor != null;
+        public bool IsBlockingDoor => blockedDoor != null || isBlockingReinforcedOpening;
         public BlockerPlacementOrigin PlacementOrigin => placementOrigin;
         public bool IsReinforcementPlaced => placementOrigin == BlockerPlacementOrigin.Reinforcement;
 
@@ -47,6 +50,11 @@ namespace Neighbor.Main.Features.Interaction
         }
 
         private void Awake()
+        {
+            ResolveDependencies();
+        }
+
+        private void ResolveDependencies()
         {
             pickupable = GetComponent<Pickupable>();
             body = GetComponent<Rigidbody>();
@@ -61,7 +69,7 @@ namespace Neighbor.Main.Features.Interaction
 
         private void Update()
         {
-            if (blockedDoor == null)
+            if (blockedDoor == null && !isBlockingReinforcedOpening)
             {
                 TryAutoBlockNearbyDoor();
                 return;
@@ -75,6 +83,7 @@ namespace Neighbor.Main.Features.Interaction
 
         public bool TryBlockDoor(Door door, PlayerInteractor interactor)
         {
+            ResolveDependencies();
             if (door == null || interactor == null || pickupable == null)
             {
                 return false;
@@ -87,12 +96,18 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             placementOrigin = BlockerPlacementOrigin.Player;
-            ApplyBlockedPose(door);
+            ApplyBlockedPose(door, 0, false);
             return true;
         }
 
         public bool TryBlockDoorAsReinforcement(Door door)
         {
+            return TryBlockDoorAsReinforcement(door, 0);
+        }
+
+        public bool TryBlockDoorAsReinforcement(Door door, int placementIndex)
+        {
+            ResolveDependencies();
             if (door == null || pickupable == null)
             {
                 return false;
@@ -106,7 +121,25 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             placementOrigin = BlockerPlacementOrigin.Reinforcement;
-            ApplyBlockedPose(door);
+            ApplyBlockedPose(door, placementIndex, true);
+            return true;
+        }
+
+        public bool TryBlockOpeningAsReinforcement(Vector3 position, Quaternion rotation)
+        {
+            ResolveDependencies();
+            if (pickupable == null)
+            {
+                return false;
+            }
+
+            blockDisabledUntilPlaced = false;
+            ClearBlockedDoor();
+            placementOrigin = BlockerPlacementOrigin.Reinforcement;
+            pickupable.Place(position, rotation);
+            isBlockingReinforcedOpening = true;
+            audioFeedback?.Play(ItemSoundProfile.Impact, 0.42f);
+            FreezeBlockedBody();
             return true;
         }
 
@@ -179,32 +212,41 @@ namespace Neighbor.Main.Features.Interaction
                     continue;
                 }
 
-                ApplyBlockedPose(door);
+                ApplyBlockedPose(door, 0, false);
                 return;
             }
         }
 
-        private void ApplyBlockedPose(Door door)
+        private void ApplyBlockedPose(Door door, int placementIndex, bool varyReinforcementPose)
         {
             Vector3 openingNormal = door.DefaultOpeningSideNormal.normalized;
-            Quaternion rotation = GetBlockedRotation(openingNormal);
+            Quaternion rotation = GetBlockedRotation(openingNormal, placementIndex, varyReinforcementPose);
             Vector3 position = attachToDoorSurface
-                ? GetDoorSurfacePlacementPosition(door, openingNormal, rotation)
+                ? GetDoorSurfacePlacementPosition(door, openingNormal, rotation, placementIndex, varyReinforcementPose)
                 : GetGroundPlacementPosition(door, door.transform.position + openingNormal * doorOffset, rotation);
 
             pickupable.Place(position, rotation);
             blockedDoor = door;
+            isBlockingReinforcedOpening = false;
             audioFeedback?.Play(ItemSoundProfile.Impact, 0.42f);
             FreezeBlockedBody();
         }
 
-        private Quaternion GetBlockedRotation(Vector3 openingNormal)
+        private Quaternion GetBlockedRotation(Vector3 openingNormal, int placementIndex, bool varyReinforcementPose)
         {
             Quaternion facingDoor = Quaternion.LookRotation(-openingNormal, Vector3.up);
-            return facingDoor * Quaternion.AngleAxis(leanAngle, Vector3.right);
+            float boardRoll = varyReinforcementPose ? GetReinforcementBoardRoll(placementIndex) : 0f;
+            return facingDoor
+                * Quaternion.AngleAxis(boardRoll, Vector3.forward)
+                * Quaternion.AngleAxis(leanAngle, Vector3.right);
         }
 
-        private Vector3 GetDoorSurfacePlacementPosition(Door door, Vector3 openingNormal, Quaternion rotation)
+        private Vector3 GetDoorSurfacePlacementPosition(
+            Door door,
+            Vector3 openingNormal,
+            Quaternion rotation,
+            int placementIndex,
+            bool varyReinforcementPose)
         {
             Quaternion originalRotation = transform.rotation;
             transform.rotation = rotation;
@@ -216,9 +258,38 @@ namespace Neighbor.Main.Features.Interaction
                 Mathf.Abs(openingNormal.y) * bounds.extents.y +
                 Mathf.Abs(openingNormal.z) * bounds.extents.z;
 
+            float surfaceHeight = varyReinforcementPose
+                ? GetReinforcementBoardSurfaceHeight(placementIndex)
+                : doorSurfaceHeight;
+
             return door.transform.position
-                + Vector3.up * doorSurfaceHeight
+                + Vector3.up * surfaceHeight
                 + openingNormal * (normalExtent + doorSurfaceOffset);
+        }
+
+        private float GetReinforcementBoardSurfaceHeight(int placementIndex)
+        {
+            return Mathf.Max(0.1f, doorSurfaceHeight + GetAlternatingPlacementOffset(placementIndex) * reinforcementBoardVerticalSpacing);
+        }
+
+        private float GetReinforcementBoardRoll(int placementIndex)
+        {
+            int safeIndex = Mathf.Max(0, placementIndex);
+            float direction = safeIndex % 2 == 0 ? 1f : -1f;
+            float magnitude = safeIndex / 2 + 1f;
+            return direction * magnitude * reinforcementBoardRollVariation;
+        }
+
+        private static int GetAlternatingPlacementOffset(int placementIndex)
+        {
+            int safeIndex = Mathf.Max(0, placementIndex);
+            if (safeIndex == 0)
+            {
+                return 0;
+            }
+
+            int row = (safeIndex + 1) / 2;
+            return safeIndex % 2 == 0 ? row : -row;
         }
 
         private Vector3 GetGroundPlacementPosition(Door door, Vector3 desiredCenter, Quaternion rotation)
@@ -301,6 +372,7 @@ namespace Neighbor.Main.Features.Interaction
         private void ClearBlockedDoor()
         {
             RestoreBlockedBody();
+            isBlockingReinforcedOpening = false;
 
             if (blockedDoor != null)
             {
