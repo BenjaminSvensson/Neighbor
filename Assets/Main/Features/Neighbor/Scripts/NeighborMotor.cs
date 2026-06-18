@@ -464,6 +464,11 @@ namespace Neighbor.Main.Features.Neighbor
 
         public bool CanReach(Vector3 destination, out float pathDistance, out Vector3 sampledPosition)
         {
+            return CanReachNear(destination, destinationSampleRadius, out pathDistance, out sampledPosition);
+        }
+
+        public bool CanReachNear(Vector3 destination, float sampleRadius, out float pathDistance, out Vector3 sampledPosition)
+        {
             pathDistance = float.PositiveInfinity;
             sampledPosition = destination;
             if (agent == null || !agent.enabled || !agent.isOnNavMesh)
@@ -471,7 +476,7 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
-            if (!NavMesh.SamplePosition(destination, out NavMeshHit hit, destinationSampleRadius, agent.areaMask))
+            if (!NavMesh.SamplePosition(destination, out NavMeshHit hit, Mathf.Max(destinationSampleRadius, sampleRadius), agent.areaMask))
             {
                 return false;
             }

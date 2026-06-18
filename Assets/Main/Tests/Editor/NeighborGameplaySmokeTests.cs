@@ -131,9 +131,11 @@ namespace Neighbor.Main.Tests
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>();
             GameplaySmokeTestReflection.SetField(brain, "garageDoorSearchRadius", 8f);
+            GameplaySmokeTestReflection.SetField(brain, "garageDoorSecurityRadius", 0f);
             GameplaySmokeTestReflection.SetField(brain, "closePlayerGarageDoorsWithoutRouteProof", true);
 
             GameObject garageObject = context.CreateObject("GarageDoor");
+            garageObject.transform.position = Vector3.right * 100f;
             GameObject panelObject = context.CreateObject("Door Panel");
             panelObject.transform.SetParent(garageObject.transform, false);
             HouseGarageDoorMotion garageDoor = context.AddInitializedComponent<HouseGarageDoorMotion>(garageObject);
@@ -153,6 +155,16 @@ namespace Neighbor.Main.Tests
             garageDoor.MarkNextChangeAsNeighborRequested();
             garageDoor.Open();
 
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    brain,
+                    "IsGarageDoorCandidate",
+                    garageDoor,
+                    brain.transform.position,
+                    false),
+                Is.True);
+
+            GameplaySmokeTestReflection.SetField(brain, "closeAnyOpenGarageDoorForSecurity", false);
             Assert.That(
                 GameplaySmokeTestReflection.InvokeResult<bool>(
                     brain,

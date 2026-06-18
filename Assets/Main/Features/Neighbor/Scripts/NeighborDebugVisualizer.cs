@@ -254,7 +254,9 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 if (brain.ActiveGarageDoor != null)
                 {
-                    return $"Securing garage door {brain.ActiveGarageDoor.name}";
+                    return brain.IsGarageSecurityResponse
+                        ? $"Securing garage door {brain.ActiveGarageDoor.name}"
+                        : $"Using garage route {brain.ActiveGarageDoor.name}";
                 }
 
                 if (brain.ActiveGarageSwitch != null)
