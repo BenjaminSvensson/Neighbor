@@ -12345,8 +12345,8 @@ MonoBehaviour:
       submeshes: []
     wallOpenings:
     - ownerObjectId: 52917a0233354050955266cbfa3a1b11
-      center: {x: 0.8139019, y: 0.78900003}
-      size: {x: 2.1847491, y: 1.4927144}
+      center: {x: 1.6569022, y: 0.523}
+      size: {x: 2.18475, y: 1.4927144}
 --- !u!64 &580664660
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -16037,96 +16037,6 @@ MonoBehaviour:
   instanceId: 6e7cf7d5cedf4c28a6a0f29501a8b542
   definitionId: neighbor.wiring.lightswitch
   categoryId: wiring
-  properties: []
---- !u!1001 &759002954
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 1221629527}
-    m_Modifications:
-    - target: {fileID: 100000, guid: 08d06c83afac45298a426455119828a4, type: 3}
-      propertyPath: m_Name
-      value: PlaceholderPhotoCamera
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: 08d06c83afac45298a426455119828a4, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -0.186
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: 08d06c83afac45298a426455119828a4, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.19
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: 08d06c83afac45298a426455119828a4, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -13.85
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: 08d06c83afac45298a426455119828a4, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: 08d06c83afac45298a426455119828a4, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: 08d06c83afac45298a426455119828a4, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: 08d06c83afac45298a426455119828a4, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: 08d06c83afac45298a426455119828a4, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: 08d06c83afac45298a426455119828a4, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 100001, guid: 08d06c83afac45298a426455119828a4, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 100006, guid: 08d06c83afac45298a426455119828a4, type: 3}
-      propertyPath: photoEjectImpulse
-      value: 0.3
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 100000, guid: 08d06c83afac45298a426455119828a4, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 759002957}
-  m_SourcePrefab: {fileID: 100100000, guid: 08d06c83afac45298a426455119828a4, type: 3}
---- !u!4 &759002955 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 100001, guid: 08d06c83afac45298a426455119828a4, type: 3}
-  m_PrefabInstance: {fileID: 759002954}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &759002956 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 100000, guid: 08d06c83afac45298a426455119828a4, type: 3}
-  m_PrefabInstance: {fileID: 759002954}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &759002957
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 759002956}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
-  instanceId: ea3c001d45af4dafad59654de924cb88
-  definitionId: neighbor.prop.photocamera
-  categoryId: prop
   properties: []
 --- !u!1 &775330727
 GameObject:
@@ -20763,11 +20673,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6646495083075743242, guid: a9ab812023ecfbf46a7d9b8c817bc40a, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 2.789
+      value: 2.523
       objectReference: {fileID: 0}
     - target: {fileID: 6646495083075743242, guid: a9ab812023ecfbf46a7d9b8c817bc40a, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 4.604
+      value: 5.447
       objectReference: {fileID: 0}
     - target: {fileID: 6646495083075743242, guid: a9ab812023ecfbf46a7d9b8c817bc40a, type: 3}
       propertyPath: m_LocalRotation.w
@@ -25920,7 +25830,6 @@ Transform:
   - {fileID: 853296056}
   - {fileID: 1497057012}
   - {fileID: 914338716}
-  - {fileID: 759002955}
   - {fileID: 628500230}
   - {fileID: 912203446}
   - {fileID: 2039239936}

@@ -81,11 +81,13 @@ namespace Neighbor.Main.Features.Neighbor
         [Header("Garage Doors")]
         [SerializeField] private bool useGarageDoorSwitches = true;
         [SerializeField] private bool closePlayerOpenedGarageDoors = true;
+        [SerializeField] private bool closePlayerGarageDoorsWithoutRouteProof = true;
         [SerializeField, Min(0.1f)] private float garageDoorSearchRadius = 22f;
         [SerializeField, Min(0.1f)] private float garageSwitchUseDistance = 1.25f;
         [SerializeField, Min(0f)] private float garageSwitchDestinationSampleRadius = 1.5f;
         [SerializeField, Min(0f)] private float garageDoorWaitTimeout = 6f;
         [SerializeField, Min(0f)] private float garageDoorCloseCooldown = 12f;
+        [SerializeField, Min(0.05f)] private float garageDoorSecurityCheckInterval = 0.75f;
 
         [Header("Suspicion And Memory")]
         [SerializeField, Min(0f)] private float suspicionDecayPerSecond = 0.035f;
@@ -208,6 +210,7 @@ namespace Neighbor.Main.Features.Neighbor
         private bool garageSwitchToggled;
         private float garageDoorWaitUntilTime;
         private float nextGarageDoorCloseTime;
+        private float nextGarageDoorSecurityCheckTime;
 
         public BehaviorState CurrentState => currentState;
         public Transform Player => player;
@@ -256,6 +259,8 @@ namespace Neighbor.Main.Features.Neighbor
             && motor.HasArrived;
         public NeighborObjectHandling ObjectHandling => objectHandling;
         public NeighborLightSwitchInteractor LightSwitchInteractor => lightSwitchInteractor;
+        public HouseGarageDoorMotion ActiveGarageDoor => activeGarageDoor;
+        public LightSwitch ActiveGarageSwitch => activeGarageSwitch;
         public bool IsAtInvestigationGoal => currentState == BehaviorState.Investigate
             && waitingAtGoal
             && motor != null
@@ -336,6 +341,11 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             UpdatePerception();
+            if (TryHandleGarageDoorSecurity())
+            {
+                return;
+            }
+
             UpdateState();
         }
 
@@ -1417,6 +1427,22 @@ namespace Neighbor.Main.Features.Neighbor
             FinishGarageDoorUse();
         }
 
+        private bool TryHandleGarageDoorSecurity()
+        {
+            if (currentState == BehaviorState.Chase
+                || currentState == BehaviorState.Catching
+                || currentState == BehaviorState.HuntMode
+                || currentState == BehaviorState.Stunned
+                || currentState == BehaviorState.GarageDoorUse
+                || Time.time < nextGarageDoorSecurityCheckTime)
+            {
+                return false;
+            }
+
+            nextGarageDoorSecurityCheckTime = Time.time + garageDoorSecurityCheckInterval;
+            return TryStartGarageDoorCloseRoutine();
+        }
+
         private bool TryStartGarageDoorUseForGoal(Vector3 blockedGoal, BehaviorState resumeState, bool desiredOpen)
         {
             if (!useGarageDoorSwitches
@@ -1568,7 +1594,7 @@ namespace Neighbor.Main.Features.Neighbor
             return garageDoor.IsOpen
                 && !garageDoor.LastOpenedByNeighbor
                 && Vector3.Distance(transform.position, garageDoor.Position) <= garageDoorSearchRadius
-                && HasAlternativeRouteAroundGarageDoor(garageDoor);
+                && (closePlayerGarageDoorsWithoutRouteProof || HasAlternativeRouteAroundGarageDoor(garageDoor));
         }
 
         private bool HasAlternativeRouteAroundGarageDoor(HouseGarageDoorMotion garageDoor)

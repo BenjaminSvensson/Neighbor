@@ -1,5 +1,6 @@
 using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Neighbor;
+using Neighbor.Main.HouseBuilder;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -123,6 +124,43 @@ namespace Neighbor.Main.Tests
                     "TryResolveTelevisionInvestigationSource"),
                 Is.True);
             Assert.That(television.IsOn, Is.False);
+        }
+
+        [Test]
+        public void GarageDoorSecurity_TargetsPlayerOpenedWideDoor()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>();
+            GameplaySmokeTestReflection.SetField(brain, "garageDoorSearchRadius", 8f);
+            GameplaySmokeTestReflection.SetField(brain, "closePlayerGarageDoorsWithoutRouteProof", true);
+
+            GameObject garageObject = context.CreateObject("GarageDoor");
+            GameObject panelObject = context.CreateObject("Door Panel");
+            panelObject.transform.SetParent(garageObject.transform, false);
+            HouseGarageDoorMotion garageDoor = context.AddInitializedComponent<HouseGarageDoorMotion>(garageObject);
+            garageDoor.Configure(panelObject.transform, Vector3.zero, Vector3.up, 0.01f, false);
+            garageDoor.Open();
+
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    brain,
+                    "IsGarageDoorCandidate",
+                    garageDoor,
+                    brain.transform.position,
+                    false),
+                Is.True);
+
+            garageDoor.Close();
+            garageDoor.MarkNextChangeAsNeighborRequested();
+            garageDoor.Open();
+
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    brain,
+                    "IsGarageDoorCandidate",
+                    garageDoor,
+                    brain.transform.position,
+                    false),
+                Is.False);
         }
 
         [Test]

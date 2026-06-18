@@ -250,6 +250,21 @@ namespace Neighbor.Main.Features.Neighbor
                 return $"Using light switch {brain.LightSwitchInteractor.TargetSwitch.name}";
             }
 
+            if (brain.CurrentState == NeighborBrain.BehaviorState.GarageDoorUse)
+            {
+                if (brain.ActiveGarageDoor != null)
+                {
+                    return $"Securing garage door {brain.ActiveGarageDoor.name}";
+                }
+
+                if (brain.ActiveGarageSwitch != null)
+                {
+                    return $"Using garage switch {brain.ActiveGarageSwitch.name}";
+                }
+
+                return "Garage door security";
+            }
+
             if (brain.CurrentSearchPoint != null)
             {
                 return brain.CurrentUnexpectedOpenDoor != null
@@ -502,6 +517,7 @@ namespace Neighbor.Main.Features.Neighbor
                 NeighborBrain.BehaviorState.Stunned => new Color(0.8f, 0.25f, 1f),
                 NeighborBrain.BehaviorState.Task => new Color(0.25f, 0.9f, 1f),
                 NeighborBrain.BehaviorState.LightSwitchUse => new Color(0.95f, 0.95f, 0.35f),
+                NeighborBrain.BehaviorState.GarageDoorUse => new Color(0.2f, 0.75f, 1f),
                 NeighborBrain.BehaviorState.Wander => new Color(0.25f, 1f, 0.45f),
                 _ => new Color(0.75f, 0.85f, 1f)
             };
