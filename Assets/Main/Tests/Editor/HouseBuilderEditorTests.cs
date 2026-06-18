@@ -310,6 +310,51 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void GarageDoor_FindsConnectedLightSwitchControl()
+        {
+            GameObject worldObject = Track(new GameObject("World"));
+            HouseWireGraph graph = worldObject.AddComponent<HouseWireGraph>();
+
+            GameObject switchObject = Track(new GameObject("Garage Switch"));
+            switchObject.transform.SetParent(worldObject.transform, false);
+            HouseBuilderObject switchOwner = switchObject.AddComponent<HouseBuilderObject>();
+            switchOwner.Initialize("switch", HouseBuilderCategories.Wiring);
+            switchObject.AddComponent<BoxCollider>();
+            LightSwitch lightSwitch = switchObject.AddComponent<LightSwitch>();
+            HouseWireEndpoint switchEndpoint = switchObject.AddComponent<HouseWireEndpoint>();
+            HouseWirePortDefinition switchOutput = switchEndpoint.AddPort(
+                "State",
+                HouseWirePortDirection.Output,
+                HouseSignalKind.Bool,
+                requestedId: "state");
+            switchEndpoint.EnsureIdentity();
+
+            GameObject garageObject = Track(new GameObject("Garage Door"));
+            garageObject.transform.SetParent(worldObject.transform, false);
+            HouseBuilderObject garageOwner = garageObject.AddComponent<HouseBuilderObject>();
+            garageOwner.Initialize("garage", HouseBuilderCategories.Door);
+            HouseGarageDoorMotion garageDoor = garageObject.AddComponent<HouseGarageDoorMotion>();
+            HouseWireEndpoint garageEndpoint = garageObject.AddComponent<HouseWireEndpoint>();
+            HouseWirePortDefinition garageInput = garageEndpoint.AddPort(
+                "Open / Toggle",
+                HouseWirePortDirection.Input,
+                requestedId: "activate");
+            garageEndpoint.EnsureIdentity();
+
+            Assert.That(graph.TryConnect(switchEndpoint, switchOutput, garageEndpoint, garageInput, out string error), Is.True, error);
+            Assert.That(garageDoor.TryGetNearestControlSwitch(Vector3.zero, out LightSwitch foundSwitch), Is.True);
+            Assert.That(foundSwitch, Is.SameAs(lightSwitch));
+
+            garageDoor.MarkNextChangeAsNeighborRequested();
+            garageDoor.Open();
+            Assert.That(garageDoor.LastOpenedByNeighbor, Is.True);
+
+            garageDoor.Close();
+            garageDoor.Open();
+            Assert.That(garageDoor.LastOpenedByNeighbor, Is.False);
+        }
+
+        [Test]
         public void Wiring_WorldRepairsExistingGarageDoorPortsAndListeners()
         {
             HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(HouseBuilderAssetInstaller.DefaultCatalogPath);

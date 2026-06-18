@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using Neighbor.Main.Features.Interaction;
 using Unity.AI.Navigation;
 using UnityEngine;
 using UnityEngine.AI;
@@ -9,6 +11,7 @@ namespace Neighbor.Main.HouseBuilder
     public sealed class HouseGarageDoorMotion : MonoBehaviour, IHouseWireSignalReceiver
     {
         private const string DefaultPanelName = "Door Panel";
+        private static readonly List<HouseGarageDoorMotion> ActiveDoors = new();
 
         [SerializeField] private Transform doorPanel;
         [SerializeField] private Vector3 closedLocalPosition = new(0f, 1.25f, 0f);
@@ -46,9 +49,22 @@ namespace Neighbor.Main.HouseBuilder
         private AudioClip generatedCloseStartClip;
         private AudioClip generatedMovingLoopClip;
         private AudioClip generatedStopClip;
+        private bool navigationPassageSuppressed;
+        private bool nextChangeRequestedByNeighbor;
+        private bool lastOpenedByNeighbor;
 
         public bool IsOpen => targetProgress >= 1f;
         public bool AllowsNavigationPassage => IsNavigationPassageOpen();
+        public bool IsNavigationPassageSuppressed => navigationPassageSuppressed;
+        public bool LastOpenedByNeighbor => lastOpenedByNeighbor;
+        public Vector3 Position => transform.position;
+        public static IReadOnlyList<HouseGarageDoorMotion> ActiveGarageDoors => ActiveDoors;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetActiveDoors()
+        {
+            ActiveDoors.Clear();
+        }
 
         public void Configure(Transform panel, Vector3 closedPosition, Vector3 openOffset, float duration, bool initiallyOpen)
         {
@@ -71,6 +87,12 @@ namespace Neighbor.Main.HouseBuilder
             float nextTarget = open ? 1f : 0f;
             bool changedTarget = !Mathf.Approximately(targetProgress, nextTarget);
             targetProgress = nextTarget;
+            if (changedTarget)
+            {
+                lastOpenedByNeighbor = open && nextChangeRequestedByNeighbor;
+                nextChangeRequestedByNeighbor = false;
+            }
+
             if (Application.isPlaying && changedTarget)
             {
                 PlayStartSound(open);
@@ -96,6 +118,14 @@ namespace Neighbor.Main.HouseBuilder
         }
 
         private void Awake() => InitializeState();
+
+        private void OnEnable()
+        {
+            if (!ActiveDoors.Contains(this))
+            {
+                ActiveDoors.Add(this);
+            }
+        }
 
         private void Update()
         {
@@ -182,6 +212,7 @@ namespace Neighbor.Main.HouseBuilder
 
         private void OnDisable()
         {
+            ActiveDoors.Remove(this);
             StopMovingLoop(false);
             if (navigationLink != null)
             {
@@ -192,6 +223,79 @@ namespace Neighbor.Main.HouseBuilder
             {
                 panelNavigationObstacle.enabled = false;
             }
+        }
+
+        public void MarkNextChangeAsNeighborRequested()
+        {
+            nextChangeRequestedByNeighbor = true;
+        }
+
+        public void SetNavigationPassageSuppressed(bool suppressed)
+        {
+            if (navigationPassageSuppressed == suppressed)
+            {
+                return;
+            }
+
+            navigationPassageSuppressed = suppressed;
+            UpdateNavigationState();
+        }
+
+        public void GetNavigationEndpoints(out Vector3 start, out Vector3 end)
+        {
+            start = transform.TransformPoint(new Vector3(0f, navigationLinkHeight, -navigationLinkHalfDepth));
+            end = transform.TransformPoint(new Vector3(0f, navigationLinkHeight, navigationLinkHalfDepth));
+        }
+
+        public bool TryGetNearestControlSwitch(Vector3 origin, out LightSwitch lightSwitch)
+        {
+            lightSwitch = null;
+            HouseWireEndpoint inputEndpoint = GetComponent<HouseWireEndpoint>();
+            HouseBuilderObject inputOwner = inputEndpoint != null ? inputEndpoint.Owner : null;
+            HouseWireGraph graph = GetComponentInParent<HouseWireGraph>();
+            if (inputEndpoint == null || inputOwner == null || graph == null)
+            {
+                return false;
+            }
+
+            float bestSqrDistance = float.PositiveInfinity;
+            IReadOnlyList<HouseWireConnection> connections = graph.Connections;
+            for (int i = 0; i < connections.Count; i++)
+            {
+                HouseWireConnection connection = connections[i];
+                if (connection == null
+                    || connection.InputObjectId != inputOwner.InstanceId
+                    || connection.InputEndpointId != inputEndpoint.EndpointId
+                    || !graph.TryResolve(
+                        connection,
+                        out HouseWireEndpoint outputEndpoint,
+                        out HouseWirePortDefinition outputPort,
+                        out _,
+                        out HouseWirePortDefinition inputPort)
+                    || outputPort == null
+                    || inputPort == null
+                    || outputPort.Direction != HouseWirePortDirection.Output
+                    || inputPort.Direction != HouseWirePortDirection.Input)
+                {
+                    continue;
+                }
+
+                LightSwitch candidate = outputEndpoint.GetComponentInParent<LightSwitch>()
+                    ?? outputEndpoint.GetComponentInChildren<LightSwitch>();
+                if (candidate == null || !candidate.isActiveAndEnabled)
+                {
+                    continue;
+                }
+
+                float sqrDistance = (candidate.transform.position - origin).sqrMagnitude;
+                if (sqrDistance < bestSqrDistance)
+                {
+                    bestSqrDistance = sqrDistance;
+                    lightSwitch = candidate;
+                }
+            }
+
+            return lightSwitch != null;
         }
 
         private void ResolveNavigationComponents()
@@ -301,6 +405,7 @@ namespace Neighbor.Main.HouseBuilder
         private bool IsNavigationPassageOpen()
         {
             return enableNavigationPassage
+                && !navigationPassageSuppressed
                 && targetProgress >= 1f
                 && progress >= navigationOpenProgress;
         }

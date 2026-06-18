@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Neighbor.Main.Features.Interaction;
+using Neighbor.Main.HouseBuilder;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
 
@@ -44,6 +45,7 @@ namespace Neighbor.Main.Features.Neighbor
             Wander,
             ObjectHandling,
             LightSwitchUse,
+            GarageDoorUse,
             Investigate,
             Chase,
             Catching,
@@ -70,10 +72,20 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Range(0f, 1f)] private float minimumUrgencyToRunToNoise = 0.65f;
         [SerializeField, Min(0f)] private float noiseDestinationSampleRadius = 4f;
         [SerializeField, Min(0f)] private float investigationWaitTime = 2.2f;
+        [SerializeField, Min(0.1f)] private float televisionShutoffDistance = 2.2f;
         [SerializeField, Range(0f, 1f)] private float unexpectedOpenDoorSuspicion = 0.36f;
         [SerializeField, Min(0.1f)] private float doorRoomCheckDistance = 2.4f;
         [SerializeField, Min(0.1f)] private float doorRoomSearchPointRadius = 9f;
         [SerializeField, Min(0f)] private float doorRoomMinimumDepth = 0.35f;
+
+        [Header("Garage Doors")]
+        [SerializeField] private bool useGarageDoorSwitches = true;
+        [SerializeField] private bool closePlayerOpenedGarageDoors = true;
+        [SerializeField, Min(0.1f)] private float garageDoorSearchRadius = 22f;
+        [SerializeField, Min(0.1f)] private float garageSwitchUseDistance = 1.25f;
+        [SerializeField, Min(0f)] private float garageSwitchDestinationSampleRadius = 1.5f;
+        [SerializeField, Min(0f)] private float garageDoorWaitTimeout = 6f;
+        [SerializeField, Min(0f)] private float garageDoorCloseCooldown = 12f;
 
         [Header("Suspicion And Memory")]
         [SerializeField, Min(0f)] private float suspicionDecayPerSecond = 0.035f;
@@ -188,6 +200,14 @@ namespace Neighbor.Main.Features.Neighbor
         private Vector3 lastSeenVerificationPosition;
         private float lastSeenVerificationUntilTime;
         private float tasksSuppressedUntilTime;
+        private HouseGarageDoorMotion activeGarageDoor;
+        private LightSwitch activeGarageSwitch;
+        private BehaviorState garageResumeState;
+        private Vector3 garageResumeGoal;
+        private bool activeGarageDesiredOpen;
+        private bool garageSwitchToggled;
+        private float garageDoorWaitUntilTime;
+        private float nextGarageDoorCloseTime;
 
         public BehaviorState CurrentState => currentState;
         public Transform Player => player;
@@ -436,6 +456,9 @@ namespace Neighbor.Main.Features.Neighbor
                 case BehaviorState.LightSwitchUse:
                     UpdateLightSwitchUse();
                     break;
+                case BehaviorState.GarageDoorUse:
+                    UpdateGarageDoorUse();
+                    break;
                 case BehaviorState.Task:
                 case BehaviorState.Wander:
                 case BehaviorState.Idle:
@@ -482,7 +505,13 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (Time.time >= nextChaseRepathTime)
             {
-                motor.SetDestination(chasePosition);
+                currentGoal = chasePosition;
+                if (!motor.SetDestination(chasePosition)
+                    && TryStartGarageDoorUseForGoal(chasePosition, BehaviorState.Chase, true))
+                {
+                    return;
+                }
+
                 nextChaseRepathTime = Time.time + chaseRepathInterval;
             }
 
@@ -677,6 +706,7 @@ namespace Neighbor.Main.Features.Neighbor
         public void HandlePlayerRespawned(float sightGraceTime)
         {
             objectHandling?.CancelActivity();
+            ClearGarageDoorUse();
             currentClimbLink = null;
             currentSearchPoint = null;
             currentHideSpot = null;
@@ -825,6 +855,8 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 return;
             }
+
+            TryResolveTelevisionInvestigationSource();
 
             if (!GoalWaitComplete())
             {
@@ -1016,11 +1048,21 @@ namespace Neighbor.Main.Features.Neighbor
                 currentGoal = investigatePosition;
                 SetState(BehaviorState.Investigate);
             }
+            else if (motor != null)
+            {
+                currentGoal = stimulus.Position;
+                TryStartGarageDoorUseForGoal(stimulus.Position, BehaviorState.Investigate, true);
+            }
         }
 
         private void HandleDestinationAbandoned(Vector3 _)
         {
             waitingAtGoal = false;
+            if (currentState != BehaviorState.GarageDoorUse
+                && TryStartGarageDoorUseForGoal(currentGoal, currentState, true))
+            {
+                return;
+            }
 
             switch (currentState)
             {
@@ -1091,6 +1133,10 @@ namespace Neighbor.Main.Features.Neighbor
                     lightSwitchInteractor?.CancelActivity();
                     ChooseNextRoutineGoal();
                     return;
+                case BehaviorState.GarageDoorUse:
+                    ClearGarageDoorUse();
+                    ChooseNextRoutineGoal();
+                    return;
             }
         }
 
@@ -1153,6 +1199,11 @@ namespace Neighbor.Main.Features.Neighbor
                 currentTaskLocation = null;
                 waitingAtGoal = false;
                 SetState(BehaviorState.LightSwitchUse);
+                return;
+            }
+
+            if (TryStartGarageDoorCloseRoutine())
+            {
                 return;
             }
 
@@ -1310,6 +1361,312 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             ChooseNextRoutineGoal();
+        }
+
+        private void UpdateGarageDoorUse()
+        {
+            if (motor == null || activeGarageDoor == null || activeGarageSwitch == null)
+            {
+                ClearGarageDoorUse();
+                ChooseNextRoutineGoal();
+                return;
+            }
+
+            motor.SetMoveMode(garageResumeState == BehaviorState.Chase
+                ? NeighborMotor.MoveMode.Run
+                : NeighborMotor.MoveMode.Cautious);
+
+            if (!garageSwitchToggled)
+            {
+                if (!motor.HasArrived)
+                {
+                    motor.FaceMovementDirection(12f);
+                    return;
+                }
+
+                Vector3 toSwitch = activeGarageSwitch.transform.position - transform.position;
+                float verticalOffset = Mathf.Abs(toSwitch.y);
+                toSwitch.y = 0f;
+                if (toSwitch.sqrMagnitude > garageSwitchUseDistance * garageSwitchUseDistance
+                    || verticalOffset > garageSwitchUseDistance)
+                {
+                    ClearGarageDoorUse();
+                    ChooseNextRoutineGoal();
+                    return;
+                }
+
+                motor.Stop();
+                motor.FaceTowards(activeGarageSwitch.transform.position, 12f);
+                activeGarageDoor.MarkNextChangeAsNeighborRequested();
+                activeGarageSwitch.Toggle();
+                garageSwitchToggled = true;
+                garageDoorWaitUntilTime = Time.time + garageDoorWaitTimeout;
+                return;
+            }
+
+            motor.Stop();
+            motor.FaceTowards(activeGarageDoor.Position, 10f);
+            bool desiredStateReached = activeGarageDesiredOpen
+                ? activeGarageDoor.AllowsNavigationPassage
+                : !activeGarageDoor.IsOpen;
+            if (!desiredStateReached && Time.time < garageDoorWaitUntilTime)
+            {
+                return;
+            }
+
+            FinishGarageDoorUse();
+        }
+
+        private bool TryStartGarageDoorUseForGoal(Vector3 blockedGoal, BehaviorState resumeState, bool desiredOpen)
+        {
+            if (!useGarageDoorSwitches
+                || motor == null
+                || currentState == BehaviorState.GarageDoorUse
+                || !TryFindGarageDoorSwitch(
+                    blockedGoal,
+                    desiredOpen,
+                    out HouseGarageDoorMotion garageDoor,
+                    out LightSwitch controlSwitch,
+                    out Vector3 switchDestination))
+            {
+                return false;
+            }
+
+            activeGarageDoor = garageDoor;
+            activeGarageSwitch = controlSwitch;
+            activeGarageDesiredOpen = desiredOpen;
+            garageResumeGoal = blockedGoal;
+            garageResumeState = resumeState;
+            garageSwitchToggled = false;
+            garageDoorWaitUntilTime = 0f;
+            currentGoal = switchDestination;
+            currentTaskLocation = null;
+            waitingAtGoal = false;
+            StopActiveTaskAudio();
+            motor.SetMoveMode(resumeState == BehaviorState.Chase
+                ? NeighborMotor.MoveMode.Run
+                : NeighborMotor.MoveMode.Cautious);
+            if (!motor.TrySetDestinationNear(
+                    controlSwitch.transform.position,
+                    garageSwitchDestinationSampleRadius,
+                    out currentGoal))
+            {
+                ClearGarageDoorUse();
+                return false;
+            }
+
+            SetState(BehaviorState.GarageDoorUse);
+            return true;
+        }
+
+        private bool TryStartGarageDoorCloseRoutine()
+        {
+            if (!closePlayerOpenedGarageDoors
+                || Time.time < nextGarageDoorCloseTime
+                || !TryFindGarageDoorSwitch(
+                    transform.position,
+                    false,
+                    out HouseGarageDoorMotion garageDoor,
+                    out LightSwitch controlSwitch,
+                    out Vector3 switchDestination))
+            {
+                return false;
+            }
+
+            nextGarageDoorCloseTime = Time.time + garageDoorCloseCooldown;
+            activeGarageDoor = garageDoor;
+            activeGarageSwitch = controlSwitch;
+            activeGarageDesiredOpen = false;
+            garageResumeGoal = transform.position;
+            garageResumeState = BehaviorState.Idle;
+            garageSwitchToggled = false;
+            garageDoorWaitUntilTime = 0f;
+            currentGoal = switchDestination;
+            currentTaskLocation = null;
+            waitingAtGoal = false;
+            StopActiveTaskAudio();
+            motor.SetMoveMode(NeighborMotor.MoveMode.Cautious);
+            if (!motor.TrySetDestinationNear(
+                    controlSwitch.transform.position,
+                    garageSwitchDestinationSampleRadius,
+                    out currentGoal))
+            {
+                ClearGarageDoorUse();
+                return false;
+            }
+
+            SetState(BehaviorState.GarageDoorUse);
+            return true;
+        }
+
+        private bool TryFindGarageDoorSwitch(
+            Vector3 goal,
+            bool desiredOpen,
+            out HouseGarageDoorMotion garageDoor,
+            out LightSwitch controlSwitch,
+            out Vector3 switchDestination)
+        {
+            garageDoor = null;
+            controlSwitch = null;
+            switchDestination = transform.position;
+            if (motor == null)
+            {
+                return false;
+            }
+
+            float bestScore = float.NegativeInfinity;
+            IReadOnlyList<HouseGarageDoorMotion> garageDoors = HouseGarageDoorMotion.ActiveGarageDoors;
+            for (int i = 0; i < garageDoors.Count; i++)
+            {
+                HouseGarageDoorMotion candidateDoor = garageDoors[i];
+                if (!IsGarageDoorCandidate(candidateDoor, goal, desiredOpen)
+                    || !candidateDoor.TryGetNearestControlSwitch(transform.position, out LightSwitch candidateSwitch)
+                    || !motor.CanReach(candidateSwitch.transform.position, out float switchPathDistance, out Vector3 sampledSwitchPosition))
+                {
+                    continue;
+                }
+
+                float routeScore = desiredOpen
+                    ? -DistancePointToSegment(candidateDoor.Position, transform.position, goal)
+                    : 0f;
+                float score = routeScore
+                    - switchPathDistance * 0.2f
+                    - Vector3.Distance(transform.position, candidateDoor.Position) * 0.05f;
+                if (score <= bestScore)
+                {
+                    continue;
+                }
+
+                bestScore = score;
+                garageDoor = candidateDoor;
+                controlSwitch = candidateSwitch;
+                switchDestination = sampledSwitchPosition;
+            }
+
+            return garageDoor != null;
+        }
+
+        private bool IsGarageDoorCandidate(HouseGarageDoorMotion garageDoor, Vector3 goal, bool desiredOpen)
+        {
+            if (garageDoor == null || !garageDoor.isActiveAndEnabled)
+            {
+                return false;
+            }
+
+            if (desiredOpen)
+            {
+                if (garageDoor.AllowsNavigationPassage || garageDoor.IsOpen)
+                {
+                    return false;
+                }
+
+                return Vector3.Distance(transform.position, garageDoor.Position) <= garageDoorSearchRadius
+                    || Vector3.Distance(goal, garageDoor.Position) <= garageDoorSearchRadius
+                    || DistancePointToSegment(garageDoor.Position, transform.position, goal) <= garageDoorSearchRadius;
+            }
+
+            return garageDoor.IsOpen
+                && !garageDoor.LastOpenedByNeighbor
+                && Vector3.Distance(transform.position, garageDoor.Position) <= garageDoorSearchRadius
+                && HasAlternativeRouteAroundGarageDoor(garageDoor);
+        }
+
+        private bool HasAlternativeRouteAroundGarageDoor(HouseGarageDoorMotion garageDoor)
+        {
+            if (garageDoor == null || motor == null || !garageDoor.AllowsNavigationPassage)
+            {
+                return false;
+            }
+
+            garageDoor.GetNavigationEndpoints(out Vector3 firstEndpoint, out Vector3 secondEndpoint);
+            Vector3 target = (transform.position - firstEndpoint).sqrMagnitude
+                <= (transform.position - secondEndpoint).sqrMagnitude
+                    ? secondEndpoint
+                    : firstEndpoint;
+            bool wasSuppressed = garageDoor.IsNavigationPassageSuppressed;
+            garageDoor.SetNavigationPassageSuppressed(true);
+            bool canReach = motor.CanReach(target, out _, out _);
+            garageDoor.SetNavigationPassageSuppressed(wasSuppressed);
+            return canReach;
+        }
+
+        private void FinishGarageDoorUse()
+        {
+            bool desiredOpen = activeGarageDesiredOpen;
+            BehaviorState resumeState = garageResumeState;
+            Vector3 resumeGoal = garageResumeGoal;
+            ClearGarageDoorUse();
+            if (desiredOpen && resumeState == BehaviorState.Chase)
+            {
+                SetState(BehaviorState.Chase);
+                return;
+            }
+
+            if (desiredOpen && resumeState == BehaviorState.Investigate && motor != null)
+            {
+                if (motor.TrySetDestinationNear(resumeGoal, noiseDestinationSampleRadius, out Vector3 investigatePosition))
+                {
+                    currentGoal = investigatePosition;
+                    goalWaitDuration = investigationWaitTime;
+                    waitingAtGoal = false;
+                    SetState(BehaviorState.Investigate);
+                    return;
+                }
+            }
+
+            ChooseNextRoutineGoal();
+        }
+
+        private void ClearGarageDoorUse()
+        {
+            activeGarageDoor = null;
+            activeGarageSwitch = null;
+            activeGarageDesiredOpen = false;
+            garageSwitchToggled = false;
+            garageDoorWaitUntilTime = 0f;
+            garageResumeGoal = default;
+            garageResumeState = BehaviorState.Idle;
+        }
+
+        private bool TryResolveTelevisionInvestigationSource()
+        {
+            Television television = currentInvestigationSource != null
+                ? currentInvestigationSource.GetComponentInParent<Television>()
+                    ?? currentInvestigationSource.GetComponentInChildren<Television>()
+                : null;
+            if (television == null || !television.IsOn)
+            {
+                return false;
+            }
+
+            Vector3 target = television.RemoteTargetPosition;
+            if (Vector3.Distance(transform.position, target) > televisionShutoffDistance)
+            {
+                return false;
+            }
+
+            motor?.Stop();
+            motor?.FaceTowards(target, 12f);
+            television.SetOn(false, true);
+            return true;
+        }
+
+        private static float DistancePointToSegment(Vector3 point, Vector3 segmentStart, Vector3 segmentEnd)
+        {
+            Vector3 segment = segmentEnd - segmentStart;
+            segment.y = 0f;
+            Vector3 toPoint = point - segmentStart;
+            toPoint.y = 0f;
+            float segmentLengthSqr = segment.sqrMagnitude;
+            if (segmentLengthSqr <= 0.001f)
+            {
+                return toPoint.magnitude;
+            }
+
+            float t = Mathf.Clamp01(Vector3.Dot(toPoint, segment) / segmentLengthSqr);
+            Vector3 closest = segmentStart + segment * t;
+            closest.y = point.y;
+            return Vector3.Distance(point, closest);
         }
 
         private void BeginTaskAnimationPhase(
@@ -1771,7 +2128,9 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            if (currentState == BehaviorState.Investigate && state != BehaviorState.Investigate)
+            if (currentState == BehaviorState.Investigate
+                && state != BehaviorState.Investigate
+                && state != BehaviorState.GarageDoorUse)
             {
                 currentSearchPoint = null;
                 currentUnexpectedOpenDoor = null;
@@ -1793,6 +2152,11 @@ namespace Neighbor.Main.Features.Neighbor
             if (currentState == BehaviorState.LightSwitchUse && state != BehaviorState.LightSwitchUse)
             {
                 lightSwitchInteractor?.CancelActivity();
+            }
+
+            if (currentState == BehaviorState.GarageDoorUse && state != BehaviorState.GarageDoorUse)
+            {
+                ClearGarageDoorUse();
             }
 
             if (currentState == BehaviorState.Chase && state != BehaviorState.Chase)

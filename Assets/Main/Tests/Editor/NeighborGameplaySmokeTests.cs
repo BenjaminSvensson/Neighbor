@@ -104,6 +104,28 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void Investigation_TurnsOffNoisyTelevisionAtSource()
+        {
+            GameObject tvObject = context.CreateObject("Television");
+            tvObject.AddComponent<BoxCollider>();
+            Television television = context.AddInitializedComponent<Television>(tvObject);
+            television.SetOn(true, false);
+
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            neighborObject.transform.position = tvObject.transform.position + Vector3.forward;
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.Investigate);
+            GameplaySmokeTestReflection.SetField(brain, "currentInvestigationSource", tvObject);
+
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    brain,
+                    "TryResolveTelevisionInvestigationSource"),
+                Is.True);
+            Assert.That(television.IsOn, Is.False);
+        }
+
+        [Test]
         public void ObjectTask_ReservesAndProtectsMovableFurniture()
         {
             GameObject chair = context.CreateObject("ChairTask");

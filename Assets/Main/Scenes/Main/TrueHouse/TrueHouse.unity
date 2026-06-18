@@ -12345,8 +12345,8 @@ MonoBehaviour:
       submeshes: []
     wallOpenings:
     - ownerObjectId: 52917a0233354050955266cbfa3a1b11
-      center: {x: -2.2595947, y: -1.193}
-      size: {x: 1.8903576, y: 1.2054384}
+      center: {x: 0.8139019, y: 0.78900003}
+      size: {x: 2.1847491, y: 1.4927144}
 --- !u!64 &580664660
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -15552,6 +15552,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1396788348566312222, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
+      propertyPath: runSpeed
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 1396788348566312222, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
+      propertyPath: acceleration
+      value: 99999
+      objectReference: {fileID: 0}
     - target: {fileID: 5206360911464809966, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
       propertyPath: m_Name
       value: Neighbor
@@ -15587,6 +15595,10 @@ PrefabInstance:
     - target: {fileID: 6254384187814207898, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
       propertyPath: searchLoopVolume
       value: 1.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 6254384187814207898, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
+      propertyPath: runSpeedReference
+      value: 9
       objectReference: {fileID: 0}
     - target: {fileID: 6254384187814207898, guid: f4f2625201d5e4b468ebdcadfd16bdfc, type: 3}
       propertyPath: idleBreathingVolume
@@ -20735,27 +20747,27 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6646495083075743242, guid: a9ab812023ecfbf46a7d9b8c817bc40a, type: 3}
       propertyPath: m_LocalScale.x
-      value: 1.371104
+      value: 1.5892467
       objectReference: {fileID: 0}
     - target: {fileID: 6646495083075743242, guid: a9ab812023ecfbf46a7d9b8c817bc40a, type: 3}
       propertyPath: m_LocalScale.y
-      value: 1.371104
+      value: 1.7090759
       objectReference: {fileID: 0}
     - target: {fileID: 6646495083075743242, guid: a9ab812023ecfbf46a7d9b8c817bc40a, type: 3}
       propertyPath: m_LocalScale.z
-      value: 1.371104
+      value: 1.5892467
       objectReference: {fileID: 0}
     - target: {fileID: 6646495083075743242, guid: a9ab812023ecfbf46a7d9b8c817bc40a, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -18.475
+      value: -18.48
       objectReference: {fileID: 0}
     - target: {fileID: 6646495083075743242, guid: a9ab812023ecfbf46a7d9b8c817bc40a, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.807
+      value: 2.789
       objectReference: {fileID: 0}
     - target: {fileID: 6646495083075743242, guid: a9ab812023ecfbf46a7d9b8c817bc40a, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 1.525
+      value: 4.604
       objectReference: {fileID: 0}
     - target: {fileID: 6646495083075743242, guid: a9ab812023ecfbf46a7d9b8c817bc40a, type: 3}
       propertyPath: m_LocalRotation.w
@@ -35220,8 +35232,24 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2098546478872310776, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
+      propertyPath: footstepVolume
+      value: 0.3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2098546478872310776, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
+      propertyPath: runFootstepLoop
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 2098546478872310776, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
+      propertyPath: walkFootstepLoop
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 2098546478872310776, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
+      propertyPath: crouchFootstepLoop
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 2098546478872310776, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: walkFootsteps.Array.size
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2098546478872310776, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: 'walkFootsteps.Array.data[0]'
@@ -38503,8 +38531,8 @@ Light:
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
-  m_ColorTemperature: 6570
-  m_UseColorTemperature: 0
+  m_ColorTemperature: 3961
+  m_UseColorTemperature: 1
   m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1
@@ -38522,13 +38550,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2007931523}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.5825074, y: -0.21671934, z: 0.78332704, w: -0.010804015}
+  m_LocalRotation: {x: 0.14884117, y: -0.09304306, z: 0.46683145, w: 0.86675125}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 20.616, y: -75.936, z: 165.423}
+  m_LocalEulerAnglesHint: {x: 20.175, y: -1.363, z: 56.371}
 --- !u!114 &2007931526
 MonoBehaviour:
   m_ObjectHideFlags: 0
