@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Neighbor.Main.Features.Player;
 using UnityEngine;
 using UnityEngine.Audio;
 
@@ -9,6 +10,8 @@ namespace Neighbor.Main.Features.Audio
         [Header("References")]
         [Tooltip("Usually the player camera or AudioListener. Automatically resolved when empty.")]
         [SerializeField] private Transform listener;
+        [Tooltip("The player whose trigger presence drives area ambience. Automatically resolved when empty.")]
+        [SerializeField] private PlayerController player;
         [SerializeField] private AmbienceProfile defaultProfile;
         [SerializeField] private AudioMixerGroup fallbackOutputMixerGroup;
 
@@ -19,10 +22,12 @@ namespace Neighbor.Main.Features.Audio
         private readonly List<ProfilePlayback> playbacks = new List<ProfilePlayback>();
         private AmbienceProfile targetProfile;
         private float nextListenerSearchTime;
+        private float nextPlayerSearchTime;
 
         private void Awake()
         {
             ResolveListener();
+            ResolvePlayer();
         }
 
         private void OnDisable()
@@ -38,6 +43,12 @@ namespace Neighbor.Main.Features.Audio
                 nextListenerSearchTime = Time.unscaledTime + 1f;
             }
 
+            if (player == null && Time.unscaledTime >= nextPlayerSearchTime)
+            {
+                ResolvePlayer();
+                nextPlayerSearchTime = Time.unscaledTime + 1f;
+            }
+
             AmbienceProfile desiredProfile = GetDesiredProfile();
             if (desiredProfile != targetProfile)
             {
@@ -50,6 +61,11 @@ namespace Neighbor.Main.Features.Audio
         public void SetListener(Transform newListener)
         {
             listener = newListener;
+        }
+
+        public void SetPlayer(PlayerController newPlayer)
+        {
+            player = newPlayer;
         }
 
         private void ResolveListener()
@@ -67,19 +83,36 @@ namespace Neighbor.Main.Features.Audio
             }
         }
 
+        private void ResolvePlayer()
+        {
+            player = FindAnyObjectByType<PlayerController>();
+        }
+
         private AmbienceProfile GetDesiredProfile()
         {
-            if (listener == null)
-            {
-                return defaultProfile;
-            }
-
             AmbienceArea bestArea = null;
+            AmbienceArea bestDefaultArea = null;
+            Transform trackingTransform = player != null ? player.transform : listener;
             IReadOnlyList<AmbienceArea> areas = AmbienceArea.Areas;
             for (int i = areas.Count - 1; i >= 0; i--)
             {
                 AmbienceArea area = areas[i];
-                if (area == null || area.Profile == null || !area.Contains(listener.position))
+                if (area == null || area.Profile == null)
+                {
+                    continue;
+                }
+
+                if (area.PlayWhenNoAreaActive)
+                {
+                    if (bestDefaultArea == null || area.Priority > bestDefaultArea.Priority)
+                    {
+                        bestDefaultArea = area;
+                    }
+
+                    continue;
+                }
+
+                if (!area.IsActiveFor(trackingTransform))
                 {
                     continue;
                 }
@@ -90,7 +123,12 @@ namespace Neighbor.Main.Features.Audio
                 }
             }
 
-            return bestArea != null ? bestArea.Profile : defaultProfile;
+            if (bestArea != null)
+            {
+                return bestArea.Profile;
+            }
+
+            return bestDefaultArea != null ? bestDefaultArea.Profile : defaultProfile;
         }
 
         private void TransitionTo(AmbienceProfile profile)

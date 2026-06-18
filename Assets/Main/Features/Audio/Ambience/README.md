@@ -14,3 +14,4 @@ Prefab starters live in `Prefabs/`:
 - `LargeAreaSpecificAmbienceArea` covers larger rooms or outdoor regions.
 
 Drop a prefab into the scene, resize its trigger collider to match the space, and assign the area's `AmbienceProfile`. While the player listener is inside that collider, the assigned ambience profile plays.
+Enable `Play When No Area Active` on exactly one ambience area to use that area's profile as the default when the player is not inside any other ambience trigger.

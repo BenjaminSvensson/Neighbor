@@ -68,5 +68,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Audio.AmbienceArea
   profile: {fileID: 0}
   priority: 0
+  playWhenNoAreaActive: 0
   boundaries:
   - {fileID: 5810282312466421543}
