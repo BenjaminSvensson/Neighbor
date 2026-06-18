@@ -1798,6 +1798,56 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 51731492}
   m_Mesh: {fileID: 0}
+--- !u!1 &59598686
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 59598688}
+  - component: {fileID: 59598687}
+  m_Layer: 0
+  m_Name: AmbianceManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &59598687
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 59598686}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0e48fa50c6514446be4410bf25edbaf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Audio.AmbienceManager
+  listener: {fileID: 1410222128}
+  player: {fileID: 1807411910}
+  defaultProfile: {fileID: 11400000, guid: 7e88770ea65aed84082b694202149a0a, type: 2}
+  fallbackOutputMixerGroup: {fileID: 24300002, guid: d0db44574c1e6d44a81914f4d6961661, type: 2}
+  masterVolume: 1
+  fallbackTransitionDuration: 2
+--- !u!4 &59598688
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 59598686}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &62164999
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -27874,6 +27924,11 @@ MonoBehaviour:
   definitionId: neighbor.wiring.ceilinglight
   categoryId: wiring
   properties: []
+--- !u!4 &1410222128 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1357196244085932726, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
+  m_PrefabInstance: {fileID: 1845674350}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1417726996
 GameObject:
   m_ObjectHideFlags: 0
@@ -34645,6 +34700,17 @@ MonoBehaviour:
   definitionId: neighbor.ai.patrol_point.patrolpoint
   categoryId: ai.patrol_point
   properties: []
+--- !u!114 &1807411910 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2801324474213207061, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
+  m_PrefabInstance: {fileID: 1845674350}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f0a269a31294c9bb97e5fe97eea0f74, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &1814965483
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -41881,6 +41947,7 @@ MeshFilter:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
+  - {fileID: 59598688}
   - {fileID: 2007931525}
   - {fileID: 529285474}
   - {fileID: 1221629527}

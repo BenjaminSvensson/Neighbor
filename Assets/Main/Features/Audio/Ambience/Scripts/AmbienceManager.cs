@@ -200,7 +200,7 @@ namespace Neighbor.Main.Features.Audio
                 source.spatialBlend = 0f;
                 source.dopplerLevel = 0f;
                 source.clip = clip;
-                source.pitch = layer.Pitch;
+                source.pitch = layer.PlaybackPitch;
                 source.outputAudioMixerGroup = profile.OutputMixerGroup != null
                     ? profile.OutputMixerGroup
                     : fallbackOutputMixerGroup;

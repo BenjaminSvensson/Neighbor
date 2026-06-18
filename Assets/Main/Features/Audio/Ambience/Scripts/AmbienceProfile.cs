@@ -35,6 +35,7 @@ namespace Neighbor.Main.Features.Audio
         public AudioClip[] ClipVariations => clipVariations;
         public float Volume => volume;
         public float Pitch => pitch;
+        public float PlaybackPitch => Mathf.Approximately(pitch, 0f) ? 1f : pitch;
         public bool StartAtRandomTime => startAtRandomTime;
     }
 }

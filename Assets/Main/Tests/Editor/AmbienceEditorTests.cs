@@ -123,6 +123,16 @@ namespace Neighbor.Main.Tests
             }
         }
 
+        [Test]
+        public void AmbienceLayer_ZeroPitchFallsBackToNormalPlaybackSpeed()
+        {
+            AmbienceLayer layer = new();
+
+            GameplaySmokeTestReflection.SetField(layer, "pitch", 0f);
+
+            Assert.That(layer.PlaybackPitch, Is.EqualTo(1f));
+        }
+
         private static AmbienceArea CreateArea(
             GameObject areaObject,
             AmbienceProfile profile,
