@@ -6,14 +6,25 @@ namespace Neighbor.Main.Features.Interaction
 {
     public sealed class PlayerInventoryHudView : MonoBehaviour
     {
-        private const float SlotSize = 42f;
-        private const float SlotGap = 6f;
-        private const float PanelPadding = 6f;
-        private const float LeftOffset = 32f;
-        private const float BottomOffset = 32f;
-
         [SerializeField] private PlayerInteractor interactor;
         [SerializeField] private CanvasGroup canvasGroup;
+        [Header("Layout")]
+        [SerializeField, Min(1f)] private float slotSize = 42f;
+        [SerializeField, Min(0f)] private float slotGap = 6f;
+        [SerializeField, Min(0f)] private float panelPadding = 6f;
+        [SerializeField, Min(0f)] private float leftOffset = 32f;
+        [SerializeField, Min(0f)] private float bottomOffset = 32f;
+
+        [Header("Colors")]
+        [SerializeField] private Color panelColor = new(0.015f, 0.016f, 0.018f, 0.32f);
+        [SerializeField] private Color selectedSlotColor = new(1f, 1f, 1f, 0.82f);
+        [SerializeField] private Color unselectedSlotColor = new(1f, 1f, 1f, 0.08f);
+        [SerializeField] private Color selectedBackgroundColor = new(0.06f, 0.06f, 0.06f, 0.72f);
+        [SerializeField] private Color unselectedBackgroundColor = new(0f, 0f, 0f, 0.46f);
+        [SerializeField] private Color selectedNumberColor = new(1f, 1f, 1f, 0.94f);
+        [SerializeField] private Color unselectedNumberColor = new(1f, 1f, 1f, 0.52f);
+        [SerializeField] private Color itemInitialColor = Color.white;
+        [SerializeField] private Color emptyInitialColor = new(1f, 1f, 1f, 0.28f);
 
         private RectTransform panelRectTransform;
         private SlotView[] slotViews;
@@ -149,7 +160,7 @@ namespace Neighbor.Main.Features.Interaction
                 panelImage = panelObject.AddComponent<Image>();
             }
 
-            panelImage.color = new Color(0.015f, 0.016f, 0.018f, 0.32f);
+            panelImage.color = panelColor;
             panelImage.raycastTarget = false;
             return rectTransform;
         }
@@ -157,12 +168,13 @@ namespace Neighbor.Main.Features.Interaction
         private void EnsureSlotViews(RectTransform panel, Font font, int slotCount)
         {
             slotCount = Mathf.Clamp(slotCount, 1, 6);
-            float panelWidth = PanelPadding * 2f + slotCount * SlotSize + (slotCount - 1) * SlotGap;
-            float panelHeight = PanelPadding * 2f + SlotSize;
-            SetRect(panel, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(LeftOffset, BottomOffset), new Vector2(panelWidth, panelHeight), new Vector2(0f, 0f));
+            float panelWidth = panelPadding * 2f + slotCount * slotSize + (slotCount - 1) * slotGap;
+            float panelHeight = panelPadding * 2f + slotSize;
+            SetRect(panel, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(leftOffset, bottomOffset), new Vector2(panelWidth, panelHeight), new Vector2(0f, 0f));
 
             if (slotViews != null && builtSlotCount == slotCount)
             {
+                UpdateSlotLayout(panel);
                 return;
             }
 
@@ -180,14 +192,29 @@ namespace Neighbor.Main.Features.Interaction
             }
         }
 
-        private static SlotView CreateSlotView(RectTransform panel, Font font, int slotIndex)
+        private void UpdateSlotLayout(RectTransform panel)
+        {
+            for (int i = 0; i < panel.childCount; i++)
+            {
+                RectTransform slot = panel.GetChild(i) as RectTransform;
+                if (slot == null)
+                {
+                    continue;
+                }
+
+                float x = panelPadding + i * (slotSize + slotGap);
+                SetRect(slot, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(x, panelPadding), new Vector2(slotSize, slotSize), new Vector2(0f, 0f));
+            }
+        }
+
+        private SlotView CreateSlotView(RectTransform panel, Font font, int slotIndex)
         {
             GameObject rootObject = new GameObject($"Slot{slotIndex + 1}", typeof(RectTransform));
             rootObject.transform.SetParent(panel, false);
 
             RectTransform root = (RectTransform)rootObject.transform;
-            float x = PanelPadding + slotIndex * (SlotSize + SlotGap);
-            SetRect(root, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(x, PanelPadding), new Vector2(SlotSize, SlotSize), new Vector2(0f, 0f));
+            float x = panelPadding + slotIndex * (slotSize + slotGap);
+            SetRect(root, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(x, panelPadding), new Vector2(slotSize, slotSize), new Vector2(0f, 0f));
 
             Image selectionImage = rootObject.AddComponent<Image>();
             selectionImage.color = Color.clear;
@@ -215,7 +242,15 @@ namespace Neighbor.Main.Features.Interaction
                 SelectionImage = selectionImage,
                 BackgroundImage = backgroundImage,
                 NumberText = numberText,
-                InitialText = initialText
+                InitialText = initialText,
+                SelectedSlotColor = selectedSlotColor,
+                UnselectedSlotColor = unselectedSlotColor,
+                SelectedBackgroundColor = selectedBackgroundColor,
+                UnselectedBackgroundColor = unselectedBackgroundColor,
+                SelectedNumberColor = selectedNumberColor,
+                UnselectedNumberColor = unselectedNumberColor,
+                ItemInitialColor = itemInitialColor,
+                EmptyInitialColor = emptyInitialColor
             };
         }
 
@@ -235,6 +270,15 @@ namespace Neighbor.Main.Features.Interaction
             {
                 Pickupable pickupable = interactor.GetInventorySlotPickup(i);
                 bool selected = i == interactor.ActiveInventorySlot;
+                slotViews[i].ApplyColors(
+                    selectedSlotColor,
+                    unselectedSlotColor,
+                    selectedBackgroundColor,
+                    unselectedBackgroundColor,
+                    selectedNumberColor,
+                    unselectedNumberColor,
+                    itemInitialColor,
+                    emptyInitialColor);
                 slotViews[i].Set(pickupable, selected);
             }
         }
@@ -277,14 +321,42 @@ namespace Neighbor.Main.Features.Interaction
             public Image BackgroundImage;
             public Text NumberText;
             public Text InitialText;
+            public Color SelectedSlotColor;
+            public Color UnselectedSlotColor;
+            public Color SelectedBackgroundColor;
+            public Color UnselectedBackgroundColor;
+            public Color SelectedNumberColor;
+            public Color UnselectedNumberColor;
+            public Color ItemInitialColor;
+            public Color EmptyInitialColor;
+
+            public void ApplyColors(
+                Color selectedSlotColor,
+                Color unselectedSlotColor,
+                Color selectedBackgroundColor,
+                Color unselectedBackgroundColor,
+                Color selectedNumberColor,
+                Color unselectedNumberColor,
+                Color itemInitialColor,
+                Color emptyInitialColor)
+            {
+                SelectedSlotColor = selectedSlotColor;
+                UnselectedSlotColor = unselectedSlotColor;
+                SelectedBackgroundColor = selectedBackgroundColor;
+                UnselectedBackgroundColor = unselectedBackgroundColor;
+                SelectedNumberColor = selectedNumberColor;
+                UnselectedNumberColor = unselectedNumberColor;
+                ItemInitialColor = itemInitialColor;
+                EmptyInitialColor = emptyInitialColor;
+            }
 
             public void Set(Pickupable pickupable, bool selected)
             {
-                SelectionImage.color = selected ? new Color(1f, 0.76f, 0.28f, 0.82f) : new Color(1f, 1f, 1f, 0.08f);
-                BackgroundImage.color = selected ? new Color(0.06f, 0.055f, 0.042f, 0.72f) : new Color(0f, 0f, 0f, 0.46f);
-                NumberText.color = selected ? new Color(1f, 0.86f, 0.48f, 0.94f) : new Color(1f, 1f, 1f, 0.52f);
+                SelectionImage.color = selected ? SelectedSlotColor : UnselectedSlotColor;
+                BackgroundImage.color = selected ? SelectedBackgroundColor : UnselectedBackgroundColor;
+                NumberText.color = selected ? SelectedNumberColor : UnselectedNumberColor;
                 InitialText.text = GetItemInitial(pickupable);
-                InitialText.color = pickupable != null ? Color.white : new Color(1f, 1f, 1f, 0.28f);
+                InitialText.color = pickupable != null ? ItemInitialColor : EmptyInitialColor;
             }
 
             private static string GetItemInitial(Pickupable pickupable)
