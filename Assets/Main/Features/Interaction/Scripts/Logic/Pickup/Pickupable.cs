@@ -54,6 +54,7 @@ namespace Neighbor.Main.Features.Interaction
         private CollisionDetectionMode originalCollisionDetection;
         private RigidbodyInterpolation originalInterpolation;
         private Collider[] ignoredPlayerColliders;
+        private Collider[] ignoredHeldColliders;
         private float restorePlayerCollisionTime;
         private float recentlyThrownUntilTime;
 
@@ -93,6 +94,7 @@ namespace Neighbor.Main.Features.Interaction
                 RestorePhysics();
             }
 
+            RestoreHeldCollisionIgnores();
             RestoreIgnoredPlayerCollisions();
         }
 
@@ -134,6 +136,11 @@ namespace Neighbor.Main.Features.Interaction
 
         public void Pickup(PlayerInteractor interactor, bool playPickupFeedback = true)
         {
+            Pickup(interactor, null, playPickupFeedback);
+        }
+
+        public void Pickup(PlayerInteractor interactor, Collider[] heldCollisionIgnoreColliders, bool playPickupFeedback = true)
+        {
             if (IsHeld || body == null)
             {
                 return;
@@ -143,6 +150,7 @@ namespace Neighbor.Main.Features.Interaction
             NotifyPickupStarted(interactor);
             IsHeld = true;
             CapturePhysicsState();
+            IgnoreHeldCollisions(heldCollisionIgnoreColliders);
 
             ClearBodyVelocity();
             body.useGravity = false;
@@ -219,6 +227,7 @@ namespace Neighbor.Main.Features.Interaction
 
             if (body == null)
             {
+                RestoreHeldCollisionIgnores();
                 return;
             }
 
@@ -237,6 +246,7 @@ namespace Neighbor.Main.Features.Interaction
             body.rotation = rotation;
             ClearBodyVelocity();
             SetHeldColliderState(true);
+            RestoreHeldCollisionIgnores();
 
             if (sleepAfterPlacing)
             {
@@ -280,6 +290,7 @@ namespace Neighbor.Main.Features.Interaction
             {
                 IsHeld = false;
                 SetHeldColliderState(true);
+                RestoreHeldCollisionIgnores();
                 RestoreCapturedPhysicsState();
             }
             else
@@ -398,6 +409,7 @@ namespace Neighbor.Main.Features.Interaction
 
             IsHeld = false;
             SetHeldColliderState(true);
+            RestoreHeldCollisionIgnores();
             RestoreCapturedPhysicsState();
         }
 
@@ -638,6 +650,55 @@ namespace Neighbor.Main.Features.Interaction
 
             SetPlayerCollisionIgnored(false);
             ignoredPlayerColliders = null;
+        }
+
+        private void IgnoreHeldCollisions(Collider[] holderColliders)
+        {
+            if (holderColliders == null || holderColliders.Length == 0)
+            {
+                return;
+            }
+
+            RestoreHeldCollisionIgnores();
+            ignoredHeldColliders = holderColliders;
+            SetHeldCollisionIgnored(true);
+        }
+
+        private void RestoreHeldCollisionIgnores()
+        {
+            if (ignoredHeldColliders == null)
+            {
+                return;
+            }
+
+            SetHeldCollisionIgnored(false);
+            ignoredHeldColliders = null;
+        }
+
+        private void SetHeldCollisionIgnored(bool ignore)
+        {
+            if (ownColliders == null || ignoredHeldColliders == null)
+            {
+                return;
+            }
+
+            foreach (Collider ownCollider in ownColliders)
+            {
+                if (ownCollider == null)
+                {
+                    continue;
+                }
+
+                foreach (Collider heldCollider in ignoredHeldColliders)
+                {
+                    if (heldCollider == null || ownCollider == heldCollider)
+                    {
+                        continue;
+                    }
+
+                    Physics.IgnoreCollision(ownCollider, heldCollider, ignore);
+                }
+            }
         }
 
         private void SetPlayerCollisionIgnored(bool ignore)

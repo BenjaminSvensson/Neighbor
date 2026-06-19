@@ -59,6 +59,7 @@ namespace Neighbor.Main.Features.Neighbor
         private readonly HashSet<Pickupable> consideredPickups = new();
         private NeighborMotor motor;
         private Animator animator;
+        private Collider[] holderColliders;
         private Transform resolvedCarryAnchor;
         private Pickupable targetPickup;
         private Pickupable heldPickup;
@@ -95,6 +96,7 @@ namespace Neighbor.Main.Features.Neighbor
         {
             motor = GetComponent<NeighborMotor>();
             animator = GetComponentInChildren<Animator>(true);
+            holderColliders = GetComponentsInChildren<Collider>(true);
             ResolveCarryAnchor();
         }
 
@@ -193,17 +195,12 @@ namespace Neighbor.Main.Features.Neighbor
             motor.FaceTowards(targetPickup.transform.position, 12f);
             Pickupable pickup = targetPickup;
             targetPickup = null;
-            CacheHeldBounds(pickup);
-            pickupOrigin = pickup.transform.position;
-            pickup.Pickup(null);
-            if (!pickup.IsHeld)
+            if (!TryPickupForCarry(pickup))
             {
                 CancelActivity();
                 return false;
             }
 
-            heldPickup = pickup;
-            UpdateHeldPose();
             if (!TryChoosePlacementDestination(out placementDestination)
                 || !motor.SetDestination(placementDestination))
             {
@@ -475,6 +472,26 @@ namespace Neighbor.Main.Features.Neighbor
             heldPivotBottomOffset = Mathf.Max(0f, pickup.transform.position.y - bounds.min.y);
         }
 
+        private bool TryPickupForCarry(Pickupable pickup)
+        {
+            if (pickup == null)
+            {
+                return false;
+            }
+
+            CacheHeldBounds(pickup);
+            pickupOrigin = pickup.transform.position;
+            pickup.Pickup(null, GetHolderColliders());
+            if (!pickup.IsHeld)
+            {
+                return false;
+            }
+
+            heldPickup = pickup;
+            UpdateHeldPose();
+            return true;
+        }
+
         private void UpdateHeldPose()
         {
             if (heldPickup == null || !heldPickup.IsHeld)
@@ -496,6 +513,16 @@ namespace Neighbor.Main.Features.Neighbor
 
             Vector3 pickupPosition = anchorPosition - rotation * heldLocalBoundsCenter;
             heldPickup.SnapHeldPose(pickupPosition, rotation);
+        }
+
+        private Collider[] GetHolderColliders()
+        {
+            if (holderColliders == null || holderColliders.Length == 0)
+            {
+                holderColliders = GetComponentsInChildren<Collider>(true);
+            }
+
+            return holderColliders;
         }
 
         private void ResolveCarryAnchor()

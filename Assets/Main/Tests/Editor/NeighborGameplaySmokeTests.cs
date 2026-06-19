@@ -468,6 +468,38 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void ObjectHandling_IgnoresNeighborCollidersWhileCarryingPickup()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            BoxCollider neighborCollider = neighborObject.AddComponent<BoxCollider>();
+            context.AddInitializedComponent<NeighborMotor>(neighborObject);
+            context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            NeighborObjectHandling objectHandling = context.AddInitializedComponent<NeighborObjectHandling>(neighborObject);
+
+            GameObject pickupObject = context.CreateObject("Pickup");
+            pickupObject.AddComponent<Rigidbody>();
+            BoxCollider pickupCollider = pickupObject.AddComponent<BoxCollider>();
+            Pickupable pickup = context.AddInitializedComponent<Pickupable>(pickupObject);
+            GameplaySmokeTestReflection.SetField(pickup, "disableCollidersWhileHeld", false);
+
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    objectHandling,
+                    "TryPickupForCarry",
+                    pickup),
+                Is.True);
+
+            Assert.That(pickup.IsHeld, Is.True);
+            Assert.That(pickupCollider.enabled, Is.True);
+            Assert.That(Physics.GetIgnoreCollision(pickupCollider, neighborCollider), Is.True);
+
+            pickup.Place(Vector3.right, Quaternion.identity);
+
+            Assert.That(pickup.IsHeld, Is.False);
+            Assert.That(Physics.GetIgnoreCollision(pickupCollider, neighborCollider), Is.False);
+        }
+
+        [Test]
         public void ObjectHandling_CancelReleasesHeldObject()
         {
             GameObject neighborObject = context.CreateObject("Neighbor");
