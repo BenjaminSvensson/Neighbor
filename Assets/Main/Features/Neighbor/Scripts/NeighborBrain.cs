@@ -78,6 +78,14 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0.1f)] private float doorRoomSearchPointRadius = 9f;
         [SerializeField, Min(0f)] private float doorRoomMinimumDepth = 0.35f;
 
+        [Header("Object Location Awareness")]
+        [SerializeField] private bool noticeObjectLocationChanges = true;
+        [SerializeField, Min(0f)] private float objectLocationAwarenessRadius = 12f;
+        [SerializeField, Min(0.05f)] private float objectLocationCheckInterval = 1f;
+        [SerializeField, Min(0f)] private float objectLocationNoticeCooldown = 10f;
+        [SerializeField, Range(0f, 1f)] private float missingObjectSuspicion = 0.24f;
+        [SerializeField, Range(0f, 1f)] private float foreignObjectSuspicion = 0.32f;
+
         [Header("Garage Doors")]
         [SerializeField] private bool useGarageDoorSwitches = true;
         [SerializeField] private bool closePlayerOpenedGarageDoors = true;
@@ -159,6 +167,7 @@ namespace Neighbor.Main.Features.Neighbor
         private readonly Dictionary<Door, int> observedUnexpectedDoorOpenSequences = new();
         private readonly Dictionary<NeighborTaskLocation, float> lastTaskCompletionTimes = new();
         private readonly Dictionary<NeighborTaskLocation, float> blockedTaskUntilTimes = new();
+        private readonly Dictionary<Pickupable, float> noticedObjectLocationChanges = new();
         private NeighborTaskLocation lastTaskLocation;
         private NeighborSearchPoint currentSearchPoint;
         private ClosetHideSpot currentHideSpot;
@@ -214,6 +223,7 @@ namespace Neighbor.Main.Features.Neighbor
         private float garageDoorWaitUntilTime;
         private float nextGarageDoorCloseTime;
         private float nextGarageDoorSecurityCheckTime;
+        private float nextObjectLocationCheckTime;
 
         public BehaviorState CurrentState => currentState;
         public Transform Player => player;
@@ -345,6 +355,7 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             UpdatePerception();
+            TryNoticeObjectLocationChanges();
             if (TryHandleGarageDoorSecurity())
             {
                 return;
@@ -2337,6 +2348,106 @@ namespace Neighbor.Main.Features.Neighbor
                 : NeighborMotor.MoveMode.Cautious;
 
             if (motor.TrySetDestinationNear(position, noiseDestinationSampleRadius, out Vector3 investigatePosition))
+            {
+                currentGoal = investigatePosition;
+                SetState(BehaviorState.Investigate);
+            }
+        }
+
+        private void TryNoticeObjectLocationChanges()
+        {
+            if (!noticeObjectLocationChanges || Time.time < nextObjectLocationCheckTime)
+            {
+                return;
+            }
+
+            nextObjectLocationCheckTime = Time.time + objectLocationCheckInterval;
+            IReadOnlyList<Pickupable> pickups = Pickupable.Pickups;
+            for (int i = 0; i < pickups.Count; i++)
+            {
+                Pickupable pickup = pickups[i];
+                if (!TryGetNoticeableObjectLocationChange(
+                        pickup,
+                        out Vector3 cluePosition,
+                        out float suspicionAmount)
+                    || noticedObjectLocationChanges.TryGetValue(pickup, out float nextNoticeTime)
+                    && Time.time < nextNoticeTime)
+                {
+                    continue;
+                }
+
+                noticedObjectLocationChanges[pickup] = Time.time + objectLocationNoticeCooldown;
+                HandleObjectLocationChange(pickup, cluePosition, suspicionAmount);
+                return;
+            }
+        }
+
+        private bool TryGetNoticeableObjectLocationChange(
+            Pickupable pickup,
+            out Vector3 cluePosition,
+            out float suspicionAmount)
+        {
+            cluePosition = default;
+            suspicionAmount = 0f;
+            if (pickup == null || !pickup.TracksHomeLocation || !pickup.isActiveAndEnabled)
+            {
+                return false;
+            }
+
+            bool missingFromHome = pickup.IsMissingFromHome;
+            bool inForeignHome = pickup.TryGetForeignHome(out _);
+            if (!missingFromHome && !inForeignHome)
+            {
+                return false;
+            }
+
+            Vector3 currentPosition = pickup.transform.position;
+            bool canSeeCurrentPosition = !pickup.IsInventoryStored
+                && Vector3.Distance(transform.position, currentPosition) <= objectLocationAwarenessRadius;
+            bool canSeeHomePosition = Vector3.Distance(transform.position, pickup.HomePosition) <= objectLocationAwarenessRadius;
+            if (!canSeeCurrentPosition && !canSeeHomePosition)
+            {
+                return false;
+            }
+
+            cluePosition = inForeignHome && canSeeCurrentPosition ? currentPosition : pickup.HomePosition;
+            suspicionAmount = inForeignHome ? foreignObjectSuspicion : missingObjectSuspicion;
+            return true;
+        }
+
+        private void HandleObjectLocationChange(Pickupable pickup, Vector3 cluePosition, float suspicionAmount)
+        {
+            if (pickup == null)
+            {
+                return;
+            }
+
+            RememberInterruptedTask();
+            AddSuspicion(suspicionAmount, pickup.gameObject);
+            RememberPlayerActivity(cluePosition);
+            currentInvestigationSource = pickup.gameObject;
+            currentUnexpectedOpenDoor = null;
+            currentDoorRoomCheckPosition = default;
+
+            if (currentState == BehaviorState.Chase
+                || currentState == BehaviorState.Catching
+                || currentState == BehaviorState.HuntMode
+                || currentState == BehaviorState.GarageDoorUse
+                || motor == null)
+            {
+                return;
+            }
+
+            goalWaitDuration = investigationWaitTime * Mathf.Lerp(0.75f, 1.25f, suspicion);
+            waitingAtGoal = false;
+            currentTaskLocation = null;
+            StopActiveTaskAudio();
+            investigationMoveMode = CurrentSuspicionLevel >= SuspicionLevel.Suspicious
+                ? NeighborMotor.MoveMode.Cautious
+                : NeighborMotor.MoveMode.Walk;
+            motor.SetMoveMode(investigationMoveMode);
+
+            if (motor.TrySetDestinationNear(cluePosition, noiseDestinationSampleRadius, out Vector3 investigatePosition))
             {
                 currentGoal = investigatePosition;
                 SetState(BehaviorState.Investigate);

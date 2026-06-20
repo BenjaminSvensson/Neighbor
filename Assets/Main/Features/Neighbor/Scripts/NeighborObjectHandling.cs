@@ -22,6 +22,9 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Range(0f, 1f)] private float routineChance = 0.18f;
         [SerializeField, Min(0f)] private float retryCooldown = 8f;
 
+        [Header("Home Restoration")]
+        [SerializeField] private bool restoreObjectsToHome = true;
+
         [Header("Pickup Selection")]
         [SerializeField, Min(0.5f)] private float pickupSearchRadius = 5f;
         [SerializeField, Min(0.1f)] private float pickupApproachDistance = 1.15f;
@@ -71,6 +74,7 @@ namespace Neighbor.Main.Features.Neighbor
         private float heldPivotBottomOffset;
         private float placeAfterTime;
         private float nextAttemptTime;
+        private bool isRestoringHeldPickupHome;
 
         public bool EnableObjectHandling
         {
@@ -116,13 +120,22 @@ namespace Neighbor.Main.Features.Neighbor
             if (!enableObjectHandling
                 || IsActive
                 || motor == null
-                || Time.time < nextAttemptTime
-                || Random.value > routineChance)
+                || Time.time < nextAttemptTime)
             {
                 return false;
             }
 
-            nextAttemptTime = Time.time + retryCooldown;
+            if (TryBeginHomeRestore(out goal))
+            {
+                nextAttemptTime = Time.time + retryCooldown;
+                return true;
+            }
+
+            if (Random.value > routineChance)
+            {
+                return false;
+            }
+
             targetPickup = FindBestPickupCandidate();
             if (targetPickup == null
                 || !motor.TrySetDestinationNear(
@@ -134,6 +147,7 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
+            nextAttemptTime = Time.time + retryCooldown;
             phase = ActivityPhase.ApproachingPickup;
             return true;
         }
@@ -172,13 +186,14 @@ namespace Neighbor.Main.Features.Neighbor
             targetPickup = null;
             heldPickup = null;
             phase = ActivityPhase.None;
+            isRestoringHeldPickupHome = false;
             nextAttemptTime = Mathf.Max(nextAttemptTime, Time.time + retryCooldown);
         }
 
         private bool UpdateApproachingPickup(out Vector3 goal)
         {
             goal = targetPickup != null ? targetPickup.transform.position : transform.position;
-            if (!IsPickupCandidateValid(targetPickup))
+            if (!IsPickupCandidateValid(targetPickup, isRestoringHeldPickupHome))
             {
                 CancelActivity();
                 return false;
@@ -201,8 +216,20 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
-            if (!TryChoosePlacementDestination(out placementDestination)
-                || !motor.SetDestination(placementDestination))
+            if (isRestoringHeldPickupHome)
+            {
+                if (!pickup.TracksHomeLocation
+                    || !motor.TrySetDestinationNear(
+                        pickup.HomePosition,
+                        pickupDestinationSampleRadius,
+                        out placementDestination))
+                {
+                    CancelActivity();
+                    return false;
+                }
+            }
+            else if (!TryChoosePlacementDestination(out placementDestination)
+                     || !motor.SetDestination(placementDestination))
             {
                 CancelActivity();
                 return false;
@@ -253,12 +280,45 @@ namespace Neighbor.Main.Features.Neighbor
                 return true;
             }
 
-            PlaceHeldObjectNear(placementDestination);
+            if (isRestoringHeldPickupHome)
+            {
+                PlaceHeldObjectAtHome();
+            }
+            else
+            {
+                PlaceHeldObjectNear(placementDestination);
+            }
+
             targetPickup = null;
             heldPickup = null;
             phase = ActivityPhase.None;
+            isRestoringHeldPickupHome = false;
             nextAttemptTime = Time.time + retryCooldown;
             return false;
+        }
+
+        private bool TryBeginHomeRestore(out Vector3 goal)
+        {
+            goal = transform.position;
+            if (!restoreObjectsToHome)
+            {
+                return false;
+            }
+
+            targetPickup = FindBestHomeRestoreCandidate();
+            if (targetPickup == null
+                || !motor.TrySetDestinationNear(
+                    targetPickup.transform.position,
+                    pickupDestinationSampleRadius,
+                    out goal))
+            {
+                targetPickup = null;
+                return false;
+            }
+
+            isRestoringHeldPickupHome = true;
+            phase = ActivityPhase.ApproachingPickup;
+            return true;
         }
 
         private Pickupable FindBestPickupCandidate()
@@ -296,7 +356,48 @@ namespace Neighbor.Main.Features.Neighbor
             return bestPickup;
         }
 
-        private bool IsPickupCandidateValid(Pickupable pickup)
+        private Pickupable FindBestHomeRestoreCandidate()
+        {
+            IReadOnlyList<Pickupable> pickups = Pickupable.Pickups;
+            Pickupable bestPickup = null;
+            float bestScore = float.PositiveInfinity;
+            float searchRadiusSqr = pickupSearchRadius * pickupSearchRadius;
+            for (int i = 0; i < pickups.Count; i++)
+            {
+                Pickupable pickup = pickups[i];
+                if (pickup == null
+                    || !pickup.NeedsHomeRestoration
+                    || !IsPickupCandidateValid(pickup, true))
+                {
+                    continue;
+                }
+
+                Vector3 toPickup = pickup.transform.position - transform.position;
+                toPickup.y = 0f;
+                if (toPickup.sqrMagnitude > searchRadiusSqr)
+                {
+                    continue;
+                }
+
+                float score = toPickup.sqrMagnitude;
+                if (pickup.TryGetForeignHome(out _))
+                {
+                    score *= 0.5f;
+                }
+
+                if (score >= bestScore)
+                {
+                    continue;
+                }
+
+                bestScore = score;
+                bestPickup = pickup;
+            }
+
+            return bestPickup;
+        }
+
+        private bool IsPickupCandidateValid(Pickupable pickup, bool allowHomeRestoration = false)
         {
             if (pickup == null
                 || !pickup.isActiveAndEnabled
@@ -309,14 +410,16 @@ namespace Neighbor.Main.Features.Neighbor
 
             NeighborTaskLocation taskLocation = pickup.GetComponentInParent<NeighborTaskLocation>();
             bool needsTaskObjectRecovery = taskLocation != null && taskLocation.NeedsObjectRecovery;
-            if (ignoreTaskObjects && taskLocation != null && !needsTaskObjectRecovery)
+            bool needsHomeRestoration = allowHomeRestoration && pickup.NeedsHomeRestoration;
+            if (ignoreTaskObjects && taskLocation != null && !needsTaskObjectRecovery && !needsHomeRestoration)
             {
                 return false;
             }
 
             if (ignoreDoorBlockers
                 && pickup.GetComponentInChildren<DoorBlockerChair>() != null
-                && !needsTaskObjectRecovery)
+                && !needsTaskObjectRecovery
+                && !needsHomeRestoration)
             {
                 return false;
             }
@@ -386,6 +489,17 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 heldPickup.Drop();
             }
+        }
+
+        private void PlaceHeldObjectAtHome()
+        {
+            if (heldPickup == null || !heldPickup.IsHeld)
+            {
+                return;
+            }
+
+            MarkHeldObjectAsNeighborInstigated();
+            heldPickup.PlaceAtHome();
         }
 
         private void MarkHeldObjectAsNeighborInstigated()

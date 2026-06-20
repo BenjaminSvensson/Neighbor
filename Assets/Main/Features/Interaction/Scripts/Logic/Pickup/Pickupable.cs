@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Neighbor.Main.Features.Interaction
@@ -24,6 +25,12 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float postThrowPlayerCollisionIgnoreTime = 0.35f;
         [SerializeField, Min(0f)] private float recentThrowImpactWindow = 5f;
 
+        [Header("Home Location")]
+        [SerializeField] private bool trackHomeLocation = true;
+        [SerializeField, Min(0f)] private float homePositionTolerance = 0.65f;
+        [SerializeField, Min(0f)] private float homeRotationTolerance = 35f;
+        [SerializeField, Min(0f)] private float foreignHomeRadius = 0.75f;
+
         [Header("Pickup Audio")]
         [SerializeField] private AudioClip[] pickupClips;
         [SerializeField, Range(0f, 1f)] private float pickupVolume = 0.65f;
@@ -37,6 +44,8 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float placementPitchRandomness = 0.04f;
         [SerializeField, Min(0f)] private float placementAudioMinDistance = 0.4f;
         [SerializeField, Min(0.1f)] private float placementAudioMaxDistance = 8f;
+
+        private static readonly List<Pickupable> ActivePickups = new();
 
         private Rigidbody body;
         private Collider[] ownColliders;
@@ -57,12 +66,28 @@ namespace Neighbor.Main.Features.Interaction
         private Collider[] ignoredHeldColliders;
         private float restorePlayerCollisionTime;
         private float recentlyThrownUntilTime;
+        private Vector3 homePosition;
+        private Quaternion homeRotation;
+        private Transform homeParent;
+        private bool hasHomeLocation;
 
         public bool IsHeld { get; private set; }
         public bool IsInventoryStored { get; private set; }
         public bool IsRecentlyThrown => Time.time < recentlyThrownUntilTime;
+        public bool TracksHomeLocation => trackHomeLocation && hasHomeLocation;
+        public Vector3 HomePosition => homePosition;
+        public Quaternion HomeRotation => homeRotation;
+        public float HomePositionTolerance => homePositionTolerance;
+        public float ForeignHomeRadius => foreignHomeRadius;
+        public bool IsAtHome => !CheckMissingFromHome();
+        public bool IsMissingFromHome => CheckMissingFromHome();
+        public bool NeedsHomeRestoration => TracksHomeLocation
+            && !IsHeld
+            && !IsInventoryStored
+            && IsMissingFromHome;
         public HoldPointSize AssignedHoldPointSize => holdPointSize;
         public Vector3 ThrowOrigin => body != null ? body.worldCenterOfMass : transform.position;
+        public static IReadOnlyList<Pickupable> Pickups => ActivePickups;
 
         private void Awake()
         {
@@ -71,6 +96,7 @@ namespace Neighbor.Main.Features.Interaction
             ownRenderers = GetComponentsInChildren<Renderer>();
             pickupInteractionOverrides = GetComponentsInChildren<IPickupInteractionOverride>();
             lifecycleReceivers = GetComponentsInChildren<IPickupLifecycleReceiver>();
+            CaptureHomeLocation();
             originalColliderEnabled = new bool[ownColliders.Length];
             inventoryColliderEnabled = new bool[ownColliders.Length];
             originalRendererEnabled = new bool[ownRenderers.Length];
@@ -87,6 +113,14 @@ namespace Neighbor.Main.Features.Interaction
             }
         }
 
+        private void OnEnable()
+        {
+            if (!ActivePickups.Contains(this))
+            {
+                ActivePickups.Add(this);
+            }
+        }
+
         private void OnDisable()
         {
             if (IsHeld)
@@ -96,6 +130,13 @@ namespace Neighbor.Main.Features.Interaction
 
             RestoreHeldCollisionIgnores();
             RestoreIgnoredPlayerCollisions();
+            ActivePickups.Remove(this);
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetActivePickups()
+        {
+            ActivePickups.Clear();
         }
 
         private void Update()
@@ -340,6 +381,84 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             return new Bounds(transform.position, Vector3.one * 0.25f);
+        }
+
+        public bool TryGetForeignHome(out Pickupable homePickup)
+        {
+            homePickup = null;
+            if (!TracksHomeLocation || IsAtHome)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < ActivePickups.Count; i++)
+            {
+                Pickupable candidate = ActivePickups[i];
+                if (candidate == null
+                    || candidate == this
+                    || !candidate.TracksHomeLocation
+                    || candidate.IsHeld
+                    || candidate.IsInventoryStored)
+                {
+                    continue;
+                }
+
+                float radius = Mathf.Max(foreignHomeRadius, candidate.ForeignHomeRadius);
+                if (Vector3.Distance(transform.position, candidate.HomePosition) <= radius)
+                {
+                    homePickup = candidate;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public void PlaceAtHome(bool sleepAfterPlacing = true)
+        {
+            if (!TracksHomeLocation)
+            {
+                return;
+            }
+
+            Place(homePosition, homeRotation, sleepAfterPlacing);
+            transform.SetParent(homeParent, true);
+            SetBodyPose(homePosition, homeRotation);
+        }
+
+        private void CaptureHomeLocation()
+        {
+            if (!trackHomeLocation)
+            {
+                hasHomeLocation = false;
+                return;
+            }
+
+            homeParent = transform.parent;
+            homePosition = transform.position;
+            homeRotation = transform.rotation;
+            hasHomeLocation = true;
+        }
+
+        private bool CheckMissingFromHome()
+        {
+            if (!TracksHomeLocation)
+            {
+                return false;
+            }
+
+            if (IsHeld || IsInventoryStored)
+            {
+                return true;
+            }
+
+            float positionTolerance = Mathf.Max(0f, homePositionTolerance);
+            if (Vector3.Distance(transform.position, homePosition) > positionTolerance)
+            {
+                return true;
+            }
+
+            return Quaternion.Angle(transform.rotation, homeRotation) > Mathf.Max(0f, homeRotationTolerance);
         }
 
         private bool TryGetRendererBounds(out Bounds bounds)
@@ -768,6 +887,13 @@ namespace Neighbor.Main.Features.Interaction
                 rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
                 rigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             }
+        }
+
+        private void OnValidate()
+        {
+            homePositionTolerance = Mathf.Max(0f, homePositionTolerance);
+            homeRotationTolerance = Mathf.Max(0f, homeRotationTolerance);
+            foreignHomeRadius = Mathf.Max(0f, foreignHomeRadius);
         }
     }
 }
