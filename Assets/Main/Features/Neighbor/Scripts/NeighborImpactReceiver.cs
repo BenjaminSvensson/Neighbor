@@ -1,12 +1,15 @@
 using System;
+using Neighbor.Main.Features.Interaction;
 using UnityEngine;
 
 namespace Neighbor.Main.Features.Neighbor
 {
-    public sealed class NeighborImpactReceiver : MonoBehaviour
+    public sealed class NeighborImpactReceiver : MonoBehaviour, IPhysicsImpactReceiver
     {
         [SerializeField] private NeighborBrain brain;
         [SerializeField] private NeighborMotor motor;
+        [SerializeField] private bool requireRecentlyThrownPickupImpact = true;
+        [SerializeField, Min(0f)] private float minimumPhysicsImpactSpeed = 1.25f;
         [SerializeField, Range(0f, 1f)] private float minimumStunLoudness = 0.18f;
         [SerializeField, Min(0f)] private float minimumStunDuration = 0.35f;
         [SerializeField, Min(0f)] private float maximumStunDuration = 1.4f;
@@ -15,7 +18,7 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0.01f)] private float knockbackDuration = 0.18f;
         [SerializeField, Min(0f)] private float impactCooldown = 0.35f;
 
-        private float lastImpactTime;
+        private float lastImpactTime = float.NegativeInfinity;
 
         public event Action ImpactReceived;
 
@@ -23,6 +26,29 @@ namespace Neighbor.Main.Features.Neighbor
         {
             brain = brain != null ? brain : GetComponent<NeighborBrain>();
             motor = motor != null ? motor : GetComponent<NeighborMotor>();
+        }
+
+        public void ReceivePhysicsImpact(
+            Pickupable impactingPickup,
+            Vector3 hitPoint,
+            Vector3 incomingVelocity,
+            float impulse,
+            float loudness01)
+        {
+            if (requireRecentlyThrownPickupImpact
+                && (impactingPickup == null || !impactingPickup.IsRecentlyThrown))
+            {
+                return;
+            }
+
+            Vector3 flatVelocity = incomingVelocity;
+            flatVelocity.y = 0f;
+            if (flatVelocity.magnitude < minimumPhysicsImpactSpeed && loudness01 < 1f)
+            {
+                return;
+            }
+
+            ReceiveImpact(hitPoint, incomingVelocity, loudness01);
         }
 
         public void ReceiveImpact(Vector3 hitPoint, Vector3 incomingVelocity, float loudness01)

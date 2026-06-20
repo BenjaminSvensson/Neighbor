@@ -1390,6 +1390,12 @@ namespace Neighbor.Main.Features.Neighbor
                 ? NeighborMotor.MoveMode.Run
                 : NeighborMotor.MoveMode.Cautious);
 
+            if (!garageSwitchToggled && IsActiveGarageDoorTargetingDesiredState())
+            {
+                garageSwitchToggled = true;
+                garageDoorWaitUntilTime = Time.time + garageDoorWaitTimeout;
+            }
+
             if (!garageSwitchToggled)
             {
                 if (!motor.HasArrived)
@@ -1420,15 +1426,35 @@ namespace Neighbor.Main.Features.Neighbor
 
             motor.Stop();
             motor.FaceTowards(activeGarageDoor.Position, 10f);
-            bool desiredStateReached = activeGarageDesiredOpen
-                ? activeGarageDoor.AllowsNavigationPassage
-                : !activeGarageDoor.IsOpen;
+            bool desiredStateReached = HasActiveGarageDoorReachedDesiredState();
             if (!desiredStateReached && Time.time < garageDoorWaitUntilTime)
             {
                 return;
             }
 
             FinishGarageDoorUse();
+        }
+
+        private bool IsActiveGarageDoorTargetingDesiredState()
+        {
+            if (activeGarageDoor == null)
+            {
+                return false;
+            }
+
+            return activeGarageDesiredOpen ? activeGarageDoor.IsOpen : !activeGarageDoor.IsOpen;
+        }
+
+        private bool HasActiveGarageDoorReachedDesiredState()
+        {
+            if (activeGarageDoor == null)
+            {
+                return false;
+            }
+
+            return activeGarageDesiredOpen
+                ? activeGarageDoor.AllowsNavigationPassage
+                : activeGarageDoor.IsFullyClosed;
         }
 
         private bool TryHandleGarageDoorSecurity()
@@ -1614,8 +1640,18 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
-            return garageDoorSecurityRadius <= 0f
-                || Vector3.Distance(transform.position, garageDoor.Position) <= garageDoorSecurityRadius
+            if (garageDoorSecurityRadius <= 0f)
+            {
+                return true;
+            }
+
+            if (garageDoor.LastOpenedByNeighbor)
+            {
+                return Vector3.Distance(transform.position, garageDoor.Position) <= garageDoorSearchRadius
+                    || Vector3.Distance(goal, garageDoor.Position) <= garageDoorSearchRadius;
+            }
+
+            return Vector3.Distance(transform.position, garageDoor.Position) <= garageDoorSecurityRadius
                 || Vector3.Distance(goal, garageDoor.Position) <= garageDoorSecurityRadius;
         }
 

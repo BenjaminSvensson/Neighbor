@@ -40,7 +40,7 @@ namespace Neighbor.Main.Features.Interaction
         private Pickupable pickupable;
         private AudioSource audioSource;
         private AudioClip generatedImpactClip;
-        private float lastImpactTime;
+        private float lastImpactTime = float.NegativeInfinity;
         private float speedBeforePhysicsStep;
         private float neighborAttributionUntilTime;
         private GameObject recentNeighborInstigator;
@@ -96,7 +96,6 @@ namespace Neighbor.Main.Features.Interaction
             lastImpactTime = Time.time;
             PlayImpactAudio(origin, loudness01);
             SpawnNoiseTrigger(origin, loudness01, ResolveNoiseInstigator());
-            NotifyImpactReceiver(collision, origin, loudness01);
             NotifyDoorImpact(collision);
         }
 
@@ -168,18 +167,6 @@ namespace Neighbor.Main.Features.Interaction
 
             recentNeighborInstigator = null;
             return gameObject;
-        }
-
-        private void NotifyImpactReceiver(Collision collision, Vector3 origin, float loudness01)
-        {
-            NeighborImpactReceiver receiver = collision.collider.GetComponentInParent<NeighborImpactReceiver>();
-            if (receiver == null)
-            {
-                return;
-            }
-
-            Vector3 incomingVelocity = body != null ? body.linearVelocity : collision.relativeVelocity;
-            receiver.ReceiveImpact(origin, incomingVelocity, loudness01);
         }
 
         private void NotifyDoorImpact(Collision collision)

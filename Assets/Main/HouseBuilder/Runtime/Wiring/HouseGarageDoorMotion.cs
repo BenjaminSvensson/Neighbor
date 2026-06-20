@@ -54,6 +54,9 @@ namespace Neighbor.Main.HouseBuilder
         private bool lastOpenedByNeighbor;
 
         public bool IsOpen => targetProgress >= 1f;
+        public bool IsFullyOpen => targetProgress >= 1f && Mathf.Approximately(progress, 1f);
+        public bool IsFullyClosed => targetProgress <= 0f && Mathf.Approximately(progress, 0f);
+        public bool IsMoving => !Mathf.Approximately(progress, targetProgress);
         public bool AllowsNavigationPassage => IsNavigationPassageOpen();
         public bool IsNavigationPassageSuppressed => navigationPassageSuppressed;
         public bool LastOpenedByNeighbor => lastOpenedByNeighbor;

@@ -176,6 +176,70 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void GarageDoorSecurity_TargetsNeighborOpenedDoorPastTightSecurityRadius()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>();
+            GameplaySmokeTestReflection.SetField(brain, "garageDoorSearchRadius", 20f);
+            GameplaySmokeTestReflection.SetField(brain, "garageDoorSecurityRadius", 4f);
+            GameplaySmokeTestReflection.SetField(brain, "closeAnyOpenGarageDoorForSecurity", true);
+
+            GameObject garageObject = context.CreateObject("GarageDoor");
+            garageObject.transform.position = Vector3.right * 12f;
+            GameObject panelObject = context.CreateObject("Door Panel");
+            panelObject.transform.SetParent(garageObject.transform, false);
+            HouseGarageDoorMotion garageDoor = context.AddInitializedComponent<HouseGarageDoorMotion>(garageObject);
+            garageDoor.Configure(panelObject.transform, Vector3.zero, Vector3.up, 0.01f, false);
+            garageDoor.MarkNextChangeAsNeighborRequested();
+            garageDoor.Open();
+
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    brain,
+                    "IsGarageDoorCandidate",
+                    garageDoor,
+                    brain.transform.position,
+                    false),
+                Is.True);
+        }
+
+        [Test]
+        public void GarageDoorUse_WaitsForGarageDoorToFullyClose()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            NeighborMotor motor = context.AddInitializedComponent<NeighborMotor>(neighborObject);
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            GameplaySmokeTestReflection.SetField(brain, "motor", motor);
+
+            GameObject garageObject = context.CreateObject("GarageDoor");
+            GameObject panelObject = context.CreateObject("Door Panel");
+            panelObject.transform.SetParent(garageObject.transform, false);
+            HouseGarageDoorMotion garageDoor = context.AddInitializedComponent<HouseGarageDoorMotion>(garageObject);
+            garageDoor.Configure(panelObject.transform, Vector3.zero, Vector3.up, 1f, true);
+            GameplaySmokeTestReflection.SetField(garageDoor, "targetProgress", 0f);
+            GameplaySmokeTestReflection.SetField(garageDoor, "progress", 0.5f);
+
+            GameObject switchObject = context.CreateObject("GarageSwitch");
+            switchObject.AddComponent<BoxCollider>();
+            LightSwitch lightSwitch = context.AddInitializedComponent<LightSwitch>(switchObject);
+
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.GarageDoorUse);
+            GameplaySmokeTestReflection.SetField(brain, "activeGarageDoor", garageDoor);
+            GameplaySmokeTestReflection.SetField(brain, "activeGarageSwitch", lightSwitch);
+            GameplaySmokeTestReflection.SetField(brain, "activeGarageDesiredOpen", false);
+            GameplaySmokeTestReflection.SetField(brain, "garageSwitchToggled", true);
+            GameplaySmokeTestReflection.SetField(brain, "garageDoorWaitUntilTime", Time.time + 10f);
+
+            GameplaySmokeTestReflection.Invoke(brain, "UpdateGarageDoorUse");
+
+            Assert.That(brain.CurrentState, Is.EqualTo(NeighborBrain.BehaviorState.GarageDoorUse));
+
+            GameplaySmokeTestReflection.SetField(garageDoor, "progress", 0f);
+            GameplaySmokeTestReflection.Invoke(brain, "UpdateGarageDoorUse");
+
+            Assert.That(brain.CurrentState, Is.Not.EqualTo(NeighborBrain.BehaviorState.GarageDoorUse));
+        }
+
+        [Test]
         public void ObjectTask_ReservesAndProtectsMovableFurniture()
         {
             GameObject chair = context.CreateObject("ChairTask");
@@ -763,6 +827,27 @@ namespace Neighbor.Main.Tests
             Assert.That(camera.IsDisabled, Is.True);
             Assert.That(camera.IsNeighborPlaced, Is.False);
             Assert.That(SecurityCamera.IsNeighborCameraWithinDistance(Vector3.zero, 2f), Is.False);
+        }
+
+        [Test]
+        public void NeighborImpactReceiver_OnlyAcceptsRecentlyThrownPhysicsPickup()
+        {
+            NeighborImpactReceiver receiver = context.AddInitializedComponent<NeighborImpactReceiver>();
+            GameObject pickupObject = context.CreateObject("Pickup");
+            pickupObject.AddComponent<Rigidbody>();
+            pickupObject.AddComponent<BoxCollider>();
+            Pickupable pickup = context.AddInitializedComponent<Pickupable>(pickupObject);
+            int impactCount = 0;
+            receiver.ImpactReceived += () => impactCount++;
+
+            receiver.ReceivePhysicsImpact(pickup, Vector3.zero, Vector3.forward * 4f, 18f, 1f);
+
+            Assert.That(impactCount, Is.Zero);
+
+            pickup.Throw(Vector3.forward * 4f);
+            receiver.ReceivePhysicsImpact(pickup, Vector3.zero, Vector3.forward * 4f, 18f, 1f);
+
+            Assert.That(impactCount, Is.EqualTo(1));
         }
 
         [Test]
