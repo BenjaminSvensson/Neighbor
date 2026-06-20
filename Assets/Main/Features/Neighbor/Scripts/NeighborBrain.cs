@@ -82,9 +82,8 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField] private bool noticeObjectLocationChanges = true;
         [SerializeField, Min(0f)] private float objectLocationAwarenessRadius = 12f;
         [SerializeField, Min(0.05f)] private float objectLocationCheckInterval = 1f;
-        [SerializeField, Min(0f)] private float objectLocationNoticeCooldown = 10f;
-        [SerializeField, Range(0f, 1f)] private float missingObjectSuspicion = 0.24f;
-        [SerializeField, Range(0f, 1f)] private float foreignObjectSuspicion = 0.32f;
+        [SerializeField, Range(0f, 1f)] private float missingObjectSuspicion = 0.12f;
+        [SerializeField, Range(0f, 1f)] private float foreignObjectSuspicion = 0.18f;
 
         [Header("Garage Doors")]
         [SerializeField] private bool useGarageDoorSwitches = true;
@@ -167,7 +166,7 @@ namespace Neighbor.Main.Features.Neighbor
         private readonly Dictionary<Door, int> observedUnexpectedDoorOpenSequences = new();
         private readonly Dictionary<NeighborTaskLocation, float> lastTaskCompletionTimes = new();
         private readonly Dictionary<NeighborTaskLocation, float> blockedTaskUntilTimes = new();
-        private readonly Dictionary<Pickupable, float> noticedObjectLocationChanges = new();
+        private readonly HashSet<Pickupable> noticedObjectLocationChanges = new();
         private NeighborTaskLocation lastTaskLocation;
         private NeighborSearchPoint currentSearchPoint;
         private ClosetHideSpot currentHideSpot;
@@ -2366,17 +2365,21 @@ namespace Neighbor.Main.Features.Neighbor
             for (int i = 0; i < pickups.Count; i++)
             {
                 Pickupable pickup = pickups[i];
+                if (pickup != null && pickup.TracksHomeLocation && !pickup.IsMissingFromHome)
+                {
+                    noticedObjectLocationChanges.Remove(pickup);
+                    continue;
+                }
+
                 if (!TryGetNoticeableObjectLocationChange(
                         pickup,
                         out Vector3 cluePosition,
                         out float suspicionAmount)
-                    || noticedObjectLocationChanges.TryGetValue(pickup, out float nextNoticeTime)
-                    && Time.time < nextNoticeTime)
+                    || !noticedObjectLocationChanges.Add(pickup))
                 {
                     continue;
                 }
 
-                noticedObjectLocationChanges[pickup] = Time.time + objectLocationNoticeCooldown;
                 HandleObjectLocationChange(pickup, cluePosition, suspicionAmount);
                 return;
             }
@@ -2389,7 +2392,10 @@ namespace Neighbor.Main.Features.Neighbor
         {
             cluePosition = default;
             suspicionAmount = 0f;
-            if (pickup == null || !pickup.TracksHomeLocation || !pickup.isActiveAndEnabled)
+            if (pickup == null
+                || !pickup.TracksHomeLocation
+                || !pickup.isActiveAndEnabled
+                || pickup.IsHomeDisplacementNeighborInstigated)
             {
                 return false;
             }

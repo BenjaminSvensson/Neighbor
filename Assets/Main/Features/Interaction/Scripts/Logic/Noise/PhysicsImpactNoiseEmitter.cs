@@ -156,6 +156,7 @@ namespace Neighbor.Main.Features.Interaction
 
             recentNeighborInstigator = neighborInstigator;
             neighborAttributionUntilTime = Time.time + neighborAttributionTime;
+            pickupable?.MarkNeighborHomeDisplacement(neighborInstigator);
         }
 
         private GameObject ResolveNoiseInstigator()

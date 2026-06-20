@@ -504,6 +504,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void MarkHeldObjectAsNeighborInstigated()
         {
+            heldPickup.MarkNeighborHomeDisplacement(gameObject);
             PhysicsImpactNoiseEmitter[] emitters = heldPickup.GetComponentsInChildren<PhysicsImpactNoiseEmitter>(true);
             foreach (PhysicsImpactNoiseEmitter emitter in emitters)
             {

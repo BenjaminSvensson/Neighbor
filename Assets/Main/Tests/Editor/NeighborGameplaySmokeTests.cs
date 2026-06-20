@@ -687,6 +687,66 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void ObjectLocationChange_OnlyRaisesSuspicionOnceUntilPickupReturnsHome()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>();
+            GameplaySmokeTestReflection.SetField(brain, "objectLocationAwarenessRadius", 6f);
+            GameplaySmokeTestReflection.SetField(brain, "missingObjectSuspicion", 0.35f);
+
+            GameObject pickupObject = context.CreateObject("MovedPickup");
+            pickupObject.AddComponent<Rigidbody>();
+            pickupObject.AddComponent<BoxCollider>();
+            Pickupable pickup = context.AddInitializedComponent<Pickupable>(pickupObject);
+
+            pickupObject.transform.position = Vector3.right * 2f;
+            Physics.SyncTransforms();
+            GameplaySmokeTestReflection.Invoke(brain, "TryNoticeObjectLocationChanges");
+            Assert.That(brain.Suspicion, Is.EqualTo(0.35f).Within(0.001f));
+
+            GameplaySmokeTestReflection.SetField(brain, "nextObjectLocationCheckTime", float.NegativeInfinity);
+            GameplaySmokeTestReflection.Invoke(brain, "TryNoticeObjectLocationChanges");
+            Assert.That(brain.Suspicion, Is.EqualTo(0.35f).Within(0.001f));
+
+            pickupObject.transform.SetPositionAndRotation(pickup.HomePosition, pickup.HomeRotation);
+            Physics.SyncTransforms();
+            GameplaySmokeTestReflection.SetField(brain, "nextObjectLocationCheckTime", float.NegativeInfinity);
+            GameplaySmokeTestReflection.Invoke(brain, "TryNoticeObjectLocationChanges");
+
+            pickupObject.transform.position = Vector3.right * 3f;
+            Physics.SyncTransforms();
+            GameplaySmokeTestReflection.SetField(brain, "nextObjectLocationCheckTime", float.NegativeInfinity);
+            GameplaySmokeTestReflection.Invoke(brain, "TryNoticeObjectLocationChanges");
+
+            Assert.That(brain.Suspicion, Is.EqualTo(0.7f).Within(0.001f));
+        }
+
+        [Test]
+        public void ObjectLocationChange_IgnoresNeighborInstigatedPickup()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            GameplaySmokeTestReflection.SetField(brain, "objectLocationAwarenessRadius", 6f);
+            GameplaySmokeTestReflection.SetField(brain, "missingObjectSuspicion", 0.35f);
+
+            GameObject pickupObject = context.CreateObject("NeighborMovedPickup");
+            pickupObject.AddComponent<Rigidbody>();
+            pickupObject.AddComponent<BoxCollider>();
+            Pickupable pickup = context.AddInitializedComponent<Pickupable>(pickupObject);
+            pickup.MarkNeighborHomeDisplacement(neighborObject);
+            pickupObject.transform.position = Vector3.right * 2f;
+            Physics.SyncTransforms();
+
+            GameplaySmokeTestReflection.Invoke(brain, "TryNoticeObjectLocationChanges");
+
+            Assert.That(pickup.IsHomeDisplacementNeighborInstigated, Is.True);
+            Assert.That(pickup.NeedsHomeRestoration, Is.False);
+            Assert.That(brain.Suspicion, Is.Zero);
+            Assert.That(
+                GameplaySmokeTestReflection.GetField<GameObject>(brain, "currentInvestigationSource"),
+                Is.Null);
+        }
+
+        [Test]
         public void ObjectLocationChange_UsesForeignSuspicionWhenPickupOccupiesAnotherHome()
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>();
@@ -712,6 +772,30 @@ namespace Neighbor.Main.Tests
 
             Assert.That(firstPickup.TryGetForeignHome(out _), Is.True);
             Assert.That(brain.Suspicion, Is.EqualTo(0.42f).Within(0.001f));
+        }
+
+        [Test]
+        public void ObjectHandling_IgnoresNeighborInstigatedHomeRestoreCandidate()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            context.AddInitializedComponent<NeighborMotor>(neighborObject);
+            context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            NeighborObjectHandling objectHandling = context.AddInitializedComponent<NeighborObjectHandling>(neighborObject);
+
+            GameObject pickupObject = context.CreateObject("NeighborMovedPickup");
+            pickupObject.AddComponent<Rigidbody>();
+            pickupObject.AddComponent<BoxCollider>();
+            Pickupable pickup = context.AddInitializedComponent<Pickupable>(pickupObject);
+            pickup.MarkNeighborHomeDisplacement(neighborObject);
+            pickupObject.transform.position = Vector3.right * 2f;
+            Physics.SyncTransforms();
+
+            Pickupable candidate = GameplaySmokeTestReflection.InvokeResult<Pickupable>(
+                objectHandling,
+                "FindBestHomeRestoreCandidate");
+
+            Assert.That(pickup.IsHomeDisplacementNeighborInstigated, Is.True);
+            Assert.That(candidate, Is.Null);
         }
 
         [Test]

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Neighbor.Main.Features.Neighbor;
 using UnityEngine;
 
 namespace Neighbor.Main.Features.Interaction
@@ -30,6 +31,8 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float homePositionTolerance = 0.65f;
         [SerializeField, Min(0f)] private float homeRotationTolerance = 35f;
         [SerializeField, Min(0f)] private float foreignHomeRadius = 0.75f;
+        [SerializeField, Min(0f)] private float neighborHomeDisturbanceGraceTime = 2f;
+        [SerializeField, Min(0f)] private float neighborHomeDisturbanceMaximumSpeed = 0.75f;
 
         [Header("Pickup Audio")]
         [SerializeField] private AudioClip[] pickupClips;
@@ -66,10 +69,14 @@ namespace Neighbor.Main.Features.Interaction
         private Collider[] ignoredHeldColliders;
         private float restorePlayerCollisionTime;
         private float recentlyThrownUntilTime;
+        private float speedBeforePhysicsStep;
         private Vector3 homePosition;
         private Quaternion homeRotation;
         private Transform homeParent;
         private bool hasHomeLocation;
+        private GameObject homeDisplacementInstigator;
+        private bool homeDisplacementInstigatedByNeighbor;
+        private float homeDisplacementAttributionUntilTime;
 
         public bool IsHeld { get; private set; }
         public bool IsInventoryStored { get; private set; }
@@ -81,9 +88,19 @@ namespace Neighbor.Main.Features.Interaction
         public float ForeignHomeRadius => foreignHomeRadius;
         public bool IsAtHome => !CheckMissingFromHome();
         public bool IsMissingFromHome => CheckMissingFromHome();
+        public bool IsHomeDisplacementNeighborInstigated
+        {
+            get
+            {
+                RefreshHomeDisplacementAttribution();
+                return homeDisplacementInstigatedByNeighbor && CheckMissingFromHome();
+            }
+        }
+
         public bool NeedsHomeRestoration => TracksHomeLocation
             && !IsHeld
             && !IsInventoryStored
+            && !IsHomeDisplacementNeighborInstigated
             && IsMissingFromHome;
         public HoldPointSize AssignedHoldPointSize => holdPointSize;
         public Vector3 ThrowOrigin => body != null ? body.worldCenterOfMass : transform.position;
@@ -141,10 +158,26 @@ namespace Neighbor.Main.Features.Interaction
 
         private void Update()
         {
+            RefreshHomeDisplacementAttribution();
             if (ignoredPlayerColliders != null && Time.time >= restorePlayerCollisionTime)
             {
                 RestoreIgnoredPlayerCollisions();
             }
+        }
+
+        private void FixedUpdate()
+        {
+            speedBeforePhysicsStep = body != null ? body.linearVelocity.magnitude : 0f;
+        }
+
+        private void OnCollisionEnter(Collision collision)
+        {
+            TryMarkNeighborCollisionDisturbance(collision);
+        }
+
+        private void OnCollisionStay(Collision collision)
+        {
+            TryMarkNeighborCollisionDisturbance(collision);
         }
 
         public bool CanInteract(PlayerInteractor interactor)
@@ -426,6 +459,23 @@ namespace Neighbor.Main.Features.Interaction
             SetBodyPose(homePosition, homeRotation);
         }
 
+        public void MarkNeighborHomeDisplacement(GameObject neighborInstigator)
+        {
+            if (!TracksHomeLocation
+                || neighborInstigator == null
+                || neighborInstigator.GetComponentInParent<NeighborBrain>() == null)
+            {
+                return;
+            }
+
+            homeDisplacementInstigator = neighborInstigator;
+            homeDisplacementAttributionUntilTime = Time.time + neighborHomeDisturbanceGraceTime;
+            if (CheckMissingFromHome())
+            {
+                homeDisplacementInstigatedByNeighbor = true;
+            }
+        }
+
         private void CaptureHomeLocation()
         {
             if (!trackHomeLocation)
@@ -459,6 +509,62 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             return Quaternion.Angle(transform.rotation, homeRotation) > Mathf.Max(0f, homeRotationTolerance);
+        }
+
+        private void TryMarkNeighborCollisionDisturbance(Collision collision)
+        {
+            if (collision == null
+                || collision.collider == null
+                || speedBeforePhysicsStep > neighborHomeDisturbanceMaximumSpeed)
+            {
+                return;
+            }
+
+            NeighborBrain neighbor = collision.collider.GetComponentInParent<NeighborBrain>();
+            if (neighbor != null)
+            {
+                MarkNeighborHomeDisplacement(neighbor.gameObject);
+            }
+        }
+
+        private void RefreshHomeDisplacementAttribution()
+        {
+            if (homeDisplacementInstigator == null)
+            {
+                homeDisplacementInstigatedByNeighbor = false;
+                return;
+            }
+
+            if (!TracksHomeLocation)
+            {
+                ClearHomeDisplacementAttribution();
+                return;
+            }
+
+            if (!CheckMissingFromHome())
+            {
+                if (Time.time > homeDisplacementAttributionUntilTime)
+                {
+                    ClearHomeDisplacementAttribution();
+                }
+
+                return;
+            }
+
+            if (homeDisplacementInstigatedByNeighbor || Time.time <= homeDisplacementAttributionUntilTime)
+            {
+                homeDisplacementInstigatedByNeighbor = true;
+                return;
+            }
+
+            ClearHomeDisplacementAttribution();
+        }
+
+        private void ClearHomeDisplacementAttribution()
+        {
+            homeDisplacementInstigator = null;
+            homeDisplacementInstigatedByNeighbor = false;
+            homeDisplacementAttributionUntilTime = 0f;
         }
 
         private bool TryGetRendererBounds(out Bounds bounds)
@@ -894,6 +1000,8 @@ namespace Neighbor.Main.Features.Interaction
             homePositionTolerance = Mathf.Max(0f, homePositionTolerance);
             homeRotationTolerance = Mathf.Max(0f, homeRotationTolerance);
             foreignHomeRadius = Mathf.Max(0f, foreignHomeRadius);
+            neighborHomeDisturbanceGraceTime = Mathf.Max(0f, neighborHomeDisturbanceGraceTime);
+            neighborHomeDisturbanceMaximumSpeed = Mathf.Max(0f, neighborHomeDisturbanceMaximumSpeed);
         }
     }
 }
