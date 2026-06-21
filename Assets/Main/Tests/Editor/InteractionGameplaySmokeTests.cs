@@ -98,6 +98,51 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void Door_ResetKeepsExistingReinforcementWhenAddingMore()
+        {
+            GameObject boardPrefab = CreateBoardObject("BoardPrefab");
+            Door door = context.AddInitializedComponent<Door>();
+            ConfigureReinforcementOption(door, boardPrefab);
+            GameplaySmokeTestReflection.SetField(door, "blockerReinforcementCount", 1);
+            GameplaySmokeTestReflection.SetField(door, "maximumBlockers", 3);
+
+            GameplaySmokeTestReflection.SetField(door, "runReinforcementScore", 1f);
+            Door.ApplyRunReinforcements(1, new ReinforcementBudget(1));
+
+            List<GameObject> spawnedReinforcements =
+                GameplaySmokeTestReflection.GetField<List<GameObject>>(door, "spawnedReinforcements");
+            Assert.That(spawnedReinforcements, Has.Count.EqualTo(1));
+            GameObject firstReinforcement = spawnedReinforcements[0];
+            Assert.That(firstReinforcement, Is.Not.Null);
+            Assert.That(door.ActiveBlockerCount, Is.EqualTo(1));
+
+            Door.ResetAllToStartingState();
+
+            Assert.That(firstReinforcement, Is.Not.Null);
+            Assert.That(firstReinforcement.GetComponent<DoorBlockerChair>().IsBlockingDoor, Is.True);
+            Assert.That(door.ActiveBlockerCount, Is.EqualTo(1));
+
+            GameplaySmokeTestReflection.SetField(door, "runReinforcementScore", 1f);
+            Door.ApplyRunReinforcements(1, new ReinforcementBudget(1));
+
+            Assert.That(spawnedReinforcements, Has.Count.EqualTo(2));
+            Assert.That(spawnedReinforcements[0], Is.SameAs(firstReinforcement));
+            Assert.That(spawnedReinforcements[1], Is.Not.Null);
+            Assert.That(door.ActiveBlockerCount, Is.EqualTo(2));
+            Assert.That(
+                Mathf.Abs(spawnedReinforcements[0].transform.position.y - spawnedReinforcements[1].transform.position.y),
+                Is.GreaterThan(0.2f));
+
+            for (int i = 0; i < spawnedReinforcements.Count; i++)
+            {
+                if (spawnedReinforcements[i] != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(spawnedReinforcements[i]);
+                }
+            }
+        }
+
+        [Test]
         public void Glass_PlayerBreakReinforcementRestoresPaneAndBoardsOpening()
         {
             GameObject boardPrefab = CreateBoardObject("BoardPrefab");
@@ -128,6 +173,54 @@ namespace Neighbor.Main.Tests
             Assert.That(
                 Quaternion.Angle(spawnedReinforcements[0].transform.rotation, spawnedReinforcements[1].transform.rotation),
                 Is.GreaterThan(1f));
+
+            for (int i = 0; i < spawnedReinforcements.Count; i++)
+            {
+                if (spawnedReinforcements[i] != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(spawnedReinforcements[i]);
+                }
+            }
+        }
+
+        [Test]
+        public void Glass_RepeatedReinforcementAddsBoardsWithoutRemovingExisting()
+        {
+            GameObject boardPrefab = CreateBoardObject("BoardPrefab");
+            GameObject glassObject = context.CreateObject("Glass");
+            BoxCollider glassCollider = glassObject.AddComponent<BoxCollider>();
+            glassCollider.size = new Vector3(0.08f, 1.5f, 2f);
+            GlassShatter glass = context.AddInitializedComponent<GlassShatter>(glassObject);
+            ConfigureQuietGlass(glass);
+            ConfigureReinforcementOption(glass, boardPrefab);
+            GameplaySmokeTestReflection.SetField(glass, "reinforcementBoardCount", 2);
+
+            glass.ShatterFromPlayer(glass.transform.position, Vector3.forward * 4f, null);
+            GlassShatter.ApplyRunReinforcements(1, new ReinforcementBudget(4));
+
+            List<GameObject> spawnedReinforcements =
+                GameplaySmokeTestReflection.GetField<List<GameObject>>(glass, "spawnedReinforcements");
+            Assert.That(spawnedReinforcements, Has.Count.EqualTo(2));
+            GameObject firstReinforcement = spawnedReinforcements[0];
+            GameObject secondReinforcement = spawnedReinforcements[1];
+
+            glass.ShatterFromPlayer(glass.transform.position, Vector3.forward * 4f, null);
+            GlassShatter.ResetAllToStartingState();
+
+            Assert.That(firstReinforcement, Is.Not.Null);
+            Assert.That(secondReinforcement, Is.Not.Null);
+            Assert.That(spawnedReinforcements, Has.Count.EqualTo(2));
+
+            GlassShatter.ApplyRunReinforcements(1, new ReinforcementBudget(4));
+
+            Assert.That(spawnedReinforcements, Has.Count.EqualTo(4));
+            Assert.That(spawnedReinforcements[0], Is.SameAs(firstReinforcement));
+            Assert.That(spawnedReinforcements[1], Is.SameAs(secondReinforcement));
+            Assert.That(spawnedReinforcements[2], Is.Not.Null);
+            Assert.That(spawnedReinforcements[3], Is.Not.Null);
+            Assert.That(
+                Mathf.Abs(spawnedReinforcements[0].transform.position.y - spawnedReinforcements[2].transform.position.y),
+                Is.GreaterThan(0.2f));
 
             for (int i = 0; i < spawnedReinforcements.Count; i++)
             {
@@ -330,6 +423,13 @@ namespace Neighbor.Main.Tests
             ReinforcementPrefabOption option = new();
             GameplaySmokeTestReflection.SetField(option, "prefab", prefab);
             GameplaySmokeTestReflection.SetField(glass, "blockerReinforcementOptions", new[] { option });
+        }
+
+        private static void ConfigureReinforcementOption(Door door, GameObject prefab)
+        {
+            ReinforcementPrefabOption option = new();
+            GameplaySmokeTestReflection.SetField(option, "prefab", prefab);
+            GameplaySmokeTestReflection.SetField(door, "blockerReinforcementOptions", new[] { option });
         }
     }
 }

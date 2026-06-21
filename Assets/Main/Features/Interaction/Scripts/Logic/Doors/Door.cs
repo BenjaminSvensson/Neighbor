@@ -646,22 +646,13 @@ namespace Neighbor.Main.Features.Interaction
 
             RestoreIgnoredPlayerCollisions();
             ReleaseActiveBlockersForReset();
-
-            for (int i = spawnedReinforcements.Count - 1; i >= 0; i--)
-            {
-                if (spawnedReinforcements[i] != null)
-                {
-                    Destroy(spawnedReinforcements[i]);
-                }
-            }
-
-            spawnedReinforcements.Clear();
+            PruneSpawnedReinforcements();
             isLocked = startsLocked;
-            isOpen = startsOpen;
+            isOpen = startsOpen && ActiveBlockerCount == 0;
             lastOpenedByNeighbor = false;
             openSequence = 0;
-            SetAngle(startsOpen ? openAngle : 0f);
-            closeAtTime = startsOpen && autoCloseDelay > 0f ? Time.time + autoCloseDelay : 0f;
+            SetAngle(isOpen ? openAngle : 0f);
+            closeAtTime = isOpen && autoCloseDelay > 0f ? Time.time + autoCloseDelay : 0f;
             trackedOpeningPlayer = null;
             UpdateNavigationObstacles();
         }
@@ -706,10 +697,27 @@ namespace Neighbor.Main.Features.Interaction
             PruneMissingBlockers();
             for (int i = activeBlockers.Count - 1; i >= 0; i--)
             {
-                activeBlockers[i]?.ReleaseForDoorReset();
+                DoorBlockerChair blocker = activeBlockers[i];
+                if (blocker == null || blocker.IsReinforcementPlaced)
+                {
+                    continue;
+                }
+
+                blocker.ReleaseForDoorReset();
             }
 
-            activeBlockers.Clear();
+            PruneMissingBlockers();
+        }
+
+        private void PruneSpawnedReinforcements()
+        {
+            for (int i = spawnedReinforcements.Count - 1; i >= 0; i--)
+            {
+                if (spawnedReinforcements[i] == null)
+                {
+                    spawnedReinforcements.RemoveAt(i);
+                }
+            }
         }
 
         private void PlayLockedNudge()

@@ -241,13 +241,13 @@ namespace Neighbor.Main.Features.Interaction
         private bool ApplyReinforcement(ReinforcementBudget budget)
         {
             RestoreIntactGlass();
-            DestroySpawnedReinforcements();
             return TrySpawnBlockerReinforcements(budget);
         }
 
         private bool TrySpawnBlockerReinforcements(ReinforcementBudget budget)
         {
             int desiredSpawnCount = Mathf.Max(1, reinforcementBoardCount);
+            int placementStartIndex = GetSpawnedReinforcementCount();
             bool spawnedAny = false;
             for (int i = 0; i < desiredSpawnCount; i++)
             {
@@ -265,8 +265,9 @@ namespace Neighbor.Main.Features.Interaction
                 }
 
                 Pickupable pickupable = reinforcement.GetComponent<Pickupable>() ?? reinforcement.GetComponentInChildren<Pickupable>();
-                Quaternion rotation = GetBoardReinforcementRotation(i);
-                Vector3 position = GetBoardReinforcementPosition(reinforcement.transform, pickupable, rotation, i);
+                int placementIndex = placementStartIndex + i;
+                Quaternion rotation = GetBoardReinforcementRotation(placementIndex);
+                Vector3 position = GetBoardReinforcementPosition(reinforcement.transform, pickupable, rotation, placementIndex);
                 if (!blocker.TryBlockOpeningAsReinforcement(position, rotation))
                 {
                     Destroy(reinforcement);
@@ -444,7 +445,7 @@ namespace Neighbor.Main.Features.Interaction
         private void ResetToStartingState()
         {
             RestoreIntactGlass();
-            DestroySpawnedReinforcements();
+            PruneSpawnedReinforcements();
         }
 
         private void RestoreIntactGlass()
@@ -472,17 +473,21 @@ namespace Neighbor.Main.Features.Interaction
             CaptureOpeningBounds();
         }
 
-        private void DestroySpawnedReinforcements()
+        private int GetSpawnedReinforcementCount()
+        {
+            PruneSpawnedReinforcements();
+            return spawnedReinforcements.Count;
+        }
+
+        private void PruneSpawnedReinforcements()
         {
             for (int i = spawnedReinforcements.Count - 1; i >= 0; i--)
             {
-                if (spawnedReinforcements[i] != null)
+                if (spawnedReinforcements[i] == null)
                 {
-                    Destroy(spawnedReinforcements[i]);
+                    spawnedReinforcements.RemoveAt(i);
                 }
             }
-
-            spawnedReinforcements.Clear();
         }
 
         private void ClearRunTracking()
