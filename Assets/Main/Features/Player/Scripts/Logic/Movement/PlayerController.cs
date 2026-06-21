@@ -144,6 +144,7 @@ namespace Neighbor.Main.Features.Player
             }
 
             deathController.Initialize(this);
+            EnsureDevCameraMode();
         }
 
         private void Update()
@@ -181,6 +182,22 @@ namespace Neighbor.Main.Features.Player
             {
                 StopForBeartrap();
             }
+        }
+
+        public void StopMotionForExternalControl()
+        {
+            horizontalVelocity = Vector3.zero;
+            verticalVelocity = 0f;
+            slideTimer = 0f;
+            slideBonusSpeed = 0f;
+            airborneTimer = 0f;
+            heavyLandingSlowTimer = 0f;
+            IsSliding = false;
+            IsRunning = false;
+            IsLedgeClimbing = false;
+            MoveAmount = 0f;
+            Speed01 = 0f;
+            LastInput = default;
         }
 
         public void ClampDownwardVelocity(float maximumFallSpeed)
@@ -832,6 +849,14 @@ namespace Neighbor.Main.Features.Player
         {
             characterController.height = height;
             characterController.center = Vector3.up * (height * 0.5f);
+        }
+
+        private void EnsureDevCameraMode()
+        {
+            if (GetComponent<PlayerDevCameraMode>() == null)
+            {
+                gameObject.AddComponent<PlayerDevCameraMode>();
+            }
         }
 
         private void Reset()
