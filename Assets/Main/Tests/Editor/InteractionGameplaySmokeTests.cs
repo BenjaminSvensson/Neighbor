@@ -328,6 +328,33 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void PlayerInteraction_DefaultLayerWallBlocksInteractableLayerTarget()
+        {
+            int interactableLayer = LayerMask.NameToLayer("Interactible");
+            Assert.That(interactableLayer, Is.GreaterThanOrEqualTo(0));
+
+            PlayerInteractor interactor = context.CreateObject("PlayerInteractor").AddComponent<PlayerInteractor>();
+            GameplaySmokeTestReflection.SetField(interactor, "interactMask", new LayerMask { value = 1 << interactableLayer });
+            GameplaySmokeTestReflection.SetField(interactor, "interactionOcclusionMask", new LayerMask { value = Physics.DefaultRaycastLayers });
+
+            GameObject wall = context.CreateObject("Wall");
+            wall.transform.position = Vector3.forward;
+            BoxCollider wallCollider = wall.AddComponent<BoxCollider>();
+            wallCollider.size = new Vector3(3f, 3f, 0.2f);
+
+            GameObject interactableObject = context.CreateObject("InteractableBehindWall");
+            interactableObject.layer = interactableLayer;
+            interactableObject.transform.position = Vector3.forward * 2f;
+            interactableObject.AddComponent<BoxCollider>();
+            InteractionOrderProbe interactable = interactableObject.AddComponent<InteractionOrderProbe>();
+            Physics.SyncTransforms();
+
+            GameplaySmokeTestReflection.Invoke(interactor, "TryInteract");
+
+            Assert.That(interactable.InteractCount, Is.Zero);
+        }
+
+        [Test]
         public void MatchingInventoryPickup_AutoEquipsSilentlyAfterActionDelay()
         {
             GameObject interactorObject = context.CreateObject("PlayerInteractor");

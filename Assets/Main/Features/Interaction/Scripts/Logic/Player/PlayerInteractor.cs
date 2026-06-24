@@ -19,6 +19,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float interactRadius = 0.18f;
         [SerializeField, Min(0f)] private float interactAlignmentTieTolerance = 0.002f;
         [SerializeField] private LayerMask interactMask = ~0;
+        [SerializeField] private LayerMask interactionOcclusionMask = Physics.DefaultRaycastLayers;
         [SerializeField] private QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.Ignore;
 
         [Header("Tooltip")]
@@ -81,6 +82,7 @@ namespace Neighbor.Main.Features.Interaction
         private IHoldInteractable activeHoldInteractable;
         private Collider[] playerColliders;
         private readonly RaycastHit[] interactHits = new RaycastHit[12];
+        private readonly RaycastHit[] interactionOcclusionHits = new RaycastHit[12];
         private readonly RaycastHit[] throwArcHits = new RaycastHit[8];
         private readonly RaycastHit[] holdObstructionHits = new RaycastHit[12];
         private readonly RaycastHit[] placementHits = new RaycastHit[12];
@@ -1484,7 +1486,7 @@ namespace Neighbor.Main.Features.Interaction
                     continue;
                 }
 
-                if (IsInteractionBlockedByCloserHit(hitCount, hit.distance, interactable))
+                if (IsInteractionLineOfSightBlocked(ray, hit, interactable))
                 {
                     continue;
                 }
@@ -1528,7 +1530,7 @@ namespace Neighbor.Main.Features.Interaction
                     continue;
                 }
 
-                if (IsInteractionBlockedByCloserHit(hitCount, hit.distance, interactable))
+                if (IsInteractionLineOfSightBlocked(ray, hit, interactable))
                 {
                     continue;
                 }
@@ -1548,12 +1550,33 @@ namespace Neighbor.Main.Features.Interaction
             return bestInteractable;
         }
 
-        private bool IsInteractionBlockedByCloserHit(int hitCount, float candidateDistance, object candidateInteractable)
+        private bool IsInteractionLineOfSightBlocked(Ray ray, RaycastHit candidateHit, object candidateInteractable)
         {
             const float blockerDistanceTolerance = 0.01f;
+            Vector3 toCandidate = candidateHit.point - ray.origin;
+            float candidateDistance = toCandidate.magnitude;
+            if (candidateDistance <= 0.001f)
+            {
+                candidateDistance = candidateHit.distance;
+                toCandidate = ray.direction * candidateDistance;
+            }
+
+            if (candidateDistance <= 0.001f)
+            {
+                return false;
+            }
+
+            int hitCount = Physics.RaycastNonAlloc(
+                ray.origin,
+                toCandidate / candidateDistance,
+                interactionOcclusionHits,
+                candidateDistance,
+                interactionOcclusionMask,
+                triggerInteraction);
+
             for (int i = 0; i < hitCount; i++)
             {
-                RaycastHit blockerHit = interactHits[i];
+                RaycastHit blockerHit = interactionOcclusionHits[i];
                 Collider blocker = blockerHit.collider;
                 if (blocker == null
                     || blocker.isTrigger
