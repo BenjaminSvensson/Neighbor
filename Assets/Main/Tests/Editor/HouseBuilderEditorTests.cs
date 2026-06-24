@@ -1150,6 +1150,49 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void PulleyElevatorPrefab_HasBuiltInButtonConnection()
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Main/HouseBuilder/Prefabs/Structures/PulleyElevator.prefab");
+
+            Assert.That(prefab, Is.Not.Null);
+            Assert.That(prefab.GetComponent<HousePulleyElevatorMotion>(), Is.Not.Null);
+
+            HouseWireEndpoint elevatorEndpoint = prefab.GetComponent<HouseWireEndpoint>();
+            Assert.That(elevatorEndpoint, Is.Not.Null);
+            Assert.That(elevatorEndpoint.TryGetPort("activate", out HouseWirePortDefinition activatePort), Is.True);
+            Assert.That(activatePort.Direction, Is.EqualTo(HouseWirePortDirection.Input));
+
+            Transform buttonTransform = prefab.transform.Find("Built In Button");
+            Assert.That(buttonTransform, Is.Not.Null);
+            Assert.That(buttonTransform.GetComponent<Doorbell>(), Is.Not.Null);
+
+            HouseWireEndpoint buttonEndpoint = buttonTransform.GetComponent<HouseWireEndpoint>();
+            Assert.That(buttonEndpoint, Is.Not.Null);
+            Assert.That(buttonEndpoint.TryGetPort("pressed", out HouseWirePortDefinition pressedPort), Is.True);
+            Assert.That(pressedPort.Direction, Is.EqualTo(HouseWirePortDirection.Output));
+            Assert.That(pressedPort.SignalKind, Is.EqualTo(HouseSignalKind.Pulse));
+
+            HouseWireOutputRelay outputRelay = buttonTransform.GetComponent<HouseWireOutputRelay>();
+            Assert.That(outputRelay, Is.Not.Null);
+            Assert.That(outputRelay.IsConfiguredFor(buttonEndpoint, "pressed"), Is.True);
+
+            HouseWireGraph graph = prefab.GetComponent<HouseWireGraph>();
+            Assert.That(graph, Is.Not.Null);
+            Assert.That(graph.Connections.Count, Is.EqualTo(1));
+            Assert.That(graph.TryResolve(
+                graph.Connections[0],
+                out HouseWireEndpoint resolvedOutput,
+                out HouseWirePortDefinition resolvedOutputPort,
+                out HouseWireEndpoint resolvedInput,
+                out HouseWirePortDefinition resolvedInputPort), Is.True);
+            Assert.That(resolvedOutput, Is.SameAs(buttonEndpoint));
+            Assert.That(resolvedOutputPort, Is.SameAs(pressedPort));
+            Assert.That(resolvedInput, Is.SameAs(elevatorEndpoint));
+            Assert.That(resolvedInputPort, Is.SameAs(activatePort));
+        }
+
+        [Test]
         public void DefaultCatalog_ContainsImportedWallpaperPaintMaterials()
         {
             HouseBuilderCatalog catalog = AssetDatabase.LoadAssetAtPath<HouseBuilderCatalog>(HouseBuilderAssetInstaller.DefaultCatalogPath);
