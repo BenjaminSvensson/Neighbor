@@ -45,6 +45,8 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float movingThreshold = 0.08f;
         [SerializeField, Min(0f)] private float runningThreshold = 3.4f;
         [SerializeField, Min(0f)] private float transitionDuration = 0.16f;
+        [SerializeField, Min(0.1f)] private float locomotionSpeedSmoothing = 14f;
+        [SerializeField, Range(0.1f, 1f)] private float movingExitThresholdMultiplier = 0.55f;
         [SerializeField, Min(0.1f)] private float minimumLocomotionPlaybackSpeed = 0.7f;
         [SerializeField, Min(0.1f)] private float maximumLocomotionPlaybackSpeed = 1.4f;
 
@@ -98,6 +100,7 @@ namespace Neighbor.Main.Features.Neighbor
         private ActionAnimation activeActionAnimation;
         private AnimationClip activeOverrideAnimation;
         private float activeActionPlaybackSpeed = 1f;
+        private float smoothedSpeed;
         private bool restartActionAnimation;
 
         public float CatchAnimationDuration => catchPlayerAnimation != null
@@ -151,6 +154,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void OnEnable()
         {
+            smoothedSpeed = motor != null ? motor.CurrentSpeed : 0f;
             if (impactReceiver != null)
             {
                 impactReceiver.ImpactReceived += PlayHurtReaction;
@@ -170,7 +174,8 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             bool actionAnimationChanged = UpdateActionAnimationOverride();
-            int desiredState = ChooseState();
+            float speed = UpdateSmoothedSpeed();
+            int desiredState = ChooseState(speed);
             bool restartTaskAnimation = desiredState == TaskState && (actionAnimationChanged || restartActionAnimation);
             if (desiredState != currentState || restartTaskAnimation)
             {
@@ -183,7 +188,6 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             restartActionAnimation = false;
-            float speed = motor != null ? motor.CurrentSpeed : 0f;
             bool locomotion = desiredState == WalkState
                 || desiredState == CautiousState
                 || desiredState == RunState
@@ -195,7 +199,23 @@ namespace Neighbor.Main.Features.Neighbor
                     : 1f;
         }
 
-        private int ChooseState()
+        private float UpdateSmoothedSpeed()
+        {
+            float targetSpeed = motor != null ? motor.CurrentSpeed : 0f;
+            if (!Application.isPlaying || Time.deltaTime <= 0f)
+            {
+                smoothedSpeed = targetSpeed;
+                return smoothedSpeed;
+            }
+
+            smoothedSpeed = Mathf.Lerp(
+                smoothedSpeed,
+                targetSpeed,
+                1f - Mathf.Exp(-locomotionSpeedSmoothing * Time.deltaTime));
+            return smoothedSpeed;
+        }
+
+        private int ChooseState(float speed)
         {
             if (brain != null && brain.CurrentState == NeighborBrain.BehaviorState.Stunned)
             {
@@ -218,10 +238,10 @@ namespace Neighbor.Main.Features.Neighbor
                 return TaskState;
             }
 
-            float speed = motor != null ? motor.CurrentSpeed : 0f;
+            bool isMoving = IsMovingSpeed(speed);
             if (motor != null && motor.IsCrouchingForClearance)
             {
-                return speed > movingThreshold ? CrouchWalkState : CrouchIdleState;
+                return isMoving ? CrouchWalkState : CrouchIdleState;
             }
 
             if (speed >= runningThreshold || brain != null && brain.CurrentState == NeighborBrain.BehaviorState.Chase)
@@ -229,7 +249,7 @@ namespace Neighbor.Main.Features.Neighbor
                 return RunState;
             }
 
-            if (speed > movingThreshold)
+            if (isMoving)
             {
                 return brain != null
                     && (brain.CurrentState == NeighborBrain.BehaviorState.Investigate
@@ -239,6 +259,22 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             return IdleState;
+        }
+
+        private bool IsMovingSpeed(float speed)
+        {
+            float threshold = IsLocomotionState(currentState)
+                ? movingThreshold * movingExitThresholdMultiplier
+                : movingThreshold;
+            return speed > Mathf.Max(0f, threshold);
+        }
+
+        private static bool IsLocomotionState(int state)
+        {
+            return state == WalkState
+                || state == CautiousState
+                || state == RunState
+                || state == CrouchWalkState;
         }
 
         private float GetReferenceSpeed(int state)
@@ -536,6 +572,8 @@ namespace Neighbor.Main.Features.Neighbor
             movingThreshold = Mathf.Max(0f, movingThreshold);
             runningThreshold = Mathf.Max(0f, runningThreshold);
             transitionDuration = Mathf.Max(0f, transitionDuration);
+            locomotionSpeedSmoothing = Mathf.Max(0.1f, locomotionSpeedSmoothing);
+            movingExitThresholdMultiplier = Mathf.Clamp(movingExitThresholdMultiplier, 0.1f, 1f);
             minimumLocomotionPlaybackSpeed = Mathf.Max(0.1f, minimumLocomotionPlaybackSpeed);
             maximumLocomotionPlaybackSpeed = Mathf.Max(
                 minimumLocomotionPlaybackSpeed,

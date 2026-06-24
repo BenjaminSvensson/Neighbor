@@ -961,6 +961,89 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void Perception_KeepsPlayerVisibleDuringShortChaseSightGrace()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>();
+            Transform player = context.CreateObject("PlayerTarget").transform;
+            GameplaySmokeTestReflection.SetField(brain, "player", player);
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.Chase);
+            GameplaySmokeTestReflection.SetField(brain, "playerSightGraceTime", 0.25f);
+            GameplaySmokeTestReflection.SetField(brain, "lastPlayerSeenTime", Time.time);
+
+            GameplaySmokeTestReflection.Invoke(brain, "UpdatePerception");
+
+            Assert.That(brain.IsPlayerVisible, Is.True);
+
+            GameplaySmokeTestReflection.SetField(brain, "lastPlayerSeenTime", Time.time - 0.5f);
+            GameplaySmokeTestReflection.Invoke(brain, "UpdatePerception");
+
+            Assert.That(brain.IsPlayerVisible, Is.False);
+        }
+
+        [Test]
+        public void ChaseGoalRefresh_RequiresLargerMovementWhenPlayerIsHidden()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>();
+            GameplaySmokeTestReflection.SetField(brain, "currentGoal", Vector3.zero);
+            GameplaySmokeTestReflection.SetField(brain, "visibleChaseGoalRefreshDistance", 0.35f);
+            GameplaySmokeTestReflection.SetField(brain, "hiddenChaseGoalRefreshDistance", 0.75f);
+
+            GameplaySmokeTestReflection.SetField(brain, "isPlayerVisible", true);
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    brain,
+                    "HasChaseGoalMovedEnough",
+                    Vector3.right * 0.2f),
+                Is.False);
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    brain,
+                    "HasChaseGoalMovedEnough",
+                    Vector3.right * 0.5f),
+                Is.True);
+
+            GameplaySmokeTestReflection.SetField(brain, "isPlayerVisible", false);
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    brain,
+                    "HasChaseGoalMovedEnough",
+                    Vector3.right * 0.5f),
+                Is.False);
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    brain,
+                    "HasChaseGoalMovedEnough",
+                    Vector3.right),
+                Is.True);
+        }
+
+        [Test]
+        public void AnimationState_UsesMovementHysteresisNearIdleThreshold()
+        {
+            NeighborAnimationController animation = context.AddInitializedComponent<NeighborAnimationController>();
+            int idleState = Animator.StringToHash("Base Layer.Idle");
+            int walkState = Animator.StringToHash("Base Layer.Walk");
+            GameplaySmokeTestReflection.SetField(animation, "movingThreshold", 0.1f);
+            GameplaySmokeTestReflection.SetField(animation, "movingExitThresholdMultiplier", 0.5f);
+
+            GameplaySmokeTestReflection.SetField(animation, "currentState", walkState);
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<int>(
+                    animation,
+                    "ChooseState",
+                    0.07f),
+                Is.EqualTo(walkState));
+
+            GameplaySmokeTestReflection.SetField(animation, "currentState", idleState);
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<int>(
+                    animation,
+                    "ChooseState",
+                    0.07f),
+                Is.EqualTo(idleState));
+        }
+
+        [Test]
         public void NeighborPlacedCameraSpacing_PreventsOverlappingMounts()
         {
             GameObject cameraObject = context.CreateObject("NeighborPlacedCamera");

@@ -67,6 +67,7 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField] private bool climbDynamicObstaclesWhenDetourIsPoor = true;
 
         [Header("Blocked Destination")]
+        [SerializeField, Min(0f)] private float destinationRefreshDistance = 0.18f;
         [SerializeField, Min(1)] private int maximumNoProgressAttempts = 3;
         [SerializeField, Min(0.25f)] private float noProgressCheckInterval = 1.5f;
         [SerializeField, Min(0.01f)] private float minimumProgressPerAttempt = 0.3f;
@@ -333,6 +334,9 @@ namespace Neighbor.Main.Features.Neighbor
 
             bool destinationChanged = !hasRequestedDestination
                 || Vector3.Distance(requestedDestination, resolvedDestination) > destinationChangeResetDistance;
+            bool shouldRefreshPath = !hasRequestedDestination
+                || Vector3.Distance(requestedDestination, resolvedDestination) > destinationRefreshDistance
+                || (!agent.hasPath && !agent.pathPending);
             requestedDestination = resolvedDestination;
             hasRequestedDestination = true;
             Vector3 movementSinceProgressCheck = transform.position - progressCheckPosition;
@@ -347,6 +351,11 @@ namespace Neighbor.Main.Features.Neighbor
             sampledDestination = resolvedDestination;
             agent.isStopped = isPaused;
             if (isAvoidingDynamicObstacle)
+            {
+                return true;
+            }
+
+            if (!shouldRefreshPath)
             {
                 return true;
             }

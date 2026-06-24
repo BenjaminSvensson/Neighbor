@@ -136,6 +136,9 @@ namespace Neighbor.Main.Features.Neighbor
         [Header("Chase")]
         [SerializeField, Min(0f)] private float chaseMemoryTime = 3.5f;
         [SerializeField, Min(0f)] private float chaseRepathInterval = 0.12f;
+        [SerializeField, Min(0f)] private float playerSightGraceTime = 0.18f;
+        [SerializeField, Min(0f)] private float visibleChaseGoalRefreshDistance = 0.35f;
+        [SerializeField, Min(0f)] private float hiddenChaseGoalRefreshDistance = 0.75f;
         [SerializeField, Min(0f)] private float catchDistance = 0.72f;
         [SerializeField, Min(0f)] private float catchAnimationFallbackDuration = 0.55f;
         [SerializeField, Min(0f)] private float maximumCatchAnimationDuration = 2.5f;
@@ -211,6 +214,7 @@ namespace Neighbor.Main.Features.Neighbor
         private bool isVerifyingLastSeenPosition;
         private Vector3 lastSeenVerificationPosition;
         private float lastSeenVerificationUntilTime;
+        private bool hasChaseDestination;
         private float tasksSuppressedUntilTime;
         private HouseGarageDoorMotion activeGarageDoor;
         private LightSwitch activeGarageSwitch;
@@ -420,11 +424,6 @@ namespace Neighbor.Main.Features.Neighbor
         private void UpdatePerception()
         {
             isPlayerVisible = false;
-            if (vision == null)
-            {
-                return;
-            }
-
             if (currentState == BehaviorState.Catching)
             {
                 return;
@@ -432,6 +431,12 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (Time.time < ignorePlayerSightUntilTime)
             {
+                return;
+            }
+
+            if (vision == null)
+            {
+                isPlayerVisible = ShouldKeepPlayerVisibleDuringSightGrace();
                 return;
             }
 
@@ -455,7 +460,10 @@ namespace Neighbor.Main.Features.Neighbor
                 RefreshPostEncounterVigilance();
                 RememberPlayerActivity(seenPosition);
                 SetState(BehaviorState.Chase);
+                return;
             }
+
+            isPlayerVisible = ShouldKeepPlayerVisibleDuringSightGrace();
         }
 
         private void UpdateState()
@@ -507,7 +515,7 @@ namespace Neighbor.Main.Features.Neighbor
 
             bool canStillChase = player != null && Time.time - lastPlayerSeenTime <= chaseMemoryTime;
             Vector3 chasePosition = player != null && canStillChase
-                ? (isPlayerVisible ? player.position : GetPredictedChasePosition())
+                ? (isPlayerVisible ? lastKnownPlayerPosition : GetPredictedChasePosition())
                 : lastKnownPlayerPosition;
 
             if (player != null && canStillChase && !isPlayerVisible && ShouldGiveUpChase(chasePosition))
@@ -529,11 +537,16 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (Time.time >= nextChaseRepathTime)
             {
-                currentGoal = chasePosition;
-                if (!motor.SetDestination(chasePosition)
-                    && TryStartGarageDoorUseForGoal(chasePosition, BehaviorState.Chase, true))
+                if (ShouldRefreshChaseDestination(chasePosition))
                 {
-                    return;
+                    currentGoal = chasePosition;
+                    if (!motor.SetDestination(chasePosition)
+                        && TryStartGarageDoorUseForGoal(chasePosition, BehaviorState.Chase, true))
+                    {
+                        return;
+                    }
+
+                    hasChaseDestination = true;
                 }
 
                 nextChaseRepathTime = Time.time + chaseRepathInterval;
@@ -541,8 +554,8 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (isPlayerVisible && player != null)
             {
-                motor.FaceTowards(player.position, 16f);
-                bestChaseDistance = Vector3.Distance(transform.position, player.position);
+                motor.FaceTowards(lastKnownPlayerPosition, 16f);
+                bestChaseDistance = Vector3.Distance(transform.position, lastKnownPlayerPosition);
                 lastChaseProgressTime = Time.time;
             }
             else
@@ -563,6 +576,33 @@ namespace Neighbor.Main.Features.Neighbor
             }
         }
 
+        private bool ShouldKeepPlayerVisibleDuringSightGrace()
+        {
+            return currentState == BehaviorState.Chase
+                && player != null
+                && playerSightGraceTime > 0f
+                && Time.time - lastPlayerSeenTime <= playerSightGraceTime;
+        }
+
+        private bool ShouldRefreshChaseDestination(Vector3 chasePosition)
+        {
+            return !hasChaseDestination
+                || !motor.HasPath
+                || motor.IsAvoidingDynamicObstacle
+                || HasChaseGoalMovedEnough(chasePosition);
+        }
+
+        private bool HasChaseGoalMovedEnough(Vector3 chasePosition)
+        {
+            Vector3 movement = chasePosition - currentGoal;
+            movement.y = 0f;
+            float refreshDistance = isPlayerVisible
+                ? visibleChaseGoalRefreshDistance
+                : hiddenChaseGoalRefreshDistance;
+            refreshDistance = Mathf.Max(0f, refreshDistance);
+            return movement.sqrMagnitude >= refreshDistance * refreshDistance;
+        }
+
         private void BeginLastSeenVerification()
         {
             if (motor == null || isVerifyingLastSeenPosition)
@@ -573,6 +613,7 @@ namespace Neighbor.Main.Features.Neighbor
             currentClimbLink = null;
             isVerifyingLastSeenPosition = true;
             lastSeenVerificationUntilTime = 0f;
+            hasChaseDestination = false;
             if (!motor.TrySetDestinationNear(
                     lastKnownPlayerPosition,
                     lastSeenVerificationSampleRadius,
@@ -752,6 +793,7 @@ namespace Neighbor.Main.Features.Neighbor
             isPlayerVisible = false;
             waitingAtGoal = false;
             suspicion = 0f;
+            hasChaseDestination = false;
             interruptedTaskLocation = null;
             currentInvestigationSource = null;
             currentUnexpectedOpenDoor = null;
@@ -2258,12 +2300,15 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 isVerifyingLastSeenPosition = false;
                 lastSeenVerificationUntilTime = 0f;
+                hasChaseDestination = false;
             }
 
             currentState = state;
             motor?.SetChasePursuitActive(state == BehaviorState.Chase);
             if (state == BehaviorState.Chase)
             {
+                hasChaseDestination = false;
+                nextChaseRepathTime = 0f;
                 AdaptiveSecurityDirector.ReportChaseStarted();
                 bestChaseDistance = player != null
                     ? Vector3.Distance(transform.position, player.position)
