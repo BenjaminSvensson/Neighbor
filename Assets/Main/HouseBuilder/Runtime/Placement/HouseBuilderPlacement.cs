@@ -107,7 +107,9 @@ namespace Neighbor.Main.HouseBuilder
             Bounds featureBounds = default;
             if (hasSurface && profile.GroundOnWall && surfaceType == HouseSurfaceType.Wall && surfaceHit.collider != null)
             {
-                position.y = surfaceHit.collider.bounds.min.y;
+                position.y = surfaceHit.collider.bounds.min.y
+                    - profile.BoundsCenter.y
+                    + profile.BoundsSize.y * 0.5f;
             }
 
             if (settings.CornerSnapping || settings.EdgeSnapping)

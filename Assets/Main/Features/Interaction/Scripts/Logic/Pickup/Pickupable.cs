@@ -59,6 +59,7 @@ namespace Neighbor.Main.Features.Interaction
         private bool[] inventoryColliderEnabled;
         private bool[] originalRendererEnabled;
         private readonly Collider[] supportWakeHits = new Collider[24];
+        private readonly Vector3[] colliderBoundsCorners = new Vector3[8];
         private bool wasUsingGravity;
         private bool wasKinematic;
         private float originalDrag;
@@ -607,22 +608,126 @@ namespace Neighbor.Main.Features.Interaction
 
             foreach (Collider ownCollider in ownColliders)
             {
-                if (ownCollider == null || !ownCollider.enabled)
+                if (ownCollider == null || !TryGetColliderWorldBounds(ownCollider, out Bounds colliderBounds))
                 {
                     continue;
                 }
 
                 if (!hasBounds)
                 {
-                    bounds = ownCollider.bounds;
+                    bounds = colliderBounds;
                     hasBounds = true;
                     continue;
                 }
 
-                bounds.Encapsulate(ownCollider.bounds);
+                bounds.Encapsulate(colliderBounds);
             }
 
             return hasBounds;
+        }
+
+        private bool TryGetColliderWorldBounds(Collider collider, out Bounds bounds)
+        {
+            if (collider.enabled && collider.bounds.size.sqrMagnitude > 0f)
+            {
+                bounds = collider.bounds;
+                return true;
+            }
+
+            if (collider is BoxCollider boxCollider)
+            {
+                return TryGetTransformedLocalBounds(boxCollider.transform, new Bounds(boxCollider.center, boxCollider.size), out bounds);
+            }
+
+            if (collider is SphereCollider sphereCollider)
+            {
+                Vector3 center = sphereCollider.transform.TransformPoint(sphereCollider.center);
+                float scale = Mathf.Max(
+                    Mathf.Abs(sphereCollider.transform.lossyScale.x),
+                    Mathf.Abs(sphereCollider.transform.lossyScale.y),
+                    Mathf.Abs(sphereCollider.transform.lossyScale.z));
+                bounds = new Bounds(center, Vector3.one * (sphereCollider.radius * scale * 2f));
+                return true;
+            }
+
+            if (collider is CapsuleCollider capsuleCollider)
+            {
+                return TryGetCapsuleBounds(capsuleCollider, out bounds);
+            }
+
+            if (collider is MeshCollider meshCollider && meshCollider.sharedMesh != null)
+            {
+                return TryGetTransformedLocalBounds(meshCollider.transform, meshCollider.sharedMesh.bounds, out bounds);
+            }
+
+            bounds = default;
+            return false;
+        }
+
+        private bool TryGetCapsuleBounds(CapsuleCollider capsuleCollider, out Bounds bounds)
+        {
+            Vector3 scale = capsuleCollider.transform.lossyScale;
+            float radiusScale;
+            float heightScale;
+            Vector3 localSize = Vector3.zero;
+            switch (capsuleCollider.direction)
+            {
+                case 0:
+                    radiusScale = Mathf.Max(Mathf.Abs(scale.y), Mathf.Abs(scale.z));
+                    heightScale = Mathf.Abs(scale.x);
+                    localSize = new Vector3(
+                        Mathf.Max(capsuleCollider.height * heightScale, capsuleCollider.radius * radiusScale * 2f),
+                        capsuleCollider.radius * radiusScale * 2f,
+                        capsuleCollider.radius * radiusScale * 2f);
+                    break;
+                case 2:
+                    radiusScale = Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.y));
+                    heightScale = Mathf.Abs(scale.z);
+                    localSize = new Vector3(
+                        capsuleCollider.radius * radiusScale * 2f,
+                        capsuleCollider.radius * radiusScale * 2f,
+                        Mathf.Max(capsuleCollider.height * heightScale, capsuleCollider.radius * radiusScale * 2f));
+                    break;
+                default:
+                    radiusScale = Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z));
+                    heightScale = Mathf.Abs(scale.y);
+                    localSize = new Vector3(
+                        capsuleCollider.radius * radiusScale * 2f,
+                        Mathf.Max(capsuleCollider.height * heightScale, capsuleCollider.radius * radiusScale * 2f),
+                        capsuleCollider.radius * radiusScale * 2f);
+                    break;
+            }
+
+            bounds = new Bounds(capsuleCollider.transform.TransformPoint(capsuleCollider.center), localSize);
+            return true;
+        }
+
+        private bool TryGetTransformedLocalBounds(Transform owner, Bounds localBounds, out Bounds bounds)
+        {
+            if (owner == null || localBounds.size.sqrMagnitude <= 0f)
+            {
+                bounds = default;
+                return false;
+            }
+
+            Vector3 min = localBounds.min;
+            Vector3 max = localBounds.max;
+            colliderBoundsCorners[0] = new Vector3(min.x, min.y, min.z);
+            colliderBoundsCorners[1] = new Vector3(max.x, min.y, min.z);
+            colliderBoundsCorners[2] = new Vector3(min.x, max.y, min.z);
+            colliderBoundsCorners[3] = new Vector3(max.x, max.y, min.z);
+            colliderBoundsCorners[4] = new Vector3(min.x, min.y, max.z);
+            colliderBoundsCorners[5] = new Vector3(max.x, min.y, max.z);
+            colliderBoundsCorners[6] = new Vector3(min.x, max.y, max.z);
+            colliderBoundsCorners[7] = new Vector3(max.x, max.y, max.z);
+
+            bounds = new Bounds(owner.TransformPoint(colliderBoundsCorners[0]), Vector3.zero);
+            for (int i = 1; i < colliderBoundsCorners.Length; i++)
+            {
+                bounds.Encapsulate(owner.TransformPoint(colliderBoundsCorners[i]));
+            }
+
+            return true;
         }
 
         private void RestorePhysics()

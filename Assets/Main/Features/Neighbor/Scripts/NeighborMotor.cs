@@ -847,7 +847,10 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 agent.updatePosition = true;
                 agent.updateRotation = true;
-                agent.isStopped = false;
+                if (agent.isOnNavMesh)
+                {
+                    agent.isStopped = false;
+                }
 
                 if (NavMesh.SamplePosition(position, out NavMeshHit hit, startNavMeshSnapRadius, agent.areaMask))
                 {
@@ -860,7 +863,10 @@ namespace Neighbor.Main.Features.Neighbor
                 else
                 {
                     transform.position = position;
-                    agent.nextPosition = position;
+                    if (agent.isOnNavMesh)
+                    {
+                        agent.nextPosition = position;
+                    }
                 }
 
                 if (agent.isOnNavMesh)
@@ -899,7 +905,7 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             transform.SetPositionAndRotation(position, rotation);
-            if (agent != null && agent.enabled)
+            if (agent != null && agent.enabled && agent.isOnNavMesh)
             {
                 agent.nextPosition = position;
             }

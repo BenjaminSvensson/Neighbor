@@ -221,7 +221,8 @@ namespace Neighbor.Main.Features.Interaction
         {
             Vector3 openingNormal = door.DefaultOpeningSideNormal.normalized;
             Quaternion rotation = GetBlockedRotation(openingNormal, placementIndex, varyReinforcementPose);
-            Vector3 position = attachToDoorSurface
+            bool placeOnDoorSurface = attachToDoorSurface || varyReinforcementPose && isWoodBoard;
+            Vector3 position = placeOnDoorSurface
                 ? GetDoorSurfacePlacementPosition(door, openingNormal, rotation, placementIndex, varyReinforcementPose)
                 : GetGroundPlacementPosition(door, door.transform.position + openingNormal * doorOffset, rotation);
 

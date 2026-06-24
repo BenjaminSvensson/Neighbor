@@ -193,7 +193,7 @@ namespace Neighbor.Main.Features.Neighbor
         private bool UpdateApproachingPickup(out Vector3 goal)
         {
             goal = targetPickup != null ? targetPickup.transform.position : transform.position;
-            if (!IsPickupCandidateValid(targetPickup, isRestoringHeldPickupHome))
+            if (!IsPickupCandidateValidCore(targetPickup, isRestoringHeldPickupHome))
             {
                 CancelActivity();
                 return false;
@@ -367,7 +367,7 @@ namespace Neighbor.Main.Features.Neighbor
                 Pickupable pickup = pickups[i];
                 if (pickup == null
                     || !pickup.NeedsHomeRestoration
-                    || !IsPickupCandidateValid(pickup, true))
+                    || !IsPickupCandidateValidCore(pickup, true))
                 {
                     continue;
                 }
@@ -397,7 +397,12 @@ namespace Neighbor.Main.Features.Neighbor
             return bestPickup;
         }
 
-        private bool IsPickupCandidateValid(Pickupable pickup, bool allowHomeRestoration = false)
+        private bool IsPickupCandidateValid(Pickupable pickup)
+        {
+            return IsPickupCandidateValidCore(pickup, false);
+        }
+
+        private bool IsPickupCandidateValidCore(Pickupable pickup, bool allowHomeRestoration)
         {
             if (pickup == null
                 || !pickup.isActiveAndEnabled

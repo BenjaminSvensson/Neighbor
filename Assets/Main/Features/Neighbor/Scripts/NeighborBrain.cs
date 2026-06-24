@@ -2368,6 +2368,7 @@ namespace Neighbor.Main.Features.Neighbor
                 if (pickup != null && pickup.TracksHomeLocation && !pickup.IsMissingFromHome)
                 {
                     noticedObjectLocationChanges.Remove(pickup);
+                    disturbanceMemory.Remove(pickup.gameObject);
                     continue;
                 }
 
