@@ -10,6 +10,7 @@ namespace Neighbor.Main.Features.Interaction
     public sealed class SecurityCamera : MonoBehaviour, IPrimaryUseInteractable, IPickupLifecycleReceiver, IPhysicsImpactReceiver
     {
         private const int MaximumNeighborPlacedCameras = 5;
+        private const float PlayerSearchInterval = 0.5f;
         private static readonly HashSet<SecurityCamera> NeighborPlacedCameras = new();
 
         [Header("Wall Attachment")]
@@ -67,6 +68,7 @@ namespace Neighbor.Main.Features.Interaction
         private MeshFilter sightBeamFilter;
         private MeshRenderer sightBeamRenderer;
         private Mesh generatedSightBeamMesh;
+        private Vector3[] sightBeamVertices;
         private Material sightBeamMaterial;
         private float configuredViewDistance = -1f;
         private float configuredViewAngle = -1f;
@@ -78,6 +80,10 @@ namespace Neighbor.Main.Features.Interaction
         private Vector3 attachedLocalPosition;
         private Quaternion attachedLocalRotation;
         private float blindedUntilTime;
+        private float nextPlayerSearchTime;
+        private PlayerController cachedPlayerForComponents;
+        private PlayerHidingState playerHidingState;
+        private CharacterController playerCharacterController;
         private bool isAttached;
         private bool isNeighborPlaced;
         private bool isDisabled;
@@ -149,7 +155,7 @@ namespace Neighbor.Main.Features.Interaction
                 nextScanTime = Time.time + scanInterval;
                 if (TryDetectPlayer(out Vector3 detectedPosition))
                 {
-                    lastDetectedPosition = GetPlayerAimPoint(player);
+                    lastDetectedPosition = GetPlayerAimPoint();
                     trackingUntilTime = Time.time + trackingMemory;
                     AlertNeighbor(detectedPosition);
                 }
@@ -499,14 +505,13 @@ namespace Neighbor.Main.Features.Interaction
                 return false;
             }
 
-            PlayerHidingState hidingState = player.GetComponent<PlayerHidingState>() ?? player.GetComponentInChildren<PlayerHidingState>();
-            if (hidingState != null && hidingState.IsHidden)
+            if (playerHidingState != null && playerHidingState.IsHidden)
             {
                 return false;
             }
 
             Vector3 origin = EyePosition;
-            Vector3 target = GetPlayerAimPoint(player);
+            Vector3 target = GetPlayerAimPoint();
             Vector3 toTarget = target - origin;
             float distance = toTarget.magnitude;
             if (distance > viewDistance || distance <= 0.01f)
@@ -613,7 +618,11 @@ namespace Neighbor.Main.Features.Interaction
             sightBeam.localPosition = Vector3.zero;
             sightBeam.localRotation = Quaternion.identity;
             sightBeam.localScale = GetInverseWorldScale(sightBeam.parent);
-            sightBeam.gameObject.SetActive(!IsBlinded && isAttached && (pickupable == null || !pickupable.IsHeld));
+            bool shouldShowSightBeam = !IsBlinded && isAttached && (pickupable == null || !pickupable.IsHeld);
+            if (sightBeam.gameObject.activeSelf != shouldShowSightBeam)
+            {
+                sightBeam.gameObject.SetActive(shouldShowSightBeam);
+            }
 
             sightBeamFilter ??= sightBeam.GetComponent<MeshFilter>();
             sightBeamRenderer ??= sightBeam.GetComponent<MeshRenderer>();
@@ -666,16 +675,17 @@ namespace Neighbor.Main.Features.Interaction
             {
                 name = "SecurityCameraSightCone"
             };
+            mesh.MarkDynamic();
 
             float radius = Mathf.Tan(angle * 0.5f * Mathf.Deg2Rad) * distance;
-            Vector3[] vertices = new Vector3[segments + 2];
+            sightBeamVertices = new Vector3[segments + 2];
             int[] triangles = new int[segments * 6];
-            vertices[0] = Vector3.zero;
+            sightBeamVertices[0] = Vector3.zero;
 
             for (int i = 0; i <= segments; i++)
             {
                 float t = i / (float)segments * Mathf.PI * 2f;
-                vertices[i + 1] = new Vector3(Mathf.Cos(t) * radius, Mathf.Sin(t) * radius, distance);
+                sightBeamVertices[i + 1] = new Vector3(Mathf.Cos(t) * radius, Mathf.Sin(t) * radius, distance);
             }
 
             int triangleIndex = 0;
@@ -690,7 +700,7 @@ namespace Neighbor.Main.Features.Interaction
                 triangles[triangleIndex++] = i + 1;
             }
 
-            mesh.vertices = vertices;
+            mesh.vertices = sightBeamVertices;
             mesh.triangles = triangles;
             mesh.RecalculateBounds();
             mesh.RecalculateNormals();
@@ -699,10 +709,11 @@ namespace Neighbor.Main.Features.Interaction
 
         private void UpdateSightConeOcclusion(Mesh mesh, float distance, float angle, int segments)
         {
-            Vector3[] vertices = mesh.vertices;
-            if (vertices.Length != segments + 2)
+            Vector3[] vertices = sightBeamVertices;
+            if (vertices == null || vertices.Length != segments + 2)
             {
-                return;
+                vertices = new Vector3[segments + 2];
+                sightBeamVertices = vertices;
             }
 
             vertices[0] = Vector3.zero;
@@ -791,20 +802,48 @@ namespace Neighbor.Main.Features.Interaction
 
         private Vector3 EyePosition => eye != null ? eye.position : transform.position;
 
-        private static Vector3 GetPlayerAimPoint(PlayerController targetPlayer)
+        private Vector3 GetPlayerAimPoint()
         {
-            CharacterController controller = targetPlayer.GetComponent<CharacterController>() ?? targetPlayer.GetComponentInChildren<CharacterController>();
-            return controller != null ? controller.bounds.center : targetPlayer.transform.position + Vector3.up;
+            RefreshPlayerComponentCache();
+            return playerCharacterController != null ? playerCharacterController.bounds.center : player.transform.position + Vector3.up;
         }
 
         private void ResolvePlayer()
         {
             if (player != null)
             {
+                RefreshPlayerComponentCache();
+                return;
+            }
+
+            if (Time.time < nextPlayerSearchTime)
+            {
                 return;
             }
 
             player = FindAnyObjectByType<PlayerController>();
+            nextPlayerSearchTime = Time.time + PlayerSearchInterval;
+            RefreshPlayerComponentCache();
+        }
+
+        private void RefreshPlayerComponentCache()
+        {
+            if (player == null)
+            {
+                cachedPlayerForComponents = null;
+                playerHidingState = null;
+                playerCharacterController = null;
+                return;
+            }
+
+            if (ReferenceEquals(cachedPlayerForComponents, player))
+            {
+                return;
+            }
+
+            cachedPlayerForComponents = player;
+            playerHidingState = player.GetComponent<PlayerHidingState>() ?? player.GetComponentInChildren<PlayerHidingState>();
+            playerCharacterController = player.GetComponent<CharacterController>() ?? player.GetComponentInChildren<CharacterController>();
         }
 
         private void OnDestroy()
@@ -814,6 +853,7 @@ namespace Neighbor.Main.Features.Interaction
             if (generatedSightBeamMesh != null)
             {
                 Destroy(generatedSightBeamMesh);
+                sightBeamVertices = null;
             }
 
             if (sightBeamMaterial != null)

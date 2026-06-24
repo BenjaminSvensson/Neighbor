@@ -9,7 +9,6 @@ namespace Neighbor.Main.Features.Interaction
     public sealed class NoiseEvent : MonoBehaviour
     {
         private SphereCollider noiseTrigger;
-        private float despawnTime;
 
         public Vector3 Origin { get; private set; }
         public float Radius { get; private set; }
@@ -22,14 +21,6 @@ namespace Neighbor.Main.Features.Interaction
         {
             noiseTrigger = GetComponent<SphereCollider>();
             noiseTrigger.isTrigger = true;
-        }
-
-        private void Update()
-        {
-            if (Time.time >= despawnTime)
-            {
-                Destroy(gameObject);
-            }
         }
 
         public void Initialize(
@@ -51,7 +42,7 @@ namespace Neighbor.Main.Features.Interaction
                 : sourceObject != null && sourceObject.GetComponentInParent<NeighborBrain>() != null
                     ? sourceObject
                     : null;
-            despawnTime = Time.time + lifetime;
+            Destroy(gameObject, Mathf.Max(0f, lifetime));
 
             if (noiseTrigger == null)
             {

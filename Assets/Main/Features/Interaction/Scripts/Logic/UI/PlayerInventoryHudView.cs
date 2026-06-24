@@ -6,6 +6,8 @@ namespace Neighbor.Main.Features.Interaction
 {
     public sealed class PlayerInventoryHudView : MonoBehaviour
     {
+        private const float InteractorSearchInterval = 0.5f;
+
         [SerializeField] private PlayerInteractor interactor;
         [SerializeField] private CanvasGroup canvasGroup;
         [Header("Layout")]
@@ -29,6 +31,7 @@ namespace Neighbor.Main.Features.Interaction
         private RectTransform panelRectTransform;
         private SlotView[] slotViews;
         private int builtSlotCount;
+        private float nextInteractorSearchTime;
 
         public static PlayerInventoryHudView CreateRuntimeHud(PlayerInteractor interactor)
         {
@@ -79,18 +82,44 @@ namespace Neighbor.Main.Features.Interaction
 
         private void Update()
         {
-            if (interactor == null)
-            {
-                interactor = FindAnyObjectByType<PlayerInteractor>();
-            }
+            ResolveInteractor();
 
-            EnsureBuilt();
+            EnsureBuiltIfNeeded();
             UpdateSlots();
 
             if (canvasGroup != null)
             {
                 bool shouldShow = interactor != null && interactor.isActiveAndEnabled && !InteractionOverlayState.IsGameplayInputBlocked;
                 canvasGroup.alpha = shouldShow ? 1f : 0f;
+            }
+        }
+
+        private void ResolveInteractor()
+        {
+            if (interactor != null)
+            {
+                return;
+            }
+
+            float now = Time.unscaledTime;
+            if (now < nextInteractorSearchTime)
+            {
+                return;
+            }
+
+            interactor = FindAnyObjectByType<PlayerInteractor>();
+            nextInteractorSearchTime = now + InteractorSearchInterval;
+        }
+
+        private void EnsureBuiltIfNeeded()
+        {
+            int slotCount = interactor != null ? interactor.InventorySlotCount : 6;
+            if (canvasGroup == null
+                || panelRectTransform == null
+                || slotViews == null
+                || builtSlotCount != Mathf.Clamp(slotCount, 1, 6))
+            {
+                EnsureBuilt();
             }
         }
 
@@ -329,6 +358,8 @@ namespace Neighbor.Main.Features.Interaction
             public Color UnselectedNumberColor;
             public Color ItemInitialColor;
             public Color EmptyInitialColor;
+            private Pickupable lastPickupable;
+            private string lastPickupName;
 
             public void ApplyColors(
                 Color selectedSlotColor,
@@ -352,21 +383,50 @@ namespace Neighbor.Main.Features.Interaction
 
             public void Set(Pickupable pickupable, bool selected)
             {
-                SelectionImage.color = selected ? SelectedSlotColor : UnselectedSlotColor;
-                BackgroundImage.color = selected ? SelectedBackgroundColor : UnselectedBackgroundColor;
-                NumberText.color = selected ? SelectedNumberColor : UnselectedNumberColor;
-                InitialText.text = GetItemInitial(pickupable);
-                InitialText.color = pickupable != null ? ItemInitialColor : EmptyInitialColor;
+                SetImageColor(SelectionImage, selected ? SelectedSlotColor : UnselectedSlotColor);
+                SetImageColor(BackgroundImage, selected ? SelectedBackgroundColor : UnselectedBackgroundColor);
+                SetTextColor(NumberText, selected ? SelectedNumberColor : UnselectedNumberColor);
+                SetTextColor(InitialText, pickupable != null ? ItemInitialColor : EmptyInitialColor);
+
+                string pickupName = pickupable != null ? pickupable.gameObject.name : string.Empty;
+                if (pickupable == lastPickupable && pickupName == lastPickupName)
+                {
+                    return;
+                }
+
+                lastPickupable = pickupable;
+                lastPickupName = pickupName;
+                string initialText = GetItemInitial(pickupable, pickupName);
+                if (InitialText.text != initialText)
+                {
+                    InitialText.text = initialText;
+                }
             }
 
-            private static string GetItemInitial(Pickupable pickupable)
+            private static void SetImageColor(Image image, Color color)
+            {
+                if (image != null && image.color != color)
+                {
+                    image.color = color;
+                }
+            }
+
+            private static void SetTextColor(Text text, Color color)
+            {
+                if (text != null && text.color != color)
+                {
+                    text.color = color;
+                }
+            }
+
+            private static string GetItemInitial(Pickupable pickupable, string pickupName)
             {
                 if (pickupable == null)
                 {
                     return "-";
                 }
 
-                string itemName = pickupable.gameObject.name.Replace("(Clone)", string.Empty).Trim();
+                string itemName = pickupName.Replace("(Clone)", string.Empty).Trim();
                 if (itemName.StartsWith("Placeholder", StringComparison.OrdinalIgnoreCase))
                 {
                     itemName = itemName.Substring("Placeholder".Length).Trim();

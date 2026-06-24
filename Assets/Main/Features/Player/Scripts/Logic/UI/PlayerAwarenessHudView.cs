@@ -8,6 +8,7 @@ namespace Neighbor.Main.Features.Player
     public sealed class PlayerAwarenessHudView : MonoBehaviour
     {
         private const float MessageDuration = 4.5f;
+        private const float TargetSearchInterval = 0.5f;
 
         private CanvasGroup canvasGroup;
         private Image suspicionFill;
@@ -19,6 +20,8 @@ namespace Neighbor.Main.Features.Player
         private float noiseLevel;
         private float cameraWarningUntil;
         private float messageUntil;
+        private float nextPlayerSearchTime;
+        private float nextNeighborSearchTime;
 
         private void Awake()
         {
@@ -54,15 +57,42 @@ namespace Neighbor.Main.Features.Player
 
         private void ResolveTargets()
         {
-            if (player == null)
+            ResolvePlayer(false);
+            ResolveNeighbor(false);
+        }
+
+        private void ResolvePlayer(bool force)
+        {
+            if (player != null)
             {
-                player = FindAnyObjectByType<PlayerController>();
+                return;
             }
 
-            if (trackedNeighbor == null)
+            float now = Time.unscaledTime;
+            if (!force && now < nextPlayerSearchTime)
             {
-                trackedNeighbor = FindAnyObjectByType<NeighborBrain>();
+                return;
             }
+
+            player = FindAnyObjectByType<PlayerController>();
+            nextPlayerSearchTime = now + TargetSearchInterval;
+        }
+
+        private void ResolveNeighbor(bool force)
+        {
+            if (trackedNeighbor != null)
+            {
+                return;
+            }
+
+            float now = Time.unscaledTime;
+            if (!force && now < nextNeighborSearchTime)
+            {
+                return;
+            }
+
+            trackedNeighbor = FindAnyObjectByType<NeighborBrain>();
+            nextNeighborSearchTime = now + TargetSearchInterval;
         }
 
         private void UpdateAwareness()
@@ -110,12 +140,10 @@ namespace Neighbor.Main.Features.Player
 
         private void HandleNoise(PlayerFeedbackEvents.NoiseFeedback feedback)
         {
-            if (player == null)
-            {
-                player = FindAnyObjectByType<PlayerController>();
-            }
+            ResolvePlayer(true);
 
-            if (player == null || Vector3.Distance(player.transform.position, feedback.Origin) > Mathf.Max(5f, feedback.Radius))
+            float audibleRadius = Mathf.Max(5f, feedback.Radius);
+            if (player == null || (player.transform.position - feedback.Origin).sqrMagnitude > audibleRadius * audibleRadius)
             {
                 return;
             }

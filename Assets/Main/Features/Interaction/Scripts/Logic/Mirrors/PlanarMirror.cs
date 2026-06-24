@@ -22,6 +22,7 @@ namespace Neighbor.Main.Features.Interaction
         private int lastTextureSize;
         private float nextSourceCameraRefreshTime;
         private static bool isRenderingMirror;
+        private static Camera[] cameraBuffer = new Camera[8];
         private const float SourceCameraRefreshInterval = 0.5f;
 
         private void Awake()
@@ -177,12 +178,18 @@ namespace Neighbor.Main.Features.Interaction
                 return taggedCamera;
             }
 
+            int cameraCount = Camera.allCamerasCount;
+            if (cameraCount > cameraBuffer.Length)
+            {
+                cameraBuffer = new Camera[Mathf.NextPowerOfTwo(cameraCount)];
+            }
+
             Camera bestCamera = null;
             float bestDepth = float.NegativeInfinity;
-            Camera[] cameras = FindObjectsByType<Camera>(FindObjectsInactive.Exclude);
-            for (int i = 0; i < cameras.Length; i++)
+            int writtenCameraCount = Camera.GetAllCameras(cameraBuffer);
+            for (int i = 0; i < writtenCameraCount; i++)
             {
-                Camera candidate = cameras[i];
+                Camera candidate = cameraBuffer[i];
                 if (!IsUsableSourceCamera(candidate) || candidate.depth < bestDepth)
                 {
                     continue;

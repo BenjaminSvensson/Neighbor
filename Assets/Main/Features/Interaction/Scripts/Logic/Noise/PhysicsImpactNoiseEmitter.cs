@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Neighbor.Main.Features.Neighbor;
 using UnityEngine;
 
@@ -44,6 +45,7 @@ namespace Neighbor.Main.Features.Interaction
         private float speedBeforePhysicsStep;
         private float neighborAttributionUntilTime;
         private GameObject recentNeighborInstigator;
+        private readonly List<IPhysicsImpactReceiver> impactReceivers = new();
 
         private void Awake()
         {
@@ -106,22 +108,26 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            IPhysicsImpactReceiver[] receivers = collision.collider.GetComponentsInParent<IPhysicsImpactReceiver>();
-            if (receivers == null || receivers.Length == 0)
+            impactReceivers.Clear();
+            collision.collider.GetComponentsInParent(false, impactReceivers);
+            if (impactReceivers.Count == 0)
             {
                 return;
             }
 
-            Pickupable impactPickup = pickupable != null ? pickupable : GetComponentInParent<Pickupable>();
+            pickupable ??= GetComponentInParent<Pickupable>();
+            Pickupable impactPickup = pickupable;
             float impulse = collision.impulse.magnitude;
             float loudness01 = Mathf.InverseLerp(minimumImpactImpulse, maximumImpactImpulse, impulse);
             Vector3 incomingVelocity = collision.relativeVelocity;
             Vector3 origin = collision.GetContact(0).point;
 
-            for (int i = 0; i < receivers.Length; i++)
+            for (int i = 0; i < impactReceivers.Count; i++)
             {
-                receivers[i]?.ReceivePhysicsImpact(impactPickup, origin, incomingVelocity, impulse, loudness01);
+                impactReceivers[i]?.ReceivePhysicsImpact(impactPickup, origin, incomingVelocity, impulse, loudness01);
             }
+
+            impactReceivers.Clear();
         }
 
         private void UpdateNoiseAttribution(Collision collision)

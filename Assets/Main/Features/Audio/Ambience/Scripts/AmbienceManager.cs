@@ -77,9 +77,10 @@ namespace Neighbor.Main.Features.Audio
                 return;
             }
 
-            if (Camera.main != null)
+            Camera mainCamera = Camera.main;
+            if (mainCamera != null)
             {
-                listener = Camera.main.transform;
+                listener = mainCamera.transform;
             }
         }
 

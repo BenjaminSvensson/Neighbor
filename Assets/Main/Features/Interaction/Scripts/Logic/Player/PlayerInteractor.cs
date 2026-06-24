@@ -92,6 +92,10 @@ namespace Neighbor.Main.Features.Interaction
         private string pendingAutoEquipMatchKey;
         private float pendingAutoEquipAt;
         private Material throwArcMaterial;
+        private Pickupable cachedHeldPickup;
+        private DoorKey cachedHeldDoorKey;
+        private DoorBlockerChair cachedHeldDoorBlocker;
+        private IPrimaryUseInteractable cachedHeldPrimaryUseInteractable;
 
         public event Action PickupStarted;
         public event Action DropStarted;
@@ -161,6 +165,7 @@ namespace Neighbor.Main.Features.Interaction
         private void Update()
         {
             UpdatePendingAutoEquip();
+            RefreshHeldPickupComponentCache();
 
             Keyboard keyboard = Keyboard.current;
             Mouse mouse = Mouse.current;
@@ -326,7 +331,7 @@ namespace Neighbor.Main.Features.Interaction
 
         private bool TryUseHeldPickupOnFocusedInteractable()
         {
-            DoorKey heldKey = heldPickup != null ? heldPickup.GetComponentInChildren<DoorKey>() : null;
+            DoorKey heldKey = GetHeldDoorKey();
             if (heldKey == null)
             {
                 return false;
@@ -346,9 +351,7 @@ namespace Neighbor.Main.Features.Interaction
 
         private bool TryPrimaryUseHeldPickup()
         {
-            IPrimaryUseInteractable primaryUseInteractable = heldPickup != null
-                ? heldPickup.GetComponentInChildren<IPrimaryUseInteractable>()
-                : null;
+            IPrimaryUseInteractable primaryUseInteractable = GetHeldPrimaryUseInteractable();
 
             if (primaryUseInteractable == null || !primaryUseInteractable.CanPrimaryUse(this))
             {
@@ -367,7 +370,11 @@ namespace Neighbor.Main.Features.Interaction
 
         private bool TryBlockHeldPickupOnFocusedDoor(Pickupable pickup)
         {
-            DoorBlockerChair blocker = pickup != null ? pickup.GetComponentInChildren<DoorBlockerChair>() : null;
+            DoorBlockerChair blocker = pickup == heldPickup
+                ? GetHeldDoorBlocker()
+                : pickup != null
+                    ? pickup.GetComponentInChildren<DoorBlockerChair>()
+                    : null;
             if (blocker == null)
             {
                 return false;
@@ -1308,9 +1315,7 @@ namespace Neighbor.Main.Features.Interaction
 
         private void ShowHeldPickupTooltip(Mouse mouse)
         {
-            IPrimaryUseInteractable primaryUseInteractable = heldPickup != null
-                ? heldPickup.GetComponentInChildren<IPrimaryUseInteractable>()
-                : null;
+            IPrimaryUseInteractable primaryUseInteractable = GetHeldPrimaryUseInteractable();
 
             if (mouse != null
                 && primaryUseInteractable != null
@@ -1798,6 +1803,46 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             return foundHit;
+        }
+
+        private DoorKey GetHeldDoorKey()
+        {
+            RefreshHeldPickupComponentCache();
+            return cachedHeldDoorKey;
+        }
+
+        private DoorBlockerChair GetHeldDoorBlocker()
+        {
+            RefreshHeldPickupComponentCache();
+            return cachedHeldDoorBlocker;
+        }
+
+        private IPrimaryUseInteractable GetHeldPrimaryUseInteractable()
+        {
+            RefreshHeldPickupComponentCache();
+            return cachedHeldPrimaryUseInteractable;
+        }
+
+        private void RefreshHeldPickupComponentCache()
+        {
+            if (heldPickup == null)
+            {
+                cachedHeldPickup = null;
+                cachedHeldDoorKey = null;
+                cachedHeldDoorBlocker = null;
+                cachedHeldPrimaryUseInteractable = null;
+                return;
+            }
+
+            if (ReferenceEquals(cachedHeldPickup, heldPickup))
+            {
+                return;
+            }
+
+            cachedHeldPickup = heldPickup;
+            cachedHeldDoorKey = heldPickup.GetComponentInChildren<DoorKey>();
+            cachedHeldDoorBlocker = heldPickup.GetComponentInChildren<DoorBlockerChair>();
+            cachedHeldPrimaryUseInteractable = heldPickup.GetComponentInChildren<IPrimaryUseInteractable>();
         }
 
         private Material CreateThrowArcMaterial()

@@ -438,7 +438,7 @@ namespace Neighbor.Main.Features.Interaction
                 }
 
                 float radius = Mathf.Max(foreignHomeRadius, candidate.ForeignHomeRadius);
-                if (Vector3.Distance(transform.position, candidate.HomePosition) <= radius)
+                if ((transform.position - candidate.HomePosition).sqrMagnitude <= radius * radius)
                 {
                     homePickup = candidate;
                     return true;
@@ -504,7 +504,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             float positionTolerance = Mathf.Max(0f, homePositionTolerance);
-            if (Vector3.Distance(transform.position, homePosition) > positionTolerance)
+            if ((transform.position - homePosition).sqrMagnitude > positionTolerance * positionTolerance)
             {
                 return true;
             }
