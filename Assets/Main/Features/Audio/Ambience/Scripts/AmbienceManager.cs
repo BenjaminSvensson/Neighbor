@@ -24,6 +24,8 @@ namespace Neighbor.Main.Features.Audio
         private float nextListenerSearchTime;
         private float nextPlayerSearchTime;
 
+        public AmbienceZoneLocation CurrentZoneLocation { get; private set; } = AmbienceZoneLocation.Outside;
+
         private void Awake()
         {
             ResolveListener();
@@ -49,10 +51,11 @@ namespace Neighbor.Main.Features.Audio
                 nextPlayerSearchTime = Time.unscaledTime + 1f;
             }
 
-            AmbienceProfile desiredProfile = GetDesiredProfile();
-            if (desiredProfile != targetProfile)
+            DesiredAmbienceState desiredState = GetDesiredState();
+            CurrentZoneLocation = desiredState.ZoneLocation;
+            if (desiredState.Profile != targetProfile)
             {
-                TransitionTo(desiredProfile);
+                TransitionTo(desiredState.Profile);
             }
 
             UpdatePlaybacks();
@@ -91,6 +94,16 @@ namespace Neighbor.Main.Features.Audio
 
         private AmbienceProfile GetDesiredProfile()
         {
+            return GetDesiredState().Profile;
+        }
+
+        private AmbienceZoneLocation GetDesiredZoneLocation()
+        {
+            return GetDesiredState().ZoneLocation;
+        }
+
+        private DesiredAmbienceState GetDesiredState()
+        {
             AmbienceArea bestArea = null;
             AmbienceArea bestDefaultArea = null;
             Transform trackingTransform = player != null ? player.transform : listener;
@@ -126,10 +139,15 @@ namespace Neighbor.Main.Features.Audio
 
             if (bestArea != null)
             {
-                return bestArea.Profile;
+                return new DesiredAmbienceState(bestArea.Profile, bestArea.ZoneLocation);
             }
 
-            return bestDefaultArea != null ? bestDefaultArea.Profile : defaultProfile;
+            if (bestDefaultArea != null)
+            {
+                return new DesiredAmbienceState(bestDefaultArea.Profile, bestDefaultArea.ZoneLocation);
+            }
+
+            return new DesiredAmbienceState(defaultProfile, AmbienceZoneLocation.Outside);
         }
 
         private void TransitionTo(AmbienceProfile profile)
@@ -317,6 +335,18 @@ namespace Neighbor.Main.Features.Audio
 
             public AudioSource Source { get; }
             public float Volume { get; }
+        }
+
+        private readonly struct DesiredAmbienceState
+        {
+            public DesiredAmbienceState(AmbienceProfile profile, AmbienceZoneLocation zoneLocation)
+            {
+                Profile = profile;
+                ZoneLocation = zoneLocation;
+            }
+
+            public AmbienceProfile Profile { get; }
+            public AmbienceZoneLocation ZoneLocation { get; }
         }
     }
 }

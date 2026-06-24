@@ -53,6 +53,9 @@ MonoBehaviour:
   strength: 0.7
   gustStrength: 1.1
   gustFrequency: 0.18
+  showOnlyInOutsideZones: 1
+  ambienceManager: {fileID: 0}
+  clearParticlesWhenHidden: 1
   affectedSystems:
   - {fileID: 6999547060919451189}
   - {fileID: 53432077835954995}

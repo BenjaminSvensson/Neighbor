@@ -4,6 +4,12 @@ using UnityEngine;
 
 namespace Neighbor.Main.Features.Audio
 {
+    public enum AmbienceZoneLocation
+    {
+        Inside = 0,
+        Outside = 1
+    }
+
     [RequireComponent(typeof(Collider))]
     public sealed class AmbienceArea : MonoBehaviour
     {
@@ -12,6 +18,8 @@ namespace Neighbor.Main.Features.Audio
         [SerializeField] private AmbienceProfile profile;
         [Tooltip("Higher-priority areas win when multiple areas overlap.")]
         [SerializeField] private int priority;
+        [Tooltip("Whether this audio zone is indoors or outdoors. Outdoor-only effects are hidden in inside zones.")]
+        [SerializeField] private AmbienceZoneLocation zoneLocation = AmbienceZoneLocation.Inside;
         [Tooltip("Use this area's profile when no non-default ambience area has the player inside it.")]
         [SerializeField] private bool playWhenNoAreaActive;
         [Tooltip("All assigned colliders define this area. Uses the collider on this object when empty.")]
@@ -21,6 +29,7 @@ namespace Neighbor.Main.Features.Audio
 
         public AmbienceProfile Profile => profile;
         public int Priority => priority;
+        public AmbienceZoneLocation ZoneLocation => zoneLocation;
         public bool PlayWhenNoAreaActive => playWhenNoAreaActive;
         public bool HasPlayerInside
         {

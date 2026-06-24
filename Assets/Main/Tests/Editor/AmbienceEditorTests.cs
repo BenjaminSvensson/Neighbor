@@ -18,7 +18,9 @@ namespace Neighbor.Main.Tests
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
 
             Assert.That(prefab, Is.Not.Null);
-            Assert.That(prefab.GetComponent<AmbienceArea>(), Is.Not.Null);
+            AmbienceArea area = prefab.GetComponent<AmbienceArea>();
+            Assert.That(area, Is.Not.Null);
+            Assert.That(area.ZoneLocation, Is.EqualTo(AmbienceZoneLocation.Inside));
 
             Collider collider = prefab.GetComponent<Collider>();
             Assert.That(collider, Is.Not.Null);
@@ -91,7 +93,7 @@ namespace Neighbor.Main.Tests
                 GameplaySmokeTestReflection.SetField<PlayerController>(manager, "player", null);
 
                 AmbienceArea activeArea = CreateArea(activeAreaObject, activeProfile, false, Vector3.zero);
-                AmbienceArea defaultArea = CreateArea(defaultAreaObject, defaultAreaProfile, true, new Vector3(20f, 0f, 0f));
+                AmbienceArea defaultArea = CreateArea(defaultAreaObject, defaultAreaProfile, true, new Vector3(20f, 0f, 0f), AmbienceZoneLocation.Outside);
                 GameplaySmokeTestReflection.InvokeIfPresent(activeArea, "OnEnable");
                 GameplaySmokeTestReflection.InvokeIfPresent(defaultArea, "OnEnable");
 
@@ -101,6 +103,9 @@ namespace Neighbor.Main.Tests
                 Assert.That(
                     GameplaySmokeTestReflection.InvokeResult<AmbienceProfile>(manager, "GetDesiredProfile"),
                     Is.SameAs(defaultAreaProfile));
+                Assert.That(
+                    GameplaySmokeTestReflection.InvokeResult<AmbienceZoneLocation>(manager, "GetDesiredZoneLocation"),
+                    Is.EqualTo(AmbienceZoneLocation.Outside));
 
                 listenerObject.transform.position = new Vector3(0f, 1.5f, 0f);
                 Physics.SyncTransforms();
@@ -108,6 +113,9 @@ namespace Neighbor.Main.Tests
                 Assert.That(
                     GameplaySmokeTestReflection.InvokeResult<AmbienceProfile>(manager, "GetDesiredProfile"),
                     Is.SameAs(activeProfile));
+                Assert.That(
+                    GameplaySmokeTestReflection.InvokeResult<AmbienceZoneLocation>(manager, "GetDesiredZoneLocation"),
+                    Is.EqualTo(AmbienceZoneLocation.Inside));
 
                 GameplaySmokeTestReflection.InvokeIfPresent(activeArea, "OnDisable");
                 GameplaySmokeTestReflection.InvokeIfPresent(defaultArea, "OnDisable");
@@ -137,7 +145,8 @@ namespace Neighbor.Main.Tests
             GameObject areaObject,
             AmbienceProfile profile,
             bool playWhenNoAreaActive,
-            Vector3 position)
+            Vector3 position,
+            AmbienceZoneLocation zoneLocation = AmbienceZoneLocation.Inside)
         {
             areaObject.transform.position = position;
             BoxCollider collider = areaObject.AddComponent<BoxCollider>();
@@ -148,6 +157,7 @@ namespace Neighbor.Main.Tests
             AmbienceArea area = areaObject.AddComponent<AmbienceArea>();
             GameplaySmokeTestReflection.SetField(area, "profile", profile);
             GameplaySmokeTestReflection.SetField(area, "playWhenNoAreaActive", playWhenNoAreaActive);
+            GameplaySmokeTestReflection.SetField(area, "zoneLocation", zoneLocation);
             return area;
         }
     }
