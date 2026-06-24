@@ -1,10 +1,11 @@
 using System.Collections;
+using Neighbor.Main.HouseBuilder;
 using UnityEngine;
 
 namespace Neighbor.Main.Features.Interaction
 {
     [RequireComponent(typeof(Collider))]
-    public sealed class Doorbell : MonoBehaviour, IInteractable
+    public sealed class Doorbell : MonoBehaviour, IInteractable, IHouseWireSignalSource
     {
         [Header("Doorbell")]
         [SerializeField, Min(0f)] private float interactionCooldown = 0.55f;
@@ -31,6 +32,8 @@ namespace Neighbor.Main.Features.Interaction
         private AudioClip generatedRingClip;
         private Vector3 buttonRestLocalPosition;
         private float nextRingTime;
+
+        public event System.Action<HouseSignal> HouseWireSignalEmitted;
 
         private void Awake()
         {
@@ -70,6 +73,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             nextRingTime = Time.time + interactionCooldown;
+            HouseWireSignalEmitted?.Invoke(HouseSignal.Pulse());
             PlayRing();
             EmitNeighborNoise();
             AnimateButtonPress();

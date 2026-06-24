@@ -270,6 +270,73 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void Wiring_PulleyElevatorAcceptsSwitchAndButtonSignals()
+        {
+            GameObject targetObject = Track(new GameObject("Pulley Elevator"));
+            GameObject platformObject = Track(new GameObject("Platform"));
+            platformObject.transform.SetParent(targetObject.transform, false);
+
+            HouseWireInputRelay relay = targetObject.AddComponent<HouseWireInputRelay>();
+            HousePulleyElevatorMotion elevator = targetObject.AddComponent<HousePulleyElevatorMotion>();
+            elevator.Configure(platformObject.transform, Vector3.zero, Vector3.up * 3f, 0.01f, false);
+
+            relay.Receive(HouseSignal.Bool(true));
+
+            Assert.That(elevator.IsRaised, Is.True);
+            Assert.That(platformObject.transform.localPosition.y, Is.EqualTo(3f).Within(0.001f));
+
+            relay.Receive(HouseSignal.Bool(false));
+
+            Assert.That(elevator.IsRaised, Is.False);
+            Assert.That(platformObject.transform.localPosition.y, Is.EqualTo(0f).Within(0.001f));
+
+            relay.Receive(HouseSignal.Pulse());
+
+            Assert.That(elevator.IsRaised, Is.True);
+            Assert.That(platformObject.transform.localPosition.y, Is.EqualTo(3f).Within(0.001f));
+        }
+
+        [Test]
+        public void Wiring_PulleyElevatorCreatesActivateInputPort()
+        {
+            GameObject targetObject = Track(new GameObject("Pulley Elevator"));
+            GameObject platformObject = Track(new GameObject("Platform"));
+            platformObject.transform.SetParent(targetObject.transform, false);
+
+            HousePulleyElevatorMotion elevator = targetObject.AddComponent<HousePulleyElevatorMotion>();
+            elevator.Configure(platformObject.transform, Vector3.zero, Vector3.up * 2f, 0.01f, false);
+
+            HouseWireEndpoint endpoint = targetObject.GetComponent<HouseWireEndpoint>();
+            Assert.That(endpoint, Is.Not.Null);
+            Assert.That(endpoint.TryGetPort("activate", out HouseWirePortDefinition activatePort), Is.True);
+            Assert.That(activatePort.Direction, Is.EqualTo(HouseWirePortDirection.Input));
+            Assert.That(activatePort.SignalKind, Is.EqualTo(HouseSignalKind.Any));
+
+            endpoint.Receive("activate", HouseSignal.Pulse());
+
+            Assert.That(elevator.IsRaised, Is.True);
+            Assert.That(platformObject.transform.localPosition.y, Is.EqualTo(2f).Within(0.001f));
+        }
+
+        [Test]
+        public void Wiring_DoorbellEmitsPulseSignalWhenPressed()
+        {
+            GameObject doorbellObject = Track(new GameObject("Button"));
+            doorbellObject.AddComponent<BoxCollider>();
+            Doorbell doorbell = doorbellObject.AddComponent<Doorbell>();
+            GameplaySmokeTestReflection.InvokeIfPresent(doorbell, "Awake");
+            GameplaySmokeTestReflection.SetField(doorbell, "noiseRadius", 0f);
+
+            HouseSignal received = null;
+            doorbell.HouseWireSignalEmitted += signal => received = signal;
+
+            doorbell.Interact(null);
+
+            Assert.That(received, Is.Not.Null);
+            Assert.That(received.Kind, Is.EqualTo(HouseSignalKind.Pulse));
+        }
+
+        [Test]
         public void GarageDoorNavigation_ActivatesPassageOnlyWhenOpen()
         {
             GameObject garageObject = Track(new GameObject("Garage Door"));
