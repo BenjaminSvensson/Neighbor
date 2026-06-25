@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 3079701893320502607}
   - component: {fileID: 8246665675806427916}
   - component: {fileID: 846861195124391655}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: LeftLeg
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -124,7 +124,7 @@ GameObject:
   - component: {fileID: 5625020640797160964}
   - component: {fileID: 6601509004129080664}
   - component: {fileID: 5387836102767700841}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: Headboard
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -236,7 +236,7 @@ GameObject:
   - component: {fileID: 844713240161820582}
   - component: {fileID: 3439582502367847239}
   - component: {fileID: 3315714095754048814}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: RightHeadLeg
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -347,7 +347,7 @@ GameObject:
   - component: {fileID: 3916450997298990621}
   - component: {fileID: 7007237361633974103}
   - component: {fileID: 4868045879964561509}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: Blanket
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -438,7 +438,7 @@ GameObject:
   - component: {fileID: 2202236285737023609}
   - component: {fileID: 5360059834086680584}
   - component: {fileID: 5777135577958510399}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: Frame
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -550,7 +550,7 @@ GameObject:
   - component: {fileID: 8263871386942562648}
   - component: {fileID: 7260388225112286397}
   - component: {fileID: 3081057528472541790}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: LeftHeadLeg
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -660,7 +660,7 @@ GameObject:
   m_Component:
   - component: {fileID: 118908962651171188}
   - component: {fileID: 9100000000000000002}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: PlaceholderHideableBed
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -703,7 +703,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6b8797e97910440e9c12f7f42f0a7c40, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Neighbor.NeighborTaskLocation
   minimumWaitTime: 8
   maximumWaitTime: 15
@@ -726,6 +726,10 @@ MonoBehaviour:
   anchorNeighborAtUsePose: 1
   ignoreTaskObjectCollisions: 1
   stabilizeTaskObject: 0
+  minimumUprightDot: 0.9
+  maximumUseVerticalOffset: 0.45
+  maximumObjectSpeedForUse: 0.2
+  maximumObjectAngularSpeedForUse: 0.35
   startTaskAnimation: {fileID: 2241212333087754889, guid: 36d683dc866f32d4bacbdb5c9daf2e15, type: 3}
   startAnimationPlaybackSpeed: 1
   taskAnimation: {fileID: 3532616527226485280, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
@@ -754,7 +758,7 @@ GameObject:
   - component: {fileID: 4606420982825662688}
   - component: {fileID: 1550895246958750558}
   - component: {fileID: 4878054142549236043}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: HideUnderBed
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -839,6 +843,9 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  allowSidePeek: 1
+  maximumSidePeek: 0.32
+  sidePeekSpeed: 0.36
 --- !u!1 &5167457356106616263
 GameObject:
   m_ObjectHideFlags: 0
@@ -851,7 +858,7 @@ GameObject:
   - component: {fileID: 342309739413638478}
   - component: {fileID: 680355687667541591}
   - component: {fileID: 2996569653232475704}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: RightLeg
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -963,7 +970,7 @@ GameObject:
   - component: {fileID: 9039928407707219593}
   - component: {fileID: 25011207730640877}
   - component: {fileID: 5128695871148294762}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: Mattress
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1072,7 +1079,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8058243469407843252}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: ExitPoint
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1103,7 +1110,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 9024670572030336286}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: HidePoint
   m_TagString: Untagged
   m_Icon: {fileID: 0}

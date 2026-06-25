@@ -4369,6 +4369,128 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 106731054}
   m_Mesh: {fileID: 0}
+--- !u!1 &114631033
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 114631034}
+  - component: {fileID: 114631037}
+  - component: {fileID: 114631036}
+  - component: {fileID: 114631035}
+  m_Layer: 0
+  m_Name: Physical Geometry
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &114631034
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 114631033}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1025154958}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!64 &114631035
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 114631033}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 0}
+--- !u!23 &114631036
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 114631033}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &114631037
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 114631033}
+  m_Mesh: {fileID: 0}
 --- !u!1 &114801997
 GameObject:
   m_ObjectHideFlags: 0
@@ -25085,7 +25207,8 @@ PrefabInstance:
       value: 17
       objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects: []
+    m_RemovedGameObjects:
+    - {fileID: 1000000000000000901, guid: 6ff8a9a28d7248f7a10696ef5786573e, type: 3}
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 6ff8a9a28d7248f7a10696ef5786573e, type: 3}
@@ -33166,7 +33289,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
   descriptor:
     kind: 0
-    size: {x: 0.05, y: 19, z: 0.05}
+    size: {x: 0.05, y: 25, z: 0.05}
     openingWidth: 1.2
     openingHeight: 2.1
     sillHeight: 0.9
@@ -34916,6 +35039,226 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1006205958}
+  m_Mesh: {fileID: 0}
+--- !u!1 &1025154957
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1025154958}
+  - component: {fileID: 1025154964}
+  - component: {fileID: 1025154963}
+  - component: {fileID: 1025154962}
+  - component: {fileID: 1025154961}
+  - component: {fileID: 1025154960}
+  - component: {fileID: 1025154959}
+  m_Layer: 0
+  m_Name: Block
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1025154958
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1025154957}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.024523504, y: -0.00078263716, z: -0.03188792, w: 0.9991903}
+  m_LocalPosition: {x: -14.35, y: 3.95, z: -4.27}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 114631034}
+  m_Father: {fileID: 1221629527}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1025154959
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1025154957}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8277c33751b73a14cb0b2ba9e6b8e109, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderMaterialController
+  bindings:
+  - faceRole: 0
+    rendererPath: 
+    materialIndex: 0
+    materialId: neighbor.material.prototype
+  - faceRole: 1
+    rendererPath: 
+    materialIndex: 1
+    materialId: neighbor.material.prototype
+  - faceRole: 2
+    rendererPath: 
+    materialIndex: 2
+    materialId: neighbor.material.prototype
+  - faceRole: 3
+    rendererPath: 
+    materialIndex: 3
+    materialId: neighbor.material.prototype
+  - faceRole: 4
+    rendererPath: 
+    materialIndex: 4
+    materialId: neighbor.material.prototype
+  - faceRole: 5
+    rendererPath: 
+    materialIndex: 5
+    materialId: neighbor.material.prototype
+  - faceRole: 6
+    rendererPath: 
+    materialIndex: 6
+    materialId: neighbor.material.prototype
+  - faceRole: 7
+    rendererPath: 
+    materialIndex: 7
+    materialId: neighbor.material.prototype
+  - faceRole: 8
+    rendererPath: 
+    materialIndex: 8
+    materialId: neighbor.material.prototype
+  - faceRole: 9
+    rendererPath: 
+    materialIndex: 9
+    materialId: neighbor.material.prototype
+--- !u!114 &1025154960
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1025154957}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
+  instanceId: 1b46aab5923c4865b41e3f88527e55a2
+  definitionId: 
+  categoryId: structure
+  properties: []
+--- !u!114 &1025154961
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1025154957}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 545487812f5c6524db0ae1be9ce2fab1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
+  descriptor:
+    kind: 0
+    size: {x: 3.25, y: 0.2, z: 3.25}
+    openingWidth: 1.2
+    openingHeight: 2.1
+    sillHeight: 0.9
+    stairCount: 14
+    bakedMesh:
+      vertices: []
+      normals: []
+      uv: []
+      submeshes: []
+    wallOpenings: []
+--- !u!64 &1025154962
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1025154957}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 0
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 0}
+--- !u!23 &1025154963
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1025154957}
+  m_Enabled: 0
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  - {fileID: 2100000, guid: 2b7b5db5d81e45f0a6d2973b0309c2f4, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1025154964
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1025154957}
   m_Mesh: {fileID: 0}
 --- !u!1 &1027207908
 GameObject:
@@ -41999,6 +42342,7 @@ Transform:
   - {fileID: 953897885}
   - {fileID: 1655927541}
   - {fileID: 2092557014}
+  - {fileID: 1025154958}
   m_Father: {fileID: 193916993}
   m_LocalEulerAnglesHint: {x: -2.812, y: 0, z: 3.656}
 --- !u!1 &1224175385
@@ -53802,7 +54146,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
   descriptor:
     kind: 0
-    size: {x: 0.05, y: 19, z: 0.05}
+    size: {x: 0.05, y: 23.5, z: 0.05}
     openingWidth: 1.2
     openingHeight: 2.1
     sillHeight: 0.9
@@ -66692,7 +67036,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseGeometryObject
   descriptor:
     kind: 0
-    size: {x: 0.05, y: 19, z: 0.05}
+    size: {x: 0.05, y: 23.5, z: 0.05}
     openingWidth: 1.2
     openingHeight: 2.1
     sillHeight: 0.9
