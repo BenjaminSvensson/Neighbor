@@ -20,6 +20,12 @@ MonoBehaviour:
     - {fileID: 8300000, guid: 3243c2f73eb8f894ea62fed8b71bc4a3, type: 3}
     - {fileID: 8300000, guid: c6620008b0ab7f24abcb8579e9744ec1, type: 3}
     - {fileID: 8300000, guid: f0a5d0afc0db388419f350f74e8f8c06, type: 3}
-    volume: 0.5
+    volume: 0.2
+    pitch: 1
+    startAtRandomTime: 1
+  - name: CreakyBoard
+    clipVariations:
+    - {fileID: 8300000, guid: 3dce3952c8ea4f84d95d6f70233c3fb3, type: 3}
+    volume: 0.2
     pitch: 1
     startAtRandomTime: 1

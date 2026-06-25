@@ -268,6 +268,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8573506346761602368}
   - component: {fileID: 6835100427796417406}
+  - component: {fileID: 6586602168759589104}
   - component: {fileID: 3418586483215124470}
   - component: {fileID: 8773311825000123456}
   - component: {fileID: 5488743458123456789}
@@ -279,7 +280,6 @@ GameObject:
   - component: {fileID: 6254384187814207898}
   - component: {fileID: 7647593652331711903}
   - component: {fileID: 9013648726351842075}
-  - component: {fileID: 6586602168759589104}
   - component: {fileID: 1444078023610178018}
   m_Layer: 7
   m_Name: Neighbor
@@ -328,6 +328,31 @@ NavMeshAgent:
   m_BaseOffset: 0
   m_WalkableMask: 4294967295
   m_ObstacleAvoidanceType: 4
+--- !u!143 &6586602168759589104
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5206360911464809966}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 3.5
+  m_Radius: 0.4
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 1, z: 0}
 --- !u!114 &3418586483215124470
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -354,10 +379,22 @@ MonoBehaviour:
   minimumUrgencyToRunToNoise: 0.65
   noiseDestinationSampleRadius: 4
   investigationWaitTime: 2.2
+  televisionShutoffDistance: 2.2
   unexpectedOpenDoorSuspicion: 0.36
   doorRoomCheckDistance: 2.4
   doorRoomSearchPointRadius: 9
   doorRoomMinimumDepth: 0.35
+  useGarageDoorSwitches: 1
+  closePlayerOpenedGarageDoors: 1
+  closeAnyOpenGarageDoorForSecurity: 1
+  closePlayerGarageDoorsWithoutRouteProof: 1
+  garageDoorSearchRadius: 22
+  garageDoorSecurityRadius: 10
+  garageSwitchUseDistance: 3
+  garageSwitchDestinationSampleRadius: 1.5
+  garageDoorWaitTimeout: 3
+  garageDoorCloseCooldown: 0.5
+  garageDoorSecurityCheckInterval: 0.75
   suspicionDecayPerSecond: 0.035
   curiousThreshold: 0.18
   suspiciousThreshold: 0.48
@@ -432,7 +469,7 @@ MonoBehaviour:
   ignoreDoorBlockers: 1
   ignoreNeighborPlacedCameras: 1
   carryAnchor: {fileID: 0}
-  useAnimatedHandCarryAnchor: 0
+  useAnimatedHandCarryAnchor: 1
   handCarryOffset: {x: 0.08, y: 0.05, z: 0.12}
   fallbackCarryOffset: {x: 0.38, y: 1.15, z: 0.42}
   carryRotationEuler: {x: 0, y: 0, z: 0}
@@ -449,7 +486,7 @@ MonoBehaviour:
   placementClearancePadding: 0.03
   placementMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 321
 --- !u!114 &5488743458123456789
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -460,10 +497,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5eab2d8187b7429d862f125974539543, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.Features.Neighbor.NeighborLightSwitchInteractor
   enableLightSwitchUse: 1
-  routineChance: 0.08
+  routineChance: 0.2
   retryCooldown: 14
   switchSearchRadius: 9
   switchApproachDistance: 1.2
@@ -484,8 +521,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   walkSpeed: 3
   cautiousSpeed: 1.65
-  runSpeed: 6
-  acceleration: 24
+  runSpeed: 7
+  acceleration: 35
   angularSpeed: 540
   stoppingDistance: 0.45
   destinationSampleRadius: 1.5
@@ -496,7 +533,7 @@ MonoBehaviour:
   lowClearanceMask:
     serializedVersion: 2
     m_Bits: 321
-  crouchingHeight: 4
+  crouchingHeight: 3.4
   crouchSpeedMultiplier: 0.55
   lowClearanceProbeForwardDistance: 0.7
   lowClearanceProbePadding: 0.04
@@ -699,10 +736,10 @@ MonoBehaviour:
   - {fileID: 8300000, guid: a9aec569b98c5d642847b5fa168aabff, type: 3}
   upstairsHeight: 2.2
   minimumFootstepSpeed: 0.32
-  runSpeedReference: 6.5
-  footstepMinimumVolume: 0.4
-  footstepMaximumVolume: 1
-  upstairsVolumeBoost: 0.4
+  runSpeedReference: 9
+  footstepMinimumVolume: 0.9
+  footstepMaximumVolume: 2
+  upstairsVolumeBoost: 0.6
   footstepPitchRandomness: 0.07
   footstepStereoWidth: 0.5
   footstepLoopFadeSharpness: 9
@@ -714,8 +751,8 @@ MonoBehaviour:
   climbEndClips: []
   dropLandingClips:
   - {fileID: 8300000, guid: 4353bccfc087e0c4098b4b8e329d1530, type: 3}
-  climbVolume: 0.72
-  landingVolume: 0.82
+  climbVolume: 1
+  landingVolume: 1
   dropLandingHeight: 0.25
   alertedClips:
   - {fileID: 8300000, guid: e1a26a70e183dde4facb4e23fab71456, type: 3}
@@ -724,20 +761,20 @@ MonoBehaviour:
   searchLostClips: []
   stunnedClips: []
   idleMutterClips: []
-  alertedVolume: 0.74
-  chaseStartVolume: 0.88
+  alertedVolume: 1
+  chaseStartVolume: 2
   searchLostVolume: 0.48
-  stunnedVolume: 0.7
-  idleMutterVolume: 0.2
+  stunnedVolume: 1
+  idleMutterVolume: 1
   idleMutterMinimumDelay: 7
   idleMutterMaximumDelay: 15
   breathingLoopClip: {fileID: 8300000, guid: 9d034dce680892a4cb1f0ae2f0ab48af, type: 3}
   chaseLoopClip: {fileID: 8300000, guid: 4d6913b39a827014c85527baf14f97ff, type: 3}
-  idleBreathingVolume: 0.08
-  alertedBreathingVolume: 0.18
-  chaseBreathingVolume: 0.34
-  chaseLoopVolume: 0.45
-  searchLoopVolume: 0.16
+  idleBreathingVolume: 1
+  alertedBreathingVolume: 2
+  chaseBreathingVolume: 2.5
+  chaseLoopVolume: 2
+  searchLoopVolume: 1.4
   loopFadeSharpness: 8
   minDistance: 0.3
   footstepMaxDistance: 24
@@ -858,31 +895,6 @@ MonoBehaviour:
   markerSize: 0.3
   recentSoundDisplayTime: 5
   recoveryDisplayTime: 5
---- !u!143 &6586602168759589104
-CharacterController:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5206360911464809966}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Height: 2
-  m_Radius: 0.4
-  m_SlopeLimit: 45
-  m_StepOffset: 0.3
-  m_SkinWidth: 0.08
-  m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 1, z: 0}
 --- !u!82 &1444078023610178018
 AudioSource:
   m_ObjectHideFlags: 0
@@ -1416,15 +1428,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
       propertyPath: m_LocalScale.x
-      value: 1.55
+      value: 1.7999998
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
       propertyPath: m_LocalScale.y
-      value: 1.55
+      value: 1.7999998
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
       propertyPath: m_LocalScale.z
-      value: 1.55
+      value: 1.7999998
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
       propertyPath: m_LocalPosition.x

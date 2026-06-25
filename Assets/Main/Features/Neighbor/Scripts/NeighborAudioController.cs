@@ -30,24 +30,24 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float upstairsHeight = 2.2f;
         [SerializeField, Min(0f)] private float minimumFootstepSpeed = 0.32f;
         [SerializeField, Min(0.1f)] private float runSpeedReference = 5.8f;
-        [SerializeField, Range(0f, 1f)] private float footstepMinimumVolume = 0.34f;
-        [SerializeField, Range(0f, 1f)] private float footstepMaximumVolume = 0.78f;
-        [SerializeField, Range(0f, 1f)] private float upstairsVolumeBoost = 0.14f;
-        [SerializeField, Range(0f, 1f)] private float footstepPitchRandomness = 0.07f;
-        [SerializeField, Range(0f, 1f)] private float footstepStereoWidth = 0.22f;
+        [SerializeField, Range(0f, 4f)] private float footstepMinimumVolume = 0.34f;
+        [SerializeField, Range(0f, 4f)] private float footstepMaximumVolume = 0.78f;
+        [SerializeField, Range(0f, 4f)] private float upstairsVolumeBoost = 0.14f;
+        [SerializeField, Range(0f, 4f)] private float footstepPitchRandomness = 0.07f;
+        [SerializeField, Range(0f, 4f)] private float footstepStereoWidth = 0.22f;
         [SerializeField, Min(0f)] private float footstepLoopFadeSharpness = 9f;
 
         [Header("Movement Foley")]
         [SerializeField] private AudioClip movementFoleyLoopClip;
-        [SerializeField, Range(0f, 1f)] private float movementFoleyVolume = 0.16f;
+        [SerializeField, Range(0f, 4f)] private float movementFoleyVolume = 0.16f;
         [SerializeField, Min(0f)] private float movementFoleySpeedThreshold = 0.45f;
 
         [Header("Climb And Landing")]
         [SerializeField] private AudioClip[] climbStartClips;
         [SerializeField] private AudioClip[] climbEndClips;
         [SerializeField] private AudioClip[] dropLandingClips;
-        [SerializeField, Range(0f, 1f)] private float climbVolume = 0.72f;
-        [SerializeField, Range(0f, 1f)] private float landingVolume = 0.82f;
+        [SerializeField, Range(0f, 4f)] private float climbVolume = 0.72f;
+        [SerializeField, Range(0f, 4f)] private float landingVolume = 0.82f;
         [SerializeField, Min(0f)] private float dropLandingHeight = 0.25f;
 
         [Header("Voice And Alert")]
@@ -56,22 +56,22 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField] private AudioClip[] searchLostClips;
         [SerializeField] private AudioClip[] stunnedClips;
         [SerializeField] private AudioClip[] idleMutterClips;
-        [SerializeField, Range(0f, 1f)] private float alertedVolume = 0.74f;
-        [SerializeField, Range(0f, 1f)] private float chaseStartVolume = 0.88f;
-        [SerializeField, Range(0f, 1f)] private float searchLostVolume = 0.48f;
-        [SerializeField, Range(0f, 1f)] private float stunnedVolume = 0.7f;
-        [SerializeField, Range(0f, 1f)] private float idleMutterVolume = 0.2f;
+        [SerializeField, Range(0f, 4f)] private float alertedVolume = 0.74f;
+        [SerializeField, Range(0f, 4f)] private float chaseStartVolume = 0.88f;
+        [SerializeField, Range(0f, 4f)] private float searchLostVolume = 0.48f;
+        [SerializeField, Range(0f, 4f)] private float stunnedVolume = 0.7f;
+        [SerializeField, Range(0f, 4f)] private float idleMutterVolume = 0.2f;
         [SerializeField, Min(0f)] private float idleMutterMinimumDelay = 7f;
         [SerializeField, Min(0f)] private float idleMutterMaximumDelay = 15f;
 
         [Header("Breathing And Chase")]
         [SerializeField] private AudioClip breathingLoopClip;
         [SerializeField] private AudioClip chaseLoopClip;
-        [SerializeField, Range(0f, 1f)] private float idleBreathingVolume = 0.08f;
-        [SerializeField, Range(0f, 1f)] private float alertedBreathingVolume = 0.18f;
-        [SerializeField, Range(0f, 1f)] private float chaseBreathingVolume = 0.34f;
-        [SerializeField, Range(0f, 1f)] private float chaseLoopVolume = 0.45f;
-        [SerializeField, Range(0f, 1f)] private float searchLoopVolume = 0.16f;
+        [SerializeField, Range(0f, 4f)] private float idleBreathingVolume = 0.08f;
+        [SerializeField, Range(0f, 4f)] private float alertedBreathingVolume = 0.18f;
+        [SerializeField, Range(0f, 4f)] private float chaseBreathingVolume = 0.34f;
+        [SerializeField, Range(0f, 4f)] private float chaseLoopVolume = 0.45f;
+        [SerializeField, Range(0f, 4f)] private float searchLoopVolume = 0.16f;
         [SerializeField, Min(0f)] private float loopFadeSharpness = 8f;
 
         [Header("3D Audio")]
@@ -84,7 +84,7 @@ namespace Neighbor.Main.Features.Neighbor
         [Header("Occlusion")]
         [SerializeField] private bool enableOcclusion = true;
         [SerializeField] private LayerMask occlusionMask = ~0;
-        [SerializeField, Range(0f, 1f)] private float occludedVolumeMultiplier = 0.56f;
+        [SerializeField, Range(0f, 4f)] private float occludedVolumeMultiplier = 0.56f;
         [SerializeField, Min(10f)] private float clearLowPassCutoff = 22000f;
         [SerializeField, Min(10f)] private float occludedLowPassCutoff = 1600f;
         [SerializeField, Min(0.02f)] private float occlusionRefreshInterval = 0.12f;

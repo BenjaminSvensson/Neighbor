@@ -227,7 +227,7 @@ Transform:
   m_GameObject: {fileID: 1397502244091283624}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.2, z: 0.75}
+  m_LocalPosition: {x: 0, y: -0.2, z: 0.9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -258,7 +258,7 @@ Transform:
   m_GameObject: {fileID: 2644579594360408535}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.35, z: 0.9}
+  m_LocalPosition: {x: 0, y: -0.35, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -404,8 +404,8 @@ GameObject:
   - component: {fileID: 1327355640084703705}
   - component: {fileID: 2801324474213207061}
   - component: {fileID: 2098546478872310776}
-  - component: {fileID: 144846750235035850}
   - component: {fileID: 8082241173593974563}
+  - component: {fileID: 144846750235035850}
   m_Layer: 9
   m_Name: Player
   m_TagString: Player
@@ -510,15 +510,18 @@ MonoBehaviour:
   cameraController: {fileID: 6230172472076133448}
   audioAnchor: {fileID: 1327355640084703705}
   oneShotSource: {fileID: 1667288762252372332}
+  footstepLoopSource: {fileID: 0}
   slideLoopSource: {fileID: 824441125532050216}
   zoomLoopSource: {fileID: 83145351128797801}
+  walkFootstepLoop: {fileID: 0}
+  runFootstepLoop: {fileID: 0}
+  crouchFootstepLoop: {fileID: 0}
+  footstepMinimumVolume: 0.2
+  footstepVolume: 0.3
+  footstepLoopFadeSharpness: 12
   walkFootsteps: []
   runFootsteps: []
   crouchFootsteps: []
-  walkStepInterval: 0.48
-  runStepInterval: 0.32
-  crouchStepInterval: 0.62
-  footstepVolume: 0.55
   jumpClips:
   - {fileID: 8300000, guid: e98892ba1fed3054abcbc9fe394a232b, type: 3}
   landingClips:
@@ -548,31 +551,6 @@ MonoBehaviour:
   minDistance: 0.25
   maxDistance: 12
   pitchRandomness: 0.04
---- !u!143 &144846750235035850
-CharacterController:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4793360982295166136}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Height: 2
-  m_Radius: 0.5
-  m_SlopeLimit: 45
-  m_StepOffset: 0.3
-  m_SkinWidth: 0.08
-  m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 1, z: 0}
 --- !u!114 &8082241173593974563
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -605,6 +583,31 @@ MonoBehaviour:
   reinforcementLocationsPerDeath: 2
   reinforcedDoorsPerDeath: 2
   neighborRespawnSightGraceTime: 2.5
+--- !u!143 &144846750235035850
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4793360982295166136}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 2
+  m_Radius: 0.5
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 1, z: 0}
 --- !u!1 &5136887905619727889
 GameObject:
   m_ObjectHideFlags: 0
@@ -975,8 +978,8 @@ MonoBehaviour:
     m_Bits: 1
   m_VolumeTrigger: {fileID: 0}
   m_VolumeFrameworkUpdateModeOption: 2
-  m_RenderPostProcessing: 0
-  m_Antialiasing: 0
+  m_RenderPostProcessing: 1
+  m_Antialiasing: 2
   m_AntialiasingQuality: 2
   m_StopNaN: 0
   m_Dithering: 0
@@ -1018,15 +1021,15 @@ MonoBehaviour:
   pitchLimits: {x: -82, y: 82}
   lookSmoothing: 18
   lockCursorOnStart: 1
-  defaultFieldOfView: 72
+  defaultFieldOfView: 70
   minimumFieldOfView: 33
-  maximumFieldOfView: 72
+  maximumFieldOfView: 70
   zoomScrollSpeed: 5
   zoomDragSpeed: 0.18
   zoomSmoothing: 12
   zoomSnapThreshold: 0.08
   zoomWobbleBoost: 0.55
-  leanDistance: 0.4
+  leanDistance: 0.7
   leanAngle: 12
   leanSmoothing: 20
   idleWobbleAmount: 0.08
@@ -1035,6 +1038,12 @@ MonoBehaviour:
   wobbleFrequency: 1.7
   bobPositionAmount: 0.055
   bobRollAmount: 1.4
+  cameraObstructionMask:
+    serializedVersion: 2
+    m_Bits: 507
+  cameraCollisionRadius: 0.12
+  cameraCollisionSkin: 0.03
+  antiPeekNearClipPlane: 0.08
   jumpTakeoffKick: 0.09
   jumpTakeoffPitch: 1.7
   fallStretchAmount: 0.022
@@ -1193,7 +1202,7 @@ Transform:
   m_GameObject: {fileID: 8887157694786461502}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.55, z: 1.1}
+  m_LocalPosition: {x: 0, y: -0.55, z: 1.2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
