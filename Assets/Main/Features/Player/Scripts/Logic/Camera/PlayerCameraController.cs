@@ -150,10 +150,7 @@ namespace Neighbor.Main.Features.Player
 
             ResolveAnimatedHead();
 
-            Vector3 yawEuler = yawRoot.rotation.eulerAngles;
-            yaw = yawEuler.y;
-            pitch = NormalizeAngle(transform.localEulerAngles.x);
-            smoothedPitch = pitch;
+            SyncLookAnglesFromCurrentView();
 
             defaultFieldOfView = playerCamera.fieldOfView > 1f ? playerCamera.fieldOfView : defaultFieldOfView;
             minimumFieldOfView = Mathf.Min(minimumFieldOfView, defaultFieldOfView);
@@ -363,6 +360,59 @@ namespace Neighbor.Main.Features.Player
             animatedHead = bodyAnimator != null && bodyAnimator.isHuman
                 ? bodyAnimator.GetBoneTransform(HumanBodyBones.Head)
                 : null;
+        }
+
+        private void SyncLookAnglesFromCurrentView()
+        {
+            Quaternion currentWorldRotation = transform.rotation;
+            yaw = ResolveYawFromView(currentWorldRotation);
+            pitch = Mathf.Clamp(ResolvePitchForYaw(currentWorldRotation, yaw), pitchLimits.x, pitchLimits.y);
+            smoothedPitch = pitch;
+        }
+
+        private float ResolveYawFromView(Quaternion currentWorldRotation)
+        {
+            Vector3 forward = currentWorldRotation * Vector3.forward;
+            Vector3 flatForward = Vector3.ProjectOnPlane(forward, Vector3.up);
+            if (flatForward.sqrMagnitude > 0.0001f)
+            {
+                return Quaternion.LookRotation(flatForward.normalized, Vector3.up).eulerAngles.y;
+            }
+
+            if (yawRoot != null)
+            {
+                return yawRoot.rotation.eulerAngles.y;
+            }
+
+            return transform.root.rotation.eulerAngles.y;
+        }
+
+        private float ResolvePitchForYaw(Quaternion currentWorldRotation, float targetYaw)
+        {
+            Quaternion parentRotation = GetPredictedParentRotation(Quaternion.Euler(0f, targetYaw, 0f));
+            Vector3 localForward = Quaternion.Inverse(parentRotation) * (currentWorldRotation * Vector3.forward);
+            if (localForward.sqrMagnitude <= 0.0001f)
+            {
+                return NormalizeAngle(transform.localEulerAngles.x);
+            }
+
+            localForward.Normalize();
+            return NormalizeAngle(Mathf.Atan2(-localForward.y, localForward.z) * Mathf.Rad2Deg);
+        }
+
+        private Quaternion GetPredictedParentRotation(Quaternion targetYawRootRotation)
+        {
+            if (transform.parent == null)
+            {
+                return Quaternion.identity;
+            }
+
+            if (yawRoot != null && transform.parent.IsChildOf(yawRoot))
+            {
+                return targetYawRootRotation * Quaternion.Inverse(yawRoot.rotation) * transform.parent.rotation;
+            }
+
+            return transform.parent.rotation;
         }
 
         private void UpdateCameraPosition(Vector3 proceduralOffset)
@@ -629,9 +679,7 @@ namespace Neighbor.Main.Features.Player
         {
             cinematicLookTarget = null;
             cinematicLookOffset = Vector3.zero;
-            yaw = yawRoot != null ? yawRoot.rotation.eulerAngles.y : transform.root.rotation.eulerAngles.y;
-            pitch = NormalizeAngle(transform.localEulerAngles.x);
-            smoothedPitch = pitch;
+            SyncLookAnglesFromCurrentView();
             smoothedLean = 0f;
             bobTime = 0f;
             impactVerticalOffset = 0f;

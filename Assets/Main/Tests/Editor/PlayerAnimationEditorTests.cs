@@ -180,5 +180,42 @@ namespace Neighbor.Main.Tests
                 Object.DestroyImmediate(root);
             }
         }
+
+        [Test]
+        public void PlayerCamera_StartsFromAuthoredViewDirection()
+        {
+            GameObject root = new("AuthoredPlayerRoot");
+            GameObject head = new("AuthoredPlayerHead");
+            GameObject cameraObject = new("AuthoredCamera");
+
+            try
+            {
+                head.transform.SetParent(root.transform, false);
+                cameraObject.transform.SetParent(head.transform, false);
+
+                root.transform.rotation = Quaternion.Euler(0f, 15f, 0f);
+                cameraObject.transform.localRotation = Quaternion.Euler(-12f, 55f, 0f);
+                Vector3 authoredForward = cameraObject.transform.forward;
+
+                cameraObject.AddComponent<Camera>();
+                PlayerCameraController cameraController = cameraObject.AddComponent<PlayerCameraController>();
+                GameplaySmokeTestReflection.SetField(cameraController, "idleWobbleAmount", 0f);
+                GameplaySmokeTestReflection.SetField(cameraController, "moveWobbleAmount", 0f);
+                GameplaySmokeTestReflection.SetField(cameraController, "runWobbleAmount", 0f);
+                GameplaySmokeTestReflection.SetField(cameraController, "bobPositionAmount", 0f);
+                GameplaySmokeTestReflection.SetField(cameraController, "bobRollAmount", 0f);
+
+                GameplaySmokeTestReflection.InvokeIfPresent(cameraController, "Awake");
+                GameplaySmokeTestReflection.Invoke(cameraController, "UpdateCameraPose", default(PlayerFrameInput));
+
+                Assert.That(Vector3.Angle(authoredForward, cameraObject.transform.forward), Is.LessThan(0.5f));
+            }
+            finally
+            {
+                Object.DestroyImmediate(cameraObject);
+                Object.DestroyImmediate(head);
+                Object.DestroyImmediate(root);
+            }
+        }
     }
 }
