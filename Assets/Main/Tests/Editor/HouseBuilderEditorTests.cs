@@ -380,6 +380,58 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void PulleyElevator_Configures3DAudioSourcesOnPlatform()
+        {
+            GameObject targetObject = Track(new GameObject("Pulley Elevator"));
+            GameObject platformObject = Track(new GameObject("Platform"));
+            platformObject.transform.SetParent(targetObject.transform, false);
+
+            HousePulleyElevatorMotion elevator = targetObject.AddComponent<HousePulleyElevatorMotion>();
+            elevator.Configure(platformObject.transform, Vector3.zero, Vector3.up * 3f, 1.5f, false);
+
+            GameplaySmokeTestReflection.Invoke(elevator, "ResolveAudioSources");
+
+            AudioSource motionLoopSource = GameplaySmokeTestReflection.GetField<AudioSource>(elevator, "motionLoopSource");
+            AudioSource oneShotSource = GameplaySmokeTestReflection.GetField<AudioSource>(elevator, "oneShotSource");
+
+            Assert.That(motionLoopSource, Is.Not.Null);
+            Assert.That(oneShotSource, Is.Not.Null);
+            Assert.That(motionLoopSource, Is.Not.SameAs(oneShotSource));
+            Assert.That(motionLoopSource.transform, Is.EqualTo(platformObject.transform));
+            Assert.That(oneShotSource.transform, Is.EqualTo(platformObject.transform));
+            Assert.That(motionLoopSource.playOnAwake, Is.False);
+            Assert.That(oneShotSource.playOnAwake, Is.False);
+            Assert.That(motionLoopSource.loop, Is.True);
+            Assert.That(oneShotSource.loop, Is.False);
+            Assert.That(motionLoopSource.spatialBlend, Is.EqualTo(1f).Within(0.001f));
+            Assert.That(oneShotSource.rolloffMode, Is.EqualTo(AudioRolloffMode.Logarithmic));
+        }
+
+        [Test]
+        public void PulleyElevator_GeneratesFallbackAudioClips()
+        {
+            GameObject targetObject = Track(new GameObject("Pulley Elevator"));
+            GameObject platformObject = Track(new GameObject("Platform"));
+            platformObject.transform.SetParent(targetObject.transform, false);
+
+            HousePulleyElevatorMotion elevator = targetObject.AddComponent<HousePulleyElevatorMotion>();
+            elevator.Configure(platformObject.transform, Vector3.zero, Vector3.up * 3f, 1.5f, false);
+
+            AudioClip start = Track(GameplaySmokeTestReflection.InvokeResult<AudioClip>(elevator, "GetStartClip"));
+            AudioClip loop = Track(GameplaySmokeTestReflection.InvokeResult<AudioClip>(elevator, "GetMotionLoopClip"));
+            AudioClip arrive = Track(GameplaySmokeTestReflection.InvokeResult<AudioClip>(elevator, "GetArriveClip"));
+            AudioClip interrupt = Track(GameplaySmokeTestReflection.InvokeResult<AudioClip>(elevator, "GetInterruptClip"));
+
+            Assert.That(start, Is.Not.Null);
+            Assert.That(loop, Is.Not.Null);
+            Assert.That(arrive, Is.Not.Null);
+            Assert.That(interrupt, Is.Not.Null);
+            Assert.That(loop.samples, Is.GreaterThan(start.samples));
+            Assert.That(loop.channels, Is.EqualTo(1));
+            Assert.That(loop.frequency, Is.EqualTo(22050));
+        }
+
+        [Test]
         public void Wiring_DoorbellEmitsPulseSignalWhenPressed()
         {
             GameObject doorbellObject = Track(new GameObject("Button"));
