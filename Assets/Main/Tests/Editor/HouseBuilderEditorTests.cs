@@ -3,6 +3,7 @@ using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.HouseBuilder;
 using Neighbor.Main.HouseBuilder.Editor;
 using Neighbor.Main.Features.Neighbor;
+using Neighbor.Main.Features.Player;
 using NUnit.Framework;
 using Unity.AI.Navigation;
 using UnityEditor;
@@ -316,6 +317,34 @@ namespace Neighbor.Main.Tests
 
             Assert.That(elevator.IsRaised, Is.True);
             Assert.That(platformObject.transform.localPosition.y, Is.EqualTo(2f).Within(0.001f));
+        }
+
+        [Test]
+        public void PulleyElevator_CarriesPlayerWhenPlatformMoves()
+        {
+            GameObject targetObject = Track(new GameObject("Pulley Elevator"));
+            BoxCollider trigger = targetObject.AddComponent<BoxCollider>();
+            trigger.isTrigger = true;
+            trigger.size = new Vector3(3f, 4f, 3f);
+            trigger.center = new Vector3(0f, 2f, 0f);
+
+            GameObject platformObject = Track(new GameObject("Platform"));
+            platformObject.transform.SetParent(targetObject.transform, false);
+
+            HousePulleyElevatorMotion elevator = targetObject.AddComponent<HousePulleyElevatorMotion>();
+            elevator.Configure(platformObject.transform, Vector3.zero, Vector3.up, 0.01f, false);
+
+            GameObject playerObject = Track(new GameObject("Player"));
+            playerObject.transform.position = Vector3.up;
+            CharacterController characterController = playerObject.AddComponent<CharacterController>();
+            PlayerController player = playerObject.AddComponent<PlayerController>();
+
+            GameplaySmokeTestReflection.Invoke(elevator, "OnTriggerEnter", characterController);
+            GameplaySmokeTestReflection.SetField(elevator, "targetProgress", 1f);
+            GameplaySmokeTestReflection.Invoke(elevator, "AdvanceMotion", 0.01f);
+
+            Assert.That(platformObject.transform.localPosition.y, Is.EqualTo(1f).Within(0.001f));
+            Assert.That(player.transform.position.y, Is.EqualTo(2f).Within(0.001f));
         }
 
         [Test]

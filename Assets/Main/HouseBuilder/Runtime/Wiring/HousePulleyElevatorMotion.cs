@@ -1,7 +1,10 @@
+using System.Collections.Generic;
+using Neighbor.Main.Features.Player;
 using UnityEngine;
 
 namespace Neighbor.Main.HouseBuilder
 {
+    [DefaultExecutionOrder(100)]
     [DisallowMultipleComponent]
     [RequireComponent(typeof(HouseWireEndpoint))]
     [RequireComponent(typeof(HouseWireInputRelay))]
@@ -17,7 +20,10 @@ namespace Neighbor.Main.HouseBuilder
         [SerializeField] private Vector3 raisedLocalOffset = new(0f, 3f, 0f);
         [SerializeField, Min(0.01f)] private float travelDuration = 1.5f;
         [SerializeField] private bool startsRaised;
+        [SerializeField] private bool carryPlayersInTrigger = true;
 
+        private readonly Dictionary<PlayerController, CharacterController> carriedPlayers = new();
+        private readonly List<PlayerController> staleCarriedPlayers = new();
         private float progress;
         private float targetProgress;
         private bool initialized;
@@ -86,13 +92,19 @@ namespace Neighbor.Main.HouseBuilder
 
         private void Update()
         {
+            AdvanceMotion(Time.deltaTime);
+        }
+
+        private void AdvanceMotion(float deltaTime)
+        {
             if (platform == null || Mathf.Approximately(progress, targetProgress))
             {
                 return;
             }
 
-            progress = Mathf.MoveTowards(progress, targetProgress, Time.deltaTime / Mathf.Max(0.01f, travelDuration));
-            ApplyPlatformPosition();
+            progress = Mathf.MoveTowards(progress, targetProgress, deltaTime / Mathf.Max(0.01f, travelDuration));
+            Vector3 motionDelta = ApplyPlatformPosition();
+            CarryPlayers(motionDelta);
         }
 
         private void Reset()
@@ -143,14 +155,78 @@ namespace Neighbor.Main.HouseBuilder
             platform = candidate != null ? candidate : transform;
         }
 
-        private void ApplyPlatformPosition()
+        private Vector3 ApplyPlatformPosition()
         {
             if (platform == null)
+            {
+                return Vector3.zero;
+            }
+
+            Vector3 previousPosition = platform.position;
+            platform.localPosition = loweredLocalPosition + raisedLocalOffset * Mathf.Clamp01(progress);
+            return platform.position - previousPosition;
+        }
+
+        private void OnTriggerEnter(Collider other)
+        {
+            if (!carryPlayersInTrigger)
             {
                 return;
             }
 
-            platform.localPosition = loweredLocalPosition + raisedLocalOffset * Mathf.Clamp01(progress);
+            PlayerController player = other != null ? other.GetComponentInParent<PlayerController>() : null;
+            if (player == null || carriedPlayers.ContainsKey(player))
+            {
+                return;
+            }
+
+            CharacterController controller = player.GetComponent<CharacterController>();
+            if (controller != null)
+            {
+                carriedPlayers.Add(player, controller);
+            }
+        }
+
+        private void OnTriggerExit(Collider other)
+        {
+            PlayerController player = other != null ? other.GetComponentInParent<PlayerController>() : null;
+            if (player != null)
+            {
+                carriedPlayers.Remove(player);
+            }
+        }
+
+        private void OnDisable()
+        {
+            carriedPlayers.Clear();
+            staleCarriedPlayers.Clear();
+        }
+
+        private void CarryPlayers(Vector3 motionDelta)
+        {
+            if (!carryPlayersInTrigger || motionDelta.sqrMagnitude <= 0f || carriedPlayers.Count == 0)
+            {
+                return;
+            }
+
+            staleCarriedPlayers.Clear();
+            foreach (KeyValuePair<PlayerController, CharacterController> entry in carriedPlayers)
+            {
+                PlayerController player = entry.Key;
+                CharacterController controller = entry.Value;
+                if (player == null || controller == null || !player.isActiveAndEnabled || !controller.enabled)
+                {
+                    staleCarriedPlayers.Add(player);
+                    continue;
+                }
+
+                controller.Move(motionDelta);
+            }
+
+            for (int i = 0; i < staleCarriedPlayers.Count; i++)
+            {
+                carriedPlayers.Remove(staleCarriedPlayers[i]);
+            }
         }
 
         private void EnsureWiringPort()
