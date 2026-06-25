@@ -58388,23 +58388,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1357196244085932726, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.9713457
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1357196244085932726, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.23767099
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1357196244085932726, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -3.5089423e-10
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1357196244085932726, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.0000000018292965
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1357196244085932726, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: -27.498
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2801324474213207061, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: ledgeMaximumHeight
