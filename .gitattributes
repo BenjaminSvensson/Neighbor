@@ -168,4 +168,8 @@ Packages/packages-lock.json linguist-generated
 *.skel.bytes            lfs
 
 # Exceptions for .asset files such as lightning pre-baking
+[attr]unity-binary       -text -diff -merge -eol
+"Assets/New Terrain*.asset" unity-binary
+Assets/Main/Art/Terrain/Data/*.asset unity-binary
+Assets/**/NavMesh*.asset unity-binary
 LightingData.asset     binary
