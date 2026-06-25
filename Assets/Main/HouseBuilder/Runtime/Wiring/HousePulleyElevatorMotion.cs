@@ -14,6 +14,8 @@ namespace Neighbor.Main.HouseBuilder
         private const string ActivatePortId = "activate";
         private const string DefaultPlatformName = "Platform";
         private const string AlternatePlatformName = "Elevator Platform";
+        private const float ProgressSnapEpsilon = 0.0001f;
+        private const float MotionEpsilon = 0.00001f;
 
         [SerializeField] private Transform platform;
         [SerializeField] private Vector3 loweredLocalPosition;
@@ -24,6 +26,8 @@ namespace Neighbor.Main.HouseBuilder
 
         private readonly Dictionary<PlayerController, CharacterController> carriedPlayers = new();
         private readonly List<PlayerController> staleCarriedPlayers = new();
+        private readonly Collider[] riderOverlapHits = new Collider[16];
+        private BoxCollider riderTrigger;
         private float progress;
         private float targetProgress;
         private bool initialized;
@@ -90,7 +94,7 @@ namespace Neighbor.Main.HouseBuilder
             InitializeState();
         }
 
-        private void Update()
+        private void LateUpdate()
         {
             AdvanceMotion(Time.deltaTime);
         }
@@ -102,7 +106,21 @@ namespace Neighbor.Main.HouseBuilder
                 return;
             }
 
-            progress = Mathf.MoveTowards(progress, targetProgress, deltaTime / Mathf.Max(0.01f, travelDuration));
+            float nextProgress = Mathf.MoveTowards(
+                progress,
+                targetProgress,
+                Mathf.Max(0f, deltaTime) / Mathf.Max(0.01f, travelDuration));
+            if (Mathf.Abs(nextProgress - targetProgress) <= ProgressSnapEpsilon)
+            {
+                nextProgress = targetProgress;
+            }
+
+            if (Mathf.Abs(nextProgress - progress) <= ProgressSnapEpsilon && !Mathf.Approximately(nextProgress, targetProgress))
+            {
+                return;
+            }
+
+            progress = nextProgress;
             Vector3 motionDelta = ApplyPlatformPosition();
             CarryPlayers(motionDelta);
         }
@@ -169,6 +187,78 @@ namespace Neighbor.Main.HouseBuilder
 
         private void OnTriggerEnter(Collider other)
         {
+            AddPotentialRider(other);
+        }
+
+        private void OnTriggerExit(Collider other)
+        {
+            PlayerController player = other != null ? other.GetComponentInParent<PlayerController>() : null;
+            if (player == null)
+            {
+                return;
+            }
+
+            CharacterController controller = carriedPlayers.TryGetValue(player, out CharacterController trackedController)
+                ? trackedController
+                : player.GetComponent<CharacterController>();
+            if (!IsPlayerInsideMovingRideVolume(player, controller))
+            {
+                carriedPlayers.Remove(player);
+            }
+        }
+
+        private void OnDisable()
+        {
+            carriedPlayers.Clear();
+            staleCarriedPlayers.Clear();
+        }
+
+        private void CarryPlayers(Vector3 motionDelta)
+        {
+            if (!carryPlayersInTrigger || motionDelta.sqrMagnitude <= MotionEpsilon * MotionEpsilon)
+            {
+                return;
+            }
+
+            RefreshRidersInsideMovingVolume();
+            if (carriedPlayers.Count == 0)
+            {
+                return;
+            }
+
+            staleCarriedPlayers.Clear();
+            bool movedAnyPlayer = false;
+            foreach (KeyValuePair<PlayerController, CharacterController> entry in carriedPlayers)
+            {
+                PlayerController player = entry.Key;
+                CharacterController controller = entry.Value;
+                if (player == null
+                    || controller == null
+                    || !player.isActiveAndEnabled
+                    || !controller.enabled
+                    || !IsPlayerInsideMovingRideVolume(player, controller))
+                {
+                    staleCarriedPlayers.Add(player);
+                    continue;
+                }
+
+                player.ApplyExternalDisplacement(motionDelta);
+                movedAnyPlayer = true;
+            }
+
+            if (movedAnyPlayer)
+            {
+                Physics.SyncTransforms();
+            }
+
+            for (int i = 0; i < staleCarriedPlayers.Count; i++)
+            {
+                carriedPlayers.Remove(staleCarriedPlayers[i]);
+            }
+        }
+
+        private void AddPotentialRider(Collider other)
+        {
             if (!carryPlayersInTrigger)
             {
                 return;
@@ -187,45 +277,79 @@ namespace Neighbor.Main.HouseBuilder
             }
         }
 
-        private void OnTriggerExit(Collider other)
+        private void RefreshRidersInsideMovingVolume()
         {
-            PlayerController player = other != null ? other.GetComponentInParent<PlayerController>() : null;
-            if (player != null)
-            {
-                carriedPlayers.Remove(player);
-            }
-        }
-
-        private void OnDisable()
-        {
-            carriedPlayers.Clear();
-            staleCarriedPlayers.Clear();
-        }
-
-        private void CarryPlayers(Vector3 motionDelta)
-        {
-            if (!carryPlayersInTrigger || motionDelta.sqrMagnitude <= 0f || carriedPlayers.Count == 0)
+            if (!TryGetMovingRideBounds(out Bounds rideBounds))
             {
                 return;
             }
 
-            staleCarriedPlayers.Clear();
-            foreach (KeyValuePair<PlayerController, CharacterController> entry in carriedPlayers)
-            {
-                PlayerController player = entry.Key;
-                CharacterController controller = entry.Value;
-                if (player == null || controller == null || !player.isActiveAndEnabled || !controller.enabled)
-                {
-                    staleCarriedPlayers.Add(player);
-                    continue;
-                }
+            Physics.SyncTransforms();
+            int hitCount = Physics.OverlapBoxNonAlloc(
+                rideBounds.center,
+                rideBounds.extents,
+                riderOverlapHits,
+                Quaternion.identity,
+                ~0,
+                QueryTriggerInteraction.Collide);
 
-                controller.Move(motionDelta);
+            for (int i = 0; i < hitCount; i++)
+            {
+                AddPotentialRider(riderOverlapHits[i]);
+                riderOverlapHits[i] = null;
+            }
+        }
+
+        private bool IsPlayerInsideMovingRideVolume(PlayerController player, CharacterController controller)
+        {
+            if (!TryGetMovingRideBounds(out Bounds rideBounds))
+            {
+                return true;
             }
 
-            for (int i = 0; i < staleCarriedPlayers.Count; i++)
+            Bounds playerBounds = controller != null
+                ? controller.bounds
+                : new Bounds(player != null ? player.transform.position : Vector3.zero, Vector3.one * 0.5f);
+            rideBounds.Expand(Mathf.Max(0.05f, controller != null ? controller.skinWidth * 2f : 0.05f));
+            return rideBounds.Intersects(playerBounds);
+        }
+
+        private bool TryGetMovingRideBounds(out Bounds rideBounds)
+        {
+            ResolveRiderTrigger();
+            if (riderTrigger == null || platform == null)
             {
-                carriedPlayers.Remove(staleCarriedPlayers[i]);
+                rideBounds = default;
+                return false;
+            }
+
+            rideBounds = riderTrigger.bounds;
+            rideBounds.center += platform.position - GetLoweredPlatformWorldPosition();
+            return true;
+        }
+
+        private Vector3 GetLoweredPlatformWorldPosition()
+        {
+            return platform != null && platform.parent != null
+                ? platform.parent.TransformPoint(loweredLocalPosition)
+                : loweredLocalPosition;
+        }
+
+        private void ResolveRiderTrigger()
+        {
+            if (riderTrigger != null)
+            {
+                return;
+            }
+
+            BoxCollider[] boxColliders = GetComponents<BoxCollider>();
+            for (int i = 0; i < boxColliders.Length; i++)
+            {
+                if (boxColliders[i] != null && boxColliders[i].isTrigger)
+                {
+                    riderTrigger = boxColliders[i];
+                    return;
+                }
             }
         }
 

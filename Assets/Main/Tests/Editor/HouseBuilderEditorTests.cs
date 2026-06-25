@@ -348,6 +348,38 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void PulleyElevator_KeepsCarryingPlayerAfterStaticTriggerExit()
+        {
+            GameObject targetObject = Track(new GameObject("Pulley Elevator"));
+            BoxCollider trigger = targetObject.AddComponent<BoxCollider>();
+            trigger.isTrigger = true;
+            trigger.size = new Vector3(3f, 3.4f, 3f);
+            trigger.center = new Vector3(0f, 1.7f, 0f);
+
+            GameObject platformObject = Track(new GameObject("Platform"));
+            platformObject.transform.SetParent(targetObject.transform, false);
+
+            HousePulleyElevatorMotion elevator = targetObject.AddComponent<HousePulleyElevatorMotion>();
+            elevator.Configure(platformObject.transform, Vector3.up * 0.15f, Vector3.up * 3f, 0.01f, false);
+
+            GameObject playerObject = Track(new GameObject("Player"));
+            playerObject.transform.position = Vector3.up;
+            CharacterController characterController = playerObject.AddComponent<CharacterController>();
+            PlayerController player = playerObject.AddComponent<PlayerController>();
+
+            GameplaySmokeTestReflection.Invoke(elevator, "OnTriggerEnter", characterController);
+            GameplaySmokeTestReflection.SetField(elevator, "targetProgress", 1f);
+            GameplaySmokeTestReflection.Invoke(elevator, "AdvanceMotion", 0.01f);
+
+            GameplaySmokeTestReflection.Invoke(elevator, "OnTriggerExit", characterController);
+            GameplaySmokeTestReflection.SetField(elevator, "targetProgress", 0f);
+            GameplaySmokeTestReflection.Invoke(elevator, "AdvanceMotion", 0.01f);
+
+            Assert.That(platformObject.transform.localPosition.y, Is.EqualTo(0.15f).Within(0.001f));
+            Assert.That(player.transform.position.y, Is.EqualTo(1f).Within(0.001f));
+        }
+
+        [Test]
         public void Wiring_DoorbellEmitsPulseSignalWhenPressed()
         {
             GameObject doorbellObject = Track(new GameObject("Button"));

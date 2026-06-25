@@ -200,6 +200,26 @@ namespace Neighbor.Main.Features.Player
             LastInput = default;
         }
 
+        public void ApplyExternalDisplacement(Vector3 displacement)
+        {
+            if (displacement.sqrMagnitude <= 0.00000001f)
+            {
+                return;
+            }
+
+            transform.position += displacement;
+            if (displacement.y >= -0.001f)
+            {
+                IsGrounded = true;
+                lastGroundedTime = Time.time;
+                airborneTimer = 0f;
+                if (verticalVelocity < groundedStickForce)
+                {
+                    verticalVelocity = groundedStickForce;
+                }
+            }
+        }
+
         public void ClampDownwardVelocity(float maximumFallSpeed)
         {
             if (maximumFallSpeed <= 0f || IsGrounded || verticalVelocity >= 0f)
