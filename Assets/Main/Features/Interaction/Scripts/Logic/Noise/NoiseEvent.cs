@@ -42,7 +42,10 @@ namespace Neighbor.Main.Features.Interaction
                 : sourceObject != null && sourceObject.GetComponentInParent<NeighborBrain>() != null
                     ? sourceObject
                     : null;
-            Destroy(gameObject, Mathf.Max(0f, lifetime));
+            if (Application.isPlaying)
+            {
+                Destroy(gameObject, Mathf.Max(0f, lifetime));
+            }
 
             if (noiseTrigger == null)
             {

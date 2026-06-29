@@ -16,7 +16,8 @@ namespace Neighbor.Main.HouseBuilder
 
         public string EndpointId => endpointId;
         public IReadOnlyList<HouseWirePortDefinition> Ports => ports;
-        public HouseBuilderObject Owner => GetComponentInParent<HouseBuilderObject>();
+        public HouseBuilderObject Owner => GetComponent<HouseBuilderObject>()
+            ?? GetComponentInParent<HouseBuilderObject>();
 
         public HouseWirePortDefinition AddPort(
             string displayName,

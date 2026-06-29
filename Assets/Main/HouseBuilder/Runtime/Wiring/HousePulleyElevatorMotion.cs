@@ -360,15 +360,7 @@ namespace Neighbor.Main.HouseBuilder
             }
 
             rideBounds = riderTrigger.bounds;
-            rideBounds.center += platform.position - GetLoweredPlatformWorldPosition();
             return true;
-        }
-
-        private Vector3 GetLoweredPlatformWorldPosition()
-        {
-            return platform != null && platform.parent != null
-                ? platform.parent.TransformPoint(loweredLocalPosition)
-                : loweredLocalPosition;
         }
 
         private void ResolveRiderTrigger()
