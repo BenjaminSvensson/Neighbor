@@ -127,6 +127,66 @@ namespace Neighbor.Main.EditorTools
             return changedCount;
         }
 
+        public static void RepairDoorVisualHingesFromCommandLine()
+        {
+            int repairCount = RepairDoorVisualHinges(true);
+            Debug.Log($"Door visual hinge repair finished for {repairCount} prefab(s).");
+            EditorApplication.Exit(0);
+        }
+
+        public static int RepairDoorVisualHinges(bool logProgress = false)
+        {
+            string[] doorPrefabPaths =
+            {
+                "Assets/Main/Features/Interaction/Items/Doors/Prefabs/Door.prefab",
+                "Assets/Main/Features/Interaction/Items/Doors/Prefabs/LatchedDoorPlaceholder.prefab",
+                "Assets/Main/Features/Interaction/Items/Doors/Prefabs/LockedDoor.prefab"
+            };
+
+            int repairCount = 0;
+            foreach (string prefabPath in doorPrefabPaths)
+            {
+                GameObject root = PrefabUtility.LoadPrefabContents(prefabPath);
+                if (root == null)
+                {
+                    Debug.LogError($"{prefabPath}: failed to load prefab contents.");
+                    continue;
+                }
+
+                try
+                {
+                    Transform movingLeaf = ResolveMovingDoorLeaf(root);
+                    Transform visualRoot = root.transform.Find(VisualRootName);
+                    if (movingLeaf != null && visualRoot != null && visualRoot.parent != movingLeaf)
+                    {
+                        visualRoot.SetParent(movingLeaf, true);
+                    }
+
+                    SetObjectReference(root, "hinge", movingLeaf);
+                    PrefabUtility.SaveAsPrefabAsset(root, prefabPath, out bool savedSuccessfully);
+                    if (!savedSuccessfully)
+                    {
+                        Debug.LogError($"{prefabPath}: failed to save door hinge repair.");
+                        continue;
+                    }
+
+                    repairCount++;
+                    if (logProgress)
+                    {
+                        Debug.Log($"{prefabPath}: visual root follows moving door leaf.");
+                    }
+                }
+                finally
+                {
+                    PrefabUtility.UnloadPrefabContents(root);
+                }
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            return repairCount;
+        }
+
         private static Transform ResetVisualRoot(GameObject root)
         {
             Transform existing = root.transform.Find(VisualRootName);
@@ -419,21 +479,24 @@ namespace Neighbor.Main.EditorTools
 
         private static void BuildDoor(GameObject root, Transform visualRoot)
         {
-            Transform hinge = BuildDoorShared(visualRoot, false, false);
+            BuildDoorShared(visualRoot, false, false);
+            Transform hinge = AttachDoorVisualToMovingLeaf(root, visualRoot);
             SetObjectReference(root, "hinge", hinge);
         }
 
         private static void BuildLatchedDoor(GameObject root, Transform visualRoot)
         {
-            Transform hinge = BuildDoorShared(visualRoot, true, false);
+            BuildDoorShared(visualRoot, true, false);
             Transform latch = visualRoot.Find("LatchHandle_Final");
+            Transform hinge = AttachDoorVisualToMovingLeaf(root, visualRoot);
             SetObjectReference(root, "hinge", hinge);
             SetObjectReference(root, "latchVisual", latch);
         }
 
         private static void BuildLockedDoor(GameObject root, Transform visualRoot)
         {
-            Transform hinge = BuildDoorShared(visualRoot, true, true);
+            BuildDoorShared(visualRoot, true, true);
+            Transform hinge = AttachDoorVisualToMovingLeaf(root, visualRoot);
             SetObjectReference(root, "hinge", hinge);
         }
 
@@ -464,6 +527,36 @@ namespace Neighbor.Main.EditorTools
             }
 
             return hinge;
+        }
+
+        private static Transform AttachDoorVisualToMovingLeaf(GameObject root, Transform visualRoot)
+        {
+            Transform movingLeaf = ResolveMovingDoorLeaf(root);
+            if (movingLeaf != null && visualRoot.parent != movingLeaf)
+            {
+                visualRoot.SetParent(movingLeaf, true);
+            }
+
+            return movingLeaf;
+        }
+
+        private static Transform ResolveMovingDoorLeaf(GameObject root)
+        {
+            Transform doorPanel = root.transform.Find("DoorPanel");
+            if (doorPanel != null)
+            {
+                return doorPanel;
+            }
+
+            foreach (BoxCollider boxCollider in root.GetComponentsInChildren<BoxCollider>(true))
+            {
+                if (boxCollider != null && boxCollider.transform != root.transform)
+                {
+                    return boxCollider.transform;
+                }
+            }
+
+            return root.transform;
         }
 
         private static void BuildDoorFrame(GameObject root, Transform visualRoot)

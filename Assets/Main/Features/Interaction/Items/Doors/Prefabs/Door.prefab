@@ -32,7 +32,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 100011}
-  - {fileID: 5855054903973271548}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &100002
@@ -47,7 +46,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 27b51bca08024f61a78851c7d4db41cf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hinge: {fileID: 5640861263636087669}
+  hinge: {fileID: 100011}
   pivotOffset: {x: -0.6, y: 0, z: 0}
   openAngle: 95
   openCloseDuration: 0.28
@@ -221,7 +220,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 1.1, z: 0}
   m_LocalScale: {x: 1.3, y: 2.8, z: 0.12999998}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 5855054903973271548}
   m_Father: {fileID: 100001}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &100012
@@ -957,8 +957,8 @@ Transform:
   m_GameObject: {fileID: 7768147896849520008}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalPosition: {x: -0.011538462, y: -0.48142856, z: 0.23846155}
+  m_LocalScale: {x: 0.9048297, y: 0.46554372, z: 9.048298}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 4002552050792618328}
@@ -971,7 +971,7 @@ Transform:
   - {fileID: 6468228292579767616}
   - {fileID: 2324432447118243717}
   - {fileID: 6964542523387227017}
-  m_Father: {fileID: 100001}
+  m_Father: {fileID: 100011}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8048992228034808283
 GameObject:
