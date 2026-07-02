@@ -1,30 +1,39 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
 
 internal static class TerrainGrassInstaller
 {
-    private const string MenuRoot = "Tools/Neighbor/Terrain Grass/";
+    private const string MenuRoot = "Tools/Neighbor/Terrain/";
     private const string GrassFolder = "Assets/Main/Art/Terrain/Grass";
     private const string GrassTexturePath = GrassFolder + "/NeighborGrass.png";
+    private const string GrassLayerPath = "Assets/Main/Art/Terrain/Layers/Grass005.terrainlayer";
+    private const string DirtLayerPath = "Assets/Main/Art/Terrain/Layers/Ground048.terrainlayer";
     private const int TextureSize = 256;
 
     [InitializeOnLoadMethod]
     private static void ScheduleGrassAssetCreation()
     {
-        EditorApplication.delayCall += EnsureGrassAsset;
+        EditorApplication.delayCall += EnsureTerrainAssets;
     }
 
-    [MenuItem(MenuRoot + "Create or Refresh Grass Texture")]
+    [MenuItem(MenuRoot + "Create or Refresh Grass Detail Texture")]
     private static void CreateOrRefreshGrassTexture()
     {
         GenerateGrassTexture();
         Debug.Log($"Created terrain grass texture at '{GrassTexturePath}'.");
     }
 
-    [MenuItem(MenuRoot + "Add Grass to Selected Terrain")]
+    [MenuItem(MenuRoot + "Install Grass and Dirt Layers")]
+    private static void InstallGrassAndDirtLayers()
+    {
+        EnsureTerrainAssets();
+    }
+
+    [MenuItem(MenuRoot + "Add Grass Detail to Selected Terrain")]
     private static void AddGrassToSelectedTerrain()
     {
         Terrain terrain = GetSelectedTerrain();
@@ -43,37 +52,10 @@ internal static class TerrainGrassInstaller
         }
 
         TerrainData terrainData = terrain.terrainData;
-        DetailPrototype[] prototypes = terrainData.detailPrototypes;
-        for (int i = 0; i < prototypes.Length; i++)
-        {
-            if (prototypes[i].prototypeTexture == grassTexture)
-            {
-                Debug.Log($"'{terrain.name}' already contains Neighbor Grass as detail layer {i}.", terrain);
-                return;
-            }
-        }
-
         Undo.RegisterCompleteObjectUndo(terrainData, "Add Neighbor Grass");
 
-        DetailPrototype grass = new DetailPrototype
-        {
-            prototypeTexture = grassTexture,
-            minWidth = 0.55f,
-            maxWidth = 0.95f,
-            minHeight = 0.7f,
-            maxHeight = 1.25f,
-            noiseSeed = 47321,
-            noiseSpread = 0.18f,
-            healthyColor = new Color(0.82f, 1f, 0.78f, 1f),
-            dryColor = new Color(1f, 0.84f, 0.58f, 1f),
-            renderMode = DetailRenderMode.GrassBillboard,
-            usePrototypeMesh = false,
-            useInstancing = false
-        };
-
-        Array.Resize(ref prototypes, prototypes.Length + 1);
-        prototypes[prototypes.Length - 1] = grass;
-        terrainData.detailPrototypes = prototypes;
+        int detailIndex = EnsureGrassDetailPrototype(terrainData, grassTexture, out _);
+        SeedGrassDetailLayerIfEmpty(terrainData, detailIndex);
         terrain.detailObjectDistance = Mathf.Max(terrain.detailObjectDistance, 90f);
         terrain.detailObjectDensity = Mathf.Max(terrain.detailObjectDensity, 0.8f);
 
@@ -86,7 +68,7 @@ internal static class TerrainGrassInstaller
             terrain);
     }
 
-    [MenuItem(MenuRoot + "Add Grass to Selected Terrain", true)]
+    [MenuItem(MenuRoot + "Add Grass Detail to Selected Terrain", true)]
     private static bool CanAddGrassToSelectedTerrain()
     {
         return GetSelectedTerrain() != null;
@@ -94,8 +76,17 @@ internal static class TerrainGrassInstaller
 
     public static void GenerateFromCommandLine()
     {
-        GenerateGrassTexture();
+        EnsureTerrainAssets();
         EditorApplication.Exit(0);
+    }
+
+    private static void EnsureTerrainAssets()
+    {
+        EnsureGrassAsset();
+        EnsureTerrainLayerSettings();
+        InstallTerrainLayersOnAllTerrainData();
+        InstallGrassDetailsOnAllTerrainData();
+        AssetDatabase.SaveAssets();
     }
 
     private static Terrain GetSelectedTerrain()
@@ -110,6 +101,274 @@ internal static class TerrainGrassInstaller
     {
         if (AssetDatabase.LoadAssetAtPath<Texture2D>(GrassTexturePath) == null)
             GenerateGrassTexture();
+    }
+
+    private static void EnsureTerrainLayerSettings()
+    {
+        ConfigureTerrainLayer(
+            DirtLayerPath,
+            tileSize: new Vector2(5f, 5f),
+            normalScale: 0.75f,
+            smoothness: 0.16f);
+
+        ConfigureTerrainLayer(
+            GrassLayerPath,
+            tileSize: new Vector2(4f, 4f),
+            normalScale: 0.65f,
+            smoothness: 0.08f);
+    }
+
+    private static void ConfigureTerrainLayer(
+        string layerPath,
+        Vector2 tileSize,
+        float normalScale,
+        float smoothness)
+    {
+        TerrainLayer layer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(layerPath);
+        if (layer == null)
+        {
+            Debug.LogError($"Could not load terrain layer at '{layerPath}'.");
+            return;
+        }
+
+        bool changed = false;
+        if (layer.tileSize != tileSize)
+        {
+            layer.tileSize = tileSize;
+            changed = true;
+        }
+
+        if (layer.tileOffset != Vector2.zero)
+        {
+            layer.tileOffset = Vector2.zero;
+            changed = true;
+        }
+
+        if (layer.specular != Color.black)
+        {
+            layer.specular = Color.black;
+            changed = true;
+        }
+
+        if (!Mathf.Approximately(layer.metallic, 0f))
+        {
+            layer.metallic = 0f;
+            changed = true;
+        }
+
+        if (!Mathf.Approximately(layer.smoothness, smoothness))
+        {
+            layer.smoothness = smoothness;
+            changed = true;
+        }
+
+        if (!Mathf.Approximately(layer.normalScale, normalScale))
+        {
+            layer.normalScale = normalScale;
+            changed = true;
+        }
+
+        if (!changed)
+            return;
+
+        EditorUtility.SetDirty(layer);
+    }
+
+    private static void InstallTerrainLayersOnAllTerrainData()
+    {
+        TerrainLayer grassLayer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(GrassLayerPath);
+        TerrainLayer dirtLayer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(DirtLayerPath);
+        if (grassLayer == null || dirtLayer == null)
+        {
+            Debug.LogError("Could not install terrain layers because grass or dirt layer assets are missing.");
+            return;
+        }
+
+        string[] terrainDataGuids = AssetDatabase.FindAssets("t:TerrainData", new[] { "Assets" });
+        int changedCount = 0;
+        foreach (string terrainDataGuid in terrainDataGuids)
+        {
+            string terrainDataPath = AssetDatabase.GUIDToAssetPath(terrainDataGuid);
+            TerrainData terrainData = AssetDatabase.LoadAssetAtPath<TerrainData>(terrainDataPath);
+            if (terrainData == null)
+                continue;
+
+            TerrainLayer[] updatedLayers = BuildTerrainLayerSet(terrainData.terrainLayers, dirtLayer, grassLayer);
+            if (LayersMatch(terrainData.terrainLayers, updatedLayers))
+                continue;
+
+            terrainData.terrainLayers = updatedLayers;
+            EditorUtility.SetDirty(terrainData);
+            changedCount++;
+            Debug.Log($"Installed grass and dirt terrain layers on '{terrainDataPath}'.");
+        }
+
+        if (changedCount > 0)
+            Debug.Log($"Installed grass and dirt terrain layers on {changedCount} TerrainData asset(s).");
+    }
+
+    private static void InstallGrassDetailsOnAllTerrainData()
+    {
+        Texture2D grassTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(GrassTexturePath);
+        if (grassTexture == null)
+        {
+            Debug.LogError($"Could not load the grass detail texture at '{GrassTexturePath}'.");
+            return;
+        }
+
+        string[] terrainDataGuids = AssetDatabase.FindAssets("t:TerrainData", new[] { "Assets" });
+        int changedCount = 0;
+        foreach (string terrainDataGuid in terrainDataGuids)
+        {
+            string terrainDataPath = AssetDatabase.GUIDToAssetPath(terrainDataGuid);
+            TerrainData terrainData = AssetDatabase.LoadAssetAtPath<TerrainData>(terrainDataPath);
+            if (terrainData == null)
+                continue;
+
+            int detailIndex = EnsureGrassDetailPrototype(terrainData, grassTexture, out bool addedPrototype);
+            bool seededDetails = SeedGrassDetailLayerIfEmpty(terrainData, detailIndex);
+            if (!addedPrototype && !seededDetails)
+                continue;
+
+            EditorUtility.SetDirty(terrainData);
+            changedCount++;
+            Debug.Log($"Installed Neighbor Grass detail on '{terrainDataPath}'.");
+        }
+
+        if (changedCount > 0)
+            Debug.Log($"Installed Neighbor Grass detail on {changedCount} TerrainData asset(s).");
+    }
+
+    private static int EnsureGrassDetailPrototype(
+        TerrainData terrainData,
+        Texture2D grassTexture,
+        out bool addedPrototype)
+    {
+        DetailPrototype[] prototypes = terrainData.detailPrototypes;
+        for (int i = 0; i < prototypes.Length; i++)
+        {
+            if (prototypes[i].prototypeTexture == grassTexture)
+            {
+                addedPrototype = false;
+                return i;
+            }
+        }
+
+        Array.Resize(ref prototypes, prototypes.Length + 1);
+        prototypes[prototypes.Length - 1] = CreateNeighborGrassPrototype(grassTexture);
+        terrainData.detailPrototypes = prototypes;
+        addedPrototype = true;
+        return prototypes.Length - 1;
+    }
+
+    private static DetailPrototype CreateNeighborGrassPrototype(Texture2D grassTexture)
+    {
+        return new DetailPrototype
+        {
+            prototypeTexture = grassTexture,
+            minWidth = 0.55f,
+            maxWidth = 0.95f,
+            minHeight = 0.7f,
+            maxHeight = 1.25f,
+            noiseSeed = 47321,
+            noiseSpread = 0.18f,
+            healthyColor = new Color(0.82f, 1f, 0.78f, 1f),
+            dryColor = new Color(1f, 0.84f, 0.58f, 1f),
+            renderMode = DetailRenderMode.GrassBillboard,
+            usePrototypeMesh = false,
+            useInstancing = false
+        };
+    }
+
+    private static bool SeedGrassDetailLayerIfEmpty(TerrainData terrainData, int detailIndex)
+    {
+        if (detailIndex < 0)
+            return false;
+
+        if (terrainData.detailResolution <= 0)
+            terrainData.SetDetailResolution(512, 16);
+
+        int resolution = terrainData.detailResolution;
+        int[,] currentDetails = terrainData.GetDetailLayer(0, 0, resolution, resolution, detailIndex);
+        if (HasAnyDetailDensity(currentDetails))
+            return false;
+
+        int[,] grassDetails = new int[resolution, resolution];
+        for (int y = 0; y < resolution; y++)
+        {
+            for (int x = 0; x < resolution; x++)
+            {
+                float normalizedX = (x + 0.5f) / resolution;
+                float normalizedY = (y + 0.5f) / resolution;
+                float slope = terrainData.GetSteepness(normalizedX, normalizedY);
+                if (slope > 34f)
+                    continue;
+
+                float largeNoise = Mathf.PerlinNoise(normalizedX * 8.5f + 37.2f, normalizedY * 8.5f + 19.7f);
+                float fineNoise = Mathf.PerlinNoise(normalizedX * 43f + 5.9f, normalizedY * 43f + 82.4f);
+                float coverage = largeNoise * 0.75f + fineNoise * 0.25f;
+                if (coverage < 0.42f)
+                    continue;
+
+                grassDetails[y, x] = Mathf.Clamp(Mathf.RoundToInt((coverage - 0.36f) * 8f), 1, 5);
+            }
+        }
+
+        terrainData.SetDetailLayer(0, 0, detailIndex, grassDetails);
+        return true;
+    }
+
+    private static bool HasAnyDetailDensity(int[,] details)
+    {
+        int height = details.GetLength(0);
+        int width = details.GetLength(1);
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                if (details[y, x] > 0)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static TerrainLayer[] BuildTerrainLayerSet(
+        TerrainLayer[] existingLayers,
+        TerrainLayer dirtLayer,
+        TerrainLayer grassLayer)
+    {
+        List<TerrainLayer> layers = new List<TerrainLayer> { dirtLayer, grassLayer };
+        if (existingLayers == null)
+            return layers.ToArray();
+
+        foreach (TerrainLayer existingLayer in existingLayers)
+        {
+            if (existingLayer == null)
+                continue;
+
+            if (existingLayer == dirtLayer || existingLayer == grassLayer)
+                continue;
+
+            layers.Add(existingLayer);
+        }
+
+        return layers.ToArray();
+    }
+
+    private static bool LayersMatch(TerrainLayer[] currentLayers, TerrainLayer[] expectedLayers)
+    {
+        if (currentLayers == null || currentLayers.Length != expectedLayers.Length)
+            return false;
+
+        for (int i = 0; i < currentLayers.Length; i++)
+        {
+            if (currentLayers[i] != expectedLayers[i])
+                return false;
+        }
+
+        return true;
     }
 
     private static void GenerateGrassTexture()
