@@ -12,6 +12,7 @@ internal static class TerrainGrassInstaller
     private const string GrassTexturePath = GrassFolder + "/NeighborGrass.png";
     private const string GrassLayerPath = "Assets/Main/Art/Terrain/Layers/Grass005.terrainlayer";
     private const string DirtLayerPath = "Assets/Main/Art/Terrain/Layers/Ground048.terrainlayer";
+    private const string BasicTreePrefabPath = "Assets/Main/Art/Models/TreeObjects/BasicTree.prefab";
     private const int TextureSize = 256;
 
     [InitializeOnLoadMethod]
@@ -31,6 +32,13 @@ internal static class TerrainGrassInstaller
     private static void InstallGrassAndDirtLayers()
     {
         EnsureTerrainAssets();
+    }
+
+    [MenuItem(MenuRoot + "Install Basic Tree Painting Prototype")]
+    private static void InstallBasicTreePaintingPrototype()
+    {
+        InstallBasicTreePrototypeOnAllTerrainData();
+        AssetDatabase.SaveAssets();
     }
 
     [MenuItem(MenuRoot + "Add Grass Detail to Selected Terrain")]
@@ -74,6 +82,53 @@ internal static class TerrainGrassInstaller
         return GetSelectedTerrain() != null;
     }
 
+    [MenuItem(MenuRoot + "Add Basic Tree to Selected Terrain")]
+    private static void AddBasicTreeToSelectedTerrain()
+    {
+        Terrain terrain = GetSelectedTerrain();
+        if (terrain == null)
+        {
+            Debug.LogWarning("Select a Terrain object before adding the BasicTree paint prototype.");
+            return;
+        }
+
+        GameObject basicTreePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(BasicTreePrefabPath);
+        if (basicTreePrefab == null)
+        {
+            Debug.LogError($"Could not load the BasicTree prefab at '{BasicTreePrefabPath}'.");
+            return;
+        }
+
+        TerrainData terrainData = terrain.terrainData;
+        Undo.RegisterCompleteObjectUndo(terrainData, "Add Basic Tree Paint Prototype");
+
+        bool changed = EnsureBasicTreePrototype(terrainData, basicTreePrefab);
+        terrain.drawTreesAndFoliage = true;
+        terrain.treeDistance = Mathf.Max(terrain.treeDistance, 350f);
+        terrain.treeBillboardDistance = Mathf.Max(terrain.treeBillboardDistance, 80f);
+        terrain.treeCrossFadeLength = Mathf.Max(terrain.treeCrossFadeLength, 15f);
+        terrain.treeMaximumFullLODCount = Mathf.Max(terrain.treeMaximumFullLODCount, 80);
+
+        if (changed)
+        {
+            terrainData.RefreshPrototypes();
+            EditorUtility.SetDirty(terrainData);
+        }
+
+        EditorUtility.SetDirty(terrain);
+        AssetDatabase.SaveAssets();
+
+        Debug.Log(
+            $"Added BasicTree to '{terrain.name}'. Use Paint Trees in the Terrain inspector to paint it.",
+            terrain);
+    }
+
+    [MenuItem(MenuRoot + "Add Basic Tree to Selected Terrain", true)]
+    private static bool CanAddBasicTreeToSelectedTerrain()
+    {
+        return GetSelectedTerrain() != null;
+    }
+
     public static void GenerateFromCommandLine()
     {
         EnsureTerrainAssets();
@@ -86,6 +141,7 @@ internal static class TerrainGrassInstaller
         EnsureTerrainLayerSettings();
         InstallTerrainLayersOnAllTerrainData();
         InstallGrassDetailsOnAllTerrainData();
+        InstallBasicTreePrototypeOnAllTerrainData();
         AssetDatabase.SaveAssets();
     }
 
@@ -239,6 +295,48 @@ internal static class TerrainGrassInstaller
             Debug.Log($"Installed Neighbor Grass detail on {changedCount} TerrainData asset(s).");
     }
 
+    private static void InstallBasicTreePrototypeOnAllTerrainData()
+    {
+        GameObject basicTreePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(BasicTreePrefabPath);
+        if (basicTreePrefab == null)
+        {
+            Debug.LogError($"Could not install tree painting because '{BasicTreePrefabPath}' is missing.");
+            return;
+        }
+
+        string[] terrainDataGuids = AssetDatabase.FindAssets("t:TerrainData", new[] { "Assets" });
+        int changedCount = 0;
+        foreach (string terrainDataGuid in terrainDataGuids)
+        {
+            string terrainDataPath = AssetDatabase.GUIDToAssetPath(terrainDataGuid);
+            TerrainData terrainData = AssetDatabase.LoadAssetAtPath<TerrainData>(terrainDataPath);
+            if (terrainData == null)
+                continue;
+
+            if (!EnsureBasicTreePrototype(terrainData, basicTreePrefab))
+                continue;
+
+            terrainData.RefreshPrototypes();
+            EditorUtility.SetDirty(terrainData);
+            changedCount++;
+            Debug.Log($"Installed BasicTree paint prototype on '{terrainDataPath}'.");
+        }
+
+        if (changedCount > 0)
+            Debug.Log($"Installed BasicTree paint prototype on {changedCount} TerrainData asset(s).");
+    }
+
+    private static bool EnsureBasicTreePrototype(TerrainData terrainData, GameObject basicTreePrefab)
+    {
+        TreePrototype[] currentPrototypes = terrainData.treePrototypes ?? Array.Empty<TreePrototype>();
+        TreePrototype[] updatedPrototypes = BuildTreePrototypeSet(currentPrototypes, basicTreePrefab);
+        if (TreePrototypesMatch(currentPrototypes, updatedPrototypes))
+            return false;
+
+        terrainData.treePrototypes = updatedPrototypes;
+        return true;
+    }
+
     private static int EnsureGrassDetailPrototype(
         TerrainData terrainData,
         Texture2D grassTexture,
@@ -365,6 +463,65 @@ internal static class TerrainGrassInstaller
         for (int i = 0; i < currentLayers.Length; i++)
         {
             if (currentLayers[i] != expectedLayers[i])
+                return false;
+        }
+
+        return true;
+    }
+
+    private static TreePrototype[] BuildTreePrototypeSet(
+        TreePrototype[] existingPrototypes,
+        GameObject basicTreePrefab)
+    {
+        List<TreePrototype> prototypes = new List<TreePrototype>
+        {
+            CreateBasicTreePrototype(basicTreePrefab)
+        };
+
+        if (existingPrototypes == null)
+            return prototypes.ToArray();
+
+        foreach (TreePrototype existingPrototype in existingPrototypes)
+        {
+            if (existingPrototype == null || existingPrototype.prefab == null)
+                continue;
+
+            if (existingPrototype.prefab == basicTreePrefab)
+                continue;
+
+            prototypes.Add(existingPrototype);
+        }
+
+        return prototypes.ToArray();
+    }
+
+    private static TreePrototype CreateBasicTreePrototype(GameObject basicTreePrefab)
+    {
+        return new TreePrototype
+        {
+            prefab = basicTreePrefab,
+            bendFactor = 0.15f
+        };
+    }
+
+    private static bool TreePrototypesMatch(
+        TreePrototype[] currentPrototypes,
+        TreePrototype[] expectedPrototypes)
+    {
+        if (currentPrototypes == null || currentPrototypes.Length != expectedPrototypes.Length)
+            return false;
+
+        for (int i = 0; i < currentPrototypes.Length; i++)
+        {
+            TreePrototype currentPrototype = currentPrototypes[i];
+            TreePrototype expectedPrototype = expectedPrototypes[i];
+            if (currentPrototype == null || expectedPrototype == null)
+                return currentPrototype == expectedPrototype;
+
+            if (currentPrototype.prefab != expectedPrototype.prefab)
+                return false;
+
+            if (!Mathf.Approximately(currentPrototype.bendFactor, expectedPrototype.bendFactor))
                 return false;
         }
 
