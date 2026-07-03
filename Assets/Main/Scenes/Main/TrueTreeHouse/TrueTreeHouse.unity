@@ -22801,8 +22801,8 @@ MonoBehaviour:
       center: {x: 6.3100004, y: 1.4700006}
       size: {x: 2.0400019, y: 2.785902}
     - ownerObjectId: a434337f4f7147a88745df9fc371a116
-      center: {x: -6.3599997, y: 1.5300008}
-      size: {x: 1.771781, y: 2.5867703}
+      center: {x: -5.6900005, y: 1.4899999}
+      size: {x: 1.7717814, y: 2.58677}
 --- !u!64 &589278852
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -63573,7 +63573,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1327355640084703705, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 1.892
       objectReference: {fileID: 0}
     - target: {fileID: 1327355640084703705, guid: 624de4d864533f540b0172f61a5277ad, type: 3}
       propertyPath: m_LocalPosition.z
