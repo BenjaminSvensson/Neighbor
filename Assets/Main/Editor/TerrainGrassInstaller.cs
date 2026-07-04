@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 internal static class TerrainGrassInstaller
 {
@@ -12,7 +13,12 @@ internal static class TerrainGrassInstaller
     private const string GrassTexturePath = GrassFolder + "/NeighborGrass.png";
     private const string GrassLayerPath = "Assets/Main/Art/Terrain/Layers/Grass005.terrainlayer";
     private const string DirtLayerPath = "Assets/Main/Art/Terrain/Layers/Ground048.terrainlayer";
-    private const string BasicTreePrefabPath = "Assets/Main/Art/Models/TreeObjects/BasicTree.prefab";
+    private const string BasicTreeSourcePrefabPath = "Assets/Main/Art/Models/TreeObjects/BasicTree.prefab";
+    private const string BasicTreePrefabPath = "Assets/Main/Art/Models/TreeObjects/BasicTreeTerrain.prefab";
+    private const string BasicTreeMeshPath = "Assets/Main/Art/Models/TreeObjects/BasicTreeTerrainMesh.asset";
+    private const string BasicTreeBarkMaterialPath = "Assets/Main/Art/Models/TreeObjects/BasicTreeTerrainBark.mat";
+    private const string BasicTreeLeafMaterialPath = "Assets/Main/Art/Models/TreeObjects/BasicTreeTerrainLeaf.mat";
+    private const string TreeShaderTemplatePrefabPath = "Assets/Tree.prefab";
     private const int TextureSize = 256;
 
     [InitializeOnLoadMethod]
@@ -139,6 +145,7 @@ internal static class TerrainGrassInstaller
     {
         EnsureGrassAsset();
         EnsureTerrainLayerSettings();
+        EnsureTerrainCompatibleBasicTreePrefab();
         InstallTerrainLayersOnAllTerrainData();
         InstallGrassDetailsOnAllTerrainData();
         InstallBasicTreePrototypeOnAllTerrainData();
@@ -297,7 +304,7 @@ internal static class TerrainGrassInstaller
 
     private static void InstallBasicTreePrototypeOnAllTerrainData()
     {
-        GameObject basicTreePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(BasicTreePrefabPath);
+        GameObject basicTreePrefab = EnsureTerrainCompatibleBasicTreePrefab();
         if (basicTreePrefab == null)
         {
             Debug.LogError($"Could not install tree painting because '{BasicTreePrefabPath}' is missing.");
@@ -489,6 +496,14 @@ internal static class TerrainGrassInstaller
             if (existingPrototype.prefab == basicTreePrefab)
                 continue;
 
+            string existingPath = AssetDatabase.GetAssetPath(existingPrototype.prefab);
+            if (existingPath == BasicTreeSourcePrefabPath
+                || existingPath == BasicTreePrefabPath
+                || existingPrototype.prefab.name == "BasicTree")
+            {
+                continue;
+            }
+
             prototypes.Add(existingPrototype);
         }
 
@@ -502,6 +517,346 @@ internal static class TerrainGrassInstaller
             prefab = basicTreePrefab,
             bendFactor = 0.15f
         };
+    }
+
+    internal static bool HasTerrainCompatibleTreeRenderer(GameObject prefab)
+    {
+        if (prefab == null)
+            return false;
+
+        MeshFilter meshFilter = prefab.GetComponent<MeshFilter>();
+        MeshRenderer meshRenderer = prefab.GetComponent<MeshRenderer>();
+        if (meshFilter == null || meshRenderer == null || !meshRenderer.enabled)
+            return false;
+
+        if (meshFilter.sharedMesh == null || meshFilter.sharedMesh.vertexCount == 0)
+            return false;
+
+        Material[] materials = meshRenderer.sharedMaterials;
+        if (materials == null || materials.Length == 0)
+            return false;
+
+        for (int i = 0; i < materials.Length; i++)
+        {
+            Material material = materials[i];
+            if (material == null || material.shader == null)
+                return false;
+
+            if (!IsGeneratedTerrainTreeMaterial(material))
+                return false;
+        }
+
+        return true;
+    }
+
+    internal static bool IsGeneratedTerrainTreeMaterial(Material material)
+    {
+        string materialPath = AssetDatabase.GetAssetPath(material);
+        return materialPath == BasicTreeBarkMaterialPath || materialPath == BasicTreeLeafMaterialPath;
+    }
+
+    private static GameObject EnsureTerrainCompatibleBasicTreePrefab()
+    {
+        GameObject terrainPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(BasicTreePrefabPath);
+        if (HasTerrainCompatibleTreeRenderer(terrainPrefab))
+            return terrainPrefab;
+
+        GameObject source = PrefabUtility.LoadPrefabContents(BasicTreeSourcePrefabPath);
+        if (source == null)
+        {
+            Debug.LogError($"Could not create terrain tree prefab because '{BasicTreeSourcePrefabPath}' is missing.");
+            return null;
+        }
+
+        Mesh combinedMesh = null;
+        Material[] materials = Array.Empty<Material>();
+        try
+        {
+            combinedMesh = BuildTerrainTreeMesh(source, out materials);
+        }
+        finally
+        {
+            PrefabUtility.UnloadPrefabContents(source);
+        }
+
+        if (combinedMesh == null || materials.Length == 0)
+        {
+            Debug.LogError($"Could not create terrain tree prefab because '{BasicTreeSourcePrefabPath}' has no mesh renderer data.");
+            return null;
+        }
+
+        SaveMeshAsset(combinedMesh, BasicTreeMeshPath);
+        Material[] terrainMaterials = EnsureTerrainTreeMaterials(materials);
+        Mesh savedMesh = AssetDatabase.LoadAssetAtPath<Mesh>(BasicTreeMeshPath);
+        if (savedMesh == null)
+        {
+            Debug.LogError($"Could not load generated terrain tree mesh at '{BasicTreeMeshPath}'.");
+            return null;
+        }
+
+        SaveTerrainTreePrefab(savedMesh, terrainMaterials);
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+        return AssetDatabase.LoadAssetAtPath<GameObject>(BasicTreePrefabPath);
+    }
+
+    private static Mesh BuildTerrainTreeMesh(GameObject source, out Material[] materials)
+    {
+        List<Material> materialSlots = new List<Material>();
+        List<List<CombineInstance>> combinesByMaterial = new List<List<CombineInstance>>();
+        MeshFilter[] filters = source.GetComponentsInChildren<MeshFilter>(true);
+        Matrix4x4 rootWorldToLocal = source.transform.worldToLocalMatrix;
+
+        for (int filterIndex = 0; filterIndex < filters.Length; filterIndex++)
+        {
+            MeshFilter filter = filters[filterIndex];
+            MeshRenderer renderer = filter.GetComponent<MeshRenderer>();
+            Mesh mesh = filter.sharedMesh;
+            if (renderer == null || mesh == null || !renderer.enabled)
+                continue;
+
+            Material[] rendererMaterials = renderer.sharedMaterials;
+            if (rendererMaterials == null || rendererMaterials.Length == 0)
+                continue;
+
+            int subMeshCount = Mathf.Min(mesh.subMeshCount, rendererMaterials.Length);
+            for (int subMeshIndex = 0; subMeshIndex < subMeshCount; subMeshIndex++)
+            {
+                Material material = rendererMaterials[subMeshIndex];
+                if (material == null)
+                    continue;
+
+                int materialIndex = materialSlots.IndexOf(material);
+                if (materialIndex < 0)
+                {
+                    materialIndex = materialSlots.Count;
+                    materialSlots.Add(material);
+                    combinesByMaterial.Add(new List<CombineInstance>());
+                }
+
+                combinesByMaterial[materialIndex].Add(
+                    new CombineInstance
+                    {
+                        mesh = mesh,
+                        subMeshIndex = subMeshIndex,
+                        transform = rootWorldToLocal * filter.transform.localToWorldMatrix
+                    });
+            }
+        }
+
+        materials = materialSlots.ToArray();
+        if (materials.Length == 0)
+            return null;
+
+        Mesh[] materialMeshes = new Mesh[combinesByMaterial.Count];
+        CombineInstance[] finalCombines = new CombineInstance[combinesByMaterial.Count];
+        try
+        {
+            for (int i = 0; i < combinesByMaterial.Count; i++)
+            {
+                Mesh materialMesh = new Mesh
+                {
+                    name = $"BasicTreeTerrain_{i}",
+                    indexFormat = IndexFormat.UInt32
+                };
+                materialMesh.CombineMeshes(combinesByMaterial[i].ToArray(), true, true, false);
+                materialMeshes[i] = materialMesh;
+                finalCombines[i] = new CombineInstance
+                {
+                    mesh = materialMesh,
+                    subMeshIndex = 0,
+                    transform = Matrix4x4.identity
+                };
+            }
+
+            Mesh combinedMesh = new Mesh
+            {
+                name = "BasicTreeTerrainMesh",
+                indexFormat = IndexFormat.UInt32
+            };
+            combinedMesh.CombineMeshes(finalCombines, false, false, false);
+            combinedMesh.RecalculateBounds();
+            return combinedMesh;
+        }
+        finally
+        {
+            for (int i = 0; i < materialMeshes.Length; i++)
+            {
+                if (materialMeshes[i] != null)
+                    UnityEngine.Object.DestroyImmediate(materialMeshes[i]);
+            }
+        }
+    }
+
+    private static void SaveMeshAsset(Mesh mesh, string path)
+    {
+        Mesh existingMesh = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+        if (existingMesh == null)
+        {
+            AssetDatabase.CreateAsset(mesh, path);
+            return;
+        }
+
+        EditorUtility.CopySerialized(mesh, existingMesh);
+        EditorUtility.SetDirty(existingMesh);
+        UnityEngine.Object.DestroyImmediate(mesh);
+    }
+
+    private static Material[] EnsureTerrainTreeMaterials(Material[] sourceMaterials)
+    {
+        Material[] terrainMaterials = new Material[sourceMaterials.Length];
+        for (int i = 0; i < sourceMaterials.Length; i++)
+        {
+            Material sourceMaterial = sourceMaterials[i];
+            bool isLeaf = IsLeafMaterial(sourceMaterial);
+            string shaderName = isLeaf ? "Nature/Soft Occlusion Leaves" : "Nature/Soft Occlusion Bark";
+            string materialPath = isLeaf ? BasicTreeLeafMaterialPath : BasicTreeBarkMaterialPath;
+            Shader shader = FindTerrainTreeShader(shaderName, isLeaf);
+            if (shader == null)
+            {
+                Debug.LogWarning($"Could not find '{shaderName}', falling back to '{sourceMaterial?.shader?.name}'.");
+                terrainMaterials[i] = sourceMaterial;
+                continue;
+            }
+
+            terrainMaterials[i] = CreateOrUpdateTerrainTreeMaterial(materialPath, shader, sourceMaterial, isLeaf);
+        }
+
+        return terrainMaterials;
+    }
+
+    private static Shader FindTerrainTreeShader(string shaderName, bool leafShader)
+    {
+        Shader shader = Shader.Find(shaderName);
+        if (shader != null)
+            return shader;
+
+        UnityEngine.Object[] templateAssets = AssetDatabase.LoadAllAssetsAtPath(TreeShaderTemplatePrefabPath);
+        for (int i = 0; i < templateAssets.Length; i++)
+        {
+            if (templateAssets[i] is not Material material || material.shader == null)
+                continue;
+
+            bool materialIsLeaf = material.name.IndexOf("leaf", StringComparison.OrdinalIgnoreCase) >= 0;
+            bool materialIsBark = material.name.IndexOf("bark", StringComparison.OrdinalIgnoreCase) >= 0;
+            if ((leafShader && materialIsLeaf) || (!leafShader && materialIsBark))
+                return material.shader;
+        }
+
+        return null;
+    }
+
+    private static bool IsLeafMaterial(Material material)
+    {
+        return material != null
+            && material.name.IndexOf("leaf", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private static Material CreateOrUpdateTerrainTreeMaterial(
+        string materialPath,
+        Shader shader,
+        Material sourceMaterial,
+        bool alphaClip)
+    {
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
+        if (material == null)
+        {
+            material = new Material(shader);
+            AssetDatabase.CreateAsset(material, materialPath);
+        }
+
+        if (material.shader != shader)
+            material.shader = shader;
+
+        material.name = Path.GetFileNameWithoutExtension(materialPath);
+        CopyTexture(sourceMaterial, material, "_BaseMap", "_MainTex");
+        CopyTexture(sourceMaterial, material, "_MainTex", "_MainTex");
+        CopyColor(sourceMaterial, material, "_BaseColor", "_Color", Color.white);
+        CopyColor(sourceMaterial, material, "_Color", "_Color", Color.white);
+        SetFloatIfPresent(material, "_Cutoff", alphaClip ? 0.45f : 0.5f);
+        SetFloatIfPresent(material, "_Occlusion", 0.55f);
+        SetFloatIfPresent(material, "_AO", 0.55f);
+        SetFloatIfPresent(material, "_BaseLight", alphaClip ? 0.45f : 0.35f);
+        SetFloatIfPresent(material, "_Scale", alphaClip ? 0.75f : 0.45f);
+        EditorUtility.SetDirty(material);
+        return material;
+    }
+
+    private static void CopyTexture(Material source, Material target, string sourceProperty, string targetProperty)
+    {
+        if (source == null || !source.HasProperty(sourceProperty) || !target.HasProperty(targetProperty))
+            return;
+
+        Texture texture = source.GetTexture(sourceProperty);
+        if (texture != null)
+            target.SetTexture(targetProperty, texture);
+    }
+
+    private static void CopyColor(
+        Material source,
+        Material target,
+        string sourceProperty,
+        string targetProperty,
+        Color fallback)
+    {
+        if (!target.HasProperty(targetProperty))
+            return;
+
+        Color color = fallback;
+        if (source != null && source.HasProperty(sourceProperty))
+            color = source.GetColor(sourceProperty);
+
+        target.SetColor(targetProperty, color);
+    }
+
+    private static void SetFloatIfPresent(Material material, string propertyName, float value)
+    {
+        if (material.HasProperty(propertyName))
+            material.SetFloat(propertyName, value);
+    }
+
+    private static void SaveTerrainTreePrefab(Mesh mesh, Material[] materials)
+    {
+        bool loadedPrefabContents = AssetDatabase.LoadAssetAtPath<GameObject>(BasicTreePrefabPath) != null;
+        GameObject root = loadedPrefabContents
+            ? PrefabUtility.LoadPrefabContents(BasicTreePrefabPath)
+            : new GameObject("BasicTreeTerrain");
+        try
+        {
+            root.name = "BasicTreeTerrain";
+            MeshFilter meshFilter = EnsureComponent<MeshFilter>(root);
+            MeshRenderer meshRenderer = EnsureComponent<MeshRenderer>(root);
+            CapsuleCollider capsuleCollider = EnsureComponent<CapsuleCollider>(root);
+
+            meshFilter.sharedMesh = mesh;
+            meshRenderer.sharedMaterials = materials;
+            meshRenderer.shadowCastingMode = ShadowCastingMode.On;
+            meshRenderer.receiveShadows = true;
+            meshRenderer.enabled = true;
+
+            Bounds bounds = mesh.bounds;
+            capsuleCollider.center = bounds.center;
+            capsuleCollider.height = Mathf.Max(bounds.size.y, 0.1f);
+            capsuleCollider.radius = Mathf.Max(bounds.extents.x, bounds.extents.z) * 0.35f;
+
+            PrefabUtility.SaveAsPrefabAsset(root, BasicTreePrefabPath, out bool savedSuccessfully);
+            if (!savedSuccessfully)
+                Debug.LogError($"{BasicTreePrefabPath}: failed to save terrain-compatible tree prefab.");
+        }
+        finally
+        {
+            if (loadedPrefabContents)
+                PrefabUtility.UnloadPrefabContents(root);
+            else
+                UnityEngine.Object.DestroyImmediate(root);
+        }
+    }
+
+    private static T EnsureComponent<T>(GameObject gameObject)
+        where T : Component
+    {
+        T component = gameObject.GetComponent<T>();
+        return component != null ? component : gameObject.AddComponent<T>();
     }
 
     private static bool TreePrototypesMatch(
