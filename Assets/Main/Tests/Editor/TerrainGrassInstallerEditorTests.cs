@@ -19,7 +19,7 @@ namespace Neighbor.Main.Tests
             Assert.That(renderer.sharedMaterials, Has.All.Not.Null);
             foreach (Material material in renderer.sharedMaterials)
             {
-                Assert.That(global::TerrainGrassInstaller.IsGeneratedTerrainTreeMaterial(material), Is.True);
+                Assert.That(global::TerrainGrassInstaller.IsRenderableTerrainTreeMaterial(material), Is.True);
             }
         }
     }

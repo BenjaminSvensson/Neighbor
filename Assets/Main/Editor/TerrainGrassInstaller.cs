@@ -16,9 +16,8 @@ internal static class TerrainGrassInstaller
     private const string BasicTreeSourcePrefabPath = "Assets/Main/Art/Models/TreeObjects/BasicTree.prefab";
     private const string BasicTreePrefabPath = "Assets/Main/Art/Models/TreeObjects/BasicTreeTerrain.prefab";
     private const string BasicTreeMeshPath = "Assets/Main/Art/Models/TreeObjects/BasicTreeTerrainMesh.asset";
-    private const string BasicTreeBarkMaterialPath = "Assets/Main/Art/Models/TreeObjects/BasicTreeTerrainBark.mat";
-    private const string BasicTreeLeafMaterialPath = "Assets/Main/Art/Models/TreeObjects/BasicTreeTerrainLeaf.mat";
-    private const string TreeShaderTemplatePrefabPath = "Assets/Tree.prefab";
+    private const string BasicTreeBarkMaterialPath = "Assets/Main/Art/Models/TreeObjects/bark02.mat";
+    private const string BasicTreeLeafMaterialPath = "Assets/Main/Art/Models/TreeObjects/leaf.mat";
     private const int TextureSize = 256;
 
     [InitializeOnLoadMethod]
@@ -542,14 +541,14 @@ internal static class TerrainGrassInstaller
             if (material == null || material.shader == null)
                 return false;
 
-            if (!IsGeneratedTerrainTreeMaterial(material))
+            if (!IsRenderableTerrainTreeMaterial(material))
                 return false;
         }
 
         return true;
     }
 
-    internal static bool IsGeneratedTerrainTreeMaterial(Material material)
+    internal static bool IsRenderableTerrainTreeMaterial(Material material)
     {
         string materialPath = AssetDatabase.GetAssetPath(material);
         return materialPath == BasicTreeBarkMaterialPath || materialPath == BasicTreeLeafMaterialPath;
@@ -704,115 +703,25 @@ internal static class TerrainGrassInstaller
 
     private static Material[] EnsureTerrainTreeMaterials(Material[] sourceMaterials)
     {
+        Material barkMaterial = AssetDatabase.LoadAssetAtPath<Material>(BasicTreeBarkMaterialPath);
+        Material leafMaterial = AssetDatabase.LoadAssetAtPath<Material>(BasicTreeLeafMaterialPath);
+
         Material[] terrainMaterials = new Material[sourceMaterials.Length];
         for (int i = 0; i < sourceMaterials.Length; i++)
         {
             Material sourceMaterial = sourceMaterials[i];
             bool isLeaf = IsLeafMaterial(sourceMaterial);
-            string shaderName = isLeaf ? "Nature/Soft Occlusion Leaves" : "Nature/Soft Occlusion Bark";
-            string materialPath = isLeaf ? BasicTreeLeafMaterialPath : BasicTreeBarkMaterialPath;
-            Shader shader = FindTerrainTreeShader(shaderName, isLeaf);
-            if (shader == null)
-            {
-                Debug.LogWarning($"Could not find '{shaderName}', falling back to '{sourceMaterial?.shader?.name}'.");
-                terrainMaterials[i] = sourceMaterial;
-                continue;
-            }
-
-            terrainMaterials[i] = CreateOrUpdateTerrainTreeMaterial(materialPath, shader, sourceMaterial, isLeaf);
+            Material terrainMaterial = isLeaf ? leafMaterial : barkMaterial;
+            terrainMaterials[i] = terrainMaterial != null ? terrainMaterial : sourceMaterial;
         }
 
         return terrainMaterials;
-    }
-
-    private static Shader FindTerrainTreeShader(string shaderName, bool leafShader)
-    {
-        Shader shader = Shader.Find(shaderName);
-        if (shader != null)
-            return shader;
-
-        UnityEngine.Object[] templateAssets = AssetDatabase.LoadAllAssetsAtPath(TreeShaderTemplatePrefabPath);
-        for (int i = 0; i < templateAssets.Length; i++)
-        {
-            if (templateAssets[i] is not Material material || material.shader == null)
-                continue;
-
-            bool materialIsLeaf = material.name.IndexOf("leaf", StringComparison.OrdinalIgnoreCase) >= 0;
-            bool materialIsBark = material.name.IndexOf("bark", StringComparison.OrdinalIgnoreCase) >= 0;
-            if ((leafShader && materialIsLeaf) || (!leafShader && materialIsBark))
-                return material.shader;
-        }
-
-        return null;
     }
 
     private static bool IsLeafMaterial(Material material)
     {
         return material != null
             && material.name.IndexOf("leaf", StringComparison.OrdinalIgnoreCase) >= 0;
-    }
-
-    private static Material CreateOrUpdateTerrainTreeMaterial(
-        string materialPath,
-        Shader shader,
-        Material sourceMaterial,
-        bool alphaClip)
-    {
-        Material material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
-        if (material == null)
-        {
-            material = new Material(shader);
-            AssetDatabase.CreateAsset(material, materialPath);
-        }
-
-        if (material.shader != shader)
-            material.shader = shader;
-
-        material.name = Path.GetFileNameWithoutExtension(materialPath);
-        CopyTexture(sourceMaterial, material, "_BaseMap", "_MainTex");
-        CopyTexture(sourceMaterial, material, "_MainTex", "_MainTex");
-        CopyColor(sourceMaterial, material, "_BaseColor", "_Color", Color.white);
-        CopyColor(sourceMaterial, material, "_Color", "_Color", Color.white);
-        SetFloatIfPresent(material, "_Cutoff", alphaClip ? 0.45f : 0.5f);
-        SetFloatIfPresent(material, "_Occlusion", 0.55f);
-        SetFloatIfPresent(material, "_AO", 0.55f);
-        SetFloatIfPresent(material, "_BaseLight", alphaClip ? 0.45f : 0.35f);
-        SetFloatIfPresent(material, "_Scale", alphaClip ? 0.75f : 0.45f);
-        EditorUtility.SetDirty(material);
-        return material;
-    }
-
-    private static void CopyTexture(Material source, Material target, string sourceProperty, string targetProperty)
-    {
-        if (source == null || !source.HasProperty(sourceProperty) || !target.HasProperty(targetProperty))
-            return;
-
-        Texture texture = source.GetTexture(sourceProperty);
-        if (texture != null)
-            target.SetTexture(targetProperty, texture);
-    }
-
-    private static void CopyColor(
-        Material source,
-        Material target,
-        string sourceProperty,
-        string targetProperty,
-        Color fallback)
-    {
-        if (!target.HasProperty(targetProperty))
-            return;
-
-        Color color = fallback;
-        if (source != null && source.HasProperty(sourceProperty))
-            color = source.GetColor(sourceProperty);
-
-        target.SetColor(targetProperty, color);
-    }
-
-    private static void SetFloatIfPresent(Material material, string propertyName, float value)
-    {
-        if (material.HasProperty(propertyName))
-            material.SetFloat(propertyName, value);
     }
 
     private static void SaveTerrainTreePrefab(Mesh mesh, Material[] materials)
