@@ -45,7 +45,7 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
-  m_PlayOnAwake: 1
+  m_PlayOnAwake: 0
   m_Volume: 1
   m_Pitch: 1
   Loop: 0
@@ -189,7 +189,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -308,7 +308,7 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
-  m_PlayOnAwake: 1
+  m_PlayOnAwake: 0
   m_Volume: 1
   m_Pitch: 1
   Loop: 0
@@ -513,11 +513,11 @@ MonoBehaviour:
   footstepLoopSource: {fileID: 0}
   slideLoopSource: {fileID: 824441125532050216}
   zoomLoopSource: {fileID: 83145351128797801}
-  walkFootstepLoop: {fileID: 0}
-  runFootstepLoop: {fileID: 0}
-  crouchFootstepLoop: {fileID: 0}
+  walkFootstepLoop: {fileID: 8300000, guid: 8d2766f9aefcde840b054a7021b9eb80, type: 3}
+  runFootstepLoop: {fileID: 8300000, guid: 8d2766f9aefcde840b054a7021b9eb80, type: 3}
+  crouchFootstepLoop: {fileID: 8300000, guid: 8d2766f9aefcde840b054a7021b9eb80, type: 3}
   footstepMinimumVolume: 0.2
-  footstepVolume: 0.3
+  footstepVolume: 0.38
   footstepLoopFadeSharpness: 12
   walkFootsteps: []
   runFootsteps: []
@@ -661,7 +661,7 @@ Canvas:
   m_Camera: {fileID: 0}
   m_PlaneDistance: 100
   m_PixelPerfect: 0
-  m_ReceivesEvents: 1
+  m_ReceivesEvents: 0
   m_OverrideSorting: 0
   m_OverridePixelPerfect: 0
   m_SortingBucketNormalizedSize: 0
@@ -670,7 +670,7 @@ Canvas:
   m_AdditionalShaderChannelsFlag: 0
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 90
   m_TargetDisplay: 0
 --- !u!114 &6877058444644336970
 MonoBehaviour:
@@ -687,7 +687,7 @@ MonoBehaviour:
   m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 800, y: 600}
+  m_ReferenceResolution: {x: 1920, y: 1080}
   m_ScreenMatchMode: 0
   m_MatchWidthOrHeight: 0
   m_PhysicalUnit: 3
@@ -726,8 +726,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   interactor: {fileID: 7301234288172884471}
   crosshair: {fileID: 2285926682653444884}
-  interactableScale: 1.25
-  scaleSharpness: 18
+  crosshairGraphic: {fileID: 3667887726774940887}
+  interactableScale: 1.28
+  scaleSharpness: 20
+  idleColor: {r: 1, g: 1, b: 1, a: 0.46}
+  interactableColor: {r: 1, g: 0.86, b: 0.38, a: 0.94}
+  interactablePulseScale: 0.055
+  pulseFrequency: 8
+  colorSharpness: 18
 --- !u!1 &6202446241124439597
 GameObject:
   m_ObjectHideFlags: 0
@@ -772,7 +778,7 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
-  m_PlayOnAwake: 1
+  m_PlayOnAwake: 0
   m_Volume: 1
   m_Pitch: 1
   Loop: 0
@@ -1029,6 +1035,10 @@ MonoBehaviour:
   zoomSmoothing: 12
   zoomSnapThreshold: 0.08
   zoomWobbleBoost: 0.55
+  walkFieldOfViewKick: 0.8
+  sprintFieldOfViewKick: 3.2
+  slideFieldOfViewKick: 4.6
+  movementFieldOfViewSharpness: 9
   leanDistance: 0.7
   leanAngle: 12
   leanSmoothing: 20
@@ -1134,7 +1144,7 @@ MonoBehaviour:
   throwChargeLowerDistance: 0.8
   throwForce: 18
   throwUpwardAssist: 1
-  showThrowArc: 0
+  showThrowArc: 1
   throwArcRenderer: {fileID: 0}
   throwArcSegments: 28
   throwArcTimeStep: 0.07

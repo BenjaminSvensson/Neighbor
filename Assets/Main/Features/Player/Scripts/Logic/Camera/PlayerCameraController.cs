@@ -38,6 +38,12 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float zoomSnapThreshold = 0.08f;
         [SerializeField, Range(0f, 1f)] private float zoomWobbleBoost = 0.55f;
 
+        [Header("Movement Field Of View")]
+        [SerializeField, Min(0f)] private float walkFieldOfViewKick = 0.8f;
+        [SerializeField, Min(0f)] private float sprintFieldOfViewKick = 3.2f;
+        [SerializeField, Min(0f)] private float slideFieldOfViewKick = 4.6f;
+        [SerializeField, Min(0f)] private float movementFieldOfViewSharpness = 9f;
+
         [Header("Lean")]
         [SerializeField, Min(0f)] private float leanDistance = 0.32f;
         [SerializeField, Min(0f)] private float leanAngle = 9f;
@@ -111,6 +117,7 @@ namespace Neighbor.Main.Features.Player
         private float impactRollOffset;
         private float impactFovOffset;
         private float impactShake;
+        private float movementFieldOfViewOffset;
         private float climbVerticalOffset;
         private float climbPitchOffset;
         private float climbRollOffset;
@@ -305,7 +312,36 @@ namespace Neighbor.Main.Features.Player
                 SetZoomDirection(0);
             }
 
-            playerCamera.fieldOfView = Mathf.Clamp(currentFieldOfView + impactFovOffset, minimumFieldOfView, maximumFieldOfView);
+            UpdateMovementFieldOfViewOffset();
+            float maximumProceduralFieldOfView = maximumFieldOfView
+                + Mathf.Max(walkFieldOfViewKick + sprintFieldOfViewKick, slideFieldOfViewKick);
+            playerCamera.fieldOfView = Mathf.Clamp(
+                currentFieldOfView + impactFovOffset + movementFieldOfViewOffset,
+                minimumFieldOfView,
+                maximumProceduralFieldOfView);
+        }
+
+        private void UpdateMovementFieldOfViewOffset()
+        {
+            float targetOffset = 0f;
+            if (playerController != null)
+            {
+                targetOffset = Mathf.Lerp(0f, walkFieldOfViewKick, playerController.MoveAmount);
+                if (playerController.IsRunning)
+                {
+                    targetOffset += sprintFieldOfViewKick * Mathf.Max(0.35f, playerController.Speed01);
+                }
+
+                if (playerController.IsSliding)
+                {
+                    targetOffset = Mathf.Max(targetOffset, slideFieldOfViewKick);
+                }
+            }
+
+            movementFieldOfViewOffset = Damp(
+                movementFieldOfViewOffset,
+                targetOffset,
+                movementFieldOfViewSharpness);
         }
 
         private void UpdateCameraPose(PlayerFrameInput input)
@@ -687,6 +723,7 @@ namespace Neighbor.Main.Features.Player
             impactRollOffset = 0f;
             impactFovOffset = 0f;
             impactShake = 0f;
+            movementFieldOfViewOffset = 0f;
             climbVerticalOffset = 0f;
             climbPitchOffset = 0f;
             climbRollOffset = 0f;

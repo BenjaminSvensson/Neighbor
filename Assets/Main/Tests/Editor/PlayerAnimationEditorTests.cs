@@ -1,9 +1,11 @@
 using System.Linq;
+using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Player;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
 namespace Neighbor.Main.Tests
@@ -141,6 +143,57 @@ namespace Neighbor.Main.Tests
             Assert.That(obstructionMask & Physics.IgnoreRaycastLayer, Is.Zero);
             Assert.That(cameraSettings.FindProperty("cameraCollisionRadius").floatValue, Is.GreaterThan(0f));
             Assert.That(cameraSettings.FindProperty("antiPeekNearClipPlane").floatValue, Is.InRange(0.01f, 0.1f));
+        }
+
+        [Test]
+        public void PlayerPresentation_HasGameReadyFeedbackDefaults()
+        {
+            GameObject playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
+            PlayerInteractor interactor = playerPrefab.GetComponentInChildren<PlayerInteractor>(true);
+            PlayerCameraController cameraController = playerPrefab.GetComponentInChildren<PlayerCameraController>(true);
+            PlayerCrosshairFeedback crosshairFeedback = playerPrefab.GetComponentInChildren<PlayerCrosshairFeedback>(true);
+            PlayerAudioController audioController = playerPrefab.GetComponentInChildren<PlayerAudioController>(true);
+            Canvas playerCanvas = playerPrefab.GetComponentInChildren<Canvas>(true);
+            CanvasScaler canvasScaler = playerCanvas != null ? playerCanvas.GetComponent<CanvasScaler>() : null;
+            Graphic crosshairGraphic = crosshairFeedback != null ? crosshairFeedback.GetComponentInChildren<Graphic>(true) : null;
+
+            Assert.That(interactor, Is.Not.Null);
+            Assert.That(cameraController, Is.Not.Null);
+            Assert.That(crosshairFeedback, Is.Not.Null);
+            Assert.That(audioController, Is.Not.Null);
+            Assert.That(playerCanvas, Is.Not.Null);
+            Assert.That(canvasScaler, Is.Not.Null);
+            Assert.That(crosshairGraphic, Is.Not.Null);
+
+            SerializedObject interactorSettings = new(interactor);
+            Assert.That(interactorSettings.FindProperty("showThrowArc").boolValue, Is.True);
+            Assert.That(interactorSettings.FindProperty("throwArcLineWidth").floatValue, Is.GreaterThanOrEqualTo(0.03f));
+
+            SerializedObject cameraSettings = new(cameraController);
+            Assert.That(cameraSettings.FindProperty("walkFieldOfViewKick").floatValue, Is.GreaterThan(0f));
+            Assert.That(cameraSettings.FindProperty("sprintFieldOfViewKick").floatValue, Is.GreaterThan(0f));
+            Assert.That(cameraSettings.FindProperty("slideFieldOfViewKick").floatValue, Is.GreaterThan(0f));
+            Assert.That(
+                cameraSettings.FindProperty("slideFieldOfViewKick").floatValue,
+                Is.GreaterThan(cameraSettings.FindProperty("walkFieldOfViewKick").floatValue));
+
+            SerializedObject crosshairSettings = new(crosshairFeedback);
+            Assert.That(crosshairSettings.FindProperty("interactableScale").floatValue, Is.GreaterThan(1f));
+            Assert.That(crosshairSettings.FindProperty("interactablePulseScale").floatValue, Is.GreaterThan(0f));
+            Assert.That(crosshairGraphic.raycastTarget, Is.False);
+
+            SerializedObject audioSettings = new(audioController);
+            Assert.That(audioSettings.FindProperty("walkFootstepLoop").objectReferenceValue, Is.Not.Null);
+            Assert.That(audioSettings.FindProperty("runFootstepLoop").objectReferenceValue, Is.Not.Null);
+            Assert.That(audioSettings.FindProperty("crouchFootstepLoop").objectReferenceValue, Is.Not.Null);
+            foreach (AudioSource audioSource in playerPrefab.GetComponentsInChildren<AudioSource>(true))
+            {
+                Assert.That(audioSource.playOnAwake, Is.False, $"{audioSource.name} should not play on awake.");
+            }
+
+            Assert.That(playerCanvas.receivesEvents, Is.False);
+            Assert.That(playerCanvas.sortingOrder, Is.GreaterThanOrEqualTo(80));
+            Assert.That(canvasScaler.referenceResolution, Is.EqualTo(new Vector2(1920f, 1080f)));
         }
 
         [Test]
