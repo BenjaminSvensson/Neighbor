@@ -191,7 +191,10 @@ namespace Neighbor.Main.Tests
                 Assert.That(audioSource.playOnAwake, Is.False, $"{audioSource.name} should not play on awake.");
             }
 
-            Assert.That(playerCanvas.receivesEvents, Is.False);
+            SerializedObject canvasSettings = new(playerCanvas);
+            SerializedProperty receivesEventsProperty = canvasSettings.FindProperty("m_ReceivesEvents");
+            Assert.That(receivesEventsProperty, Is.Not.Null);
+            Assert.That(receivesEventsProperty.boolValue, Is.False);
             Assert.That(playerCanvas.sortingOrder, Is.GreaterThanOrEqualTo(80));
             Assert.That(canvasScaler.referenceResolution, Is.EqualTo(new Vector2(1920f, 1080f)));
         }
