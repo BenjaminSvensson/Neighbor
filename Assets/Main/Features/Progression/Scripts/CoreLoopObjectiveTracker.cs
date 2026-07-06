@@ -10,6 +10,7 @@ namespace Neighbor.Main.Features.Progression
     {
         public enum ObjectiveStep
         {
+            GetInside,
             FindKey,
             UnlockDoor,
             ReachRoom,
@@ -22,6 +23,7 @@ namespace Neighbor.Main.Features.Progression
         [SerializeField] private bool resetOnAwake = true;
 
         [Header("Readable Hints")]
+        [SerializeField] private string getInsideHint = "Get inside the house.";
         [SerializeField] private string findKeyHint = "Find the key.";
         [SerializeField] private string unlockDoorHint = "Use the key on the locked door.";
         [SerializeField] private string reachRoomHint = "Reach the target room.";
@@ -30,8 +32,9 @@ namespace Neighbor.Main.Features.Progression
 
         public event Action<CoreLoopObjectiveTracker> ProgressChanged;
 
-        public ObjectiveStep CurrentStep { get; private set; } = ObjectiveStep.FindKey;
+        public ObjectiveStep CurrentStep { get; private set; } = ObjectiveStep.GetInside;
         public string RequiredKeyId => requiredKeyId;
+        public bool HasEnteredHouse { get; private set; }
         public bool HasKey { get; private set; }
         public bool HasUnlockedDoor { get; private set; }
         public bool HasReachedRoom { get; private set; }
@@ -39,6 +42,7 @@ namespace Neighbor.Main.Features.Progression
         public bool IsComplete => CurrentStep == ObjectiveStep.Complete;
         public string CurrentHint => CurrentStep switch
         {
+            ObjectiveStep.GetInside => getInsideHint,
             ObjectiveStep.FindKey => findKeyHint,
             ObjectiveStep.UnlockDoor => unlockDoorHint,
             ObjectiveStep.ReachRoom => reachRoomHint,
@@ -57,11 +61,24 @@ namespace Neighbor.Main.Features.Progression
 
         public void ResetProgress()
         {
+            HasEnteredHouse = false;
             HasKey = false;
             HasUnlockedDoor = false;
             HasReachedRoom = false;
             HasEscaped = false;
-            SetStep(ObjectiveStep.FindKey, true);
+            SetStep(ObjectiveStep.GetInside, true);
+        }
+
+        public bool RegisterEnteredHouse(PlayerController player)
+        {
+            if (player == null || IsComplete)
+            {
+                return false;
+            }
+
+            HasEnteredHouse = true;
+            AdvanceTo(ObjectiveStep.FindKey);
+            return true;
         }
 
         public bool RegisterKeyCollected(string keyId)
@@ -71,6 +88,8 @@ namespace Neighbor.Main.Features.Progression
                 return false;
             }
 
+            HasEnteredHouse = true;
+            AdvanceTo(ObjectiveStep.FindKey);
             HasKey = true;
             AdvanceTo(ObjectiveStep.UnlockDoor);
             return true;

@@ -32,15 +32,20 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
-        public void CoreLoop_PickupKeyUnlockDoorReachRoomAndEscape_CompletesObjective()
+        public void CoreLoop_GetInsidePickupKeyUnlockDoorReachRoomAndEscape_CompletesObjective()
         {
             CoreLoopObjectiveTracker tracker = CreateObject("Objective").AddComponent<CoreLoopObjectiveTracker>();
             PlayerController player = CreatePlayer("Player", Vector3.zero, out PlayerInteractor interactor);
             Pickupable key = CreateObjectiveKey("BasementKey");
             Door door = CreateObjectiveDoor("BasementDoor");
 
-            Assert.That(tracker.CurrentStep, Is.EqualTo(CoreLoopObjectiveTracker.ObjectiveStep.FindKey));
+            Assert.That(tracker.CurrentStep, Is.EqualTo(CoreLoopObjectiveTracker.ObjectiveStep.GetInside));
             Assert.That(tracker.CurrentHint, Is.Not.Empty);
+
+            ObjectiveTriggerZone entryZone = CreateObjectiveZone("EntryZone", ObjectiveTriggerZone.TriggerRole.EnterHouse);
+            Assert.That(entryZone.NotifyPlayerEntered(player), Is.True);
+            Assert.That(tracker.HasEnteredHouse, Is.True);
+            Assert.That(tracker.CurrentStep, Is.EqualTo(CoreLoopObjectiveTracker.ObjectiveStep.FindKey));
 
             interactor.Pickup(key);
 
@@ -66,6 +71,22 @@ namespace Neighbor.Main.Tests
             Assert.That(tracker.HasEscaped, Is.True);
             Assert.That(tracker.IsComplete, Is.True);
             Assert.That(tracker.CurrentHint, Is.Not.Empty);
+        }
+
+        [Test]
+        public void CoreLoop_KeyPickupImplicitlyCompletesEntryStepForPrototypeScenes()
+        {
+            CoreLoopObjectiveTracker tracker = CreateObject("Objective").AddComponent<CoreLoopObjectiveTracker>();
+            CreatePlayer("Player", Vector3.zero, out PlayerInteractor interactor);
+            Pickupable key = CreateObjectiveKey("BasementKey");
+
+            Assert.That(tracker.CurrentStep, Is.EqualTo(CoreLoopObjectiveTracker.ObjectiveStep.GetInside));
+
+            interactor.Pickup(key);
+
+            Assert.That(tracker.HasEnteredHouse, Is.True);
+            Assert.That(tracker.HasKey, Is.True);
+            Assert.That(tracker.CurrentStep, Is.EqualTo(CoreLoopObjectiveTracker.ObjectiveStep.UnlockDoor));
         }
 
         [Test]
