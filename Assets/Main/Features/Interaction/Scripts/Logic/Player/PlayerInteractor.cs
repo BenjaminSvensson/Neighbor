@@ -49,6 +49,10 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float holdObstructionPadding = 0.18f;
         [SerializeField] private LayerMask holdObstructionMask = ~0;
 
+        [Header("Held Inspect")]
+        [SerializeField, Min(0f)] private float heldInspectRotationSensitivity = 0.35f;
+        [SerializeField, Range(0f, 89f)] private float heldInspectPitchLimit = 72f;
+
         [Header("Inventory")]
         [SerializeField, Range(1, MaximumInventorySlots)] private int inventorySlotCount = MaximumInventorySlots;
         [SerializeField] private Transform inventoryStashRoot;
@@ -102,6 +106,8 @@ namespace Neighbor.Main.Features.Interaction
         private int activeInventorySlot;
         private float releaseButtonDownTime;
         private bool releaseButtonWasHeld;
+        private Vector2 heldInspectEuler;
+        private bool isInspectingHeldPickup;
         private string pendingAutoEquipMatchKey;
         private float pendingAutoEquipAt;
         private Material throwArcMaterial;
@@ -116,6 +122,7 @@ namespace Neighbor.Main.Features.Interaction
         public event Action InteractionStarted;
 
         public bool IsHoldingPickup => heldPickup != null;
+        public bool IsInspectingHeldPickup => isInspectingHeldPickup;
         public Pickupable HeldPickup => heldPickup;
         public float ThrowCharge => ThrowCharge01;
         public int ActiveInventorySlot => activeInventorySlot;
@@ -190,6 +197,7 @@ namespace Neighbor.Main.Features.Interaction
             {
                 EndActiveHoldInteraction(false);
                 HideThrowArc();
+                isInspectingHeldPickup = false;
                 ClearFocusState();
                 if (tooltipView != null)
                 {
@@ -219,6 +227,7 @@ namespace Neighbor.Main.Features.Interaction
 
             if (heldPickup == null)
             {
+                ClearHeldInspectState();
                 UpdateHoldInteraction(interactHeld);
                 releaseButtonWasHeld = false;
                 UpdateInteractionTooltip(mouse);
@@ -226,6 +235,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             EndActiveHoldInteraction(false);
+            UpdateHeldInspectRotation(mouse);
 
             if (primaryUsePressed && TryPrimaryUseHeldPickup())
             {
@@ -272,7 +282,7 @@ namespace Neighbor.Main.Features.Interaction
 
             heldPickup.MoveHeld(
                 GetHoldPosition(),
-                ViewTransform.rotation,
+                GetHeldTargetRotation(),
                 holdFollowStrength,
                 holdRotationStrength,
                 holdMaxVelocity);
@@ -309,8 +319,9 @@ namespace Neighbor.Main.Features.Interaction
 
             inventorySlots[activeInventorySlot] = pickupable;
             heldPickup = pickupable;
+            ClearHeldInspectState();
             heldPickup.Pickup(this);
-            heldPickup.SnapHeldPose(GetHoldPosition(heldPickup), ViewTransform.rotation);
+            heldPickup.SnapHeldPose(GetHoldPosition(heldPickup), GetHeldTargetRotation());
             PickupStarted?.Invoke();
         }
 
@@ -324,6 +335,7 @@ namespace Neighbor.Main.Features.Interaction
             heldPickup = null;
             ClearInventorySlot(pickupable);
             releaseButtonWasHeld = false;
+            ClearHeldInspectState();
             HideThrowArc();
             TrySelectMatchingInventoryPickup(pickupable);
             return true;
@@ -440,6 +452,7 @@ namespace Neighbor.Main.Features.Interaction
                 ThrowStarted?.Invoke();
                 Vector3 throwVelocity = CalculateThrowVelocity(charge01);
                 releasedPickup.Throw(throwVelocity, playerColliders);
+                ClearHeldInspectState();
                 HideThrowArc();
                 QueueMatchingInventoryPickup(releasedPickup, autoEquipAfterThrowDelay);
                 return;
@@ -449,6 +462,7 @@ namespace Neighbor.Main.Features.Interaction
             {
                 DropStarted?.Invoke();
                 releasedPickup.Place(placementPosition, placementRotation, shouldSleepAfterPlacement);
+                ClearHeldInspectState();
                 QueueMatchingInventoryPickup(releasedPickup, autoEquipAfterDropDelay);
             }
             else if (foundPlacementSurface)
@@ -460,6 +474,7 @@ namespace Neighbor.Main.Features.Interaction
             {
                 DropStarted?.Invoke();
                 releasedPickup.Drop();
+                ClearHeldInspectState();
                 QueueMatchingInventoryPickup(releasedPickup, autoEquipAfterDropDelay);
             }
 
@@ -477,6 +492,7 @@ namespace Neighbor.Main.Features.Interaction
             heldPickup = null;
             ClearInventorySlot(replacedPickup);
             releaseButtonWasHeld = false;
+            ClearHeldInspectState();
             HideThrowArc();
             replacedPickup.Drop();
         }
@@ -509,6 +525,7 @@ namespace Neighbor.Main.Features.Interaction
 
             heldPickup = null;
             releaseButtonWasHeld = false;
+            ClearHeldInspectState();
         }
 
         private void SelectInventorySlot(int slotIndex)
@@ -527,6 +544,7 @@ namespace Neighbor.Main.Features.Interaction
 
             EndActiveHoldInteraction(false);
             releaseButtonWasHeld = false;
+            ClearHeldInspectState();
             HideThrowArc();
 
             Pickupable previousPickup = heldPickup;
@@ -544,7 +562,7 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            selectedPickup.EquipFromInventory(this, GetHoldPosition(selectedPickup), ViewTransform.rotation);
+            selectedPickup.EquipFromInventory(this, GetHoldPosition(selectedPickup), GetHeldTargetRotation());
             heldPickup = selectedPickup;
             if (playPickupAnimation)
             {
@@ -565,6 +583,7 @@ namespace Neighbor.Main.Features.Interaction
             inventorySlots[slotIndex] = pickupToStore;
             heldPickup = null;
             releaseButtonWasHeld = false;
+            ClearHeldInspectState();
             HideThrowArc();
             pickupToStore.StoreInInventory(GetInventoryStashRoot());
             return true;
@@ -1076,6 +1095,47 @@ namespace Neighbor.Main.Features.Interaction
             return GetHoldPosition(heldPickup);
         }
 
+        private Quaternion GetHeldTargetRotation()
+        {
+            return ViewTransform.rotation * Quaternion.Euler(heldInspectEuler.x, heldInspectEuler.y, 0f);
+        }
+
+        private void UpdateHeldInspectRotation(Mouse mouse)
+        {
+            isInspectingHeldPickup = PlayerInputBindings.IsPressed(PlayerInputBindingAction.InspectHeld);
+            if (!isInspectingHeldPickup || mouse == null)
+            {
+                return;
+            }
+
+            ApplyHeldInspectLookDelta(mouse.delta.ReadValue());
+        }
+
+        private void ApplyHeldInspectLookDelta(Vector2 lookDelta)
+        {
+            if (heldInspectRotationSensitivity <= 0f || lookDelta.sqrMagnitude <= Mathf.Epsilon)
+            {
+                return;
+            }
+
+            heldInspectEuler.x = Mathf.Clamp(
+                heldInspectEuler.x - lookDelta.y * heldInspectRotationSensitivity,
+                -heldInspectPitchLimit,
+                heldInspectPitchLimit);
+            heldInspectEuler.y = NormalizeSignedAngle(heldInspectEuler.y + lookDelta.x * heldInspectRotationSensitivity);
+        }
+
+        private void ClearHeldInspectState()
+        {
+            heldInspectEuler = Vector2.zero;
+            isInspectingHeldPickup = false;
+        }
+
+        private static float NormalizeSignedAngle(float angle)
+        {
+            return Mathf.Repeat(angle + 180f, 360f) - 180f;
+        }
+
         private Vector3 GetHoldPosition(Pickupable pickupable)
         {
             Transform activeHoldPoint = GetHoldPointFor(pickupable);
@@ -1343,6 +1403,14 @@ namespace Neighbor.Main.Features.Interaction
 
         private void ShowHeldPickupTooltip(Mouse mouse)
         {
+            if (isInspectingHeldPickup)
+            {
+                tooltipView.Show(
+                    $"Hold {PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.InspectHeld)}",
+                    "Rotate item");
+                return;
+            }
+
             IPrimaryUseInteractable primaryUseInteractable = GetHeldPrimaryUseInteractable();
 
             if (primaryUseInteractable != null

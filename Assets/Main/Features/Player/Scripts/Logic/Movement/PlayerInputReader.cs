@@ -22,8 +22,10 @@ namespace Neighbor.Main.Features.Player
 
             move = Vector2.ClampMagnitude(move, 1f);
 
-            Vector2 look = mouse != null ? mouse.delta.ReadValue() * mouseSensitivity : Vector2.zero;
-            float zoomDrag = mouse != null ? mouse.delta.ReadValue().y : 0f;
+            bool inspectHeld = PlayerInputBindings.IsPressed(PlayerInputBindingAction.InspectHeld);
+            Vector2 mouseDelta = mouse != null ? mouse.delta.ReadValue() : Vector2.zero;
+            Vector2 look = inspectHeld ? Vector2.zero : mouseDelta * mouseSensitivity;
+            float zoomDrag = inspectHeld ? 0f : mouseDelta.y;
             if (!invertLookY)
             {
                 look.y = -look.y;
@@ -40,6 +42,7 @@ namespace Neighbor.Main.Features.Player
                 LeanLeftHeld = PlayerInputBindings.IsPressed(PlayerInputBindingAction.LeanLeft),
                 LeanRightHeld = PlayerInputBindings.IsPressed(PlayerInputBindingAction.LeanRight),
                 ZoomHeld = PlayerInputBindings.IsPressed(PlayerInputBindingAction.Zoom),
+                InspectHeld = inspectHeld,
                 ZoomDrag = zoomDrag,
                 ZoomScroll = mouse != null ? mouse.scroll.ReadValue().y : 0f,
                 CursorUnlockPressed = keyboard != null && keyboard.escapeKey.wasPressedThisFrame
@@ -63,6 +66,7 @@ namespace Neighbor.Main.Features.Player
         public bool LeanLeftHeld;
         public bool LeanRightHeld;
         public bool ZoomHeld;
+        public bool InspectHeld;
         public float ZoomDrag;
         public float ZoomScroll;
         public bool CursorUnlockPressed;

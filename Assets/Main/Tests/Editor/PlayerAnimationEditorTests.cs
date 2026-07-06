@@ -257,6 +257,8 @@ namespace Neighbor.Main.Tests
                 Assert.That(PlayerInputBindings.GetBinding(PlayerInputBindingAction.PrimaryUse).Device, Is.EqualTo(PlayerInputBindingDevice.Mouse));
                 Assert.That(PlayerInputBindings.GetBinding(PlayerInputBindingAction.PrimaryUse).MouseButton, Is.EqualTo(PlayerMouseButton.Left));
                 Assert.That(PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.PrimaryUse), Is.EqualTo("L MOUSE"));
+                Assert.That(PlayerInputBindings.GetBoundKey(PlayerInputBindingAction.InspectHeld), Is.EqualTo(Key.F));
+                Assert.That(PlayerInputBindings.GetActionLabel(PlayerInputBindingAction.InspectHeld), Is.EqualTo("Inspect Held"));
                 Assert.That(PlayerInputBindings.TrySetBinding(
                     PlayerInputBindingAction.PrimaryUse,
                     PlayerInputControlBinding.ForKeyboard(Key.F)), Is.True);
@@ -271,6 +273,7 @@ namespace Neighbor.Main.Tests
                     PlayerInputControlBinding.ForMouse(PlayerMouseButton.None)), Is.False);
 
                 CollectionAssert.Contains(PlayerInputBindings.GetRebindableActions(), PlayerInputBindingAction.Inventory6);
+                CollectionAssert.Contains(PlayerInputBindings.GetRebindableActions(), PlayerInputBindingAction.InspectHeld);
             }
             finally
             {

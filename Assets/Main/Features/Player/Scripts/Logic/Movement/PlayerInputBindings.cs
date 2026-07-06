@@ -25,7 +25,8 @@ namespace Neighbor.Main.Features.Player
         Inventory3,
         Inventory4,
         Inventory5,
-        Inventory6
+        Inventory6,
+        InspectHeld
     }
 
     public enum PlayerInputBindingDevice
@@ -113,6 +114,7 @@ namespace Neighbor.Main.Features.Player
             PlayerInputBindingAction.PrimaryUse,
             PlayerInputBindingAction.SecondaryUse,
             PlayerInputBindingAction.Zoom,
+            PlayerInputBindingAction.InspectHeld,
             PlayerInputBindingAction.LeanLeft,
             PlayerInputBindingAction.LeanRight,
             PlayerInputBindingAction.Inventory1,
@@ -320,6 +322,7 @@ namespace Neighbor.Main.Features.Player
                 PlayerInputBindingAction.PrimaryUse => "Primary Use",
                 PlayerInputBindingAction.SecondaryUse => "Place/Throw",
                 PlayerInputBindingAction.Zoom => "Zoom",
+                PlayerInputBindingAction.InspectHeld => "Inspect Held",
                 PlayerInputBindingAction.Inventory1 => "Slot 1",
                 PlayerInputBindingAction.Inventory2 => "Slot 2",
                 PlayerInputBindingAction.Inventory3 => "Slot 3",
@@ -394,6 +397,7 @@ namespace Neighbor.Main.Features.Player
                 PlayerInputBindingAction.PrimaryUse => PlayerInputControlBinding.ForMouse(PlayerMouseButton.Left),
                 PlayerInputBindingAction.SecondaryUse => PlayerInputControlBinding.ForMouse(PlayerMouseButton.Right),
                 PlayerInputBindingAction.Zoom => PlayerInputControlBinding.ForMouse(PlayerMouseButton.Middle),
+                PlayerInputBindingAction.InspectHeld => PlayerInputControlBinding.ForKeyboard(Key.F),
                 PlayerInputBindingAction.Inventory1 => PlayerInputControlBinding.ForKeyboard(Key.Digit1),
                 PlayerInputBindingAction.Inventory2 => PlayerInputControlBinding.ForKeyboard(Key.Digit2),
                 PlayerInputBindingAction.Inventory3 => PlayerInputControlBinding.ForKeyboard(Key.Digit3),
