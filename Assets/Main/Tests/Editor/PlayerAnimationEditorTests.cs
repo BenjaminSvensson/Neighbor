@@ -341,6 +341,89 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void PlayerPauseMenu_LoadsSavedSettingsIntoRuntimeAndUi()
+        {
+            const string SensitivityKey = "Neighbor.MouseSensitivity";
+            const string VolumeKey = "Neighbor.MasterVolume";
+            const string FieldOfViewKey = "Neighbor.FieldOfView";
+            const string InvertYKey = "Neighbor.InvertLookY";
+            const string FullscreenKey = "Neighbor.Fullscreen";
+
+            QualityRuntimeSnapshot qualitySnapshot = QualityRuntimeSnapshot.Capture();
+            UrpRuntimeSnapshot urpSnapshot = UrpRuntimeSnapshot.Capture();
+            TerrainRuntimeSnapshot[] terrainSnapshots = TerrainRuntimeSnapshot.CaptureAll();
+            float originalVolume = AudioListener.volume;
+            bool originalFullscreen = Screen.fullScreen;
+            GameObject root = new("PauseMenuSettingsSmokePlayer");
+
+            try
+            {
+                PlayerPrefs.SetFloat(SensitivityKey, 0.123f);
+                PlayerPrefs.SetFloat(VolumeKey, 0.37f);
+                PlayerPrefs.SetFloat(FieldOfViewKey, 82f);
+                PlayerPrefs.SetInt(InvertYKey, 1);
+                PlayerPrefs.SetInt(FullscreenKey, 0);
+                PlayerPrefs.SetInt(PlayerPerformanceSettings.PreferenceKey, (int)PlayerPerformanceProfile.Quality);
+                PlayerPrefs.Save();
+
+                PlayerController playerController = root.AddComponent<PlayerController>();
+                GameObject cameraObject = new("Player Camera");
+                cameraObject.transform.SetParent(root.transform);
+                Camera playerCamera = cameraObject.AddComponent<Camera>();
+                playerCamera.fieldOfView = 70f;
+                PlayerCameraController cameraController = cameraObject.AddComponent<PlayerCameraController>();
+                GameplaySmokeTestReflection.InvokeIfPresent(cameraController, "Awake");
+
+                PlayerPauseMenu pauseMenu = root.AddComponent<PlayerPauseMenu>();
+                GameplaySmokeTestReflection.InvokeIfPresent(pauseMenu, "Awake");
+
+                Assert.That(
+                    GameplaySmokeTestReflection.GetField<float>(playerController, "mouseSensitivity"),
+                    Is.EqualTo(0.123f).Within(0.001f));
+                Assert.That(cameraController.RuntimeMouseSensitivity, Is.EqualTo(0.123f).Within(0.001f));
+                Assert.That(cameraController.RuntimeFieldOfView, Is.EqualTo(82f).Within(0.001f));
+                Assert.That(cameraController.RuntimeInvertLookY, Is.True);
+                Assert.That(playerCamera.fieldOfView, Is.EqualTo(82f).Within(0.001f));
+                Assert.That(AudioListener.volume, Is.EqualTo(0.37f).Within(0.001f));
+
+                Assert.That(
+                    GameplaySmokeTestReflection.GetField<Text>(pauseMenu, "sensitivityValueText").text,
+                    Is.EqualTo("0.123"));
+                Assert.That(
+                    GameplaySmokeTestReflection.GetField<Text>(pauseMenu, "volumeValueText").text,
+                    Is.EqualTo("37"));
+                Assert.That(
+                    GameplaySmokeTestReflection.GetField<Text>(pauseMenu, "fieldOfViewValueText").text,
+                    Is.EqualTo("82"));
+                Assert.That(
+                    GameplaySmokeTestReflection.GetField<Text>(pauseMenu, "invertLookYValueText").text,
+                    Is.EqualTo("ON"));
+                Assert.That(
+                    GameplaySmokeTestReflection.GetField<Text>(pauseMenu, "fullscreenValueText").text,
+                    Is.EqualTo("OFF"));
+                Assert.That(
+                    GameplaySmokeTestReflection.GetField<Text>(pauseMenu, "performanceProfileValueText").text,
+                    Is.EqualTo("QUALITY"));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                PlayerPrefs.DeleteKey(SensitivityKey);
+                PlayerPrefs.DeleteKey(VolumeKey);
+                PlayerPrefs.DeleteKey(FieldOfViewKey);
+                PlayerPrefs.DeleteKey(InvertYKey);
+                PlayerPrefs.DeleteKey(FullscreenKey);
+                PlayerPrefs.DeleteKey(PlayerPerformanceSettings.PreferenceKey);
+                PlayerPrefs.Save();
+                AudioListener.volume = originalVolume;
+                Screen.fullScreen = originalFullscreen;
+                qualitySnapshot.Restore();
+                urpSnapshot.Restore();
+                TerrainRuntimeSnapshot.RestoreAll(terrainSnapshots);
+            }
+        }
+
+        [Test]
         public void PlayerPerformanceProfiles_CycleThroughExpectedProfiles()
         {
             Assert.That(
