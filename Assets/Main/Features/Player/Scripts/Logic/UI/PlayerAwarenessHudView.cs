@@ -36,6 +36,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.CameraDetectedPlayer += HandleCameraDetection;
             PlayerFeedbackEvents.SecurityEscalated += HandleSecurityEscalation;
             PlayerFeedbackEvents.AmbienceZoneChanged += HandleAmbienceZoneChanged;
+            PlayerFeedbackEvents.DayPhaseChanged += HandleDayPhaseChanged;
         }
 
         private void OnDisable()
@@ -44,6 +45,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.CameraDetectedPlayer -= HandleCameraDetection;
             PlayerFeedbackEvents.SecurityEscalated -= HandleSecurityEscalation;
             PlayerFeedbackEvents.AmbienceZoneChanged -= HandleAmbienceZoneChanged;
+            PlayerFeedbackEvents.DayPhaseChanged -= HandleDayPhaseChanged;
         }
 
         private void Update()
@@ -232,6 +234,16 @@ namespace Neighbor.Main.Features.Player
                 new Color(1f, 0.55f, 0.18f, 1f),
                 feedback.Intensity);
             messageUntil = Time.unscaledTime + Mathf.Lerp(2.2f, MessageDuration, feedback.Intensity);
+        }
+
+        private void HandleDayPhaseChanged(PlayerFeedbackEvents.DayPhaseFeedback feedback)
+        {
+            warningText.text = feedback.Message.ToUpperInvariant();
+            warningText.color = Color.Lerp(
+                new Color(0.52f, 0.62f, 0.92f, 0.95f),
+                new Color(1f, 0.52f, 0.16f, 1f),
+                feedback.Intensity);
+            messageUntil = Time.unscaledTime + Mathf.Lerp(2f, MessageDuration, feedback.Intensity);
         }
 
         private void BuildHud()

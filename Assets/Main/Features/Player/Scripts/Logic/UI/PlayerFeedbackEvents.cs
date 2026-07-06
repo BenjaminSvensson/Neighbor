@@ -47,10 +47,27 @@ namespace Neighbor.Main.Features.Player
             }
         }
 
+        public readonly struct DayPhaseFeedback
+        {
+            public string Phase { get; }
+            public string Message { get; }
+            public float Intensity { get; }
+            public float TimeOfDay { get; }
+
+            public DayPhaseFeedback(string phase, string message, float intensity, float timeOfDay)
+            {
+                Phase = phase;
+                Message = message;
+                Intensity = Mathf.Clamp01(intensity);
+                TimeOfDay = Mathf.Repeat(timeOfDay, 1f);
+            }
+        }
+
         public static event Action<NoiseFeedback> NoiseEmitted;
         public static event Action CameraDetectedPlayer;
         public static event Action<SecurityEscalationFeedback> SecurityEscalated;
         public static event Action<AmbienceZoneFeedback> AmbienceZoneChanged;
+        public static event Action<DayPhaseFeedback> DayPhaseChanged;
 
         public static void ReportNoise(Vector3 origin, float loudness, float radius)
         {
@@ -77,6 +94,16 @@ namespace Neighbor.Main.Features.Player
             AmbienceZoneChanged?.Invoke(new AmbienceZoneFeedback(message, intensity));
         }
 
+        public static void ReportDayPhase(string phase, string message, float intensity, float timeOfDay)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return;
+            }
+
+            DayPhaseChanged?.Invoke(new DayPhaseFeedback(phase, message, intensity, timeOfDay));
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Reset()
         {
@@ -84,6 +111,7 @@ namespace Neighbor.Main.Features.Player
             CameraDetectedPlayer = null;
             SecurityEscalated = null;
             AmbienceZoneChanged = null;
+            DayPhaseChanged = null;
         }
     }
 }

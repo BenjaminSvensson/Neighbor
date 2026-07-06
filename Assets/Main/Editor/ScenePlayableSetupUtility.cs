@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using Neighbor.Main.Features.Audio;
+using Neighbor.Main.Features.Environment;
 using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
@@ -62,6 +63,8 @@ internal static class ScenePlayableSetupUtility
         PlayerInventoryHudView inventoryHud = EnsureInventoryHud(scene, player, result);
         EventSystem eventSystem = EnsureEventSystem(scene, result);
         Light directionalLight = EnsureDirectionalLight(scene, result);
+        Light moonLight = EnsureMoonLight(scene, result);
+        DayNightCycle dayNightCycle = EnsureDayNightCycle(scene, directionalLight, moonLight, result);
 
         result.Player = player;
         result.Neighbor = neighbor;
@@ -71,6 +74,8 @@ internal static class ScenePlayableSetupUtility
         result.InventoryHud = inventoryHud;
         result.EventSystem = eventSystem;
         result.DirectionalLight = directionalLight;
+        result.MoonLight = moonLight;
+        result.DayNightCycle = dayNightCycle;
 
         if (bakeNavMesh && navMeshSurface != null)
         {
@@ -224,12 +229,34 @@ internal static class ScenePlayableSetupUtility
     private static Light EnsureDirectionalLight(Scene scene, ScenePlayableSetupResult result)
     {
         Light[] lights = FindAllInScene<Light>(scene);
+        Light fallback = null;
         for (int i = 0; i < lights.Length; i++)
         {
-            if (lights[i] != null && lights[i].type == LightType.Directional)
+            Light candidate = lights[i];
+            if (candidate == null || candidate.type != LightType.Directional)
             {
-                return lights[i];
+                continue;
             }
+
+            string candidateName = candidate.name.ToLowerInvariant();
+            if (candidateName.Contains("moon"))
+            {
+                continue;
+            }
+
+            if (fallback == null)
+            {
+                fallback = candidate;
+            }
+            if (candidateName.Contains("sun") || candidateName.Contains("directional"))
+            {
+                return candidate;
+            }
+        }
+
+        if (fallback != null)
+        {
+            return fallback;
         }
 
         GameObject lightObject = CreateSceneObject(scene, "Directional Light");
@@ -241,6 +268,64 @@ internal static class ScenePlayableSetupUtility
         result.CreatedObjectCount++;
         result.CreatedDirectionalLight = true;
         return light;
+    }
+
+    private static Light EnsureMoonLight(Scene scene, ScenePlayableSetupResult result)
+    {
+        Light[] lights = FindAllInScene<Light>(scene);
+        for (int i = 0; i < lights.Length; i++)
+        {
+            Light candidate = lights[i];
+            if (candidate != null
+                && candidate.type == LightType.Directional
+                && candidate.name.ToLowerInvariant().Contains("moon"))
+            {
+                ConfigureMoonLight(candidate);
+                return candidate;
+            }
+        }
+
+        GameObject moonObject = CreateSceneObject(scene, "Moon Light");
+        moonObject.transform.rotation = Quaternion.Euler(250f, 150f, 0f);
+        Light moon = moonObject.AddComponent<Light>();
+        moon.type = LightType.Directional;
+        ConfigureMoonLight(moon);
+        result.CreatedObjectCount++;
+        result.CreatedMoonLight = true;
+        return moon;
+    }
+
+    private static void ConfigureMoonLight(Light moon)
+    {
+        moon.color = new Color(0.62f, 0.7f, 1f, 1f);
+        moon.intensity = 0.18f;
+        moon.shadows = LightShadows.None;
+        EditorUtility.SetDirty(moon);
+    }
+
+    private static DayNightCycle EnsureDayNightCycle(Scene scene, Light sun, Light moon, ScenePlayableSetupResult result)
+    {
+        DayNightCycle cycle = FindInScene<DayNightCycle>(scene);
+        if (cycle == null)
+        {
+            GameObject cycleObject = CreateSceneObject(scene, "DayNightCycle");
+            cycle = cycleObject.AddComponent<DayNightCycle>();
+            cycle.SetLights(sun, moon);
+            cycle.SetTimeOfDay(0.36f);
+            cycle.SetCycleRunning(true);
+            result.CreatedObjectCount++;
+            result.CreatedDayNightCycle = true;
+            return cycle;
+        }
+
+        if (cycle.SunLight != sun || cycle.MoonLight != moon)
+        {
+            cycle.SetLights(sun, moon);
+            result.UpdatedDayNightCycle = true;
+        }
+
+        EditorUtility.SetDirty(cycle);
+        return cycle;
     }
 
     private static GameObject InstantiatePrefab(string path, Scene scene, string fallbackName)
@@ -364,6 +449,8 @@ internal sealed class ScenePlayableSetupResult
     public PlayerInventoryHudView InventoryHud { get; set; }
     public EventSystem EventSystem { get; set; }
     public Light DirectionalLight { get; set; }
+    public Light MoonLight { get; set; }
+    public DayNightCycle DayNightCycle { get; set; }
     public int CreatedObjectCount { get; set; }
     public bool CreatedPlayer { get; set; }
     public bool CreatedNeighbor { get; set; }
@@ -374,8 +461,11 @@ internal sealed class ScenePlayableSetupResult
     public bool CreatedEventSystem { get; set; }
     public bool UpdatedEventSystem { get; set; }
     public bool CreatedDirectionalLight { get; set; }
+    public bool CreatedMoonLight { get; set; }
+    public bool CreatedDayNightCycle { get; set; }
+    public bool UpdatedDayNightCycle { get; set; }
     public bool BakedNavMesh { get; set; }
-    public bool HasChanges => CreatedObjectCount > 0 || UpdatedEventSystem || BakedNavMesh;
+    public bool HasChanges => CreatedObjectCount > 0 || UpdatedEventSystem || UpdatedDayNightCycle || BakedNavMesh;
 
     public string GetSummary()
     {
