@@ -32,5 +32,50 @@ namespace Neighbor.Main.Tests
         {
             Assert.That(ProjectStateParityValidator.ValidateProjectState(true), Is.Empty);
         }
+
+        [Test]
+        public void StashWarnings_FlagUnityProjectStateFiles()
+        {
+            string[] stashLines =
+            {
+                "stash@{0}: On main: Backup Main PC local changes"
+            };
+
+            var warnings = ProjectStateParityValidator.CollectProjectStateStashWarningsForTests(
+                stashLines,
+                stashReference => new[]
+                {
+                    "Assets/Main/Scenes/Testing.unity",
+                    "Assets/Main/Features/Interaction/Items/Cameras/PlaceholderCameraBody.mat",
+                    "Assets/Main/Scenes/Main/TrueHouse/TrueHouse/NavMesh-NavMesh Surface.asset",
+                    "Assets/Main/Features/Player/Scripts/Logic/UI/PlayerAwarenessHudView.cs"
+                });
+
+            Assert.That(warnings, Has.Count.EqualTo(1));
+            Assert.That(warnings[0], Does.Contain("stash@{0}"));
+            Assert.That(warnings[0], Does.Contain("Assets/Main/Scenes/Testing.unity"));
+            Assert.That(warnings[0], Does.Contain("PlaceholderCameraBody.mat"));
+            Assert.That(warnings[0], Does.Contain("NavMesh-NavMesh Surface.asset"));
+            Assert.That(warnings[0], Does.Not.Contain("PlayerAwarenessHudView.cs"));
+        }
+
+        [Test]
+        public void StashWarnings_IgnoreNonProjectStateCodeOnlyStashes()
+        {
+            string[] stashLines =
+            {
+                "stash@{1}: On main: Code scratch"
+            };
+
+            var warnings = ProjectStateParityValidator.CollectProjectStateStashWarningsForTests(
+                stashLines,
+                stashReference => new[]
+                {
+                    "Assets/Main/Features/Player/Scripts/Logic/UI/PlayerAwarenessHudView.cs",
+                    "Tools/Validate-Project.ps1"
+                });
+
+            Assert.That(warnings, Is.Empty);
+        }
     }
 }
