@@ -167,9 +167,10 @@ Packages/packages-lock.json linguist-generated
 # Spine export file for Unity
 *.skel.bytes            lfs
 
-# Exceptions for .asset files such as lightning pre-baking
-[attr]unity-binary       -text -diff -merge -eol
+# Binary Unity project-state assets. Keep these in LFS so terrain/NavMesh parity survives PC switches.
+[attr]unity-binary       filter=lfs diff=lfs merge=lfs -text -eol
 "Assets/New Terrain*.asset" unity-binary
 Assets/Main/Art/Terrain/Data/*.asset unity-binary
+Assets/Main/Art/Terrain/Data/**/*.asset unity-binary
 Assets/**/NavMesh*.asset unity-binary
 LightingData.asset     binary
