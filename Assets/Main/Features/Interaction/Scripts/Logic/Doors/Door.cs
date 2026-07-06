@@ -13,6 +13,7 @@ namespace Neighbor.Main.Features.Interaction
         private static readonly List<Door> ActiveDoors = new();
         public static event System.Action<Door, Vector3> UnexpectedlyOpened;
         public static event System.Action<Door, float> Disturbed;
+        public static event System.Action<Door> Unlocked;
 
         [Header("Door")]
         [SerializeField] private Transform hinge;
@@ -113,6 +114,7 @@ namespace Neighbor.Main.Features.Interaction
             ActiveDoors.Clear();
             UnexpectedlyOpened = null;
             Disturbed = null;
+            Unlocked = null;
         }
 
         private void Awake()
@@ -294,6 +296,7 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
+            bool wasLocked = isLocked;
             isLocked = locked;
             UpdateNavigationObstacles();
             if (isLocked)
@@ -304,6 +307,11 @@ namespace Neighbor.Main.Features.Interaction
                 }
 
                 return;
+            }
+
+            if (wasLocked)
+            {
+                Unlocked?.Invoke(this);
             }
 
             if (playSound)
