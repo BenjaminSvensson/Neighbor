@@ -63,6 +63,14 @@ namespace Neighbor.Main.Features.Neighbor
     [RequireComponent(typeof(Collider))]
     public sealed class ReinforcementTrigger : MonoBehaviour
     {
+        private enum ReinforcementPlacementKind
+        {
+            Any,
+            SecurityCamera,
+            Trap,
+            Generic
+        }
+
         private static readonly List<ReinforcementTrigger> ActiveTriggers = new();
 
         [Header("Run Tracking")]
@@ -155,11 +163,22 @@ namespace Neighbor.Main.Features.Neighbor
 
         public static void ApplyRunReinforcements(int maximumLocations, ReinforcementBudget budget)
         {
+            ApplyRunReinforcements(maximumLocations, budget, 0, 0);
+        }
+
+        public static void ApplyRunReinforcements(
+            int maximumLocations,
+            ReinforcementBudget budget,
+            int preferredSecurityCameras,
+            int preferredTraps)
+        {
             List<ReinforcementTrigger> rankedTriggers = new();
             for (int i = 0; i < ActiveTriggers.Count; i++)
             {
                 ReinforcementTrigger trigger = ActiveTriggers[i];
-                if (trigger != null && trigger.runScore > 0f && trigger.CanSpawnReinforcement(budget))
+                if (trigger != null
+                    && trigger.runScore > 0f
+                    && trigger.CanSpawnReinforcement(budget, ReinforcementPlacementKind.Any))
                 {
                     rankedTriggers.Add(trigger);
                 }
@@ -168,16 +187,24 @@ namespace Neighbor.Main.Features.Neighbor
             rankedTriggers.Sort((a, b) => b.ReinforcementRankingScore.CompareTo(a.ReinforcementRankingScore));
             int maximumSpawnCount = Mathf.Min(Mathf.Max(0, maximumLocations), rankedTriggers.Count);
             int spawnedCount = 0;
-            bool cameraPlacedThisPass = false;
-            for (int i = 0; i < rankedTriggers.Count && spawnedCount < maximumSpawnCount; i++)
-            {
-                int cameraCountBeforeSpawn = SecurityCamera.NeighborPlacedCameraCount;
-                if (rankedTriggers[i].SpawnReinforcement(budget, !cameraPlacedThisPass))
-                {
-                    spawnedCount++;
-                    cameraPlacedThisPass |= SecurityCamera.NeighborPlacedCameraCount > cameraCountBeforeSpawn;
-                }
-            }
+            spawnedCount += SpawnRankedReinforcements(
+                rankedTriggers,
+                budget,
+                maximumSpawnCount - spawnedCount,
+                ReinforcementPlacementKind.SecurityCamera,
+                preferredSecurityCameras);
+            spawnedCount += SpawnRankedReinforcements(
+                rankedTriggers,
+                budget,
+                maximumSpawnCount - spawnedCount,
+                ReinforcementPlacementKind.Trap,
+                preferredTraps);
+            spawnedCount += SpawnRankedReinforcements(
+                rankedTriggers,
+                budget,
+                maximumSpawnCount - spawnedCount,
+                ReinforcementPlacementKind.Any,
+                maximumSpawnCount - spawnedCount);
 
             for (int i = 0; i < ActiveTriggers.Count; i++)
             {
@@ -189,21 +216,52 @@ namespace Neighbor.Main.Features.Neighbor
             }
         }
 
-        public bool TryGetConfiguredBuilderReinforcement(ReinforcementBudget budget, out ReinforcementPrefabSelection selection)
+        private static int SpawnRankedReinforcements(
+            List<ReinforcementTrigger> rankedTriggers,
+            ReinforcementBudget budget,
+            int remainingLocationSlots,
+            ReinforcementPlacementKind placementKind,
+            int requestedCount)
         {
-            return TryGetBuilderLocationSelection(budget, true, out selection, out _);
+            if (rankedTriggers == null || budget == null || remainingLocationSlots <= 0 || requestedCount <= 0)
+            {
+                return 0;
+            }
+
+            int targetCount = Mathf.Min(remainingLocationSlots, requestedCount);
+            int spawnedCount = 0;
+            for (int i = 0; i < rankedTriggers.Count && spawnedCount < targetCount; i++)
+            {
+                ReinforcementTrigger trigger = rankedTriggers[i];
+                if (trigger != null && trigger.SpawnReinforcement(budget, placementKind))
+                {
+                    spawnedCount++;
+                }
+            }
+
+            return spawnedCount;
         }
 
-        private bool CanSpawnReinforcement(ReinforcementBudget budget)
+        public bool TryGetConfiguredBuilderReinforcement(ReinforcementBudget budget, out ReinforcementPrefabSelection selection)
+        {
+            return TryGetBuilderLocationSelection(budget, ReinforcementPlacementKind.Any, out selection, out _);
+        }
+
+        private bool CanSpawnReinforcement(ReinforcementBudget budget, ReinforcementPlacementKind placementKind)
         {
             return HasConfiguredReinforcement()
-                && TryGetRandomAffordableReinforcement(budget, out _)
+                && TryGetRandomAffordableReinforcement(budget, out _, placementKind)
                 && (maximumPersistentReinforcements <= 0 || spawnedReinforcementCount < maximumPersistentReinforcements);
         }
 
-        private bool SpawnReinforcement(ReinforcementBudget budget, bool allowSecurityCamera)
+        private bool SpawnReinforcement(ReinforcementBudget budget, ReinforcementPlacementKind placementKind)
         {
-            if (!TryGetRandomAffordableReinforcement(budget, out ReinforcementPrefabSelection selection, allowSecurityCamera))
+            if (maximumPersistentReinforcements > 0 && spawnedReinforcementCount >= maximumPersistentReinforcements)
+            {
+                return false;
+            }
+
+            if (!TryGetRandomAffordableReinforcement(budget, out ReinforcementPrefabSelection selection, placementKind))
             {
                 return false;
             }
@@ -219,11 +277,16 @@ namespace Neighbor.Main.Features.Neighbor
             RaycastHit wallHit = default;
             if (cameraPrefab != null && (!SecurityCamera.CanPlaceNeighborCamera || !TryFindCameraWall(anchor, out wallHit)))
             {
-                if (!TryGetRandomAffordableReinforcement(budget, out selection, false))
+                if (placementKind == ReinforcementPlacementKind.SecurityCamera
+                    || !TryGetRandomAffordableReinforcement(budget, out selection, ReinforcementPlacementKind.Generic))
                 {
                     return false;
                 }
 
+                anchor = selection.Anchor != null ? selection.Anchor : spawnPoint != null ? spawnPoint : transform;
+                rotation = randomizeYaw
+                    ? Quaternion.Euler(0f, Random.Range(0f, 360f), 0f)
+                    : anchor.rotation;
                 cameraPrefab = null;
             }
 
@@ -240,7 +303,8 @@ namespace Neighbor.Main.Features.Neighbor
                 if (spawnedCamera == null || !spawnedCamera.TryAttachByNeighbor(wallHit.point, wallHit.normal))
                 {
                     Destroy(reinforcement);
-                    return SpawnReinforcement(budget, false);
+                    return placementKind != ReinforcementPlacementKind.SecurityCamera
+                        && SpawnReinforcement(budget, ReinforcementPlacementKind.Generic);
                 }
 
                 RememberCameraPlacement(wallHit.point);
@@ -258,7 +322,7 @@ namespace Neighbor.Main.Features.Neighbor
         private bool TryGetRandomAffordableReinforcement(
             ReinforcementBudget budget,
             out ReinforcementPrefabSelection selection,
-            bool allowSecurityCamera = true)
+            ReinforcementPlacementKind placementKind = ReinforcementPlacementKind.Any)
         {
             selection = default;
             if (budget == null)
@@ -266,7 +330,7 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
-            if (TryGetBuilderLocationSelection(budget, allowSecurityCamera, out selection, out bool hasBuilderLocations))
+            if (TryGetBuilderLocationSelection(budget, placementKind, out selection, out bool hasBuilderLocations))
             {
                 return true;
             }
@@ -276,9 +340,10 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
-            if (allowSecurityCamera
-                && (SecurityCamera.NeighborPlacedCameraCount == 0 || Random.value <= securityCameraPlacementChance)
-                && CanUsePrefab(securityCameraPrefab, true)
+            if ((placementKind == ReinforcementPlacementKind.SecurityCamera
+                    || placementKind == ReinforcementPlacementKind.Any
+                    && (SecurityCamera.NeighborPlacedCameraCount == 0 || Random.value <= securityCameraPlacementChance))
+                && CanUsePrefab(securityCameraPrefab, placementKind)
                 && budget.CanAfford(securityCameraCost))
             {
                 selection = new ReinforcementPrefabSelection(securityCameraPrefab, securityCameraCost);
@@ -291,7 +356,7 @@ namespace Neighbor.Main.Features.Neighbor
                 for (int i = 0; i < reinforcementOptions.Length; i++)
                 {
                     ReinforcementPrefabOption option = reinforcementOptions[(startIndex + i) % reinforcementOptions.Length];
-                    if (option != null && CanUsePrefab(option.Prefab, allowSecurityCamera) && budget.CanAfford(option.Cost))
+                    if (option != null && CanUsePrefab(option.Prefab, placementKind) && budget.CanAfford(option.Cost))
                     {
                         selection = new ReinforcementPrefabSelection(option.Prefab, option.Cost);
                         return true;
@@ -305,7 +370,7 @@ namespace Neighbor.Main.Features.Neighbor
                 for (int i = 0; i < legacyReinforcementPrefabs.Length; i++)
                 {
                     GameObject prefab = legacyReinforcementPrefabs[(startIndex + i) % legacyReinforcementPrefabs.Length];
-                    if (CanUsePrefab(prefab, allowSecurityCamera))
+                    if (CanUsePrefab(prefab, placementKind))
                     {
                         selection = new ReinforcementPrefabSelection(prefab, 1);
                         return true;
@@ -355,7 +420,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         private bool TryGetBuilderLocationSelection(
             ReinforcementBudget budget,
-            bool allowSecurityCamera,
+            ReinforcementPlacementKind placementKind,
             out ReinforcementPrefabSelection selection,
             out bool hasBuilderLocations)
         {
@@ -384,7 +449,7 @@ namespace Neighbor.Main.Features.Neighbor
                 for (int definitionIndex = 0; definitionIndex < definitions.Count; definitionIndex++)
                 {
                     HousePlaceableDefinition definition = definitions[(definitionStartIndex + definitionIndex) % definitions.Count];
-                    if (definition?.Prefab != null && CanUsePrefab(definition.Prefab, allowSecurityCamera) && budget.CanAfford(1))
+                    if (definition?.Prefab != null && CanUsePrefab(definition.Prefab, placementKind) && budget.CanAfford(1))
                     {
                         selection = new ReinforcementPrefabSelection(definition.Prefab, 1, location.transform);
                         return true;
@@ -416,7 +481,9 @@ namespace Neighbor.Main.Features.Neighbor
             return false;
         }
 
-        private bool CanUsePrefab(GameObject prefab, bool allowSecurityCamera = true)
+        private bool CanUsePrefab(
+            GameObject prefab,
+            ReinforcementPlacementKind placementKind = ReinforcementPlacementKind.Any)
         {
             if (prefab == null)
             {
@@ -424,7 +491,28 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             SecurityCamera camera = prefab.GetComponentInChildren<SecurityCamera>(true);
-            return camera == null || allowSecurityCamera && attachSecurityCamerasToWalls && SecurityCamera.CanPlaceNeighborCamera;
+            bool isCamera = camera != null;
+            bool isTrap = IsTrapPrefab(prefab);
+            return placementKind switch
+            {
+                ReinforcementPlacementKind.SecurityCamera => isCamera
+                    && attachSecurityCamerasToWalls
+                    && SecurityCamera.CanPlaceNeighborCamera,
+                ReinforcementPlacementKind.Trap => isTrap && !isCamera,
+                ReinforcementPlacementKind.Generic => !isCamera,
+                _ => !isCamera || attachSecurityCamerasToWalls && SecurityCamera.CanPlaceNeighborCamera
+            };
+        }
+
+        private static bool IsTrapPrefab(GameObject prefab)
+        {
+            return prefab != null
+                && (prefab.GetComponentInChildren<Beartrap>(true) != null
+                    || prefab.GetComponentInChildren<SpringLoadedBoxingGloveTrap>(true) != null
+                    || prefab.GetComponentInChildren<RaySawBladeTrap>(true) != null
+                    || prefab.GetComponentInChildren<SwingingAxeTrap>(true) != null
+                    || prefab.GetComponentInChildren<SwingingAxeTripWire>(true) != null
+                    || prefab.GetComponentInChildren<FakeFloorTrapDoor>(true) != null);
         }
 
         private bool TryFindCameraWall(Transform anchor, out RaycastHit bestHit)

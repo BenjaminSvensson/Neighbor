@@ -46,6 +46,7 @@ namespace Neighbor.Main.Features.Neighbor
             ObjectHandling,
             LightSwitchUse,
             GarageDoorUse,
+            DoorSecurityCheck,
             Investigate,
             Chase,
             Catching,
@@ -97,6 +98,15 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float garageDoorWaitTimeout = 6f;
         [SerializeField, Min(0f)] private float garageDoorCloseCooldown = 4f;
         [SerializeField, Min(0.05f)] private float garageDoorSecurityCheckInterval = 0.75f;
+
+        [Header("Open Door Security")]
+        [SerializeField] private bool closePlayerOpenedDoorsForSecurity = true;
+        [SerializeField, Min(0.1f)] private float openDoorSecurityRadius = 14f;
+        [SerializeField, Min(0.1f)] private float openDoorSecurityDestinationSampleRadius = 1.25f;
+        [SerializeField, Min(0.1f)] private float openDoorSecurityCloseDistance = 1.35f;
+        [SerializeField, Min(0f)] private float openDoorSecurityWaitTime = 0.55f;
+        [SerializeField, Min(0f)] private float openDoorSecurityCooldown = 5f;
+        [SerializeField, Min(0.05f)] private float openDoorSecurityCheckInterval = 0.9f;
 
         [Header("Suspicion And Memory")]
         [SerializeField, Min(0f)] private float suspicionDecayPerSecond = 0.035f;
@@ -225,6 +235,7 @@ namespace Neighbor.Main.Features.Neighbor
         private float tasksSuppressedUntilTime;
         private HouseGarageDoorMotion activeGarageDoor;
         private LightSwitch activeGarageSwitch;
+        private Door activeSecurityDoor;
         private BehaviorState garageResumeState;
         private Vector3 garageResumeGoal;
         private bool activeGarageDesiredOpen;
@@ -233,6 +244,8 @@ namespace Neighbor.Main.Features.Neighbor
         private float garageDoorWaitUntilTime;
         private float nextGarageDoorCloseTime;
         private float nextGarageDoorSecurityCheckTime;
+        private float nextOpenDoorSecurityCheckTime;
+        private float nextOpenDoorSecurityCloseTime;
         private float nextObjectLocationCheckTime;
 
         public BehaviorState CurrentState => currentState;
@@ -294,6 +307,8 @@ namespace Neighbor.Main.Features.Neighbor
         public HouseGarageDoorMotion ActiveGarageDoor => activeGarageDoor;
         public LightSwitch ActiveGarageSwitch => activeGarageSwitch;
         public bool IsGarageSecurityResponse => activeGarageSecurityResponse;
+        public Door ActiveSecurityDoor => activeSecurityDoor;
+        public bool IsDoorSecurityCheck => currentState == BehaviorState.DoorSecurityCheck && activeSecurityDoor != null;
         public bool IsAtInvestigationGoal => currentState == BehaviorState.Investigate
             && waitingAtGoal
             && motor != null
@@ -376,6 +391,11 @@ namespace Neighbor.Main.Features.Neighbor
             UpdatePerception();
             TryNoticeObjectLocationChanges();
             if (TryHandleGarageDoorSecurity())
+            {
+                return;
+            }
+
+            if (TryHandleOpenDoorSecurity())
             {
                 return;
             }
@@ -506,6 +526,9 @@ namespace Neighbor.Main.Features.Neighbor
                     break;
                 case BehaviorState.GarageDoorUse:
                     UpdateGarageDoorUse();
+                    break;
+                case BehaviorState.DoorSecurityCheck:
+                    UpdateDoorSecurityCheck();
                     break;
                 case BehaviorState.Task:
                 case BehaviorState.Wander:
@@ -788,6 +811,7 @@ namespace Neighbor.Main.Features.Neighbor
         {
             objectHandling?.CancelActivity();
             ClearGarageDoorUse();
+            ClearDoorSecurityCheck();
             currentClimbLink = null;
             currentSearchPoint = null;
             currentHideSpot = null;
@@ -1349,6 +1373,10 @@ namespace Neighbor.Main.Features.Neighbor
                     ClearGarageDoorUse();
                     ChooseNextRoutineGoal();
                     return;
+                case BehaviorState.DoorSecurityCheck:
+                    ClearDoorSecurityCheck();
+                    ChooseNextRoutineGoal();
+                    return;
             }
         }
 
@@ -1415,6 +1443,11 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             if (TryStartGarageDoorCloseRoutine())
+            {
+                return;
+            }
+
+            if (TryStartOpenDoorSecurityRoutine())
             {
                 return;
             }
@@ -1909,6 +1942,141 @@ namespace Neighbor.Main.Features.Neighbor
             garageDoorWaitUntilTime = 0f;
             garageResumeGoal = default;
             garageResumeState = BehaviorState.Idle;
+        }
+
+        private void UpdateDoorSecurityCheck()
+        {
+            if (motor == null || activeSecurityDoor == null || !activeSecurityDoor.IsOpen)
+            {
+                ClearDoorSecurityCheck();
+                ChooseNextRoutineGoal();
+                return;
+            }
+
+            motor.SetMoveMode(NeighborMotor.MoveMode.Cautious);
+            if (!motor.HasArrived)
+            {
+                motor.FaceMovementDirection(10f);
+                return;
+            }
+
+            Vector3 toDoor = activeSecurityDoor.transform.position - transform.position;
+            float verticalOffset = Mathf.Abs(toDoor.y);
+            toDoor.y = 0f;
+            if (toDoor.sqrMagnitude > openDoorSecurityCloseDistance * openDoorSecurityCloseDistance
+                || verticalOffset > openDoorSecurityCloseDistance)
+            {
+                ClearDoorSecurityCheck();
+                ChooseNextRoutineGoal();
+                return;
+            }
+
+            motor.Stop();
+            motor.FaceTowards(activeSecurityDoor.transform.position, 10f);
+            if (Time.time < nextOpenDoorSecurityCloseTime)
+            {
+                return;
+            }
+
+            activeSecurityDoor.Close();
+            nextOpenDoorSecurityCheckTime = Time.time + openDoorSecurityCooldown;
+            ClearDoorSecurityCheck();
+            ChooseNextRoutineGoal();
+        }
+
+        private bool TryHandleOpenDoorSecurity()
+        {
+            if (currentState != BehaviorState.Idle && currentState != BehaviorState.Wander)
+            {
+                return false;
+            }
+
+            return TryStartOpenDoorSecurityRoutine();
+        }
+
+        private bool TryStartOpenDoorSecurityRoutine()
+        {
+            if (!closePlayerOpenedDoorsForSecurity
+                || motor == null
+                || Time.time < nextOpenDoorSecurityCheckTime
+                || !TryFindOpenSecurityDoor(out Door door, out Vector3 destination))
+            {
+                return false;
+            }
+
+            activeSecurityDoor = door;
+            currentGoal = destination;
+            currentTaskLocation = null;
+            waitingAtGoal = false;
+            StopActiveTaskAudio();
+            motor.SetMoveMode(NeighborMotor.MoveMode.Cautious);
+            if (!motor.SetDestination(currentGoal))
+            {
+                ClearDoorSecurityCheck();
+                nextOpenDoorSecurityCheckTime = Time.time + openDoorSecurityCheckInterval;
+                return false;
+            }
+
+            nextOpenDoorSecurityCheckTime = Time.time + openDoorSecurityCheckInterval;
+            nextOpenDoorSecurityCloseTime = Time.time + openDoorSecurityWaitTime;
+            SetState(BehaviorState.DoorSecurityCheck);
+            return true;
+        }
+
+        private bool TryFindOpenSecurityDoor(out Door door, out Vector3 destination)
+        {
+            door = null;
+            destination = transform.position;
+            float bestScore = float.NegativeInfinity;
+            IReadOnlyList<Door> doors = Door.Doors;
+            for (int i = 0; i < doors.Count; i++)
+            {
+                Door candidate = doors[i];
+                if (!IsOpenSecurityDoorCandidate(candidate)
+                    || !motor.CanReachNear(
+                        candidate.transform.position,
+                        openDoorSecurityDestinationSampleRadius,
+                        out float pathDistance,
+                        out Vector3 sampledPosition))
+                {
+                    continue;
+                }
+
+                float score = GetMemory(disturbanceMemory, candidate.gameObject) * 2.5f
+                    - pathDistance * 0.15f
+                    - Vector3.Distance(transform.position, candidate.transform.position) * 0.04f;
+                if (score <= bestScore)
+                {
+                    continue;
+                }
+
+                bestScore = score;
+                door = candidate;
+                destination = sampledPosition;
+            }
+
+            return door != null;
+        }
+
+        private bool IsOpenSecurityDoorCandidate(Door door)
+        {
+            if (door == null
+                || !door.isActiveAndEnabled
+                || !door.IsOpen
+                || door.LastOpenedByNeighbor
+                || Vector3.Distance(transform.position, door.transform.position) > openDoorSecurityRadius)
+            {
+                return false;
+            }
+
+            return observedUnexpectedDoorOpenSequences.TryGetValue(door, out int observedSequence)
+                && observedSequence == door.OpenSequence;
+        }
+
+        private void ClearDoorSecurityCheck()
+        {
+            activeSecurityDoor = null;
+            nextOpenDoorSecurityCloseTime = 0f;
         }
 
         private bool TryResolveTelevisionInvestigationSource()
@@ -2439,6 +2607,11 @@ namespace Neighbor.Main.Features.Neighbor
             if (currentState == BehaviorState.GarageDoorUse && state != BehaviorState.GarageDoorUse)
             {
                 ClearGarageDoorUse();
+            }
+
+            if (currentState == BehaviorState.DoorSecurityCheck && state != BehaviorState.DoorSecurityCheck)
+            {
+                ClearDoorSecurityCheck();
             }
 
             if (currentState == BehaviorState.Chase && state != BehaviorState.Chase)

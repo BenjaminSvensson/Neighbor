@@ -1,3 +1,5 @@
+using System;
+using System.Reflection;
 using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
@@ -39,6 +41,9 @@ namespace Neighbor.Main.Tests
             Assert.That(plan.Budget, Is.EqualTo(9));
             Assert.That(plan.LocationCount, Is.EqualTo(3));
             Assert.That(plan.DoorCount, Is.EqualTo(3));
+            Assert.That(plan.CameraCount, Is.EqualTo(1));
+            Assert.That(plan.TrapCount, Is.EqualTo(1));
+            Assert.That(plan.PatrolPointCount, Is.EqualTo(2));
             Assert.That(AdaptiveSecurityDirector.RunPressure, Is.Zero);
             Assert.That(AdaptiveSecurityDirector.PersistentPressure, Is.GreaterThan(0f));
         }
@@ -56,6 +61,70 @@ namespace Neighbor.Main.Tests
             Assert.That(firstPlan.Level, Is.Zero);
             Assert.That(latestPlan.Level, Is.GreaterThan(firstPlan.Level));
             Assert.That(latestPlan.Budget, Is.GreaterThan(firstPlan.Budget));
+            Assert.That(latestPlan.PatrolPointCount, Is.GreaterThan(firstPlan.PatrolPointCount));
+        }
+
+        [Test]
+        public void ReinforcementTrigger_RecognizesCameraAndTrapPreferredPlacements()
+        {
+            GameObject triggerObject = context.CreateObject("ReinforcementTrigger");
+            triggerObject.AddComponent<BoxCollider>();
+            ReinforcementTrigger trigger = context.AddInitializedComponent<ReinforcementTrigger>(triggerObject);
+            GameObject cameraPrefab = context.CreateObject("CameraPrefab");
+            cameraPrefab.AddComponent<BoxCollider>();
+            cameraPrefab.AddComponent<Pickupable>();
+            cameraPrefab.AddComponent<SecurityCamera>();
+            GameObject trapPrefab = context.CreateObject("TrapPrefab");
+            trapPrefab.AddComponent<BoxCollider>();
+            trapPrefab.AddComponent<SpringLoadedBoxingGloveTrap>();
+            GameObject genericPrefab = context.CreateObject("GenericPrefab");
+            genericPrefab.AddComponent<BoxCollider>();
+
+            Type placementKindType = typeof(ReinforcementTrigger).GetNestedType(
+                "ReinforcementPlacementKind",
+                BindingFlags.NonPublic);
+            Assert.That(placementKindType, Is.Not.Null);
+            MethodInfo canUsePrefab = typeof(ReinforcementTrigger).GetMethod(
+                "CanUsePrefab",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(canUsePrefab, Is.Not.Null);
+
+            object cameraKind = Enum.Parse(placementKindType, "SecurityCamera");
+            object trapKind = Enum.Parse(placementKindType, "Trap");
+            object genericKind = Enum.Parse(placementKindType, "Generic");
+
+            Assert.That((bool)canUsePrefab.Invoke(trigger, new[] { cameraPrefab, cameraKind }), Is.True);
+            Assert.That((bool)canUsePrefab.Invoke(trigger, new[] { trapPrefab, cameraKind }), Is.False);
+            Assert.That((bool)canUsePrefab.Invoke(trigger, new[] { trapPrefab, trapKind }), Is.True);
+            Assert.That((bool)canUsePrefab.Invoke(trigger, new[] { cameraPrefab, trapKind }), Is.False);
+            Assert.That((bool)canUsePrefab.Invoke(trigger, new[] { cameraPrefab, genericKind }), Is.False);
+            Assert.That((bool)canUsePrefab.Invoke(trigger, new[] { genericPrefab, genericKind }), Is.True);
+        }
+
+        [Test]
+        public void DoorSecurity_OnlyTargetsUnexpectedPlayerOpenedDoors()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>();
+            Door authoredOpenDoor = context.AddInitializedComponent<Door>("AuthoredOpenDoor");
+            GameplaySmokeTestReflection.SetField(authoredOpenDoor, "isOpen", true);
+            Door playerOpenedDoor = context.AddInitializedComponent<Door>("PlayerOpenedDoor");
+            playerOpenedDoor.SetLocked(false, false, false);
+            Transform opener = context.CreateObject("DoorOpener").transform;
+
+            Assert.That(playerOpenedDoor.TryOpenFor(opener), Is.True);
+
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    brain,
+                    "IsOpenSecurityDoorCandidate",
+                    playerOpenedDoor),
+                Is.True);
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    brain,
+                    "IsOpenSecurityDoorCandidate",
+                    authoredOpenDoor),
+                Is.False);
         }
 
         [Test]
