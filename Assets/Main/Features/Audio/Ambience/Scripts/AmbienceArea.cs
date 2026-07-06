@@ -7,7 +7,9 @@ namespace Neighbor.Main.Features.Audio
     public enum AmbienceZoneLocation
     {
         Inside = 0,
-        Outside = 1
+        Outside = 1,
+        Basement = 2,
+        Garage = 3
     }
 
     [RequireComponent(typeof(Collider))]

@@ -10,14 +10,24 @@ namespace Neighbor.Main.Features.Audio
         [SerializeField, Min(0.01f)] private float transitionDuration = 2f;
         [SerializeField] private AudioMixerGroup outputMixerGroup;
         [SerializeField] private AmbienceLayer[] layers = Array.Empty<AmbienceLayer>();
+        [Header("Zone Feel")]
+        [SerializeField, Range(500f, 22000f)] private float listenerLowPassCutoff = 22000f;
+        [SerializeField] private AudioReverbPreset listenerReverbPreset = AudioReverbPreset.Off;
+        [SerializeField, Range(0f, 1f)] private float zoneWarningIntensity;
+        [SerializeField] private string zoneWarningText;
 
         public float TransitionDuration => transitionDuration;
         public AudioMixerGroup OutputMixerGroup => outputMixerGroup;
         public AmbienceLayer[] Layers => layers;
+        public float ListenerLowPassCutoff => Mathf.Clamp(listenerLowPassCutoff, 500f, 22000f);
+        public AudioReverbPreset ListenerReverbPreset => listenerReverbPreset;
+        public float ZoneWarningIntensity => Mathf.Clamp01(zoneWarningIntensity);
+        public string ZoneWarningText => zoneWarningText;
 
         private void OnValidate()
         {
             transitionDuration = Mathf.Max(0.01f, transitionDuration);
+            listenerLowPassCutoff = Mathf.Clamp(listenerLowPassCutoff, 500f, 22000f);
         }
     }
 
