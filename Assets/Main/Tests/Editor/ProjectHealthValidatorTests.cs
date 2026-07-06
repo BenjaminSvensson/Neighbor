@@ -91,5 +91,22 @@ namespace Neighbor.Main.Tests
                 Object.DestroyImmediate(root);
             }
         }
+
+        [Test]
+        public void Validator_FlagsTerrainWithoutTerrainData()
+        {
+            GameObject root = new("TerrainWithoutData");
+            try
+            {
+                root.AddComponent<Terrain>();
+
+                LogAssert.Expect(LogType.Error, new Regex("Terrain has no TerrainData"));
+                Assert.That(ProjectHealthValidator.ValidateGameObjectForTests(root, "SyntheticTerrain.prefab"), Is.EqualTo(1));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
     }
 }

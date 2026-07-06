@@ -367,6 +367,14 @@ internal static class ProjectHealthValidator
         }
 
         int issueCount = 0;
+        if (terrain.terrainData == null)
+        {
+            Debug.LogError(
+                $"Terrain has no TerrainData: '{GetHierarchyPath(terrain.transform)}' in '{assetPath}'.",
+                terrain);
+            return 1;
+        }
+
         if (terrain.treeDistance > MaximumTerrainTreeDistance)
         {
             Debug.LogError(
