@@ -91,12 +91,25 @@ namespace Neighbor.Main.Features.Player
             }
         }
 
+        public readonly struct OnboardingPromptFeedback
+        {
+            public string Message { get; }
+            public float Intensity { get; }
+
+            public OnboardingPromptFeedback(string message, float intensity)
+            {
+                Message = string.IsNullOrWhiteSpace(message) ? string.Empty : message.Trim();
+                Intensity = Mathf.Clamp01(intensity);
+            }
+        }
+
         public static event Action<NoiseFeedback> NoiseEmitted;
         public static event Action CameraDetectedPlayer;
         public static event Action<SecurityEscalationFeedback> SecurityEscalated;
         public static event Action<AmbienceZoneFeedback> AmbienceZoneChanged;
         public static event Action<DayPhaseFeedback> DayPhaseChanged;
         public static event Action<CheckpointFeedback> CheckpointReached;
+        public static event Action<OnboardingPromptFeedback> OnboardingPrompted;
 
         public static void ReportNoise(Vector3 origin, float loudness, float radius)
         {
@@ -157,6 +170,16 @@ namespace Neighbor.Main.Features.Player
             CheckpointReached?.Invoke(new CheckpointFeedback(checkpointName));
         }
 
+        public static void ReportOnboardingPrompt(string message, float intensity = 0.35f)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return;
+            }
+
+            OnboardingPrompted?.Invoke(new OnboardingPromptFeedback(message, intensity));
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Reset()
         {
@@ -166,6 +189,7 @@ namespace Neighbor.Main.Features.Player
             AmbienceZoneChanged = null;
             DayPhaseChanged = null;
             CheckpointReached = null;
+            OnboardingPrompted = null;
         }
     }
 }

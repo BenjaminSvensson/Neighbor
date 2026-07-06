@@ -38,6 +38,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.AmbienceZoneChanged += HandleAmbienceZoneChanged;
             PlayerFeedbackEvents.DayPhaseChanged += HandleDayPhaseChanged;
             PlayerFeedbackEvents.CheckpointReached += HandleCheckpointReached;
+            PlayerFeedbackEvents.OnboardingPrompted += HandleOnboardingPrompted;
         }
 
         private void OnDisable()
@@ -48,6 +49,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.AmbienceZoneChanged -= HandleAmbienceZoneChanged;
             PlayerFeedbackEvents.DayPhaseChanged -= HandleDayPhaseChanged;
             PlayerFeedbackEvents.CheckpointReached -= HandleCheckpointReached;
+            PlayerFeedbackEvents.OnboardingPrompted -= HandleOnboardingPrompted;
         }
 
         private void Update()
@@ -277,6 +279,21 @@ namespace Neighbor.Main.Features.Player
             warningText.text = $"{feedback.Name} SAVED".ToUpperInvariant();
             warningText.color = new Color(0.58f, 0.9f, 1f, 0.95f);
             messageUntil = Time.unscaledTime + 2.6f;
+        }
+
+        private void HandleOnboardingPrompted(PlayerFeedbackEvents.OnboardingPromptFeedback feedback)
+        {
+            if (string.IsNullOrWhiteSpace(feedback.Message))
+            {
+                return;
+            }
+
+            warningText.text = feedback.Message.ToUpperInvariant();
+            warningText.color = Color.Lerp(
+                new Color(0.72f, 0.82f, 0.94f, 0.92f),
+                new Color(0.62f, 0.92f, 1f, 0.98f),
+                feedback.Intensity);
+            messageUntil = Time.unscaledTime + Mathf.Lerp(2.4f, 3.8f, feedback.Intensity);
         }
 
         private void BuildHud()

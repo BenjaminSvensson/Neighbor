@@ -164,6 +164,39 @@ namespace Neighbor.Main.Tests
             Assert.That(player.enabled, Is.True);
         }
 
+        [Test]
+        public void PlayerOnboardingDirector_IsRuntimeInstalledAndEmitsFeedback()
+        {
+            PlayerController player = CreatePlayer("Player", Vector3.zero, out _);
+            PlayerOnboardingDirector director = player.GetComponent<PlayerOnboardingDirector>();
+            Assert.That(director, Is.Not.Null);
+
+            string receivedMessage = null;
+            PlayerFeedbackEvents.OnboardingPrompted += HandlePrompt;
+            try
+            {
+                bool emitted = InvokeResult<bool>(
+                    director,
+                    "TryEmitPrompt",
+                    "Find a way inside.",
+                    0.35f,
+                    true);
+
+                Assert.That(emitted, Is.True);
+                Assert.That(receivedMessage, Is.EqualTo("Find a way inside."));
+                Assert.That(director.LastPrompt, Is.EqualTo("Find a way inside."));
+            }
+            finally
+            {
+                PlayerFeedbackEvents.OnboardingPrompted -= HandlePrompt;
+            }
+
+            void HandlePrompt(PlayerFeedbackEvents.OnboardingPromptFeedback feedback)
+            {
+                receivedMessage = feedback.Message;
+            }
+        }
+
         private PlayerController CreatePlayer(string name, Vector3 position, out PlayerInteractor interactor)
         {
             GameObject playerObject = CreateObject(name);

@@ -172,6 +172,7 @@ namespace Neighbor.Main.Features.Player
             deathController.Initialize(this);
             EnsureDevCameraMode();
             EnsurePauseMenu();
+            EnsureOnboardingDirector();
         }
 
         public void SetRuntimeMouseSensitivity(float sensitivity)
@@ -1002,6 +1003,14 @@ namespace Neighbor.Main.Features.Player
             if (GetComponent<PlayerPauseMenu>() == null)
             {
                 gameObject.AddComponent<PlayerPauseMenu>();
+            }
+        }
+
+        private void EnsureOnboardingDirector()
+        {
+            if (GetComponent<PlayerOnboardingDirector>() == null)
+            {
+                gameObject.AddComponent<PlayerOnboardingDirector>();
             }
         }
 
