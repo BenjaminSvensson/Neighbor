@@ -16,12 +16,89 @@ namespace Neighbor.Main.Features.Player
         Crouch,
         LeanLeft,
         LeanRight,
-        Interact
+        Interact,
+        PrimaryUse,
+        SecondaryUse,
+        Zoom,
+        Inventory1,
+        Inventory2,
+        Inventory3,
+        Inventory4,
+        Inventory5,
+        Inventory6
+    }
+
+    public enum PlayerInputBindingDevice
+    {
+        Keyboard,
+        Mouse
+    }
+
+    public enum PlayerMouseButton
+    {
+        None,
+        Left,
+        Right,
+        Middle,
+        Back,
+        Forward
+    }
+
+    public readonly struct PlayerInputControlBinding : IEquatable<PlayerInputControlBinding>
+    {
+        private PlayerInputControlBinding(PlayerInputBindingDevice device, Key keyboardKey, PlayerMouseButton mouseButton)
+        {
+            Device = device;
+            KeyboardKey = keyboardKey;
+            MouseButton = mouseButton;
+        }
+
+        public PlayerInputBindingDevice Device { get; }
+        public Key KeyboardKey { get; }
+        public PlayerMouseButton MouseButton { get; }
+
+        public static PlayerInputControlBinding ForKeyboard(Key key)
+        {
+            return new PlayerInputControlBinding(PlayerInputBindingDevice.Keyboard, key, PlayerMouseButton.None);
+        }
+
+        public static PlayerInputControlBinding ForMouse(PlayerMouseButton button)
+        {
+            return new PlayerInputControlBinding(PlayerInputBindingDevice.Mouse, Key.None, button);
+        }
+
+        public bool Equals(PlayerInputControlBinding other)
+        {
+            return Device == other.Device
+                && KeyboardKey == other.KeyboardKey
+                && MouseButton == other.MouseButton;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is PlayerInputControlBinding other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            int control = Device == PlayerInputBindingDevice.Keyboard
+                ? (int)KeyboardKey
+                : (int)MouseButton;
+            return ((int)Device * 397) ^ control;
+        }
+
+        public override string ToString()
+        {
+            return PlayerInputBindings.GetControlLabel(this);
+        }
     }
 
     public static class PlayerInputBindings
     {
-        private const string PreferencePrefix = "Neighbor.Input.";
+        private const string LegacyKeyboardPreferencePrefix = "Neighbor.Input.";
+        private const string DevicePreferencePrefix = "Neighbor.Input.Device.";
+        private const string KeyboardPreferencePrefix = "Neighbor.Input.Keyboard.";
+        private const string MousePreferencePrefix = "Neighbor.Input.Mouse.";
 
         private static readonly PlayerInputBindingAction[] RebindableActions =
         {
@@ -32,9 +109,18 @@ namespace Neighbor.Main.Features.Player
             PlayerInputBindingAction.Jump,
             PlayerInputBindingAction.Run,
             PlayerInputBindingAction.Crouch,
+            PlayerInputBindingAction.Interact,
+            PlayerInputBindingAction.PrimaryUse,
+            PlayerInputBindingAction.SecondaryUse,
+            PlayerInputBindingAction.Zoom,
             PlayerInputBindingAction.LeanLeft,
             PlayerInputBindingAction.LeanRight,
-            PlayerInputBindingAction.Interact
+            PlayerInputBindingAction.Inventory1,
+            PlayerInputBindingAction.Inventory2,
+            PlayerInputBindingAction.Inventory3,
+            PlayerInputBindingAction.Inventory4,
+            PlayerInputBindingAction.Inventory5,
+            PlayerInputBindingAction.Inventory6
         };
 
         public static PlayerInputBindingAction[] GetRebindableActions()
@@ -44,34 +130,78 @@ namespace Neighbor.Main.Features.Player
 
         public static bool IsPressed(PlayerInputBindingAction action)
         {
-            Keyboard keyboard = Keyboard.current;
-            return keyboard != null && IsPressed(keyboard, GetBoundKey(action));
+            return IsPressed(GetBinding(action));
         }
 
         public static bool WasPressedThisFrame(PlayerInputBindingAction action)
         {
-            Keyboard keyboard = Keyboard.current;
-            return keyboard != null && WasPressedThisFrame(keyboard, GetBoundKey(action));
+            return WasPressedThisFrame(GetBinding(action));
+        }
+
+        public static bool WasReleasedThisFrame(PlayerInputBindingAction action)
+        {
+            return WasReleasedThisFrame(GetBinding(action));
+        }
+
+        public static PlayerInputControlBinding GetBinding(PlayerInputBindingAction action)
+        {
+            PlayerInputControlBinding defaultBinding = GetDefaultBinding(action);
+            string devicePreferenceKey = GetDevicePreferenceKey(action);
+            if (PlayerPrefs.HasKey(devicePreferenceKey))
+            {
+                PlayerInputBindingDevice device = (PlayerInputBindingDevice)PlayerPrefs.GetInt(
+                    devicePreferenceKey,
+                    (int)defaultBinding.Device);
+                PlayerInputControlBinding savedBinding = device == PlayerInputBindingDevice.Mouse
+                    ? PlayerInputControlBinding.ForMouse((PlayerMouseButton)PlayerPrefs.GetInt(
+                        GetMousePreferenceKey(action),
+                        (int)defaultBinding.MouseButton))
+                    : PlayerInputControlBinding.ForKeyboard((Key)PlayerPrefs.GetInt(
+                        GetKeyboardPreferenceKey(action),
+                        (int)defaultBinding.KeyboardKey));
+
+                if (IsBindableControl(savedBinding))
+                {
+                    return savedBinding;
+                }
+            }
+
+            string legacyPreferenceKey = GetLegacyKeyboardPreferenceKey(action);
+            if (PlayerPrefs.HasKey(legacyPreferenceKey))
+            {
+                PlayerInputControlBinding legacyBinding = PlayerInputControlBinding.ForKeyboard(
+                    (Key)PlayerPrefs.GetInt(legacyPreferenceKey, (int)defaultBinding.KeyboardKey));
+                if (IsBindableControl(legacyBinding))
+                {
+                    return legacyBinding;
+                }
+            }
+
+            return defaultBinding;
         }
 
         public static Key GetBoundKey(PlayerInputBindingAction action)
         {
-            Key defaultKey = GetDefaultKey(action);
-            Key savedKey = (Key)PlayerPrefs.GetInt(GetPreferenceKey(action), (int)defaultKey);
-            return IsBindableKey(savedKey) ? savedKey : defaultKey;
+            PlayerInputControlBinding binding = GetBinding(action);
+            return binding.Device == PlayerInputBindingDevice.Keyboard ? binding.KeyboardKey : Key.None;
         }
 
         public static bool TrySetBoundKey(PlayerInputBindingAction action, Key key)
         {
-            if (!IsBindableKey(key))
+            return TrySetBinding(action, PlayerInputControlBinding.ForKeyboard(key));
+        }
+
+        public static bool TrySetBinding(PlayerInputBindingAction action, PlayerInputControlBinding binding)
+        {
+            if (!IsBindableControl(binding))
             {
                 return false;
             }
 
-            Key previousKey = GetBoundKey(action);
-            if (previousKey == key)
+            PlayerInputControlBinding previousBinding = GetBinding(action);
+            if (previousBinding.Equals(binding))
             {
-                SetRawBoundKey(action, key);
+                SetRawBinding(action, binding);
                 PlayerPrefs.Save();
                 return true;
             }
@@ -79,16 +209,16 @@ namespace Neighbor.Main.Features.Player
             for (int i = 0; i < RebindableActions.Length; i++)
             {
                 PlayerInputBindingAction otherAction = RebindableActions[i];
-                if (otherAction == action || GetBoundKey(otherAction) != key)
+                if (otherAction == action || !GetBinding(otherAction).Equals(binding))
                 {
                     continue;
                 }
 
-                SetRawBoundKey(otherAction, previousKey);
+                SetRawBinding(otherAction, previousBinding);
                 break;
             }
 
-            SetRawBoundKey(action, key);
+            SetRawBinding(action, binding);
             PlayerPrefs.Save();
             return true;
         }
@@ -97,35 +227,75 @@ namespace Neighbor.Main.Features.Player
         {
             for (int i = 0; i < RebindableActions.Length; i++)
             {
-                PlayerPrefs.DeleteKey(GetPreferenceKey(RebindableActions[i]));
+                PlayerInputBindingAction action = RebindableActions[i];
+                PlayerPrefs.DeleteKey(GetLegacyKeyboardPreferenceKey(action));
+                PlayerPrefs.DeleteKey(GetDevicePreferenceKey(action));
+                PlayerPrefs.DeleteKey(GetKeyboardPreferenceKey(action));
+                PlayerPrefs.DeleteKey(GetMousePreferenceKey(action));
             }
 
             PlayerPrefs.Save();
         }
 
-        public static bool TryGetPressedKeyThisFrame(out Key pressedKey)
+        public static bool TryGetPressedControlThisFrame(out PlayerInputControlBinding pressedBinding)
         {
             Keyboard keyboard = Keyboard.current;
-            if (keyboard == null)
+            if (keyboard != null)
             {
-                pressedKey = Key.None;
-                return false;
+                foreach (KeyControl keyControl in keyboard.allKeys)
+                {
+                    if (keyControl == null || !keyControl.wasPressedThisFrame)
+                    {
+                        continue;
+                    }
+
+                    PlayerInputControlBinding binding = PlayerInputControlBinding.ForKeyboard(keyControl.keyCode);
+                    if (!IsBindableControl(binding))
+                    {
+                        continue;
+                    }
+
+                    pressedBinding = binding;
+                    return true;
+                }
             }
 
-            foreach (KeyControl keyControl in keyboard.allKeys)
+            Mouse mouse = Mouse.current;
+            if (mouse != null)
             {
-                if (keyControl == null || !keyControl.wasPressedThisFrame)
+                PlayerMouseButton[] buttons =
                 {
-                    continue;
-                }
+                    PlayerMouseButton.Left,
+                    PlayerMouseButton.Right,
+                    PlayerMouseButton.Middle,
+                    PlayerMouseButton.Back,
+                    PlayerMouseButton.Forward
+                };
 
-                Key key = keyControl.keyCode;
-                if (!IsBindableKey(key))
+                for (int i = 0; i < buttons.Length; i++)
                 {
-                    continue;
-                }
+                    PlayerMouseButton button = buttons[i];
+                    ButtonControl control = GetMouseButtonControl(mouse, button);
+                    if (control == null || !control.wasPressedThisFrame)
+                    {
+                        continue;
+                    }
 
-                pressedKey = key;
+                    pressedBinding = PlayerInputControlBinding.ForMouse(button);
+                    return true;
+                }
+            }
+
+            pressedBinding = default;
+            return false;
+        }
+
+        public static bool TryGetPressedKeyThisFrame(out Key pressedKey)
+        {
+            if (TryGetPressedControlThisFrame(out PlayerInputControlBinding binding)
+                && binding.Device == PlayerInputBindingDevice.Keyboard)
+            {
+                pressedKey = binding.KeyboardKey;
                 return true;
             }
 
@@ -147,13 +317,34 @@ namespace Neighbor.Main.Features.Player
                 PlayerInputBindingAction.LeanLeft => "Lean Left",
                 PlayerInputBindingAction.LeanRight => "Lean Right",
                 PlayerInputBindingAction.Interact => "Interact",
+                PlayerInputBindingAction.PrimaryUse => "Primary Use",
+                PlayerInputBindingAction.SecondaryUse => "Place/Throw",
+                PlayerInputBindingAction.Zoom => "Zoom",
+                PlayerInputBindingAction.Inventory1 => "Slot 1",
+                PlayerInputBindingAction.Inventory2 => "Slot 2",
+                PlayerInputBindingAction.Inventory3 => "Slot 3",
+                PlayerInputBindingAction.Inventory4 => "Slot 4",
+                PlayerInputBindingAction.Inventory5 => "Slot 5",
+                PlayerInputBindingAction.Inventory6 => "Slot 6",
                 _ => action.ToString()
             };
         }
 
         public static string GetKeyLabel(PlayerInputBindingAction action)
         {
-            return GetKeyLabel(GetBoundKey(action));
+            return GetControlLabel(action);
+        }
+
+        public static string GetControlLabel(PlayerInputBindingAction action)
+        {
+            return GetControlLabel(GetBinding(action));
+        }
+
+        public static string GetControlLabel(PlayerInputControlBinding binding)
+        {
+            return binding.Device == PlayerInputBindingDevice.Mouse
+                ? GetMouseButtonLabel(binding.MouseButton)
+                : GetKeyLabel(binding.KeyboardKey);
         }
 
         public static string GetKeyLabel(Key key)
@@ -186,22 +377,38 @@ namespace Neighbor.Main.Features.Player
             };
         }
 
-        private static Key GetDefaultKey(PlayerInputBindingAction action)
+        private static PlayerInputControlBinding GetDefaultBinding(PlayerInputBindingAction action)
         {
             return action switch
             {
-                PlayerInputBindingAction.Forward => Key.W,
-                PlayerInputBindingAction.Backward => Key.S,
-                PlayerInputBindingAction.Left => Key.A,
-                PlayerInputBindingAction.Right => Key.D,
-                PlayerInputBindingAction.Jump => Key.Space,
-                PlayerInputBindingAction.Run => Key.LeftShift,
-                PlayerInputBindingAction.Crouch => Key.LeftCtrl,
-                PlayerInputBindingAction.LeanLeft => Key.Q,
-                PlayerInputBindingAction.LeanRight => Key.R,
-                PlayerInputBindingAction.Interact => Key.E,
-                _ => Key.None
+                PlayerInputBindingAction.Forward => PlayerInputControlBinding.ForKeyboard(Key.W),
+                PlayerInputBindingAction.Backward => PlayerInputControlBinding.ForKeyboard(Key.S),
+                PlayerInputBindingAction.Left => PlayerInputControlBinding.ForKeyboard(Key.A),
+                PlayerInputBindingAction.Right => PlayerInputControlBinding.ForKeyboard(Key.D),
+                PlayerInputBindingAction.Jump => PlayerInputControlBinding.ForKeyboard(Key.Space),
+                PlayerInputBindingAction.Run => PlayerInputControlBinding.ForKeyboard(Key.LeftShift),
+                PlayerInputBindingAction.Crouch => PlayerInputControlBinding.ForKeyboard(Key.LeftCtrl),
+                PlayerInputBindingAction.LeanLeft => PlayerInputControlBinding.ForKeyboard(Key.Q),
+                PlayerInputBindingAction.LeanRight => PlayerInputControlBinding.ForKeyboard(Key.R),
+                PlayerInputBindingAction.Interact => PlayerInputControlBinding.ForKeyboard(Key.E),
+                PlayerInputBindingAction.PrimaryUse => PlayerInputControlBinding.ForMouse(PlayerMouseButton.Left),
+                PlayerInputBindingAction.SecondaryUse => PlayerInputControlBinding.ForMouse(PlayerMouseButton.Right),
+                PlayerInputBindingAction.Zoom => PlayerInputControlBinding.ForMouse(PlayerMouseButton.Middle),
+                PlayerInputBindingAction.Inventory1 => PlayerInputControlBinding.ForKeyboard(Key.Digit1),
+                PlayerInputBindingAction.Inventory2 => PlayerInputControlBinding.ForKeyboard(Key.Digit2),
+                PlayerInputBindingAction.Inventory3 => PlayerInputControlBinding.ForKeyboard(Key.Digit3),
+                PlayerInputBindingAction.Inventory4 => PlayerInputControlBinding.ForKeyboard(Key.Digit4),
+                PlayerInputBindingAction.Inventory5 => PlayerInputControlBinding.ForKeyboard(Key.Digit5),
+                PlayerInputBindingAction.Inventory6 => PlayerInputControlBinding.ForKeyboard(Key.Digit6),
+                _ => PlayerInputControlBinding.ForKeyboard(Key.None)
             };
+        }
+
+        private static bool IsBindableControl(PlayerInputControlBinding binding)
+        {
+            return binding.Device == PlayerInputBindingDevice.Mouse
+                ? binding.MouseButton != PlayerMouseButton.None
+                : IsBindableKey(binding.KeyboardKey);
         }
 
         private static bool IsBindableKey(Key key)
@@ -209,26 +416,96 @@ namespace Neighbor.Main.Features.Player
             return key != Key.None && key != Key.Escape;
         }
 
-        private static bool IsPressed(Keyboard keyboard, Key key)
+        private static bool IsPressed(PlayerInputControlBinding binding)
         {
-            KeyControl control = keyboard[key];
+            ButtonControl control = GetButtonControl(binding);
             return control != null && control.isPressed;
         }
 
-        private static bool WasPressedThisFrame(Keyboard keyboard, Key key)
+        private static bool WasPressedThisFrame(PlayerInputControlBinding binding)
         {
-            KeyControl control = keyboard[key];
+            ButtonControl control = GetButtonControl(binding);
             return control != null && control.wasPressedThisFrame;
         }
 
-        private static void SetRawBoundKey(PlayerInputBindingAction action, Key key)
+        private static bool WasReleasedThisFrame(PlayerInputControlBinding binding)
         {
-            PlayerPrefs.SetInt(GetPreferenceKey(action), (int)key);
+            ButtonControl control = GetButtonControl(binding);
+            return control != null && control.wasReleasedThisFrame;
         }
 
-        private static string GetPreferenceKey(PlayerInputBindingAction action)
+        private static ButtonControl GetButtonControl(PlayerInputControlBinding binding)
         {
-            return PreferencePrefix + action;
+            if (binding.Device == PlayerInputBindingDevice.Mouse)
+            {
+                Mouse mouse = Mouse.current;
+                return mouse != null ? GetMouseButtonControl(mouse, binding.MouseButton) : null;
+            }
+
+            Keyboard keyboard = Keyboard.current;
+            return keyboard != null ? keyboard[binding.KeyboardKey] : null;
+        }
+
+        private static ButtonControl GetMouseButtonControl(Mouse mouse, PlayerMouseButton button)
+        {
+            return button switch
+            {
+                PlayerMouseButton.Left => mouse.leftButton,
+                PlayerMouseButton.Right => mouse.rightButton,
+                PlayerMouseButton.Middle => mouse.middleButton,
+                PlayerMouseButton.Back => mouse.backButton,
+                PlayerMouseButton.Forward => mouse.forwardButton,
+                _ => null
+            };
+        }
+
+        private static string GetMouseButtonLabel(PlayerMouseButton button)
+        {
+            return button switch
+            {
+                PlayerMouseButton.Left => "L MOUSE",
+                PlayerMouseButton.Right => "R MOUSE",
+                PlayerMouseButton.Middle => "M MOUSE",
+                PlayerMouseButton.Back => "MOUSE BACK",
+                PlayerMouseButton.Forward => "MOUSE FWD",
+                _ => "UNBOUND"
+            };
+        }
+
+        private static void SetRawBinding(PlayerInputBindingAction action, PlayerInputControlBinding binding)
+        {
+            PlayerPrefs.SetInt(GetDevicePreferenceKey(action), (int)binding.Device);
+            if (binding.Device == PlayerInputBindingDevice.Mouse)
+            {
+                PlayerPrefs.SetInt(GetMousePreferenceKey(action), (int)binding.MouseButton);
+                PlayerPrefs.DeleteKey(GetKeyboardPreferenceKey(action));
+                PlayerPrefs.DeleteKey(GetLegacyKeyboardPreferenceKey(action));
+                return;
+            }
+
+            PlayerPrefs.SetInt(GetKeyboardPreferenceKey(action), (int)binding.KeyboardKey);
+            PlayerPrefs.SetInt(GetLegacyKeyboardPreferenceKey(action), (int)binding.KeyboardKey);
+            PlayerPrefs.DeleteKey(GetMousePreferenceKey(action));
+        }
+
+        private static string GetLegacyKeyboardPreferenceKey(PlayerInputBindingAction action)
+        {
+            return LegacyKeyboardPreferencePrefix + action;
+        }
+
+        private static string GetDevicePreferenceKey(PlayerInputBindingAction action)
+        {
+            return DevicePreferencePrefix + action;
+        }
+
+        private static string GetKeyboardPreferenceKey(PlayerInputBindingAction action)
+        {
+            return KeyboardPreferencePrefix + action;
+        }
+
+        private static string GetMousePreferenceKey(PlayerInputBindingAction action)
+        {
+            return MousePreferencePrefix + action;
         }
 
         private static string FormatKeyName(string keyName)

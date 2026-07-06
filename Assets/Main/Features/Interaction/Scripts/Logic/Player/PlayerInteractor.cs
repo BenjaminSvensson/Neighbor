@@ -184,7 +184,6 @@ namespace Neighbor.Main.Features.Interaction
             UpdatePendingAutoEquip();
             RefreshHeldPickupComponentCache();
 
-            Keyboard keyboard = Keyboard.current;
             Mouse mouse = Mouse.current;
 
             if (InteractionOverlayState.IsGameplayInputBlocked)
@@ -200,9 +199,12 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            bool interactPressed = InteractWasPressedThisFrame(keyboard);
-            bool interactHeld = InteractIsPressed(keyboard);
-            int requestedInventorySlot = GetPressedInventorySlot(keyboard);
+            bool interactPressed = InteractWasPressedThisFrame();
+            bool interactHeld = InteractIsPressed();
+            bool primaryUsePressed = PlayerInputBindings.WasPressedThisFrame(PlayerInputBindingAction.PrimaryUse);
+            bool secondaryUsePressed = PlayerInputBindings.WasPressedThisFrame(PlayerInputBindingAction.SecondaryUse);
+            bool secondaryUseReleased = PlayerInputBindings.WasReleasedThisFrame(PlayerInputBindingAction.SecondaryUse);
+            int requestedInventorySlot = GetPressedInventorySlot();
             if (requestedInventorySlot >= 0)
             {
                 SelectInventorySlot(requestedInventorySlot);
@@ -215,17 +217,9 @@ namespace Neighbor.Main.Features.Interaction
 
             UpdateFocusedInteractable();
 
-            if (heldPickup == null || mouse == null)
+            if (heldPickup == null)
             {
-                if (heldPickup == null)
-                {
-                    UpdateHoldInteraction(interactHeld);
-                }
-                else
-                {
-                    EndActiveHoldInteraction(false);
-                }
-
+                UpdateHoldInteraction(interactHeld);
                 releaseButtonWasHeld = false;
                 UpdateInteractionTooltip(mouse);
                 return;
@@ -233,28 +227,28 @@ namespace Neighbor.Main.Features.Interaction
 
             EndActiveHoldInteraction(false);
 
-            if (mouse.leftButton.wasPressedThisFrame && TryPrimaryUseHeldPickup())
+            if (primaryUsePressed && TryPrimaryUseHeldPickup())
             {
                 return;
             }
 
-            if (mouse.leftButton.wasPressedThisFrame && TryUseHeldPickupOnDoorBlocker())
+            if (primaryUsePressed && TryUseHeldPickupOnDoorBlocker())
             {
                 return;
             }
 
-            if (mouse.leftButton.wasPressedThisFrame)
+            if (primaryUsePressed)
             {
                 TryUseHeldPickupOnFocusedInteractable();
             }
 
-            if (mouse.rightButton.wasPressedThisFrame)
+            if (secondaryUsePressed)
             {
                 releaseButtonDownTime = Time.time;
                 releaseButtonWasHeld = true;
             }
 
-            if (releaseButtonWasHeld && mouse.rightButton.wasReleasedThisFrame)
+            if (releaseButtonWasHeld && secondaryUseReleased)
             {
                 float heldDuration = Time.time - releaseButtonDownTime;
                 bool shouldThrow = heldDuration >= throwHoldThreshold;
@@ -576,44 +570,31 @@ namespace Neighbor.Main.Features.Interaction
             return true;
         }
 
-        private int GetPressedInventorySlot(Keyboard keyboard)
+        private int GetPressedInventorySlot()
         {
-            if (keyboard == null)
+            int slotLimit = Mathf.Min(inventorySlotCount, MaximumInventorySlots);
+            for (int slotIndex = 0; slotIndex < slotLimit; slotIndex++)
             {
-                return -1;
-            }
-
-            if (WasPressedThisFrame(keyboard.digit1Key) || WasPressedThisFrame(keyboard.numpad1Key))
-            {
-                return 0;
-            }
-
-            if (inventorySlotCount >= 2 && (WasPressedThisFrame(keyboard.digit2Key) || WasPressedThisFrame(keyboard.numpad2Key)))
-            {
-                return 1;
-            }
-
-            if (inventorySlotCount >= 3 && (WasPressedThisFrame(keyboard.digit3Key) || WasPressedThisFrame(keyboard.numpad3Key)))
-            {
-                return 2;
-            }
-
-            if (inventorySlotCount >= 4 && (WasPressedThisFrame(keyboard.digit4Key) || WasPressedThisFrame(keyboard.numpad4Key)))
-            {
-                return 3;
-            }
-
-            if (inventorySlotCount >= 5 && (WasPressedThisFrame(keyboard.digit5Key) || WasPressedThisFrame(keyboard.numpad5Key)))
-            {
-                return 4;
-            }
-
-            if (inventorySlotCount >= 6 && (WasPressedThisFrame(keyboard.digit6Key) || WasPressedThisFrame(keyboard.numpad6Key)))
-            {
-                return 5;
+                if (PlayerInputBindings.WasPressedThisFrame(GetInventoryBindingAction(slotIndex)))
+                {
+                    return slotIndex;
+                }
             }
 
             return -1;
+        }
+
+        private static PlayerInputBindingAction GetInventoryBindingAction(int slotIndex)
+        {
+            return slotIndex switch
+            {
+                0 => PlayerInputBindingAction.Inventory1,
+                1 => PlayerInputBindingAction.Inventory2,
+                2 => PlayerInputBindingAction.Inventory3,
+                3 => PlayerInputBindingAction.Inventory4,
+                4 => PlayerInputBindingAction.Inventory5,
+                _ => PlayerInputBindingAction.Inventory6
+            };
         }
 
         private static bool WasPressedThisFrame(ButtonControl control)
@@ -1230,20 +1211,14 @@ namespace Neighbor.Main.Features.Interaction
             return ViewTransform.forward * chargedForce + Vector3.up * throwUpwardAssist;
         }
 
-        private bool InteractWasPressedThisFrame(Keyboard keyboard)
+        private bool InteractWasPressedThisFrame()
         {
-            bool actionPressed = interactAction != null && interactAction.WasPressedThisFrame();
-            bool fallbackPressed = PlayerInputBindings.WasPressedThisFrame(PlayerInputBindingAction.Interact);
-
-            return actionPressed || fallbackPressed;
+            return PlayerInputBindings.WasPressedThisFrame(PlayerInputBindingAction.Interact);
         }
 
-        private bool InteractIsPressed(Keyboard keyboard)
+        private bool InteractIsPressed()
         {
-            bool actionHeld = interactAction != null && interactAction.IsPressed();
-            bool fallbackHeld = PlayerInputBindings.IsPressed(PlayerInputBindingAction.Interact);
-
-            return actionHeld || fallbackHeld;
+            return PlayerInputBindings.IsPressed(PlayerInputBindingAction.Interact);
         }
 
         private void UpdateHoldInteraction(bool interactHeld)
@@ -1313,7 +1288,13 @@ namespace Neighbor.Main.Features.Interaction
             if (heldPickup != null)
             {
                 if (FocusedInteractable != null
-                    && TryGetTooltip(FocusedInteractable, InteractionTooltipContext.FocusedInteractable, "Interact", "E", out string heldFocusAction, out string heldFocusKey))
+                    && TryGetTooltip(
+                        FocusedInteractable,
+                        InteractionTooltipContext.FocusedInteractable,
+                        "Interact",
+                        PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.Interact),
+                        out string heldFocusAction,
+                        out string heldFocusKey))
                 {
                     tooltipView.Show(heldFocusKey, heldFocusAction);
                     return;
@@ -1324,7 +1305,13 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             if (FocusedInteractable != null
-                && TryGetTooltip(FocusedInteractable, InteractionTooltipContext.FocusedInteractable, "Interact", "E", out string focusAction, out string focusKey))
+                && TryGetTooltip(
+                    FocusedInteractable,
+                    InteractionTooltipContext.FocusedInteractable,
+                    "Interact",
+                    PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.Interact),
+                    out string focusAction,
+                    out string focusKey))
             {
                 tooltipView.Show(focusKey, focusAction);
                 return;
@@ -1333,7 +1320,13 @@ namespace Neighbor.Main.Features.Interaction
             Ray ray = new Ray(ViewTransform.position, ViewTransform.forward);
             IHoldInteractable holdInteractable = FindBestHoldInteractable(ray);
             if (holdInteractable != null
-                && TryGetTooltip(holdInteractable, InteractionTooltipContext.HoldInteractable, "Hold interact", "Hold E", out string holdAction, out string holdKey))
+                && TryGetTooltip(
+                    holdInteractable,
+                    InteractionTooltipContext.HoldInteractable,
+                    "Hold interact",
+                    $"Hold {PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.Interact)}",
+                    out string holdAction,
+                    out string holdKey))
             {
                 tooltipView.Show(holdKey, holdAction);
                 return;
@@ -1341,7 +1334,7 @@ namespace Neighbor.Main.Features.Interaction
 
             if (ReticleState == InteractionReticleState.TooFar && ReticleTarget != null)
             {
-                tooltipView.Show("E", "Move closer");
+                tooltipView.Show(PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.Interact), "Move closer");
                 return;
             }
 
@@ -1352,17 +1345,24 @@ namespace Neighbor.Main.Features.Interaction
         {
             IPrimaryUseInteractable primaryUseInteractable = GetHeldPrimaryUseInteractable();
 
-            if (mouse != null
-                && primaryUseInteractable != null
+            if (primaryUseInteractable != null
                 && primaryUseInteractable.CanPrimaryUse(this)
-                && TryGetTooltip(primaryUseInteractable, InteractionTooltipContext.HeldPrimaryUse, "Use", "Left Mouse", out string primaryAction, out string primaryKey))
+                && TryGetTooltip(
+                    primaryUseInteractable,
+                    InteractionTooltipContext.HeldPrimaryUse,
+                    "Use",
+                    PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.PrimaryUse),
+                    out string primaryAction,
+                    out string primaryKey))
             {
                 tooltipView.Show(primaryKey, primaryAction);
                 return;
             }
 
             string secondaryAction = releaseButtonWasHeld ? "Release to throw" : "Place";
-            string secondaryKey = releaseButtonWasHeld ? "Release Right Mouse" : "Right Mouse";
+            string secondaryKey = releaseButtonWasHeld
+                ? $"Release {PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.SecondaryUse)}"
+                : PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.SecondaryUse);
             if (TryGetTooltip(heldPickup, InteractionTooltipContext.HeldSecondaryUse, secondaryAction, secondaryKey, out string action, out string key))
             {
                 tooltipView.Show(key, action);
@@ -1383,12 +1383,30 @@ namespace Neighbor.Main.Features.Interaction
             IInteractionTooltipProvider provider = GetTooltipProvider(tooltipSource);
             if (provider != null && provider.TryGetInteractionTooltip(this, context, out actionText, out keyText))
             {
+                keyText = GetTooltipKeyText(context, keyText);
                 return true;
             }
 
             actionText = GetDefaultTooltipAction(tooltipSource, context, fallbackAction);
-            keyText = fallbackKey;
+            keyText = GetTooltipKeyText(context, fallbackKey);
             return !string.IsNullOrWhiteSpace(actionText) && !string.IsNullOrWhiteSpace(keyText);
+        }
+
+        private static string GetTooltipKeyText(InteractionTooltipContext context, string requestedKeyText)
+        {
+            return context switch
+            {
+                InteractionTooltipContext.HoldInteractable =>
+                    $"Hold {PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.Interact)}",
+                InteractionTooltipContext.HeldPrimaryUse =>
+                    PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.PrimaryUse),
+                InteractionTooltipContext.HeldSecondaryUse =>
+                    !string.IsNullOrWhiteSpace(requestedKeyText)
+                    && requestedKeyText.StartsWith("Release", StringComparison.OrdinalIgnoreCase)
+                        ? $"Release {PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.SecondaryUse)}"
+                        : PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.SecondaryUse),
+                _ => PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.Interact)
+            };
         }
 
         private static IInteractionTooltipProvider GetTooltipProvider(object tooltipSource)

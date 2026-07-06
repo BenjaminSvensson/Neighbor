@@ -138,6 +138,7 @@ namespace Neighbor.Main.Features.Player
         public int ZoomDirection { get; private set; }
         public float RuntimeMouseSensitivity => mouseSensitivity;
         public float RuntimeFieldOfView => maximumFieldOfView;
+        public bool RuntimeInvertLookY => invertLookY;
         public event System.Action<int> ZoomDirectionChanged;
 
         private void Awake()
@@ -748,6 +749,11 @@ namespace Neighbor.Main.Features.Player
         public void SetRuntimeMouseSensitivity(float sensitivity)
         {
             mouseSensitivity = Mathf.Max(0f, sensitivity);
+        }
+
+        public void SetRuntimeInvertLookY(bool invert)
+        {
+            invertLookY = invert;
         }
 
         public void SetRuntimeFieldOfView(float fieldOfView)

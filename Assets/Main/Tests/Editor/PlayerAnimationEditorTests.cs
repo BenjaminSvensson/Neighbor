@@ -253,6 +253,24 @@ namespace Neighbor.Main.Tests
                 Assert.That(PlayerInputBindings.GetBoundKey(PlayerInputBindingAction.Backward), Is.EqualTo(Key.UpArrow));
                 Assert.That(PlayerInputBindings.GetBoundKey(PlayerInputBindingAction.Forward), Is.EqualTo(Key.S));
                 Assert.That(PlayerInputBindings.TrySetBoundKey(PlayerInputBindingAction.Forward, Key.Escape), Is.False);
+
+                Assert.That(PlayerInputBindings.GetBinding(PlayerInputBindingAction.PrimaryUse).Device, Is.EqualTo(PlayerInputBindingDevice.Mouse));
+                Assert.That(PlayerInputBindings.GetBinding(PlayerInputBindingAction.PrimaryUse).MouseButton, Is.EqualTo(PlayerMouseButton.Left));
+                Assert.That(PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.PrimaryUse), Is.EqualTo("L MOUSE"));
+                Assert.That(PlayerInputBindings.TrySetBinding(
+                    PlayerInputBindingAction.PrimaryUse,
+                    PlayerInputControlBinding.ForKeyboard(Key.F)), Is.True);
+                Assert.That(PlayerInputBindings.GetBoundKey(PlayerInputBindingAction.PrimaryUse), Is.EqualTo(Key.F));
+                Assert.That(PlayerInputBindings.TrySetBinding(
+                    PlayerInputBindingAction.Interact,
+                    PlayerInputControlBinding.ForKeyboard(Key.F)), Is.True);
+                Assert.That(PlayerInputBindings.GetBoundKey(PlayerInputBindingAction.Interact), Is.EqualTo(Key.F));
+                Assert.That(PlayerInputBindings.GetBoundKey(PlayerInputBindingAction.PrimaryUse), Is.EqualTo(Key.E));
+                Assert.That(PlayerInputBindings.TrySetBinding(
+                    PlayerInputBindingAction.Zoom,
+                    PlayerInputControlBinding.ForMouse(PlayerMouseButton.None)), Is.False);
+
+                CollectionAssert.Contains(PlayerInputBindings.GetRebindableActions(), PlayerInputBindingAction.Inventory6);
             }
             finally
             {
