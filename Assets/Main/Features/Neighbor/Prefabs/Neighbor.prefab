@@ -173,7 +173,7 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
-  m_PlayOnAwake: 1
+  m_PlayOnAwake: 0
   m_Volume: 1
   m_Pitch: 1
   Loop: 0
@@ -384,6 +384,11 @@ MonoBehaviour:
   doorRoomCheckDistance: 2.4
   doorRoomSearchPointRadius: 9
   doorRoomMinimumDepth: 0.35
+  noticeObjectLocationChanges: 1
+  objectLocationAwarenessRadius: 12
+  objectLocationCheckInterval: 1
+  missingObjectSuspicion: 0.12
+  foreignObjectSuspicion: 0.18
   useGarageDoorSwitches: 1
   closePlayerOpenedGarageDoors: 1
   closeAnyOpenGarageDoorForSecurity: 1
@@ -424,6 +429,9 @@ MonoBehaviour:
   playerDirectionMinimumDistance: 0.01
   chaseMemoryTime: 3.5
   chaseRepathInterval: 0.12
+  playerSightGraceTime: 0.18
+  visibleChaseGoalRefreshDistance: 0.35
+  hiddenChaseGoalRefreshDistance: 0.75
   catchDistance: 0.72
   catchAnimationFallbackDuration: 0.55
   maximumCatchAnimationDuration: 2.5
@@ -457,6 +465,7 @@ MonoBehaviour:
   enableObjectHandling: 1
   routineChance: 0.3
   retryCooldown: 8
+  restoreObjectsToHome: 1
   pickupSearchRadius: 5
   pickupApproachDistance: 1.15
   pickupDestinationSampleRadius: 1.5
@@ -555,6 +564,7 @@ MonoBehaviour:
   maximumUsefulDetourExtraDistance: 2.25
   maximumUsefulDetourDistanceRatio: 1.35
   climbDynamicObstaclesWhenDetourIsPoor: 1
+  destinationRefreshDistance: 0.18
   maximumNoProgressAttempts: 3
   noProgressCheckInterval: 1.5
   minimumProgressPerAttempt: 0.3
@@ -656,6 +666,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   brain: {fileID: 3418586483215124470}
   motor: {fileID: 1396788348566312222}
+  requireRecentlyThrownPickupImpact: 1
+  minimumPhysicsImpactSpeed: 1.25
   minimumStunLoudness: 0.18
   minimumStunDuration: 0.35
   maximumStunDuration: 1.4
@@ -813,6 +825,8 @@ MonoBehaviour:
   movingThreshold: 0.08
   runningThreshold: 3.4
   transitionDuration: 0.16
+  locomotionSpeedSmoothing: 14
+  movingExitThresholdMultiplier: 0.55
   minimumLocomotionPlaybackSpeed: 0.7
   maximumLocomotionPlaybackSpeed: 1.4
   useZombieLocomotion: 0
@@ -1200,7 +1214,7 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
-  m_PlayOnAwake: 1
+  m_PlayOnAwake: 0
   m_Volume: 1
   m_Pitch: 1
   Loop: 0
