@@ -1,4 +1,5 @@
 using Neighbor.Main.Features.Audio;
+using Neighbor.Main.Features.Environment;
 using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
@@ -37,6 +38,8 @@ namespace Neighbor.Main.Tests
             Assert.That(result.CreatedInventoryHud, Is.True);
             Assert.That(result.CreatedEventSystem, Is.True);
             Assert.That(result.CreatedDirectionalLight, Is.True);
+            Assert.That(result.CreatedMoonLight, Is.True);
+            Assert.That(result.CreatedDayNightCycle, Is.True);
             Assert.That(result.Player, Is.Not.Null);
             Assert.That(result.Neighbor, Is.Not.Null);
             Assert.That(result.NavMeshSurface, Is.Not.Null);
@@ -47,6 +50,8 @@ namespace Neighbor.Main.Tests
             Assert.That(result.EventSystem.GetComponent<InputSystemUIInputModule>(), Is.Not.Null);
             Assert.That(result.EventSystem.GetComponent<StandaloneInputModule>(), Is.Null);
             Assert.That(result.DirectionalLight, Is.Not.Null);
+            Assert.That(result.MoonLight, Is.Not.Null);
+            Assert.That(result.DayNightCycle, Is.Not.Null);
 
             Assert.That(CountInScene<PlayerController>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<NeighborBrain>(scene), Is.EqualTo(1));
@@ -55,6 +60,7 @@ namespace Neighbor.Main.Tests
             Assert.That(CountInScene<PlayerAwarenessHudView>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<PlayerInventoryHudView>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<EventSystem>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<DayNightCycle>(scene), Is.EqualTo(1));
         }
 
         [Test]
@@ -74,6 +80,9 @@ namespace Neighbor.Main.Tests
             Assert.That(secondRun.CreatedInventoryHud, Is.False);
             Assert.That(secondRun.CreatedEventSystem, Is.False);
             Assert.That(secondRun.CreatedDirectionalLight, Is.False);
+            Assert.That(secondRun.CreatedMoonLight, Is.False);
+            Assert.That(secondRun.CreatedDayNightCycle, Is.False);
+            Assert.That(secondRun.UpdatedDayNightCycle, Is.False);
             Assert.That(CountInScene<PlayerController>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<NeighborBrain>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<NavMeshSurface>(scene), Is.EqualTo(1));
@@ -81,6 +90,7 @@ namespace Neighbor.Main.Tests
             Assert.That(CountInScene<PlayerAwarenessHudView>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<PlayerInventoryHudView>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<EventSystem>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<DayNightCycle>(scene), Is.EqualTo(1));
         }
 
         private static int CountInScene<T>(Scene scene) where T : Component
