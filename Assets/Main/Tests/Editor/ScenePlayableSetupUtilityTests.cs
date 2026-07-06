@@ -43,11 +43,13 @@ namespace Neighbor.Main.Tests
             Assert.That(result.CreatedDirectionalLight, Is.True);
             Assert.That(result.CreatedMoonLight, Is.True);
             Assert.That(result.CreatedDayNightCycle, Is.True);
+            Assert.That(result.AddedPauseMenu, Is.True);
             Assert.That(result.Player, Is.Not.Null);
             Assert.That(result.PlayerDeathController, Is.Not.Null);
             Assert.That(result.PlayerKeyRing, Is.Not.Null);
             Assert.That(result.PlayerHidingState, Is.Not.Null);
             Assert.That(result.OnboardingDirector, Is.Not.Null);
+            Assert.That(result.PauseMenu, Is.Not.Null);
             Assert.That(result.Neighbor, Is.Not.Null);
             Assert.That(result.ObjectiveTracker, Is.Not.Null);
             Assert.That(result.StartCheckpoint, Is.Not.Null);
@@ -70,6 +72,7 @@ namespace Neighbor.Main.Tests
             Assert.That(CountInScene<PlayerKeyRing>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<PlayerHidingState>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<PlayerOnboardingDirector>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<PlayerPauseMenu>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<NeighborBrain>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<CoreLoopObjectiveTracker>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<PlayerRespawnCheckpoint>(scene), Is.EqualTo(1));
@@ -96,6 +99,7 @@ namespace Neighbor.Main.Tests
             Assert.That(secondRun.AddedPlayerKeyRing, Is.False);
             Assert.That(secondRun.AddedPlayerHidingState, Is.False);
             Assert.That(secondRun.AddedOnboardingDirector, Is.False);
+            Assert.That(secondRun.AddedPauseMenu, Is.False);
             Assert.That(secondRun.UpdatedPlayerReferences, Is.False);
             Assert.That(secondRun.CreatedNeighbor, Is.False);
             Assert.That(secondRun.CreatedObjectiveTracker, Is.False);
@@ -115,6 +119,7 @@ namespace Neighbor.Main.Tests
             Assert.That(CountInScene<PlayerKeyRing>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<PlayerHidingState>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<PlayerOnboardingDirector>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<PlayerPauseMenu>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<NeighborBrain>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<CoreLoopObjectiveTracker>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<PlayerRespawnCheckpoint>(scene), Is.EqualTo(1));

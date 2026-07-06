@@ -171,6 +171,14 @@ internal static class ScenePlayableSetupUtility
             result.AddedOnboardingDirector = true;
         }
 
+        result.PauseMenu = playerObject.GetComponent<PlayerPauseMenu>();
+        if (result.PauseMenu == null)
+        {
+            result.PauseMenu = Undo.AddComponent<PlayerPauseMenu>(playerObject);
+            result.AddedComponentCount++;
+            result.AddedPauseMenu = true;
+        }
+
         if (SetSerializedObjectReference(player, "deathController", result.PlayerDeathController))
         {
             result.UpdatedPlayerReferences = true;
@@ -652,6 +660,7 @@ internal sealed class ScenePlayableSetupResult
     public PlayerKeyRing PlayerKeyRing { get; set; }
     public PlayerHidingState PlayerHidingState { get; set; }
     public PlayerOnboardingDirector OnboardingDirector { get; set; }
+    public PlayerPauseMenu PauseMenu { get; set; }
     public NeighborBrain Neighbor { get; set; }
     public CoreLoopObjectiveTracker ObjectiveTracker { get; set; }
     public PlayerRespawnCheckpoint StartCheckpoint { get; set; }
@@ -670,6 +679,7 @@ internal sealed class ScenePlayableSetupResult
     public bool AddedPlayerKeyRing { get; set; }
     public bool AddedPlayerHidingState { get; set; }
     public bool AddedOnboardingDirector { get; set; }
+    public bool AddedPauseMenu { get; set; }
     public bool UpdatedPlayerReferences { get; set; }
     public bool CreatedNeighbor { get; set; }
     public bool CreatedObjectiveTracker { get; set; }
