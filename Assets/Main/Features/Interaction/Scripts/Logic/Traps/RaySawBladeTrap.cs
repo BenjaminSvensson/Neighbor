@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
@@ -7,6 +8,8 @@ namespace Neighbor.Main.Features.Interaction
 {
     public sealed class RaySawBladeTrap : MonoBehaviour
     {
+        private static readonly List<RaySawBladeTrap> ActiveTraps = new();
+
         [Header("Detection")]
         [SerializeField] private bool startsActive = true;
         [SerializeField, Min(0.1f)] private float activeRange = 3f;
@@ -56,6 +59,13 @@ namespace Neighbor.Main.Features.Interaction
 
         private Vector3 Direction => transform.TransformDirection(localDirection.sqrMagnitude > 0.0001f ? localDirection.normalized : Vector3.forward);
         private bool IsArmed => isActive && Time.time >= armedAtTime;
+        public bool IsActive => isActive;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetActiveTraps()
+        {
+            ActiveTraps.Clear();
+        }
 
         private void Awake()
         {
@@ -71,6 +81,19 @@ namespace Neighbor.Main.Features.Interaction
             ConfigureDangerLine();
             ApplyVisualState();
             previousBladeHitCenter = GetBladeHitCenter();
+        }
+
+        private void OnEnable()
+        {
+            if (!ActiveTraps.Contains(this))
+            {
+                ActiveTraps.Add(this);
+            }
+        }
+
+        private void OnDisable()
+        {
+            ActiveTraps.Remove(this);
         }
 
         private void Update()
@@ -104,6 +127,31 @@ namespace Neighbor.Main.Features.Interaction
             }
             cycleStateStartTime = Time.time;
             armedAtTime = isActive ? Time.time + warningDelay : float.PositiveInfinity;
+        }
+
+        public static void ResetAllToStartingState()
+        {
+            for (int i = 0; i < ActiveTraps.Count; i++)
+            {
+                ActiveTraps[i]?.ResetToStartingState();
+            }
+        }
+
+        private void ResetToStartingState()
+        {
+            isActive = startsActive;
+            cycleStateStartTime = Time.time;
+            armedAtTime = isActive ? Time.time + warningDelay : float.PositiveInfinity;
+            nextHitTime = 0f;
+
+            if (slidingVisual != null)
+            {
+                slidingVisual.localPosition = slidingRestLocalPosition;
+            }
+
+            ConfigureDangerLine();
+            ApplyVisualState();
+            previousBladeHitCenter = GetBladeHitCenter();
         }
 
         private void UpdateCycle()

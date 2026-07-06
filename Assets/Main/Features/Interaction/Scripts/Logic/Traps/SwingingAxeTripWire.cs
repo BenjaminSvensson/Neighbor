@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
@@ -7,6 +8,8 @@ namespace Neighbor.Main.Features.Interaction
     [RequireComponent(typeof(Collider))]
     public sealed class SwingingAxeTripWire : MonoBehaviour
     {
+        private static readonly List<SwingingAxeTripWire> ActiveTripWires = new();
+
         [SerializeField] private SwingingAxeTrap targetAxe;
         [SerializeField] private bool activateOnlyForPlayer = true;
         [SerializeField] private bool activateForPhysicsObjects = true;
@@ -20,10 +23,20 @@ namespace Neighbor.Main.Features.Interaction
         private MaterialPropertyBlock propertyBlock;
         private float highlightedUntilTime;
         private bool triggered;
+        private bool startingColliderEnabled;
+
+        public bool IsTriggered => triggered;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetActiveTripWires()
+        {
+            ActiveTripWires.Clear();
+        }
 
         private void Awake()
         {
             tripCollider = GetComponent<Collider>();
+            startingColliderEnabled = tripCollider.enabled;
             tripCollider.isTrigger = true;
 
             if (targetAxe == null)
@@ -39,6 +52,19 @@ namespace Neighbor.Main.Features.Interaction
             ApplyWireColor(armedColor);
         }
 
+        private void OnEnable()
+        {
+            if (!ActiveTripWires.Contains(this))
+            {
+                ActiveTripWires.Add(this);
+            }
+        }
+
+        private void OnDisable()
+        {
+            ActiveTripWires.Remove(this);
+        }
+
         private void Update()
         {
             if (highlightedUntilTime > 0f && Time.time >= highlightedUntilTime)
@@ -46,6 +72,26 @@ namespace Neighbor.Main.Features.Interaction
                 highlightedUntilTime = 0f;
                 ApplyWireColor(triggered ? triggeredColor : armedColor);
             }
+        }
+
+        public static void ResetAllToStartingState()
+        {
+            for (int i = 0; i < ActiveTripWires.Count; i++)
+            {
+                ActiveTripWires[i]?.ResetToStartingState();
+            }
+        }
+
+        private void ResetToStartingState()
+        {
+            highlightedUntilTime = 0f;
+            triggered = false;
+            if (tripCollider != null)
+            {
+                tripCollider.enabled = startingColliderEnabled;
+            }
+
+            ApplyWireColor(armedColor);
         }
 
         private void OnTriggerEnter(Collider other)

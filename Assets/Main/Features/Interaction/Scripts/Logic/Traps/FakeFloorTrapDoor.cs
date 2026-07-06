@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
@@ -7,6 +8,8 @@ namespace Neighbor.Main.Features.Interaction
 {
     public sealed class FakeFloorTrapDoor : MonoBehaviour
     {
+        private static readonly List<FakeFloorTrapDoor> ActiveTrapDoors = new();
+
         [SerializeField] private Transform leftPanel;
         [SerializeField] private Transform rightPanel;
         [SerializeField] private Collider[] blockingColliders;
@@ -26,10 +29,31 @@ namespace Neighbor.Main.Features.Interaction
         private bool isOpen;
         private ItemAudioFeedback audioFeedback;
 
+        public bool IsOpen => isOpen;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetActiveTrapDoors()
+        {
+            ActiveTrapDoors.Clear();
+        }
+
         private void Awake()
         {
             CacheClosedPose();
             audioFeedback = ItemAudioFeedback.Resolve(gameObject);
+        }
+
+        private void OnEnable()
+        {
+            if (!ActiveTrapDoors.Contains(this))
+            {
+                ActiveTrapDoors.Add(this);
+            }
+        }
+
+        private void OnDisable()
+        {
+            ActiveTrapDoors.Remove(this);
         }
 
         private void OnTriggerEnter(Collider other)
@@ -77,6 +101,28 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             openRoutine = StartCoroutine(AnimateOpen());
+        }
+
+        public static void ResetAllToStartingState()
+        {
+            for (int i = 0; i < ActiveTrapDoors.Count; i++)
+            {
+                ActiveTrapDoors[i]?.ResetToStartingState();
+            }
+        }
+
+        private void ResetToStartingState()
+        {
+            if (openRoutine != null)
+            {
+                StopCoroutine(openRoutine);
+                openRoutine = null;
+            }
+
+            isOpen = false;
+            SetBlockingCollidersEnabled(true);
+            ApplyPanelPose(leftPanel, leftClosedPosition, leftClosedPosition, leftClosedRotation, leftClosedRotation, 1f);
+            ApplyPanelPose(rightPanel, rightClosedPosition, rightClosedPosition, rightClosedRotation, rightClosedRotation, 1f);
         }
 
         private IEnumerator AnimateOpen()

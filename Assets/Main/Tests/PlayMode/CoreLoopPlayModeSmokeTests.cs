@@ -254,6 +254,51 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void PlayerDeath_ResetRestoresTrapDoorBeartrapAndCameraRunState()
+        {
+            PlayerController player = CreatePlayer("Player", Vector3.zero, out _);
+            PlayerDeathController deathController = player.GetComponent<PlayerDeathController>();
+            deathController.ClearCheckpoint(true);
+
+            Beartrap beartrap = CreateBeartrap("Beartrap");
+            Invoke(beartrap, "Start");
+            Invoke(beartrap, "SetState", GetNestedEnumValue(typeof(Beartrap), "TrapState", "Triggered"));
+            Assert.That(beartrap.IsTriggered, Is.True);
+
+            FakeFloorTrapDoor trapDoor = CreateFakeFloorTrapDoor("TrapDoor", out Collider blockingCollider);
+            trapDoor.Open();
+            Assert.That(trapDoor.IsOpen, Is.True);
+            Assert.That(blockingCollider.enabled, Is.False);
+
+            SecurityCamera camera = CreateSecurityCamera("SecurityCamera", new Vector3(4f, 0f, 0f));
+            Vector3 cameraHomePosition = camera.transform.position;
+            Quaternion cameraHomeRotation = camera.transform.rotation;
+            Assert.That(camera.TryAttachByNeighbor(new Vector3(6f, 1f, 0f), Vector3.back), Is.True);
+            Assert.That(camera.IsAttached, Is.True);
+            Assert.That(camera.IsNeighborPlaced, Is.True);
+            Assert.That(SecurityCamera.NeighborPlacedCameraCount, Is.EqualTo(1));
+
+            SetField(deathController, "fallDuration", 0.01f);
+            SetField(deathController, "impactDuration", 0.01f);
+            SetField(deathController, "groundHoldDuration", 0.01f);
+            SetField(deathController, "fadeOutDuration", 0.01f);
+
+            RunCoroutine(
+                InvokeResult<IEnumerator>(deathController, "DeathAndReset", Vector3.zero),
+                "Player death reset did not restore world run state.");
+
+            Assert.That(beartrap.IsClosed, Is.True);
+            Assert.That(trapDoor.IsOpen, Is.False);
+            Assert.That(blockingCollider.enabled, Is.True);
+            Assert.That(camera.IsAttached, Is.False);
+            Assert.That(camera.IsNeighborPlaced, Is.False);
+            Assert.That(camera.IsDisabled, Is.False);
+            Assert.That(SecurityCamera.NeighborPlacedCameraCount, Is.Zero);
+            Assert.That(Vector3.Distance(camera.transform.position, cameraHomePosition), Is.LessThan(0.05f));
+            Assert.That(Quaternion.Angle(camera.transform.rotation, cameraHomeRotation), Is.LessThan(1f));
+        }
+
+        [Test]
         public void PlayerOnboardingDirector_IsRuntimeInstalledAndEmitsFeedback()
         {
             PlayerController player = CreatePlayer("Player", Vector3.zero, out _);
@@ -319,6 +364,46 @@ namespace Neighbor.Main.Tests
             return pickupObject.AddComponent<Pickupable>();
         }
 
+        private Beartrap CreateBeartrap(string name)
+        {
+            GameObject trapObject = CreateObject(name);
+            Rigidbody body = trapObject.AddComponent<Rigidbody>();
+            body.useGravity = false;
+            trapObject.AddComponent<BoxCollider>();
+            trapObject.AddComponent<Pickupable>();
+            return trapObject.AddComponent<Beartrap>();
+        }
+
+        private FakeFloorTrapDoor CreateFakeFloorTrapDoor(string name, out Collider blockingCollider)
+        {
+            GameObject trapObject = CreateObject(name);
+            Transform leftPanel = CreateObject(name + "LeftPanel").transform;
+            Transform rightPanel = CreateObject(name + "RightPanel").transform;
+            leftPanel.SetParent(trapObject.transform, false);
+            rightPanel.SetParent(trapObject.transform, false);
+            leftPanel.localPosition = new Vector3(-0.25f, 0f, 0f);
+            rightPanel.localPosition = new Vector3(0.25f, 0f, 0f);
+            blockingCollider = trapObject.AddComponent<BoxCollider>();
+
+            FakeFloorTrapDoor trapDoor = trapObject.AddComponent<FakeFloorTrapDoor>();
+            SetField(trapDoor, "leftPanel", leftPanel);
+            SetField(trapDoor, "rightPanel", rightPanel);
+            SetField(trapDoor, "blockingColliders", new[] { blockingCollider });
+            Invoke(trapDoor, "CacheClosedPose");
+            return trapDoor;
+        }
+
+        private SecurityCamera CreateSecurityCamera(string name, Vector3 position)
+        {
+            GameObject cameraObject = CreateObject(name);
+            cameraObject.transform.position = position;
+            Rigidbody body = cameraObject.AddComponent<Rigidbody>();
+            body.useGravity = false;
+            cameraObject.AddComponent<BoxCollider>();
+            cameraObject.AddComponent<Pickupable>();
+            return cameraObject.AddComponent<SecurityCamera>();
+        }
+
         private Door CreateObjectiveDoor(string name)
         {
             GameObject doorObject = CreateObject(name);
@@ -377,6 +462,13 @@ namespace Neighbor.Main.Tests
             FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.That(field, Is.Not.Null, $"Could not find private field '{fieldName}'.");
             field.SetValue(target, value);
+        }
+
+        private static object GetNestedEnumValue(Type ownerType, string enumTypeName, string enumValueName)
+        {
+            Type enumType = ownerType.GetNestedType(enumTypeName, BindingFlags.NonPublic);
+            Assert.That(enumType, Is.Not.Null, $"Could not find nested enum '{enumTypeName}'.");
+            return Enum.Parse(enumType, enumValueName);
         }
 
         private static void Invoke(object target, string methodName, params object[] arguments)

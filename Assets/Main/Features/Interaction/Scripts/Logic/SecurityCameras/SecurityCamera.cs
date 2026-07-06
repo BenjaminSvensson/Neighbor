@@ -11,6 +11,7 @@ namespace Neighbor.Main.Features.Interaction
     {
         private const int MaximumNeighborPlacedCameras = 5;
         private const float PlayerSearchInterval = 0.5f;
+        private static readonly HashSet<SecurityCamera> ActiveCameras = new();
         private static readonly HashSet<SecurityCamera> NeighborPlacedCameras = new();
 
         [Header("Wall Attachment")]
@@ -118,8 +119,9 @@ namespace Neighbor.Main.Features.Interaction
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetNeighborPlacedCameras()
+        private static void ResetActiveCameras()
         {
+            ActiveCameras.Clear();
             NeighborPlacedCameras.Clear();
         }
 
@@ -137,6 +139,17 @@ namespace Neighbor.Main.Features.Interaction
 
             baseEyeLocalRotation = eye.localRotation;
             ConfigureSightBeam();
+        }
+
+        private void OnEnable()
+        {
+            ActiveCameras.Add(this);
+        }
+
+        private void OnDisable()
+        {
+            MarkNoLongerNeighborPlaced();
+            ActiveCameras.Remove(this);
         }
 
         private void Update()
@@ -347,6 +360,37 @@ namespace Neighbor.Main.Features.Interaction
             isNeighborPlaced = true;
             NeighborPlacedCameras.Add(this);
             return true;
+        }
+
+        public static void ResetAllToStartingState()
+        {
+            ActiveCameras.RemoveWhere(camera => camera == null);
+            foreach (SecurityCamera camera in ActiveCameras)
+            {
+                camera?.ResetToStartingState();
+            }
+        }
+
+        private void ResetToStartingState()
+        {
+            if (isAttached || attachedPickupable != null || isNeighborPlaced)
+            {
+                DetachFromSurface(true);
+            }
+            else
+            {
+                MarkNoLongerNeighborPlaced();
+            }
+
+            isDisabled = false;
+            blindedUntilTime = 0f;
+            trackingUntilTime = 0f;
+            nextScanTime = 0f;
+            nextAlertTime = 0f;
+            nextSightOcclusionRefreshTime = 0f;
+            lastDetectedPosition = default;
+            ResetEyeRotation();
+            ConfigureSightBeam();
         }
 
         private void AttachToSurface(Pickupable parentPickupable)

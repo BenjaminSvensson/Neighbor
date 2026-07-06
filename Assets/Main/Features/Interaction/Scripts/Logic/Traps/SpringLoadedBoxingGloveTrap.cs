@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
@@ -6,6 +7,8 @@ namespace Neighbor.Main.Features.Interaction
 {
     public sealed class SpringLoadedBoxingGloveTrap : MonoBehaviour
     {
+        private static readonly List<SpringLoadedBoxingGloveTrap> ActiveTraps = new();
+
         private enum TrapState
         {
             Ready,
@@ -58,6 +61,14 @@ namespace Neighbor.Main.Features.Interaction
         private bool hasHitThisPunch;
         private ItemAudioFeedback audioFeedback;
 
+        public bool IsReady => state == TrapState.Ready;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetActiveTraps()
+        {
+            ActiveTraps.Clear();
+        }
+
         private void Awake()
         {
             if (glove == null)
@@ -93,6 +104,19 @@ namespace Neighbor.Main.Features.Interaction
             ApplyReadyVisual();
         }
 
+        private void OnEnable()
+        {
+            if (!ActiveTraps.Contains(this))
+            {
+                ActiveTraps.Add(this);
+            }
+        }
+
+        private void OnDisable()
+        {
+            ActiveTraps.Remove(this);
+        }
+
         private void Update()
         {
             if (state == TrapState.Ready && useForwardRayTrigger)
@@ -119,6 +143,24 @@ namespace Neighbor.Main.Features.Interaction
         public void Trigger()
         {
             TryTrigger();
+        }
+
+        public static void ResetAllToStartingState()
+        {
+            for (int i = 0; i < ActiveTraps.Count; i++)
+            {
+                ActiveTraps[i]?.ResetToStartingState();
+            }
+        }
+
+        private void ResetToStartingState()
+        {
+            state = TrapState.Ready;
+            stateStartTime = Time.time;
+            cooldownUntilTime = 0f;
+            hasHitThisPunch = false;
+            ApplyPose(0f);
+            ApplyReadyVisual();
         }
 
         private void CheckRayTrigger()
