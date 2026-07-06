@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Neighbor.Main.Features.Audio;
 using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
@@ -33,8 +34,8 @@ namespace Neighbor.Main.Features.Interaction
             GameObject instigatorObject = null)
         {
             Origin = origin;
-            Radius = radius;
-            Loudness01 = Mathf.Clamp01(loudness01);
+            Radius = AmbienceManager.ModifyNoiseRadius(radius);
+            Loudness01 = AmbienceManager.ModifyNoiseLoudness(loudness01);
             Urgency01 = Mathf.Clamp01(urgency01);
             SourceObject = sourceObject;
             InstigatorObject = instigatorObject != null
@@ -53,7 +54,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             noiseTrigger.isTrigger = true;
-            noiseTrigger.radius = radius;
+            noiseTrigger.radius = Radius;
 
             if (!IsNeighborObject(InstigatorObject)
                 && (sourceObject == null || sourceObject.GetComponentInParent<SecurityCamera>() == null))

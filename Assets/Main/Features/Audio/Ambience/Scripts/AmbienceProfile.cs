@@ -13,6 +13,8 @@ namespace Neighbor.Main.Features.Audio
         [Header("Zone Feel")]
         [SerializeField, Range(500f, 22000f)] private float listenerLowPassCutoff = 22000f;
         [SerializeField] private AudioReverbPreset listenerReverbPreset = AudioReverbPreset.Off;
+        [SerializeField, Range(0.25f, 3f)] private float noiseLoudnessMultiplier = 1f;
+        [SerializeField, Range(0.25f, 3f)] private float noiseRadiusMultiplier = 1f;
         [SerializeField, Range(0f, 1f)] private float zoneWarningIntensity;
         [SerializeField] private string zoneWarningText;
 
@@ -21,6 +23,8 @@ namespace Neighbor.Main.Features.Audio
         public AmbienceLayer[] Layers => layers;
         public float ListenerLowPassCutoff => Mathf.Clamp(listenerLowPassCutoff, 500f, 22000f);
         public AudioReverbPreset ListenerReverbPreset => listenerReverbPreset;
+        public float NoiseLoudnessMultiplier => Mathf.Clamp(noiseLoudnessMultiplier, 0.25f, 3f);
+        public float NoiseRadiusMultiplier => Mathf.Clamp(noiseRadiusMultiplier, 0.25f, 3f);
         public float ZoneWarningIntensity => Mathf.Clamp01(zoneWarningIntensity);
         public string ZoneWarningText => zoneWarningText;
 
@@ -28,6 +32,8 @@ namespace Neighbor.Main.Features.Audio
         {
             transitionDuration = Mathf.Max(0.01f, transitionDuration);
             listenerLowPassCutoff = Mathf.Clamp(listenerLowPassCutoff, 500f, 22000f);
+            noiseLoudnessMultiplier = Mathf.Clamp(noiseLoudnessMultiplier, 0.25f, 3f);
+            noiseRadiusMultiplier = Mathf.Clamp(noiseRadiusMultiplier, 0.25f, 3f);
         }
     }
 

@@ -20,6 +20,8 @@ namespace Neighbor.Main.Features.Audio
         [SerializeField, Min(0.01f)] private float fallbackTransitionDuration = 2f;
 
         private readonly List<ProfilePlayback> playbacks = new List<ProfilePlayback>();
+        private static float activeNoiseLoudnessMultiplier = 1f;
+        private static float activeNoiseRadiusMultiplier = 1f;
         private AmbienceProfile targetProfile;
         private AudioLowPassFilter listenerLowPassFilter;
         private AudioReverbFilter listenerReverbFilter;
@@ -29,6 +31,14 @@ namespace Neighbor.Main.Features.Audio
         private float nextPlayerSearchTime;
 
         public AmbienceZoneLocation CurrentZoneLocation { get; private set; } = AmbienceZoneLocation.Outside;
+        public static float ActiveNoiseLoudnessMultiplier => activeNoiseLoudnessMultiplier;
+        public static float ActiveNoiseRadiusMultiplier => activeNoiseRadiusMultiplier;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticAcousticState()
+        {
+            ResetNoiseAcousticModifiers();
+        }
 
         private void Awake()
         {
@@ -58,6 +68,7 @@ namespace Neighbor.Main.Features.Audio
             DesiredAmbienceState desiredState = GetDesiredState();
             CurrentZoneLocation = desiredState.ZoneLocation;
             ApplyListenerZoneFeel(desiredState.Profile);
+            ApplyZoneAcoustics(desiredState);
             ReportZoneChange(desiredState);
             if (desiredState.Profile != targetProfile)
             {
@@ -75,6 +86,22 @@ namespace Neighbor.Main.Features.Audio
         public void SetPlayer(PlayerController newPlayer)
         {
             player = newPlayer;
+        }
+
+        public static float ModifyNoiseLoudness(float loudness01)
+        {
+            return Mathf.Clamp01(loudness01 * activeNoiseLoudnessMultiplier);
+        }
+
+        public static float ModifyNoiseRadius(float radius)
+        {
+            return Mathf.Max(0f, radius * activeNoiseRadiusMultiplier);
+        }
+
+        public static void ResetNoiseAcousticModifiers()
+        {
+            activeNoiseLoudnessMultiplier = 1f;
+            activeNoiseRadiusMultiplier = 1f;
         }
 
         private void ResolveListener()
@@ -204,6 +231,25 @@ namespace Neighbor.Main.Features.Audio
             }
         }
 
+        private static void ApplyZoneAcoustics(DesiredAmbienceState desiredState)
+        {
+            float profileLoudness = desiredState.Profile != null
+                ? desiredState.Profile.NoiseLoudnessMultiplier
+                : 1f;
+            float profileRadius = desiredState.Profile != null
+                ? desiredState.Profile.NoiseRadiusMultiplier
+                : 1f;
+
+            activeNoiseLoudnessMultiplier = Mathf.Clamp(
+                profileLoudness * GetDefaultZoneNoiseLoudnessMultiplier(desiredState.ZoneLocation),
+                0.1f,
+                4f);
+            activeNoiseRadiusMultiplier = Mathf.Clamp(
+                profileRadius * GetDefaultZoneNoiseRadiusMultiplier(desiredState.ZoneLocation),
+                0.1f,
+                4f);
+        }
+
         private void ReleaseStaleListenerFilters()
         {
             if (listenerLowPassFilter != null && listenerLowPassFilter.transform != listener)
@@ -273,6 +319,26 @@ namespace Neighbor.Main.Features.Audio
                 AmbienceZoneLocation.Basement => 0.72f,
                 AmbienceZoneLocation.Garage => 0.45f,
                 _ => 0f
+            };
+        }
+
+        private static float GetDefaultZoneNoiseLoudnessMultiplier(AmbienceZoneLocation zoneLocation)
+        {
+            return zoneLocation switch
+            {
+                AmbienceZoneLocation.Basement => 1.18f,
+                AmbienceZoneLocation.Garage => 1.12f,
+                _ => 1f
+            };
+        }
+
+        private static float GetDefaultZoneNoiseRadiusMultiplier(AmbienceZoneLocation zoneLocation)
+        {
+            return zoneLocation switch
+            {
+                AmbienceZoneLocation.Basement => 1.2f,
+                AmbienceZoneLocation.Garage => 1.35f,
+                _ => 1f
             };
         }
 
@@ -431,6 +497,7 @@ namespace Neighbor.Main.Features.Audio
 
             playbacks.Clear();
             targetProfile = null;
+            ResetNoiseAcousticModifiers();
         }
 
         private static void DestroyPlaybackRoot(GameObject root)

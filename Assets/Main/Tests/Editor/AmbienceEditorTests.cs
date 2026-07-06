@@ -1,4 +1,5 @@
 using Neighbor.Main.Features.Audio;
+using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Player;
 using NUnit.Framework;
 using UnityEditor;
@@ -180,10 +181,76 @@ namespace Neighbor.Main.Tests
             finally
             {
                 PlayerFeedbackEvents.AmbienceZoneChanged -= HandleZoneWarning;
+                AmbienceManager.ResetNoiseAcousticModifiers();
                 Object.DestroyImmediate(basementProfile);
                 Object.DestroyImmediate(managerObject);
                 Object.DestroyImmediate(listenerObject);
                 Object.DestroyImmediate(areaObject);
+            }
+        }
+
+        [Test]
+        public void AmbienceManager_GarageZoneAmplifiesNoiseEvents()
+        {
+            GameObject managerObject = new("Ambience Manager Test");
+            GameObject listenerObject = new("Listener Test");
+            GameObject areaObject = new("Garage Area Test");
+            GameObject noiseObject = new("Garage Noise Test");
+            AmbienceProfile garageProfile = ScriptableObject.CreateInstance<AmbienceProfile>();
+            PlayerFeedbackEvents.NoiseFeedback receivedNoise = default;
+            bool receivedFeedback = false;
+
+            void HandleNoise(PlayerFeedbackEvents.NoiseFeedback feedback)
+            {
+                receivedNoise = feedback;
+                receivedFeedback = true;
+            }
+
+            try
+            {
+                AmbienceManager.ResetNoiseAcousticModifiers();
+                GameplaySmokeTestReflection.SetField(garageProfile, "noiseLoudnessMultiplier", 1.25f);
+                GameplaySmokeTestReflection.SetField(garageProfile, "noiseRadiusMultiplier", 1.1f);
+
+                AmbienceManager manager = managerObject.AddComponent<AmbienceManager>();
+                GameplaySmokeTestReflection.SetField(manager, "listener", listenerObject.transform);
+                GameplaySmokeTestReflection.SetField<PlayerController>(manager, "player", null);
+
+                AmbienceArea area = CreateArea(areaObject, garageProfile, false, Vector3.zero, AmbienceZoneLocation.Garage);
+                GameplaySmokeTestReflection.InvokeIfPresent(area, "OnEnable");
+                listenerObject.transform.position = new Vector3(0f, 1.5f, 0f);
+                Physics.SyncTransforms();
+
+                GameplaySmokeTestReflection.Invoke(manager, "Update");
+
+                float expectedLoudness = Mathf.Clamp01(0.4f * 1.25f * 1.12f);
+                float expectedRadius = 5f * 1.1f * 1.35f;
+                Assert.That(AmbienceManager.ActiveNoiseLoudnessMultiplier, Is.EqualTo(1.25f * 1.12f).Within(0.001f));
+                Assert.That(AmbienceManager.ActiveNoiseRadiusMultiplier, Is.EqualTo(1.1f * 1.35f).Within(0.001f));
+
+                PlayerFeedbackEvents.NoiseEmitted += HandleNoise;
+                noiseObject.AddComponent<SphereCollider>();
+                NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
+                noiseEvent.Initialize(Vector3.zero, 5f, 0.4f, noiseObject, 1f);
+
+                Assert.That(noiseEvent.Loudness01, Is.EqualTo(expectedLoudness).Within(0.001f));
+                Assert.That(noiseEvent.Radius, Is.EqualTo(expectedRadius).Within(0.001f));
+                Assert.That(noiseObject.GetComponent<SphereCollider>().radius, Is.EqualTo(expectedRadius).Within(0.001f));
+                Assert.That(receivedFeedback, Is.True);
+                Assert.That(receivedNoise.Loudness, Is.EqualTo(expectedLoudness).Within(0.001f));
+                Assert.That(receivedNoise.Radius, Is.EqualTo(expectedRadius).Within(0.001f));
+
+                GameplaySmokeTestReflection.InvokeIfPresent(area, "OnDisable");
+            }
+            finally
+            {
+                PlayerFeedbackEvents.NoiseEmitted -= HandleNoise;
+                AmbienceManager.ResetNoiseAcousticModifiers();
+                Object.DestroyImmediate(garageProfile);
+                Object.DestroyImmediate(managerObject);
+                Object.DestroyImmediate(listenerObject);
+                Object.DestroyImmediate(areaObject);
+                Object.DestroyImmediate(noiseObject);
             }
         }
 
