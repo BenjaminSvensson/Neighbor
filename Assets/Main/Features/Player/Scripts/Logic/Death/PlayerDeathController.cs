@@ -249,7 +249,7 @@ namespace Neighbor.Main.Features.Player
                 reinforcementBudget,
                 securityPlan.CameraCount,
                 securityPlan.TrapCount);
-            ResetRun();
+            ResetRun(securityPlan.PatrolPointCount);
 
             timer = 0f;
             while (timer < fadeOutDuration)
@@ -378,7 +378,7 @@ namespace Neighbor.Main.Features.Player
             disabledBehaviours.Add(behaviour);
         }
 
-        private void ResetRun()
+        private void ResetRun(int adaptiveSecurityPatrolPoints)
         {
             ReleasePlayerFromWorldConstraints();
             playerController?.ResetForRespawn(CurrentRespawnPosition, CurrentRespawnRotation);
@@ -409,7 +409,7 @@ namespace Neighbor.Main.Features.Player
             NeighborBrain[] neighbors = FindObjectsByType<NeighborBrain>(FindObjectsInactive.Exclude);
             for (int i = 0; i < neighbors.Length; i++)
             {
-                neighbors[i]?.HandlePlayerRespawned(neighborRespawnSightGraceTime);
+                neighbors[i]?.HandlePlayerRespawned(neighborRespawnSightGraceTime, adaptiveSecurityPatrolPoints);
             }
 
             for (int i = 0; i < disabledBehaviours.Count; i++)
