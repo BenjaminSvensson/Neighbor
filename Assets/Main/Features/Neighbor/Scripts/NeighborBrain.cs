@@ -209,6 +209,13 @@ namespace Neighbor.Main.Features.Neighbor
         private GameObject currentInvestigationSource;
         private Door currentUnexpectedOpenDoor;
         private Vector3 currentDoorRoomCheckPosition;
+        private Vector3 lastKnownInvestigationPosition;
+        private Vector3 investigationSearchLookDirection;
+        private BehaviorState preInvestigationState;
+        private Vector3 preInvestigationGoal;
+        private NeighborTaskLocation preInvestigationTaskLocation;
+        private bool hasPreInvestigationRoutine;
+        private bool hasActiveInvestigation;
         private Vector3 cachedPredictionDirection;
         private float nextPredictionDecisionTime;
         private bool isVerifyingLastSeenPosition;
@@ -247,6 +254,15 @@ namespace Neighbor.Main.Features.Neighbor
         public GameObject CurrentInvestigationSource => currentInvestigationSource;
         public Door CurrentUnexpectedOpenDoor => currentUnexpectedOpenDoor;
         public Vector3 CurrentDoorRoomCheckPosition => currentDoorRoomCheckPosition;
+        public Vector3 LastKnownInvestigationPosition => lastKnownInvestigationPosition;
+        public bool HasActiveInvestigation => hasActiveInvestigation;
+        public bool IsSearchingInvestigationArea => currentState == BehaviorState.Investigate
+            && waitingAtGoal
+            && motor != null
+            && motor.HasArrived;
+        public float InvestigationSearchTimeRemaining => IsSearchingInvestigationArea
+            ? Mathf.Max(0f, waitUntilTime - Time.time)
+            : 0f;
         public float Suspicion => suspicion;
         public bool IsVerifyingLastSeenPosition => currentState == BehaviorState.Chase && isVerifyingLastSeenPosition;
         public Vector3 LastSeenVerificationPosition => lastSeenVerificationPosition;
@@ -919,6 +935,7 @@ namespace Neighbor.Main.Features.Neighbor
             motor.SetMoveMode(investigationMoveMode);
             if (!motor.HasArrived)
             {
+                motor.FaceMovementDirection(investigationMoveMode == NeighborMotor.MoveMode.Run ? 14f : 9f);
                 return;
             }
 
@@ -931,11 +948,7 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             suspicion = Mathf.Max(0f, suspicion - 0.12f);
-            RememberFalseAlarm();
-            currentSearchPoint = null;
-            currentUnexpectedOpenDoor = null;
-            currentDoorRoomCheckPosition = default;
-            ChooseNextRoutineGoal();
+            FinishInvestigationAndReturnToRoutine();
         }
 
         private void UpdateHuntMode()
@@ -1093,32 +1106,166 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            RememberInterruptedTask();
             AddSuspicion(stimulus.Loudness01 * Mathf.Lerp(0.35f, 0.75f, stimulus.Urgency01), stimulus.SourceObject);
-            RememberPlayerActivity(stimulus.Position);
-            currentInvestigationSource = stimulus.SourceObject;
-            currentUnexpectedOpenDoor = null;
-            currentDoorRoomCheckPosition = default;
-            goalWaitDuration = investigationWaitTime;
-            waitingAtGoal = false;
-            currentTaskLocation = null;
-            StopActiveTaskAudio();
             investigationMoveMode = stimulus.Urgency01 >= minimumUrgencyToRunToNoise || CurrentSuspicionLevel == SuspicionLevel.Certain
                 ? NeighborMotor.MoveMode.Run
                 : CurrentSuspicionLevel >= SuspicionLevel.Suspicious
                     ? NeighborMotor.MoveMode.Cautious
                     : NeighborMotor.MoveMode.Walk;
-            motor?.SetMoveMode(investigationMoveMode);
-            if (motor != null && motor.TrySetDestinationNear(stimulus.Position, noiseDestinationSampleRadius, out Vector3 investigatePosition))
+
+            BeginInvestigation(
+                stimulus.Position,
+                stimulus.SourceObject,
+                investigationWaitTime,
+                investigationMoveMode,
+                true);
+        }
+
+        private void BeginInvestigation(
+            Vector3 position,
+            GameObject source,
+            float waitDuration,
+            NeighborMotor.MoveMode moveMode,
+            bool openGarageIfBlocked)
+        {
+            CapturePreInvestigationRoutine();
+            RememberInterruptedTask();
+            RememberPlayerActivity(position);
+
+            lastKnownInvestigationPosition = position;
+            investigationSearchLookDirection = position - transform.position;
+            investigationSearchLookDirection.y = 0f;
+            hasActiveInvestigation = true;
+            currentInvestigationSource = source;
+            currentUnexpectedOpenDoor = null;
+            currentDoorRoomCheckPosition = default;
+            currentSearchPoint = null;
+            goalWaitDuration = Mathf.Max(0f, waitDuration);
+            waitingAtGoal = false;
+            currentTaskLocation = null;
+            StopActiveTaskAudio();
+            investigationMoveMode = moveMode;
+
+            if (motor == null)
+            {
+                return;
+            }
+
+            motor.SetMoveMode(investigationMoveMode);
+            if (motor.TrySetDestinationNear(position, noiseDestinationSampleRadius, out Vector3 investigatePosition))
             {
                 currentGoal = investigatePosition;
                 SetState(BehaviorState.Investigate);
+                return;
             }
-            else if (motor != null)
+
+            currentGoal = position;
+            if (!openGarageIfBlocked || !TryStartGarageDoorUseForGoal(position, BehaviorState.Investigate, true))
             {
-                currentGoal = stimulus.Position;
-                TryStartGarageDoorUseForGoal(stimulus.Position, BehaviorState.Investigate, true);
+                SetState(BehaviorState.Investigate);
             }
+        }
+
+        private void CapturePreInvestigationRoutine()
+        {
+            if (currentState == BehaviorState.Investigate || currentState == BehaviorState.GarageDoorUse)
+            {
+                return;
+            }
+
+            preInvestigationState = currentState;
+            preInvestigationGoal = currentGoal;
+            preInvestigationTaskLocation = currentTaskLocation;
+            hasPreInvestigationRoutine = currentState == BehaviorState.Task
+                || currentState == BehaviorState.Wander
+                || currentState == BehaviorState.Idle;
+        }
+
+        private void FinishInvestigationAndReturnToRoutine()
+        {
+            RememberFalseAlarm();
+            ClearInvestigationState();
+
+            if (TryResumePreInvestigationRoutine())
+            {
+                return;
+            }
+
+            ChooseNextRoutineGoal();
+        }
+
+        private void ClearInvestigationState()
+        {
+            currentSearchPoint = null;
+            currentUnexpectedOpenDoor = null;
+            currentDoorRoomCheckPosition = default;
+            investigationSearchLookDirection = default;
+            hasActiveInvestigation = false;
+        }
+
+        private void ClearPreInvestigationRoutine()
+        {
+            hasPreInvestigationRoutine = false;
+            preInvestigationTaskLocation = null;
+        }
+
+        private bool TryResumePreInvestigationRoutine()
+        {
+            if (!hasPreInvestigationRoutine)
+            {
+                return false;
+            }
+
+            BehaviorState resumeState = preInvestigationState;
+            Vector3 resumeGoal = preInvestigationGoal;
+            NeighborTaskLocation resumeTask = preInvestigationTaskLocation;
+            hasPreInvestigationRoutine = false;
+            preInvestigationTaskLocation = null;
+
+            if (resumeTask != null && resumeTask.isActiveAndEnabled && TryStartTask(resumeTask))
+            {
+                interruptedTaskLocation = null;
+                return true;
+            }
+
+            if (motor == null)
+            {
+                return false;
+            }
+
+            if (resumeState == BehaviorState.Wander
+                && motor.SetDestination(resumeGoal))
+            {
+                currentGoal = resumeGoal;
+                goalWaitDuration = Random.Range(idleWaitMinimum, Mathf.Max(idleWaitMinimum, idleWaitMaximum));
+                waitingAtGoal = false;
+                currentTaskLocation = null;
+                SetState(BehaviorState.Wander);
+                return true;
+            }
+
+            if (resumeState == BehaviorState.Idle)
+            {
+                Vector3 toStart = startingPosition - transform.position;
+                toStart.y = 0f;
+                if (toStart.sqrMagnitude > 0.75f * 0.75f
+                    && motor.TrySetDestinationNear(startingPosition, noiseDestinationSampleRadius, out Vector3 returnPosition))
+                {
+                    currentGoal = returnPosition;
+                    goalWaitDuration = Random.Range(idleWaitMinimum, Mathf.Max(idleWaitMinimum, idleWaitMaximum));
+                    waitingAtGoal = false;
+                    currentTaskLocation = null;
+                    SetState(BehaviorState.Wander);
+                    return true;
+                }
+
+                currentTaskLocation = null;
+                waitingAtGoal = false;
+                SetState(BehaviorState.Idle);
+                return true;
+            }
+
+            return false;
         }
 
         private void HandleDestinationAbandoned(Vector3 _)
@@ -1170,9 +1317,8 @@ namespace Neighbor.Main.Features.Neighbor
                     return;
                 case BehaviorState.Investigate:
                     RememberFalseAlarm();
-                    currentSearchPoint = null;
-                    currentUnexpectedOpenDoor = null;
-                    currentDoorRoomCheckPosition = default;
+                    ClearInvestigationState();
+                    ClearPreInvestigationRoutine();
                     suspicion = Mathf.Max(0f, suspicion - 0.08f);
                     ChooseNextRoutineGoal();
                     return;
@@ -2269,9 +2415,8 @@ namespace Neighbor.Main.Features.Neighbor
                 && state != BehaviorState.Investigate
                 && state != BehaviorState.GarageDoorUse)
             {
-                currentSearchPoint = null;
-                currentUnexpectedOpenDoor = null;
-                currentDoorRoomCheckPosition = default;
+                ClearInvestigationState();
+                ClearPreInvestigationRoutine();
             }
 
             if (currentState == BehaviorState.Task && state != BehaviorState.Task)
@@ -2368,34 +2513,27 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void HandleEnvironmentalClue(Vector3 position, float changeSuspicion, GameObject source)
         {
-            RememberInterruptedTask();
             AddSuspicion(changeSuspicion, source);
-            RememberPlayerActivity(position);
-            currentInvestigationSource = source;
-            currentUnexpectedOpenDoor = null;
-            currentDoorRoomCheckPosition = default;
 
             if (currentState == BehaviorState.Chase
                 || currentState == BehaviorState.Catching
                 || currentState == BehaviorState.HuntMode
                 || motor == null)
             {
+                RememberPlayerActivity(position);
                 return;
             }
 
-            goalWaitDuration = investigationWaitTime * Mathf.Lerp(0.75f, 1.4f, suspicion);
-            waitingAtGoal = false;
-            currentTaskLocation = null;
-            StopActiveTaskAudio();
             investigationMoveMode = CurrentSuspicionLevel >= SuspicionLevel.Certain
                 ? NeighborMotor.MoveMode.Run
                 : NeighborMotor.MoveMode.Cautious;
 
-            if (motor.TrySetDestinationNear(position, noiseDestinationSampleRadius, out Vector3 investigatePosition))
-            {
-                currentGoal = investigatePosition;
-                SetState(BehaviorState.Investigate);
-            }
+            BeginInvestigation(
+                position,
+                source,
+                investigationWaitTime * Mathf.Lerp(0.75f, 1.4f, suspicion),
+                investigationMoveMode,
+                false);
         }
 
         private void TryNoticeObjectLocationChanges()
@@ -2680,7 +2818,11 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            Vector3 baseDirection = currentSearchPoint != null ? currentSearchPoint.LookDirection : transform.forward;
+            Vector3 baseDirection = currentSearchPoint != null
+                ? currentSearchPoint.LookDirection
+                : currentState == BehaviorState.Investigate && investigationSearchLookDirection.sqrMagnitude > 0.001f
+                    ? investigationSearchLookDirection
+                    : transform.forward;
             baseDirection.y = 0f;
             if (baseDirection.sqrMagnitude <= 0.001f)
             {

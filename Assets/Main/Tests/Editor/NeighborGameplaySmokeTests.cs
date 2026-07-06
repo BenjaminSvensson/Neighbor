@@ -1217,10 +1217,53 @@ namespace Neighbor.Main.Tests
             noiseEvent.Initialize(neighborObject.transform.position, 5f, 0.6f, source, 1f, 1f);
 
             Assert.That(brain.Suspicion, Is.GreaterThan(0f));
+            Assert.That(brain.HasActiveInvestigation, Is.True);
+            Assert.That(brain.LastKnownInvestigationPosition, Is.EqualTo(neighborObject.transform.position));
             Assert.That(
                 GameplaySmokeTestReflection.GetField<GameObject>(brain, "currentInvestigationSource"),
                 Is.SameAs(source));
             Assert.That(hearing, Is.Not.Null);
+        }
+
+        [Test]
+        public void NoiseInvestigation_CapturesInterruptedRoutineAndLastKnownPosition()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            GameObject source = context.CreateObject("NoiseSource");
+            GameObject taskObject = context.CreateObject("InterruptedTask");
+            NeighborTaskLocation task = context.AddInitializedComponent<NeighborTaskLocation>(taskObject);
+            Vector3 routineGoal = new(1f, 0f, 2f);
+            Vector3 noisePosition = new(4f, 0f, -3f);
+
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.Task);
+            GameplaySmokeTestReflection.SetField(brain, "currentTaskLocation", task);
+            GameplaySmokeTestReflection.SetField(brain, "currentGoal", routineGoal);
+
+            GameplaySmokeTestReflection.Invoke(
+                brain,
+                "BeginInvestigation",
+                noisePosition,
+                source,
+                2f,
+                NeighborMotor.MoveMode.Cautious,
+                false);
+
+            Assert.That(brain.HasActiveInvestigation, Is.True);
+            Assert.That(brain.LastKnownInvestigationPosition, Is.EqualTo(noisePosition));
+            Assert.That(brain.CurrentInvestigationSource, Is.SameAs(source));
+            Assert.That(
+                GameplaySmokeTestReflection.GetField<NeighborBrain.BehaviorState>(brain, "preInvestigationState"),
+                Is.EqualTo(NeighborBrain.BehaviorState.Task));
+            Assert.That(
+                GameplaySmokeTestReflection.GetField<Vector3>(brain, "preInvestigationGoal"),
+                Is.EqualTo(routineGoal));
+            Assert.That(
+                GameplaySmokeTestReflection.GetField<NeighborTaskLocation>(brain, "preInvestigationTaskLocation"),
+                Is.SameAs(task));
+            Assert.That(
+                GameplaySmokeTestReflection.GetField<NeighborTaskLocation>(brain, "currentTaskLocation"),
+                Is.Null);
         }
 
         [Test]
