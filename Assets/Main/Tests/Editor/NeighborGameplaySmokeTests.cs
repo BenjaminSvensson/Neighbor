@@ -1110,6 +1110,84 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void HidingState_HighBreathTensionEmitsReadableNoise()
+        {
+            PlayerFeedbackEvents.NoiseFeedback received = default;
+            bool reported = false;
+            PlayerFeedbackEvents.NoiseEmitted += HandleNoise;
+
+            GameObject noiseObject = null;
+            try
+            {
+                PlayerHidingState hidingState = context.CreateObject("HiddenPlayer").AddComponent<PlayerHidingState>();
+                GameplaySmokeTestReflection.SetField(hidingState, "breathNoiseThreshold", 0.2f);
+                GameplaySmokeTestReflection.SetField(hidingState, "breathNoiseCooldown", 0f);
+                GameplaySmokeTestReflection.SetField(hidingState, "breathNoiseRadius", 6f);
+                GameplaySmokeTestReflection.SetField(hidingState, "breathNoiseLoudness", 0.4f);
+
+                hidingState.SetHidden(true);
+                hidingState.AddBreathTension(0.9f);
+                GameplaySmokeTestReflection.Invoke(hidingState, "Update");
+
+                noiseObject = GameObject.Find("HiddenBreathNoiseEvent");
+                Assert.That(reported, Is.True);
+                Assert.That(received.Radius, Is.EqualTo(6f));
+                Assert.That(received.Loudness, Is.GreaterThanOrEqualTo(0.2f));
+                Assert.That(noiseObject, Is.Not.Null);
+                Assert.That(noiseObject.GetComponent<SphereCollider>().isTrigger, Is.True);
+            }
+            finally
+            {
+                PlayerFeedbackEvents.NoiseEmitted -= HandleNoise;
+                if (noiseObject != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(noiseObject);
+                }
+            }
+
+            void HandleNoise(PlayerFeedbackEvents.NoiseFeedback feedback)
+            {
+                received = feedback;
+                reported = true;
+            }
+        }
+
+        [Test]
+        public void PlayerAudio_HiddenBreathTensionDrivesBreathLoopTarget()
+        {
+            GameObject playerObject = context.CreateObject("Player");
+            playerObject.AddComponent<CharacterController>();
+            context.AddInitializedComponent<PlayerController>(playerObject);
+            PlayerHidingState hidingState = playerObject.AddComponent<PlayerHidingState>();
+            PlayerAudioController audioController = context.AddInitializedComponent<PlayerAudioController>(playerObject);
+            AudioClip breathClip = AudioClip.Create("TestBreathLoop", 64, 1, 8000, false);
+
+            try
+            {
+                GameplaySmokeTestReflection.SetField(audioController, "tiredBreathLoop", breathClip);
+                GameplaySmokeTestReflection.SetField(audioController, "hiddenBreathVolume", 0.6f);
+                GameplaySmokeTestReflection.SetField(audioController, "breathStartStamina", 0f);
+
+                hidingState.SetHidden(true);
+                hidingState.AddBreathTension(0.75f);
+                GameplaySmokeTestReflection.Invoke(audioController, "UpdateBreathing");
+
+                Assert.That(audioController.CurrentBreathStress01, Is.EqualTo(0.75f).Within(0.001f));
+                Assert.That(audioController.CurrentBreathTargetVolume, Is.EqualTo(0.45f).Within(0.001f));
+
+                hidingState.RegisterNeighborInspection(true);
+                GameplaySmokeTestReflection.Invoke(audioController, "UpdateBreathing");
+
+                Assert.That(audioController.CurrentBreathStress01, Is.EqualTo(1f).Within(0.001f));
+                Assert.That(audioController.CurrentBreathTargetVolume, Is.EqualTo(0.6f).Within(0.001f));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(breathClip);
+            }
+        }
+
+        [Test]
         public void ClosetSearch_MarksHiddenPlayerAsInspected()
         {
             GameObject playerObject = context.CreateObject("Player");
