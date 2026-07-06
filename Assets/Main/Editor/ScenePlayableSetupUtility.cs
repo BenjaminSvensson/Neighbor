@@ -1,0 +1,386 @@
+#if UNITY_EDITOR
+using Neighbor.Main.Features.Audio;
+using Neighbor.Main.Features.Interaction;
+using Neighbor.Main.Features.Neighbor;
+using Neighbor.Main.Features.Player;
+using Unity.AI.Navigation;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using UnityEngine.AI;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
+using UnityEngine.SceneManagement;
+
+internal static class ScenePlayableSetupUtility
+{
+    private const string MenuPath = "Tools/Neighbor/Make Scene Playable";
+    private const string MenuPathWithoutBake = "Tools/Neighbor/Make Scene Playable Without NavMesh Bake";
+    private const string PlayerPrefabPath = "Assets/Main/Features/Player/Prefabs/Main/Player.prefab";
+    private const string NeighborPrefabPath = "Assets/Main/Features/Neighbor/Prefabs/Neighbor.prefab";
+
+    [MenuItem(MenuPath)]
+    private static void MakeActiveScenePlayableFromMenu()
+    {
+        ScenePlayableSetupResult result = MakeActiveScenePlayable(true);
+        Debug.Log(result.GetSummary());
+    }
+
+    [MenuItem(MenuPathWithoutBake)]
+    private static void MakeActiveScenePlayableWithoutBakeFromMenu()
+    {
+        ScenePlayableSetupResult result = MakeActiveScenePlayable(false);
+        Debug.Log(result.GetSummary());
+    }
+
+    public static void MakeActiveScenePlayableFromCommandLine()
+    {
+        ScenePlayableSetupResult result = MakeActiveScenePlayable(true);
+        Debug.Log(result.GetSummary());
+        EditorApplication.Exit(0);
+    }
+
+    internal static ScenePlayableSetupResult MakeActiveScenePlayable(bool bakeNavMesh)
+    {
+        Scene scene = SceneManager.GetActiveScene();
+        if (!scene.IsValid())
+        {
+            throw new System.InvalidOperationException("No valid active scene is open.");
+        }
+
+        int undoGroup = Undo.GetCurrentGroup();
+        Undo.SetCurrentGroupName("Make Scene Playable");
+
+        ScenePlayableSetupResult result = new(scene.path);
+        Vector3 playerPosition = FindPlayableOrigin(scene);
+
+        PlayerController player = EnsurePlayer(scene, playerPosition, result);
+        NeighborBrain neighbor = EnsureNeighbor(scene, GetGroundedPosition(scene, playerPosition + new Vector3(4f, 0f, 4f)), result);
+        NavMeshSurface navMeshSurface = EnsureNavMeshSurface(scene, result);
+        AmbienceManager ambienceManager = EnsureAmbienceManager(scene, player, result);
+        PlayerAwarenessHudView awarenessHud = EnsureAwarenessHud(scene, result);
+        PlayerInventoryHudView inventoryHud = EnsureInventoryHud(scene, player, result);
+        EventSystem eventSystem = EnsureEventSystem(scene, result);
+        Light directionalLight = EnsureDirectionalLight(scene, result);
+
+        result.Player = player;
+        result.Neighbor = neighbor;
+        result.NavMeshSurface = navMeshSurface;
+        result.AmbienceManager = ambienceManager;
+        result.AwarenessHud = awarenessHud;
+        result.InventoryHud = inventoryHud;
+        result.EventSystem = eventSystem;
+        result.DirectionalLight = directionalLight;
+
+        if (bakeNavMesh && navMeshSurface != null)
+        {
+            navMeshSurface.BuildNavMesh();
+            result.BakedNavMesh = true;
+            EditorUtility.SetDirty(navMeshSurface);
+        }
+
+        if (result.HasChanges)
+        {
+            EditorSceneManager.MarkSceneDirty(scene);
+        }
+
+        Undo.CollapseUndoOperations(undoGroup);
+        return result;
+    }
+
+    private static PlayerController EnsurePlayer(Scene scene, Vector3 position, ScenePlayableSetupResult result)
+    {
+        PlayerController existingPlayer = FindInScene<PlayerController>(scene);
+        if (existingPlayer != null)
+        {
+            return existingPlayer;
+        }
+
+        GameObject playerObject = InstantiatePrefab(PlayerPrefabPath, scene, "Player");
+        playerObject.transform.SetPositionAndRotation(position, Quaternion.identity);
+        result.CreatedObjectCount++;
+        result.CreatedPlayer = true;
+        return playerObject.GetComponentInChildren<PlayerController>(true);
+    }
+
+    private static NeighborBrain EnsureNeighbor(Scene scene, Vector3 position, ScenePlayableSetupResult result)
+    {
+        NeighborBrain existingNeighbor = FindInScene<NeighborBrain>(scene);
+        if (existingNeighbor != null)
+        {
+            return existingNeighbor;
+        }
+
+        GameObject neighborObject = InstantiatePrefab(NeighborPrefabPath, scene, "Neighbor");
+        neighborObject.transform.SetPositionAndRotation(position, Quaternion.LookRotation(Vector3.back, Vector3.up));
+        result.CreatedObjectCount++;
+        result.CreatedNeighbor = true;
+        return neighborObject.GetComponentInChildren<NeighborBrain>(true);
+    }
+
+    private static NavMeshSurface EnsureNavMeshSurface(Scene scene, ScenePlayableSetupResult result)
+    {
+        NavMeshSurface existingSurface = FindInScene<NavMeshSurface>(scene);
+        if (existingSurface != null)
+        {
+            ConfigureNavMeshSurface(existingSurface);
+            return existingSurface;
+        }
+
+        GameObject surfaceObject = CreateSceneObject(scene, "NavMesh Surface");
+        NavMeshSurface surface = surfaceObject.AddComponent<NavMeshSurface>();
+        ConfigureNavMeshSurface(surface);
+        result.CreatedObjectCount++;
+        result.CreatedNavMeshSurface = true;
+        return surface;
+    }
+
+    private static void ConfigureNavMeshSurface(NavMeshSurface surface)
+    {
+        surface.collectObjects = CollectObjects.All;
+        surface.useGeometry = NavMeshCollectGeometry.RenderMeshes;
+        surface.layerMask = ~0;
+        surface.defaultArea = 0;
+        EditorUtility.SetDirty(surface);
+    }
+
+    private static AmbienceManager EnsureAmbienceManager(Scene scene, PlayerController player, ScenePlayableSetupResult result)
+    {
+        AmbienceManager manager = FindInScene<AmbienceManager>(scene);
+        if (manager == null)
+        {
+            GameObject managerObject = CreateSceneObject(scene, "AmbienceManager");
+            manager = managerObject.AddComponent<AmbienceManager>();
+            result.CreatedObjectCount++;
+            result.CreatedAmbienceManager = true;
+        }
+
+        manager.SetPlayer(player);
+        EditorUtility.SetDirty(manager);
+        return manager;
+    }
+
+    private static PlayerAwarenessHudView EnsureAwarenessHud(Scene scene, ScenePlayableSetupResult result)
+    {
+        PlayerAwarenessHudView hud = FindInScene<PlayerAwarenessHudView>(scene);
+        if (hud != null)
+        {
+            return hud;
+        }
+
+        GameObject hudObject = CreateSceneObject(scene, "PlayerAwarenessHud");
+        hud = hudObject.AddComponent<PlayerAwarenessHudView>();
+        result.CreatedObjectCount++;
+        result.CreatedAwarenessHud = true;
+        return hud;
+    }
+
+    private static PlayerInventoryHudView EnsureInventoryHud(Scene scene, PlayerController player, ScenePlayableSetupResult result)
+    {
+        PlayerInventoryHudView hud = FindInScene<PlayerInventoryHudView>(scene);
+        PlayerInteractor interactor = player != null ? player.GetComponentInChildren<PlayerInteractor>(true) : null;
+        if (hud != null)
+        {
+            hud.SetInteractor(interactor);
+            EditorUtility.SetDirty(hud);
+            return hud;
+        }
+
+        hud = PlayerInventoryHudView.CreateRuntimeHud(interactor);
+        SceneManager.MoveGameObjectToScene(hud.gameObject, scene);
+        result.CreatedObjectCount++;
+        result.CreatedInventoryHud = true;
+        return hud;
+    }
+
+    private static EventSystem EnsureEventSystem(Scene scene, ScenePlayableSetupResult result)
+    {
+        EventSystem eventSystem = FindInScene<EventSystem>(scene);
+        if (eventSystem == null)
+        {
+            GameObject eventSystemObject = CreateSceneObject(scene, "EventSystem");
+            eventSystem = eventSystemObject.AddComponent<EventSystem>();
+            result.CreatedObjectCount++;
+            result.CreatedEventSystem = true;
+        }
+
+        if (eventSystem.GetComponent<InputSystemUIInputModule>() == null)
+        {
+            eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
+            result.UpdatedEventSystem = true;
+        }
+
+        StandaloneInputModule legacyInputModule = eventSystem.GetComponent<StandaloneInputModule>();
+        if (legacyInputModule != null)
+        {
+            Object.DestroyImmediate(legacyInputModule);
+            result.UpdatedEventSystem = true;
+        }
+
+        EditorUtility.SetDirty(eventSystem);
+        return eventSystem;
+    }
+
+    private static Light EnsureDirectionalLight(Scene scene, ScenePlayableSetupResult result)
+    {
+        Light[] lights = FindAllInScene<Light>(scene);
+        for (int i = 0; i < lights.Length; i++)
+        {
+            if (lights[i] != null && lights[i].type == LightType.Directional)
+            {
+                return lights[i];
+            }
+        }
+
+        GameObject lightObject = CreateSceneObject(scene, "Directional Light");
+        lightObject.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+        Light light = lightObject.AddComponent<Light>();
+        light.type = LightType.Directional;
+        light.intensity = 1.1f;
+        light.shadows = LightShadows.Soft;
+        result.CreatedObjectCount++;
+        result.CreatedDirectionalLight = true;
+        return light;
+    }
+
+    private static GameObject InstantiatePrefab(string path, Scene scene, string fallbackName)
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+        if (prefab == null)
+        {
+            throw new System.InvalidOperationException($"Required prefab is missing at '{path}'.");
+        }
+
+        GameObject instance = PrefabUtility.InstantiatePrefab(prefab, scene) as GameObject;
+        if (instance == null)
+        {
+            throw new System.InvalidOperationException($"Failed to instantiate prefab '{path}'.");
+        }
+
+        if (string.IsNullOrWhiteSpace(instance.name))
+        {
+            instance.name = fallbackName;
+        }
+
+        Undo.RegisterCreatedObjectUndo(instance, $"Create {fallbackName}");
+        return instance;
+    }
+
+    private static GameObject CreateSceneObject(Scene scene, string name)
+    {
+        GameObject gameObject = new(name);
+        SceneManager.MoveGameObjectToScene(gameObject, scene);
+        Undo.RegisterCreatedObjectUndo(gameObject, $"Create {name}");
+        return gameObject;
+    }
+
+    private static Vector3 FindPlayableOrigin(Scene scene)
+    {
+        Terrain terrain = FindInScene<Terrain>(scene);
+        if (terrain != null && terrain.terrainData != null)
+        {
+            Vector3 center = terrain.transform.position + Vector3.Scale(terrain.terrainData.size, new Vector3(0.5f, 0f, 0.5f));
+            return GetGroundedPosition(scene, center);
+        }
+
+        Renderer[] renderers = FindAllInScene<Renderer>(scene);
+        if (renderers.Length > 0)
+        {
+            Bounds bounds = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++)
+            {
+                bounds.Encapsulate(renderers[i].bounds);
+            }
+
+            return new Vector3(bounds.center.x, bounds.max.y + 1f, bounds.center.z);
+        }
+
+        return Vector3.up;
+    }
+
+    private static Vector3 GetGroundedPosition(Scene scene, Vector3 position)
+    {
+        Terrain terrain = FindInScene<Terrain>(scene);
+        if (terrain != null)
+        {
+            position.y = terrain.transform.position.y + terrain.SampleHeight(position) + 1f;
+            return position;
+        }
+
+        if (Physics.Raycast(position + Vector3.up * 20f, Vector3.down, out RaycastHit hit, 80f, ~0, QueryTriggerInteraction.Ignore))
+        {
+            position.y = hit.point.y + 1f;
+            return position;
+        }
+
+        position.y = Mathf.Max(position.y, 1f);
+        return position;
+    }
+
+    private static T FindInScene<T>(Scene scene) where T : Component
+    {
+        T[] components = FindAllInScene<T>(scene);
+        return components.Length > 0 ? components[0] : null;
+    }
+
+    private static T[] FindAllInScene<T>(Scene scene) where T : Component
+    {
+        T[] components = Object.FindObjectsByType<T>(FindObjectsInactive.Include);
+        int writeIndex = 0;
+        for (int i = 0; i < components.Length; i++)
+        {
+            T component = components[i];
+            if (component != null && component.gameObject.scene == scene)
+            {
+                components[writeIndex] = component;
+                writeIndex++;
+            }
+        }
+
+        if (writeIndex == components.Length)
+        {
+            return components;
+        }
+
+        T[] filtered = new T[writeIndex];
+        System.Array.Copy(components, filtered, writeIndex);
+        return filtered;
+    }
+}
+
+internal sealed class ScenePlayableSetupResult
+{
+    public ScenePlayableSetupResult(string scenePath)
+    {
+        ScenePath = scenePath;
+    }
+
+    public string ScenePath { get; }
+    public PlayerController Player { get; set; }
+    public NeighborBrain Neighbor { get; set; }
+    public NavMeshSurface NavMeshSurface { get; set; }
+    public AmbienceManager AmbienceManager { get; set; }
+    public PlayerAwarenessHudView AwarenessHud { get; set; }
+    public PlayerInventoryHudView InventoryHud { get; set; }
+    public EventSystem EventSystem { get; set; }
+    public Light DirectionalLight { get; set; }
+    public int CreatedObjectCount { get; set; }
+    public bool CreatedPlayer { get; set; }
+    public bool CreatedNeighbor { get; set; }
+    public bool CreatedNavMeshSurface { get; set; }
+    public bool CreatedAmbienceManager { get; set; }
+    public bool CreatedAwarenessHud { get; set; }
+    public bool CreatedInventoryHud { get; set; }
+    public bool CreatedEventSystem { get; set; }
+    public bool UpdatedEventSystem { get; set; }
+    public bool CreatedDirectionalLight { get; set; }
+    public bool BakedNavMesh { get; set; }
+    public bool HasChanges => CreatedObjectCount > 0 || UpdatedEventSystem || BakedNavMesh;
+
+    public string GetSummary()
+    {
+        string sceneLabel = string.IsNullOrWhiteSpace(ScenePath) ? "unsaved active scene" : ScenePath;
+        return $"Made '{sceneLabel}' playable. Created {CreatedObjectCount} object(s). NavMesh baked: {BakedNavMesh}.";
+    }
+}
+#endif
