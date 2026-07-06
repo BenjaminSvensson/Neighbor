@@ -68,6 +68,25 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float minimumStepImpactHeight = 0.08f;
         [SerializeField, Min(0f)] private float stepImpactCooldown = 0.13f;
 
+        [Header("Stamina")]
+        [SerializeField, Min(0f)] private float maximumStamina = 6f;
+        [SerializeField, Min(0f)] private float sprintStaminaDrainPerSecond = 1f;
+        [SerializeField, Min(0f)] private float slideStaminaCost = 0.45f;
+        [SerializeField, Min(0f)] private float staminaRecoveryPerSecond = 1.15f;
+        [SerializeField, Min(0f)] private float staminaRecoveryDelay = 0.65f;
+        [SerializeField, Range(0f, 1f)] private float exhaustedRecoveryThreshold = 0.28f;
+
+        [Header("Movement Noise")]
+        [SerializeField, Range(0f, 1f)] private float crouchNoiseLoudness = 0.12f;
+        [SerializeField, Range(0f, 1f)] private float walkNoiseLoudness = 0.28f;
+        [SerializeField, Range(0f, 1f)] private float runNoiseLoudness = 0.68f;
+        [SerializeField, Range(0f, 1f)] private float slideNoiseLoudness = 0.82f;
+        [SerializeField, Range(0f, 1f)] private float landingNoiseLoudness = 0.48f;
+        [SerializeField, Range(0f, 1f)] private float heavyLandingNoiseLoudness = 0.95f;
+        [SerializeField, Min(0f)] private float movementNoiseMinimumRadius = 3.5f;
+        [SerializeField, Min(0f)] private float movementNoiseMaximumRadius = 13f;
+        [SerializeField, Min(0.05f)] private float movementNoiseInterval = 0.36f;
+
         [Header("Input")]
         [SerializeField, Min(0f)] private float mouseSensitivity = 0.08f;
 
@@ -81,11 +100,15 @@ namespace Neighbor.Main.Features.Player
         private float currentControllerHeight;
         private float lastStepImpactTime;
         private float lastSprintIntentTime;
+        private float stamina;
+        private float staminaRecoveryAllowedAt;
+        private float nextMovementNoiseTime;
         private float slideTimer;
         private float airborneTimer;
         private float heavyLandingSlowTimer;
         private float heavyLandingSlowImpact;
         private bool isBeartrapLocked;
+        private bool sprintExhausted;
         private Vector3 slideDirection;
         private float currentSlideSpeed;
         private float slideBonusSpeed;
@@ -114,6 +137,8 @@ namespace Neighbor.Main.Features.Player
         public bool IsSliding { get; private set; }
         public bool IsLedgeClimbing { get; private set; }
         public bool IsBeartrapLocked => isBeartrapLocked;
+        public float Stamina01 => maximumStamina <= 0f ? 1f : Mathf.Clamp01(stamina / maximumStamina);
+        public bool IsExhausted => sprintExhausted;
         public PlayerFrameInput LastInput { get; private set; }
 
         private void Awake()
@@ -128,6 +153,7 @@ namespace Neighbor.Main.Features.Player
             }
 
             currentControllerHeight = characterController.height > 0f ? characterController.height : standingHeight;
+            ResetStamina();
 
             if (playerHead == null)
             {
@@ -145,6 +171,12 @@ namespace Neighbor.Main.Features.Player
 
             deathController.Initialize(this);
             EnsureDevCameraMode();
+            EnsurePauseMenu();
+        }
+
+        public void SetRuntimeMouseSensitivity(float sensitivity)
+        {
+            mouseSensitivity = Mathf.Max(0f, sensitivity);
         }
 
         private void Update()
@@ -302,7 +334,8 @@ namespace Neighbor.Main.Features.Player
             }
 
             UpdateSlideState(hasMoveInput);
-            IsRunning = hasSprintIntent && !IsCrouching && !IsSliding;
+            IsRunning = hasSprintIntent && !IsCrouching && !IsSliding && CanSprintWithStamina;
+            UpdateStamina();
 
             float targetSpeed = (IsCrouching ? crouchSpeed : IsRunning ? runSpeed : walkSpeed) * HeavyLandingSpeedScale;
             Vector3 inputDirection = transform.right * MoveInput.x + transform.forward * MoveInput.y;
@@ -361,6 +394,7 @@ namespace Neighbor.Main.Features.Player
 
             MoveAmount = Mathf.InverseLerp(0f, runSpeed, flatVelocity.magnitude);
             Speed01 = targetSpeed <= 0f ? 0f : Mathf.Clamp01(flatVelocity.magnitude / runSpeed);
+            ReportMovementNoise();
         }
 
         private void StopForBeartrap()
@@ -391,6 +425,84 @@ namespace Neighbor.Main.Features.Player
             }
         }
 
+        private bool CanSprintWithStamina => maximumStamina <= 0f || (!sprintExhausted && stamina > 0.001f);
+
+        private void UpdateStamina()
+        {
+            if (maximumStamina <= 0f)
+            {
+                sprintExhausted = false;
+                return;
+            }
+
+            if (IsRunning)
+            {
+                DrainStamina(sprintStaminaDrainPerSecond * Time.deltaTime);
+                return;
+            }
+
+            if (IsSliding || Time.time < staminaRecoveryAllowedAt)
+            {
+                return;
+            }
+
+            stamina = Mathf.Min(maximumStamina, stamina + staminaRecoveryPerSecond * Time.deltaTime);
+            if (Stamina01 >= exhaustedRecoveryThreshold)
+            {
+                sprintExhausted = false;
+            }
+        }
+
+        private void DrainStamina(float amount)
+        {
+            if (maximumStamina <= 0f || amount <= 0f)
+            {
+                return;
+            }
+
+            stamina = Mathf.Max(0f, stamina - amount);
+            staminaRecoveryAllowedAt = Time.time + staminaRecoveryDelay;
+            if (stamina <= 0.001f)
+            {
+                sprintExhausted = true;
+            }
+        }
+
+        private void ResetStamina()
+        {
+            stamina = Mathf.Max(0f, maximumStamina);
+            staminaRecoveryAllowedAt = 0f;
+            sprintExhausted = false;
+        }
+
+        private void ReportMovementNoise()
+        {
+            if (!IsGrounded || IsLedgeClimbing || MoveAmount <= 0.08f || Time.time < nextMovementNoiseTime)
+            {
+                return;
+            }
+
+            float loudness = IsSliding
+                ? slideNoiseLoudness
+                : IsRunning
+                    ? runNoiseLoudness
+                    : IsCrouching
+                        ? crouchNoiseLoudness
+                        : walkNoiseLoudness;
+            EmitNoise(loudness, Mathf.Lerp(movementNoiseMinimumRadius, movementNoiseMaximumRadius, loudness));
+            nextMovementNoiseTime = Time.time + movementNoiseInterval;
+        }
+
+        private void EmitNoise(float loudness, float radius)
+        {
+            if (loudness <= 0.001f || radius <= 0.001f)
+            {
+                return;
+            }
+
+            PlayerFeedbackEvents.ReportNoise(transform.position, loudness, radius);
+        }
+
         private void HandleLanding(float previousVerticalVelocity)
         {
             LandedThisFrame = true;
@@ -411,6 +523,10 @@ namespace Neighbor.Main.Features.Player
                 horizontalVelocity *= Mathf.Lerp(1f, heavyLandingHorizontalDamping, HeavyLandingImpact);
             }
 
+            float landingLoudness = HeavyLandingThisFrame
+                ? Mathf.Lerp(landingNoiseLoudness, heavyLandingNoiseLoudness, HeavyLandingImpact)
+                : landingNoiseLoudness * LandingImpact;
+            EmitNoise(landingLoudness, Mathf.Lerp(movementNoiseMinimumRadius, movementNoiseMaximumRadius, landingLoudness));
             airborneTimer = 0f;
         }
 
@@ -419,6 +535,7 @@ namespace Neighbor.Main.Features.Player
             IsSliding = true;
             slideTimer = slideDuration;
             slideBonusSpeed = 0f;
+            DrainStamina(slideStaminaCost);
 
             Vector3 flatVelocity = horizontalVelocity;
             flatVelocity.y = 0f;
@@ -644,6 +761,7 @@ namespace Neighbor.Main.Features.Player
             IsCrouching = false;
             IsLedgeClimbing = false;
             SetBeartrapLocked(false);
+            ResetStamina();
             MoveAmount = 0f;
             Speed01 = 0f;
             LastInput = default;
@@ -876,6 +994,14 @@ namespace Neighbor.Main.Features.Player
             if (GetComponent<PlayerDevCameraMode>() == null)
             {
                 gameObject.AddComponent<PlayerDevCameraMode>();
+            }
+        }
+
+        private void EnsurePauseMenu()
+        {
+            if (GetComponent<PlayerPauseMenu>() == null)
+            {
+                gameObject.AddComponent<PlayerPauseMenu>();
             }
         }
 

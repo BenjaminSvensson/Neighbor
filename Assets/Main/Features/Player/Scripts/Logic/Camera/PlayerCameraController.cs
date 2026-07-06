@@ -136,6 +136,8 @@ namespace Neighbor.Main.Features.Player
         private readonly RaycastHit[] cameraCollisionHits = new RaycastHit[8];
 
         public int ZoomDirection { get; private set; }
+        public float RuntimeMouseSensitivity => mouseSensitivity;
+        public float RuntimeFieldOfView => maximumFieldOfView;
         public event System.Action<int> ZoomDirectionChanged;
 
         private void Awake()
@@ -740,6 +742,25 @@ namespace Neighbor.Main.Features.Player
             {
                 currentFieldOfView = playerCamera.fieldOfView;
                 scrolledFieldOfView = playerCamera.fieldOfView;
+            }
+        }
+
+        public void SetRuntimeMouseSensitivity(float sensitivity)
+        {
+            mouseSensitivity = Mathf.Max(0f, sensitivity);
+        }
+
+        public void SetRuntimeFieldOfView(float fieldOfView)
+        {
+            float clampedFieldOfView = Mathf.Clamp(fieldOfView, Mathf.Max(1f, minimumFieldOfView), 100f);
+            defaultFieldOfView = clampedFieldOfView;
+            maximumFieldOfView = Mathf.Max(clampedFieldOfView, minimumFieldOfView);
+            scrolledFieldOfView = Mathf.Clamp(clampedFieldOfView, minimumFieldOfView, maximumFieldOfView);
+            currentFieldOfView = scrolledFieldOfView;
+
+            if (playerCamera != null)
+            {
+                playerCamera.fieldOfView = currentFieldOfView;
             }
         }
 

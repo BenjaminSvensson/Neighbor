@@ -493,6 +493,21 @@ MonoBehaviour:
   slideObjectUpwardImpulse: 1.5
   minimumStepImpactHeight: 0.08
   stepImpactCooldown: 0.13
+  maximumStamina: 6
+  sprintStaminaDrainPerSecond: 1
+  slideStaminaCost: 0.45
+  staminaRecoveryPerSecond: 1.15
+  staminaRecoveryDelay: 0.65
+  exhaustedRecoveryThreshold: 0.28
+  crouchNoiseLoudness: 0.12
+  walkNoiseLoudness: 0.28
+  runNoiseLoudness: 0.68
+  slideNoiseLoudness: 0.82
+  landingNoiseLoudness: 0.48
+  heavyLandingNoiseLoudness: 0.95
+  movementNoiseMinimumRadius: 3.5
+  movementNoiseMaximumRadius: 13
+  movementNoiseInterval: 0.36
   mouseSensitivity: 0.08
 --- !u!114 &2098546478872310776
 MonoBehaviour:
@@ -513,9 +528,14 @@ MonoBehaviour:
   footstepLoopSource: {fileID: 0}
   slideLoopSource: {fileID: 824441125532050216}
   zoomLoopSource: {fileID: 83145351128797801}
+  breathLoopSource: {fileID: 0}
   walkFootstepLoop: {fileID: 8300000, guid: 8d2766f9aefcde840b054a7021b9eb80, type: 3}
   runFootstepLoop: {fileID: 8300000, guid: 8d2766f9aefcde840b054a7021b9eb80, type: 3}
   crouchFootstepLoop: {fileID: 8300000, guid: 8d2766f9aefcde840b054a7021b9eb80, type: 3}
+  tiredBreathLoop: {fileID: 8300000, guid: 0cdbc871b691ae4449ce60c09df4cfe7, type: 3}
+  tiredBreathVolume: 0.34
+  breathStartStamina: 0.38
+  breathLoopFadeSharpness: 8
   footstepMinimumVolume: 0.2
   footstepVolume: 0.38
   footstepLoopFadeSharpness: 12
@@ -583,6 +603,8 @@ MonoBehaviour:
   reinforcementLocationsPerDeath: 2
   reinforcedDoorsPerDeath: 2
   neighborRespawnSightGraceTime: 2.5
+  caughtMessage: CAUGHT
+  resetMessage: RESETTING HOUSE
 --- !u!143 &144846750235035850
 CharacterController:
   m_ObjectHideFlags: 0
@@ -731,6 +753,9 @@ MonoBehaviour:
   scaleSharpness: 20
   idleColor: {r: 1, g: 1, b: 1, a: 0.46}
   interactableColor: {r: 1, g: 0.86, b: 0.38, a: 0.94}
+  lockedColor: {r: 1, g: 0.2, b: 0.12, a: 0.95}
+  tooFarColor: {r: 0.65, g: 0.78, b: 1, a: 0.78}
+  holdingColor: {r: 0.45, g: 1, b: 0.7, a: 0.95}
   interactablePulseScale: 0.055
   pulseFrequency: 8
   colorSharpness: 18
@@ -1099,6 +1124,7 @@ MonoBehaviour:
   interactActionMap: Player
   interactActionName: Interact
   interactRange: 3.6
+  reticleProbeRange: 5.4
   interactRadius: 0.14
   interactAlignmentTieTolerance: 0.002
   interactMask:

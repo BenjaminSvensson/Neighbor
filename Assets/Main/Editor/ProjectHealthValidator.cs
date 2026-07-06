@@ -15,11 +15,11 @@ internal static class ProjectHealthValidator
         int issueCount = ValidateProject();
         if (issueCount == 0)
         {
-            Debug.Log("Project validation passed. No missing scripts were found.");
+            Debug.Log("Project validation passed. No missing scripts, invalid materials, or broken LOD references were found.");
             return;
         }
 
-        Debug.LogError($"Project validation found {issueCount} missing script reference(s).");
+        Debug.LogError($"Project validation found {issueCount} project health issue(s).");
     }
 
     public static void ValidateFromCommandLine()
@@ -47,6 +47,7 @@ internal static class ProjectHealthValidator
             if (prefab != null)
             {
                 issueCount += ReportMissingScripts(prefab, path);
+                issueCount += ReportVisualHealth(prefab, path);
             }
         }
 
@@ -76,6 +77,7 @@ internal static class ProjectHealthValidator
                 for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
                 {
                     issueCount += ReportMissingScripts(roots[rootIndex], path);
+                    issueCount += ReportVisualHealth(roots[rootIndex], path);
                 }
             }
             catch (Exception exception)
@@ -98,6 +100,125 @@ internal static class ProjectHealthValidator
         }
 
         return issueCount;
+    }
+
+    private static int ReportVisualHealth(GameObject root, string assetPath)
+    {
+        int issueCount = 0;
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            issueCount += ReportRendererMaterialIssues(renderers[i], assetPath);
+        }
+
+        LODGroup[] lodGroups = root.GetComponentsInChildren<LODGroup>(true);
+        for (int i = 0; i < lodGroups.Length; i++)
+        {
+            issueCount += ReportLodIssues(lodGroups[i], assetPath);
+        }
+
+        return issueCount;
+    }
+
+    private static int ReportRendererMaterialIssues(Renderer renderer, string assetPath)
+    {
+        if (renderer == null)
+        {
+            return 0;
+        }
+
+        int issueCount = 0;
+        Material[] materials = renderer.sharedMaterials;
+        if ((renderer is MeshRenderer || renderer is SkinnedMeshRenderer) && (materials == null || materials.Length == 0))
+        {
+            Debug.LogError(
+                $"Renderer has no material slots: '{GetHierarchyPath(renderer.transform)}' in '{assetPath}'.",
+                renderer);
+            issueCount++;
+            return issueCount;
+        }
+
+        if (materials == null)
+        {
+            return issueCount;
+        }
+
+        for (int materialIndex = 0; materialIndex < materials.Length; materialIndex++)
+        {
+            Material material = materials[materialIndex];
+            if (material == null)
+            {
+                Debug.LogError(
+                    $"Missing material reference: slot {materialIndex} on '{GetHierarchyPath(renderer.transform)}' in '{assetPath}'.",
+                    renderer);
+                issueCount++;
+                continue;
+            }
+
+            Shader shader = material.shader;
+            if (shader == null || IsErrorShader(shader))
+            {
+                Debug.LogError(
+                    $"Invalid material shader: '{material.name}' on '{GetHierarchyPath(renderer.transform)}' in '{assetPath}'.",
+                    material);
+                issueCount++;
+            }
+        }
+
+        return issueCount;
+    }
+
+    private static int ReportLodIssues(LODGroup lodGroup, string assetPath)
+    {
+        if (lodGroup == null)
+        {
+            return 0;
+        }
+
+        int issueCount = 0;
+        LOD[] lods = lodGroup.GetLODs();
+        if (lods == null || lods.Length == 0)
+        {
+            Debug.LogError(
+                $"LODGroup has no LOD levels: '{GetHierarchyPath(lodGroup.transform)}' in '{assetPath}'.",
+                lodGroup);
+            return 1;
+        }
+
+        for (int lodIndex = 0; lodIndex < lods.Length; lodIndex++)
+        {
+            Renderer[] renderers = lods[lodIndex].renderers;
+            if (renderers == null || renderers.Length == 0)
+            {
+                Debug.LogError(
+                    $"LODGroup level {lodIndex} has no renderers: '{GetHierarchyPath(lodGroup.transform)}' in '{assetPath}'.",
+                    lodGroup);
+                issueCount++;
+                continue;
+            }
+
+            for (int rendererIndex = 0; rendererIndex < renderers.Length; rendererIndex++)
+            {
+                if (renderers[rendererIndex] != null)
+                {
+                    continue;
+                }
+
+                Debug.LogError(
+                    $"LODGroup level {lodIndex} has a missing renderer reference at index {rendererIndex}: '{GetHierarchyPath(lodGroup.transform)}' in '{assetPath}'.",
+                    lodGroup);
+                issueCount++;
+            }
+        }
+
+        return issueCount;
+    }
+
+    private static bool IsErrorShader(Shader shader)
+    {
+        string shaderName = shader.name;
+        return string.Equals(shaderName, "Hidden/InternalErrorShader", StringComparison.Ordinal)
+            || shaderName.IndexOf("error", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     private static int ReportMissingScripts(GameObject root, string assetPath)

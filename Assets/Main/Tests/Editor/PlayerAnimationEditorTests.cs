@@ -150,17 +150,21 @@ namespace Neighbor.Main.Tests
         {
             GameObject playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
             PlayerInteractor interactor = playerPrefab.GetComponentInChildren<PlayerInteractor>(true);
+            PlayerController playerController = playerPrefab.GetComponentInChildren<PlayerController>(true);
             PlayerCameraController cameraController = playerPrefab.GetComponentInChildren<PlayerCameraController>(true);
             PlayerCrosshairFeedback crosshairFeedback = playerPrefab.GetComponentInChildren<PlayerCrosshairFeedback>(true);
             PlayerAudioController audioController = playerPrefab.GetComponentInChildren<PlayerAudioController>(true);
+            PlayerDeathController deathController = playerPrefab.GetComponentInChildren<PlayerDeathController>(true);
             Canvas playerCanvas = playerPrefab.GetComponentInChildren<Canvas>(true);
             CanvasScaler canvasScaler = playerCanvas != null ? playerCanvas.GetComponent<CanvasScaler>() : null;
             Graphic crosshairGraphic = crosshairFeedback != null ? crosshairFeedback.GetComponentInChildren<Graphic>(true) : null;
 
             Assert.That(interactor, Is.Not.Null);
+            Assert.That(playerController, Is.Not.Null);
             Assert.That(cameraController, Is.Not.Null);
             Assert.That(crosshairFeedback, Is.Not.Null);
             Assert.That(audioController, Is.Not.Null);
+            Assert.That(deathController, Is.Not.Null);
             Assert.That(playerCanvas, Is.Not.Null);
             Assert.That(canvasScaler, Is.Not.Null);
             Assert.That(crosshairGraphic, Is.Not.Null);
@@ -168,6 +172,20 @@ namespace Neighbor.Main.Tests
             SerializedObject interactorSettings = new(interactor);
             Assert.That(interactorSettings.FindProperty("showThrowArc").boolValue, Is.True);
             Assert.That(interactorSettings.FindProperty("throwArcLineWidth").floatValue, Is.GreaterThanOrEqualTo(0.03f));
+            Assert.That(
+                interactorSettings.FindProperty("reticleProbeRange").floatValue,
+                Is.GreaterThan(interactorSettings.FindProperty("interactRange").floatValue));
+
+            SerializedObject playerSettings = new(playerController);
+            Assert.That(playerSettings.FindProperty("maximumStamina").floatValue, Is.GreaterThan(0f));
+            Assert.That(playerSettings.FindProperty("sprintStaminaDrainPerSecond").floatValue, Is.GreaterThan(0f));
+            Assert.That(
+                playerSettings.FindProperty("runNoiseLoudness").floatValue,
+                Is.GreaterThan(playerSettings.FindProperty("walkNoiseLoudness").floatValue));
+            Assert.That(
+                playerSettings.FindProperty("crouchNoiseLoudness").floatValue,
+                Is.LessThan(playerSettings.FindProperty("walkNoiseLoudness").floatValue));
+            Assert.That(playerSettings.FindProperty("movementNoiseInterval").floatValue, Is.InRange(0.1f, 0.8f));
 
             SerializedObject cameraSettings = new(cameraController);
             Assert.That(cameraSettings.FindProperty("walkFieldOfViewKick").floatValue, Is.GreaterThan(0f));
@@ -180,16 +198,28 @@ namespace Neighbor.Main.Tests
             SerializedObject crosshairSettings = new(crosshairFeedback);
             Assert.That(crosshairSettings.FindProperty("interactableScale").floatValue, Is.GreaterThan(1f));
             Assert.That(crosshairSettings.FindProperty("interactablePulseScale").floatValue, Is.GreaterThan(0f));
+            Assert.That(crosshairSettings.FindProperty("lockedColor"), Is.Not.Null);
+            Assert.That(crosshairSettings.FindProperty("tooFarColor"), Is.Not.Null);
+            Assert.That(crosshairSettings.FindProperty("holdingColor"), Is.Not.Null);
             Assert.That(crosshairGraphic.raycastTarget, Is.False);
 
             SerializedObject audioSettings = new(audioController);
             Assert.That(audioSettings.FindProperty("walkFootstepLoop").objectReferenceValue, Is.Not.Null);
             Assert.That(audioSettings.FindProperty("runFootstepLoop").objectReferenceValue, Is.Not.Null);
             Assert.That(audioSettings.FindProperty("crouchFootstepLoop").objectReferenceValue, Is.Not.Null);
+            Assert.That(audioSettings.FindProperty("tiredBreathLoop").objectReferenceValue, Is.Not.Null);
             foreach (AudioSource audioSource in playerPrefab.GetComponentsInChildren<AudioSource>(true))
             {
                 Assert.That(audioSource.playOnAwake, Is.False, $"{audioSource.name} should not play on awake.");
             }
+
+            SerializedObject deathSettings = new(deathController);
+            Assert.That(deathSettings.FindProperty("caughtMessage").stringValue, Is.Not.Empty);
+            Assert.That(deathSettings.FindProperty("resetMessage").stringValue, Is.Not.Empty);
+
+            Assert.That(
+                AssetDatabase.LoadAssetAtPath<MonoScript>("Assets/Main/Features/Player/Scripts/Logic/UI/PlayerPauseMenu.cs"),
+                Is.Not.Null);
 
             SerializedObject canvasSettings = new(playerCanvas);
             SerializedProperty receivesEventsProperty = canvasSettings.FindProperty("m_ReceivesEvents");
