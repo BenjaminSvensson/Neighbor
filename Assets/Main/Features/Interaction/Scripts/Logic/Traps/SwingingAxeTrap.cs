@@ -8,6 +8,8 @@ namespace Neighbor.Main.Features.Interaction
 {
     public sealed class SwingingAxeTrap : MonoBehaviour
     {
+        private static readonly List<SwingingAxeTrap> ActiveTraps = new();
+
         [Header("Swing")]
         [SerializeField] private Transform[] swingingParts;
         [SerializeField] private bool startsActive = true;
@@ -70,11 +72,19 @@ namespace Neighbor.Main.Features.Interaction
         private float signedAngularSpeed;
         private float lastWallBounceTime = float.NegativeInfinity;
 
+        public bool IsActive => isActive;
+
         private struct PartPose
         {
             public Transform Transform;
             public Vector3 LocalPosition;
             public Quaternion LocalRotation;
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetActiveTraps()
+        {
+            ActiveTraps.Clear();
         }
 
         private void Awake()
@@ -88,6 +98,19 @@ namespace Neighbor.Main.Features.Interaction
             currentAngle = Mathf.Sin(swingPhase) * maximumAngle;
             previousAngle = currentAngle;
             ApplySwing(currentAngle);
+        }
+
+        private void OnEnable()
+        {
+            if (!ActiveTraps.Contains(this))
+            {
+                ActiveTraps.Add(this);
+            }
+        }
+
+        private void OnDisable()
+        {
+            ActiveTraps.Remove(this);
         }
 
         private void Update()
@@ -146,6 +169,30 @@ namespace Neighbor.Main.Features.Interaction
             currentAngle = Mathf.Sin(swingPhase) * maximumAngle;
             previousAngle = currentAngle;
             ApplySwing(currentAngle);
+        }
+
+        public static void ResetAllToStartingState()
+        {
+            for (int i = 0; i < ActiveTraps.Count; i++)
+            {
+                ActiveTraps[i]?.ResetToStartingState();
+            }
+        }
+
+        private void ResetToStartingState()
+        {
+            nextHitTimes.Clear();
+            isActive = startsActive;
+            activationTime = Time.time;
+            swingDirection = 1f;
+            swingPhase = phaseOffset * swingsPerSecond * Mathf.PI * 2f;
+            currentAngle = isActive ? Mathf.Sin(swingPhase) * maximumAngle : 0f;
+            previousAngle = currentAngle;
+            angularSpeed = 0f;
+            signedAngularSpeed = 0f;
+            lastWallBounceTime = float.NegativeInfinity;
+            ApplySwing(currentAngle);
+            UpdateSwingAudio();
         }
 
         private void OnTriggerEnter(Collider other)

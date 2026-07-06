@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
@@ -9,6 +10,8 @@ namespace Neighbor.Main.Features.Interaction
     [RequireComponent(typeof(Rigidbody))]
     public sealed class Beartrap : MonoBehaviour, IPrimaryUseInteractable, IHoldInteractable, IPickupInteractionOverride, IPickupLifecycleReceiver
     {
+        private static readonly List<Beartrap> ActiveBeartraps = new();
+
         private enum TrapState
         {
             Closed,
@@ -56,6 +59,15 @@ namespace Neighbor.Main.Features.Interaction
         private ItemAudioFeedback audioFeedback;
 
         private bool IsMoving => !Mathf.Approximately(openAmount, targetOpenAmount);
+        public bool IsClosed => state == TrapState.Closed;
+        public bool IsOpen => state == TrapState.Open;
+        public bool IsTriggered => state == TrapState.Triggered;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetActiveBeartraps()
+        {
+            ActiveBeartraps.Clear();
+        }
 
         private void Awake()
         {
@@ -63,6 +75,19 @@ namespace Neighbor.Main.Features.Interaction
             trapBody = GetComponent<Rigidbody>();
             ownColliders = GetComponentsInChildren<Collider>();
             audioFeedback = ItemAudioFeedback.Resolve(gameObject);
+        }
+
+        private void OnEnable()
+        {
+            if (!ActiveBeartraps.Contains(this))
+            {
+                ActiveBeartraps.Add(this);
+            }
+        }
+
+        private void OnDisable()
+        {
+            ActiveBeartraps.Remove(this);
         }
 
         private void Start()
@@ -73,6 +98,14 @@ namespace Neighbor.Main.Features.Interaction
             openAmount = targetOpenAmount;
             ApplyJawPose();
             ConfigureTrapBodyForState();
+        }
+
+        public static void ResetAllToStartingState()
+        {
+            for (int i = 0; i < ActiveBeartraps.Count; i++)
+            {
+                ActiveBeartraps[i]?.ResetToStartingState();
+            }
         }
 
         private void Update()
@@ -201,6 +234,19 @@ namespace Neighbor.Main.Features.Interaction
                 RigidbodyVelocityUtility.ClearIfDynamic(stuckRigidbody);
                 stuckRigidbody.isKinematic = true;
             }
+        }
+
+        private void ResetToStartingState()
+        {
+            ReleaseStuckTarget();
+            state = startingState;
+            isPlaced = startsPlaced;
+            escapeHoldTimer = 0f;
+            releaseNeighborAtTime = 0f;
+            targetOpenAmount = state == TrapState.Open ? 1f : 0f;
+            openAmount = targetOpenAmount;
+            ApplyJawPose();
+            ConfigureTrapBodyForState();
         }
 
         private void SetState(TrapState nextState)

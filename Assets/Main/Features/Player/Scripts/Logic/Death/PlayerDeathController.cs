@@ -236,9 +236,7 @@ namespace Neighbor.Main.Features.Player
                 yield return null;
             }
 
-            Door.ResetAllToStartingState();
-            GlassShatter.ResetAllToStartingState();
-            Pickupable.ResetMissingPickupsToHome();
+            ResetWorldStateForRespawn();
             AdaptiveSecurityPlan securityPlan = AdaptiveSecurityDirector.CompleteRun(
                 reinforcementBudgetPerDeath,
                 reinforcementLocationsPerDeath,
@@ -264,6 +262,20 @@ namespace Neighbor.Main.Features.Player
             SetFade(0f);
             SetDeathMessage(null);
             IsDead = false;
+        }
+
+        private static void ResetWorldStateForRespawn()
+        {
+            Door.ResetAllToStartingState();
+            GlassShatter.ResetAllToStartingState();
+            Beartrap.ResetAllToStartingState();
+            FakeFloorTrapDoor.ResetAllToStartingState();
+            RaySawBladeTrap.ResetAllToStartingState();
+            SpringLoadedBoxingGloveTrap.ResetAllToStartingState();
+            SwingingAxeTrap.ResetAllToStartingState();
+            SwingingAxeTripWire.ResetAllToStartingState();
+            SecurityCamera.ResetAllToStartingState();
+            Pickupable.ResetMissingPickupsToHome();
         }
 
         private void ApplyDeathCamera(
