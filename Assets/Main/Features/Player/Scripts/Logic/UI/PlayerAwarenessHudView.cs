@@ -1,5 +1,6 @@
 using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Neighbor;
+using Neighbor.Main.Features.Progression;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -15,15 +16,18 @@ namespace Neighbor.Main.Features.Player
         private Image noiseFill;
         private Image staminaFill;
         private Text awarenessText;
+        private Text objectiveText;
         private Text warningText;
         private PlayerController player;
         private PlayerHidingState hidingState;
         private NeighborBrain trackedNeighbor;
+        private CoreLoopObjectiveTracker objectiveTracker;
         private float noiseLevel;
         private float cameraWarningUntil;
         private float messageUntil;
         private float nextPlayerSearchTime;
         private float nextNeighborSearchTime;
+        private float nextObjectiveSearchTime;
 
         private void Awake()
         {
@@ -40,6 +44,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.CheckpointReached += HandleCheckpointReached;
             PlayerFeedbackEvents.OnboardingPrompted += HandleOnboardingPrompted;
             PlayerFeedbackEvents.DoorInteractionReported += HandleDoorInteractionReported;
+            ResolveObjective(true);
         }
 
         private void OnDisable()
@@ -52,6 +57,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.CheckpointReached -= HandleCheckpointReached;
             PlayerFeedbackEvents.OnboardingPrompted -= HandleOnboardingPrompted;
             PlayerFeedbackEvents.DoorInteractionReported -= HandleDoorInteractionReported;
+            UnsubscribeObjective();
         }
 
         private void Update()
@@ -63,6 +69,7 @@ namespace Neighbor.Main.Features.Player
             canvasGroup.alpha = inputBlocked ? 0f : 1f;
 
             UpdateAwareness();
+            UpdateObjective();
             UpdateNoise();
             UpdateStamina();
             UpdateWarning();
@@ -72,6 +79,7 @@ namespace Neighbor.Main.Features.Player
         {
             ResolvePlayer(false);
             ResolveNeighbor(false);
+            ResolveObjective(false);
         }
 
         private void ResolvePlayer(bool force)
@@ -114,6 +122,31 @@ namespace Neighbor.Main.Features.Player
             nextNeighborSearchTime = now + TargetSearchInterval;
         }
 
+        private void ResolveObjective(bool force)
+        {
+            if (objectiveTracker != null)
+            {
+                return;
+            }
+
+            float now = Time.unscaledTime;
+            if (!force && now < nextObjectiveSearchTime)
+            {
+                return;
+            }
+
+            CoreLoopObjectiveTracker foundObjective = FindAnyObjectByType<CoreLoopObjectiveTracker>();
+            if (foundObjective != objectiveTracker)
+            {
+                UnsubscribeObjective();
+                objectiveTracker = foundObjective;
+                SubscribeObjective();
+                UpdateObjective();
+            }
+
+            nextObjectiveSearchTime = now + TargetSearchInterval;
+        }
+
         private void UpdateAwareness()
         {
             float suspicion = trackedNeighbor != null ? trackedNeighbor.Suspicion : 0f;
@@ -153,6 +186,37 @@ namespace Neighbor.Main.Features.Player
                 new Color(1f, 0.3f, 0.16f, 0.95f),
                 new Color(0.35f, 1f, 0.68f, 0.9f),
                 stamina);
+        }
+
+        private void UpdateObjective()
+        {
+            if (objectiveText == null)
+            {
+                return;
+            }
+
+            if (objectiveTracker == null)
+            {
+                objectiveText.text = string.Empty;
+                return;
+            }
+
+            string hint = objectiveTracker.CurrentHint;
+            if (string.IsNullOrWhiteSpace(hint))
+            {
+                objectiveText.text = string.Empty;
+                return;
+            }
+
+            if (objectiveTracker.IsComplete)
+            {
+                objectiveText.text = $"OBJECTIVE COMPLETE\n{hint.ToUpperInvariant()}";
+                objectiveText.color = new Color(0.62f, 0.95f, 1f, 0.95f);
+                return;
+            }
+
+            objectiveText.text = $"OBJECTIVE {GetObjectiveStepIndex(objectiveTracker.CurrentStep)}/5\n{hint.ToUpperInvariant()}";
+            objectiveText.color = new Color(0.86f, 0.9f, 0.96f, 0.92f);
         }
 
         private void UpdateWarning()
@@ -283,6 +347,28 @@ namespace Neighbor.Main.Features.Player
             messageUntil = Time.unscaledTime + 2.6f;
         }
 
+        private void HandleObjectiveProgressChanged(CoreLoopObjectiveTracker tracker)
+        {
+            if (tracker == null)
+            {
+                return;
+            }
+
+            UpdateObjective();
+            if (string.IsNullOrWhiteSpace(tracker.CurrentHint))
+            {
+                return;
+            }
+
+            warningText.text = tracker.IsComplete
+                ? "ESCAPED"
+                : tracker.CurrentHint.ToUpperInvariant();
+            warningText.color = tracker.IsComplete
+                ? new Color(0.62f, 0.95f, 1f, 0.98f)
+                : new Color(0.7f, 0.88f, 1f, 0.96f);
+            messageUntil = Time.unscaledTime + (tracker.IsComplete ? MessageDuration : 3f);
+        }
+
         private void HandleOnboardingPrompted(PlayerFeedbackEvents.OnboardingPromptFeedback feedback)
         {
             if (string.IsNullOrWhiteSpace(feedback.Message))
@@ -328,6 +414,10 @@ namespace Neighbor.Main.Features.Player
             Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             awarenessText = CreateText("Awareness", font, 14, FontStyle.Bold, TextAnchor.MiddleCenter);
             SetRect(awarenessText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -38f), new Vector2(280f, 24f));
+
+            objectiveText = CreateText("Objective", font, 14, FontStyle.Bold, TextAnchor.UpperLeft);
+            objectiveText.color = new Color(0.86f, 0.9f, 0.96f, 0.92f);
+            SetRect(objectiveText.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(232f, -48f), new Vector2(384f, 46f));
 
             Image suspicionBackground = CreateImage("SuspicionBackground", new Color(0f, 0f, 0f, 0.55f));
             SetRect(suspicionBackground.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -62f), new Vector2(280f, 8f));
@@ -406,6 +496,38 @@ namespace Neighbor.Main.Features.Player
             return suspicion < 0.48f
                 ? new Color(1f, 0.76f, 0.2f, 0.9f)
                 : Color.Lerp(new Color(1f, 0.48f, 0.12f, 0.95f), new Color(1f, 0.08f, 0.05f, 1f), suspicion);
+        }
+
+        private void SubscribeObjective()
+        {
+            if (objectiveTracker == null)
+            {
+                return;
+            }
+
+            objectiveTracker.ProgressChanged -= HandleObjectiveProgressChanged;
+            objectiveTracker.ProgressChanged += HandleObjectiveProgressChanged;
+        }
+
+        private void UnsubscribeObjective()
+        {
+            if (objectiveTracker != null)
+            {
+                objectiveTracker.ProgressChanged -= HandleObjectiveProgressChanged;
+            }
+        }
+
+        private static int GetObjectiveStepIndex(CoreLoopObjectiveTracker.ObjectiveStep step)
+        {
+            return step switch
+            {
+                CoreLoopObjectiveTracker.ObjectiveStep.GetInside => 1,
+                CoreLoopObjectiveTracker.ObjectiveStep.FindKey => 2,
+                CoreLoopObjectiveTracker.ObjectiveStep.UnlockDoor => 3,
+                CoreLoopObjectiveTracker.ObjectiveStep.ReachRoom => 4,
+                CoreLoopObjectiveTracker.ObjectiveStep.Escape => 5,
+                _ => 5
+            };
         }
 
         private static Color GetDoorFeedbackColor(PlayerFeedbackEvents.DoorInteractionFeedback feedback)

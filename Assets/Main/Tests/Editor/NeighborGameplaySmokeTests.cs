@@ -4,10 +4,12 @@ using Unity.AI.Navigation;
 using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
+using Neighbor.Main.Features.Progression;
 using Neighbor.Main.HouseBuilder;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.UI;
 
 namespace Neighbor.Main.Tests
 {
@@ -80,6 +82,27 @@ namespace Neighbor.Main.Tests
 
             Assert.That(brain.AdaptiveSecurityPatrolsRemaining, Is.Zero);
             Assert.That(brain.IsPostEncounterVigilant, Is.False);
+        }
+
+        [Test]
+        public void AwarenessHud_ShowsPersistentObjectiveProgress()
+        {
+            CoreLoopObjectiveTracker tracker = context.AddInitializedComponent<CoreLoopObjectiveTracker>(
+                context.CreateObject("Objective"));
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateObjective");
+            Text objectiveText = GameplaySmokeTestReflection.GetField<Text>(hud, "objectiveText");
+
+            Assert.That(objectiveText.text, Does.Contain("OBJECTIVE 1/5"));
+            Assert.That(objectiveText.text, Does.Contain(tracker.CurrentHint.ToUpperInvariant()));
+
+            tracker.RegisterKeyCollected(tracker.RequiredKeyId);
+
+            Text warningText = GameplaySmokeTestReflection.GetField<Text>(hud, "warningText");
+            Assert.That(objectiveText.text, Does.Contain("OBJECTIVE 3/5"));
+            Assert.That(warningText.text, Does.Contain(tracker.CurrentHint.ToUpperInvariant()));
         }
 
         [Test]
