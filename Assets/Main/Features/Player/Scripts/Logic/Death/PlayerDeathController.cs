@@ -196,7 +196,11 @@ namespace Neighbor.Main.Features.Player
             ReinforcementBudget reinforcementBudget = new ReinforcementBudget(securityPlan.Budget);
             Door.ApplyRunReinforcements(securityPlan.DoorCount, reinforcementBudget);
             GlassShatter.ApplyRunReinforcements(securityPlan.DoorCount, reinforcementBudget);
-            ReinforcementTrigger.ApplyRunReinforcements(securityPlan.LocationCount, reinforcementBudget);
+            ReinforcementTrigger.ApplyRunReinforcements(
+                securityPlan.LocationCount,
+                reinforcementBudget,
+                securityPlan.CameraCount,
+                securityPlan.TrapCount);
             ResetRun();
 
             timer = 0f;

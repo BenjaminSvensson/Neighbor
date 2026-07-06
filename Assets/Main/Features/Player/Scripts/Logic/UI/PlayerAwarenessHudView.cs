@@ -218,12 +218,22 @@ namespace Neighbor.Main.Features.Player
         private void HandleSecurityEscalation(PlayerFeedbackEvents.SecurityEscalationFeedback feedback)
         {
             warningText.text = feedback.Level > 0
-                ? $"SECURITY ADAPTED - LEVEL {feedback.Level}"
+                ? BuildSecurityEscalationMessage(feedback)
                 : "THE HOUSE RESET";
             warningText.color = feedback.Level > 0
                 ? new Color(1f, 0.58f, 0.18f, 1f)
                 : new Color(0.8f, 0.82f, 0.86f, 1f);
             messageUntil = Time.unscaledTime + MessageDuration;
+        }
+
+        private static string BuildSecurityEscalationMessage(PlayerFeedbackEvents.SecurityEscalationFeedback feedback)
+        {
+            if (feedback.CameraCount <= 0 && feedback.TrapCount <= 0)
+            {
+                return $"SECURITY ADAPTED - LEVEL {feedback.Level}";
+            }
+
+            return $"SECURITY L{feedback.Level} - CAM {feedback.CameraCount} / TRAP {feedback.TrapCount}";
         }
 
         private void HandleAmbienceZoneChanged(PlayerFeedbackEvents.AmbienceZoneFeedback feedback)

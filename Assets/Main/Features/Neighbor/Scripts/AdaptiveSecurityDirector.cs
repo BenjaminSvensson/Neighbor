@@ -9,13 +9,31 @@ namespace Neighbor.Main.Features.Neighbor
         public int Budget { get; }
         public int DoorCount { get; }
         public int LocationCount { get; }
+        public int CameraCount { get; }
+        public int TrapCount { get; }
+        public int PatrolPointCount { get; }
 
         public AdaptiveSecurityPlan(int level, int budget, int doorCount, int locationCount)
+            : this(level, budget, doorCount, locationCount, 0, 0, 0)
+        {
+        }
+
+        public AdaptiveSecurityPlan(
+            int level,
+            int budget,
+            int doorCount,
+            int locationCount,
+            int cameraCount,
+            int trapCount,
+            int patrolPointCount)
         {
             Level = Mathf.Clamp(level, 0, 3);
             Budget = Mathf.Max(0, budget);
             DoorCount = Mathf.Max(0, doorCount);
             LocationCount = Mathf.Max(0, locationCount);
+            CameraCount = Mathf.Max(0, cameraCount);
+            TrapCount = Mathf.Max(0, trapCount);
+            PatrolPointCount = Mathf.Max(0, patrolPointCount);
         }
     }
 
@@ -57,7 +75,10 @@ namespace Neighbor.Main.Features.Neighbor
                 level,
                 baseBudget + level * 2,
                 baseDoorCount + level / 2,
-                baseLocationCount + (level + 1) / 2);
+                baseLocationCount + (level + 1) / 2,
+                GetCameraCount(level),
+                GetTrapCount(level),
+                GetPatrolPointCount(level));
 
             persistentPressure = Mathf.Clamp(
                 persistentPressure + runPressure * 0.3f + 0.35f,
@@ -65,7 +86,14 @@ namespace Neighbor.Main.Features.Neighbor
                 MaximumPersistentPressure);
             runPressure = 0f;
 
-            PlayerFeedbackEvents.ReportSecurityEscalation(plan.Level, plan.Budget, plan.DoorCount, plan.LocationCount);
+            PlayerFeedbackEvents.ReportSecurityEscalation(
+                plan.Level,
+                plan.Budget,
+                plan.DoorCount,
+                plan.LocationCount,
+                plan.CameraCount,
+                plan.TrapCount,
+                plan.PatrolPointCount);
             return plan;
         }
 
@@ -89,6 +117,21 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             return pressure >= 1.25f ? 1 : 0;
+        }
+
+        private static int GetCameraCount(int level)
+        {
+            return level <= 0 ? 0 : 1 + (level - 1) / 2;
+        }
+
+        private static int GetTrapCount(int level)
+        {
+            return level < 2 ? 0 : level - 1;
+        }
+
+        private static int GetPatrolPointCount(int level)
+        {
+            return level;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

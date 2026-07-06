@@ -25,13 +25,31 @@ namespace Neighbor.Main.Features.Player
             public int Budget { get; }
             public int DoorCount { get; }
             public int LocationCount { get; }
+            public int CameraCount { get; }
+            public int TrapCount { get; }
+            public int PatrolPointCount { get; }
 
             public SecurityEscalationFeedback(int level, int budget, int doorCount, int locationCount)
+                : this(level, budget, doorCount, locationCount, 0, 0, 0)
+            {
+            }
+
+            public SecurityEscalationFeedback(
+                int level,
+                int budget,
+                int doorCount,
+                int locationCount,
+                int cameraCount,
+                int trapCount,
+                int patrolPointCount)
             {
                 Level = Mathf.Max(0, level);
                 Budget = Mathf.Max(0, budget);
                 DoorCount = Mathf.Max(0, doorCount);
                 LocationCount = Mathf.Max(0, locationCount);
+                CameraCount = Mathf.Max(0, cameraCount);
+                TrapCount = Mathf.Max(0, trapCount);
+                PatrolPointCount = Mathf.Max(0, patrolPointCount);
             }
         }
 
@@ -82,6 +100,25 @@ namespace Neighbor.Main.Features.Player
         public static void ReportSecurityEscalation(int level, int budget, int doorCount, int locationCount)
         {
             SecurityEscalated?.Invoke(new SecurityEscalationFeedback(level, budget, doorCount, locationCount));
+        }
+
+        public static void ReportSecurityEscalation(
+            int level,
+            int budget,
+            int doorCount,
+            int locationCount,
+            int cameraCount,
+            int trapCount,
+            int patrolPointCount)
+        {
+            SecurityEscalated?.Invoke(new SecurityEscalationFeedback(
+                level,
+                budget,
+                doorCount,
+                locationCount,
+                cameraCount,
+                trapCount,
+                patrolPointCount));
         }
 
         public static void ReportAmbienceZone(string message, float intensity)

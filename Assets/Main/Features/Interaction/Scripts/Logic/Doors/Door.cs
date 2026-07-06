@@ -107,6 +107,7 @@ namespace Neighbor.Main.Features.Interaction
         }
         public string RequiredKeyId => requiredKeyId;
         public Vector3 DefaultOpeningSideNormal => -transform.forward * Mathf.Sign(openAngle == 0f ? 1f : openAngle);
+        public static IReadOnlyList<Door> Doors => ActiveDoors;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetActiveDoors()
