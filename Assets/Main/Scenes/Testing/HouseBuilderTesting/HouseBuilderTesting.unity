@@ -289,7 +289,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4223838807679301204, guid: 80ca1015f38352a4ea4319a22bbfe289, type: 3}
       propertyPath: m_Mesh
-      value: 
+      value:
       objectReference: {fileID: 0}
     - target: {fileID: 4956312702613796320, guid: 80ca1015f38352a4ea4319a22bbfe289, type: 3}
       propertyPath: m_Mesh
@@ -10724,6 +10724,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 100002, guid: b66dac0cfa5cf484bab2da51f0cd517a, type: 3}
+      propertyPath: hinge
+      value:
+      objectReference: {fileID: 1748614156}
     m_RemovedComponents: []
     m_RemovedGameObjects:
     - {fileID: 100010, guid: b66dac0cfa5cf484bab2da51f0cd517a, type: 3}
@@ -10741,6 +10745,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 100000, guid: b66dac0cfa5cf484bab2da51f0cd517a, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1748614158}
+    - targetCorrespondingSourceObject: {fileID: 100000, guid: b66dac0cfa5cf484bab2da51f0cd517a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1748614162}
   m_SourcePrefab: {fileID: 100100000, guid: b66dac0cfa5cf484bab2da51f0cd517a, type: 3}
 --- !u!4 &1748614156 stripped
 Transform:
@@ -10834,6 +10841,27 @@ MonoBehaviour:
   definitionId: neighbor.door.door
   categoryId: door
   properties: []
+--- !u!65 &1748614162
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1748614157}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.18, y: 2.1, z: 0.9}
+  m_Center: {x: 0, y: 1, z: 0}
 --- !u!1001 &1768769429
 PrefabInstance:
   m_ObjectHideFlags: 0

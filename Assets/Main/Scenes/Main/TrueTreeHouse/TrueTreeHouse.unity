@@ -364,7 +364,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8277c33751b73a14cb0b2ba9e6b8e109, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderMaterialController
   bindings:
   - faceRole: 0
@@ -3762,7 +3762,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a059d227d1709404898248ca3ce5d4f5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Neighbor.Main.HouseBuilder.HouseBuilderObject
   instanceId: f8910b06d8fb4bc5b30f85395e9f9f55
   definitionId: neighbor.ai.task_spot.taskspot
@@ -5632,7 +5632,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1735301299018589481, guid: 8247aec8644943778922439812102af0, type: 3}
       propertyPath: reinforcementOptions.Array.data[0].prefab
-      value: 
+      value:
       objectReference: {fileID: 100000, guid: b4b2a27579f44971b5e658e13f2ba7ad, type: 3}
     - target: {fileID: 3728426266869732566, guid: 8247aec8644943778922439812102af0, type: 3}
       propertyPath: m_Name
@@ -8000,7 +8000,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1735301299018589481, guid: 8247aec8644943778922439812102af0, type: 3}
       propertyPath: reinforcementOptions.Array.data[0].prefab
-      value: 
+      value:
       objectReference: {fileID: 100000, guid: b4b2a27579f44971b5e658e13f2ba7ad, type: 3}
     - target: {fileID: 3728426266869732566, guid: 8247aec8644943778922439812102af0, type: 3}
       propertyPath: m_Name
@@ -9756,11 +9756,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2885571860335029127, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
       propertyPath: taskAnimation
-      value: 
+      value:
       objectReference: {fileID: 7994627924475153551, guid: 65ed43bc4bb34174ab26f5397f80884d, type: 3}
     - target: {fileID: 2885571860335029127, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
       propertyPath: forcedNextTask
-      value: 
+      value:
       objectReference: {fileID: 102244858}
     - target: {fileID: 2885571860335029127, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
       propertyPath: maximumWaitTime
@@ -9772,7 +9772,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2885571860335029127, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
       propertyPath: endTaskAnimation
-      value: 
+      value:
       objectReference: {fileID: 0}
     - target: {fileID: 2885571860335029127, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
       propertyPath: audioPlaybackMode
@@ -9780,7 +9780,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2885571860335029127, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
       propertyPath: startTaskAnimation
-      value: 
+      value:
       objectReference: {fileID: 0}
     - target: {fileID: 2885571860335029127, guid: a3a73f0406d8ef347b9d132eb0bfca79, type: 3}
       propertyPath: taskClips.Array.size
@@ -17799,7 +17799,7 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
-  m_PlayOnAwake: 1
+  m_PlayOnAwake: 0
   m_Volume: 1
   m_Pitch: 1
   Loop: 0
@@ -22854,8 +22854,8 @@ MonoBehaviour:
       center: {x: 6.3100004, y: 1.4700006}
       size: {x: 2.0400019, y: 2.785902}
     - ownerObjectId: a434337f4f7147a88745df9fc371a116
-      center: {x: -6.3599997, y: 1.5300008}
-      size: {x: 1.771781, y: 2.5867703}
+      center: {x: -5.6900005, y: 1.4899999}
+      size: {x: 1.7717814, y: 2.58677}
 --- !u!64 &589278852
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -43262,7 +43262,7 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
-  m_PlayOnAwake: 1
+  m_PlayOnAwake: 0
   m_Volume: 1
   m_Pitch: 1
   Loop: 0

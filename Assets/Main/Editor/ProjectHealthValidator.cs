@@ -1,5 +1,7 @@
 #if UNITY_EDITOR
 using System;
+using Neighbor.Main.Features.Interaction;
+using Neighbor.Main.Features.Progression;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -16,28 +18,40 @@ internal static class ProjectHealthValidator
     [MenuItem(MenuPath)]
     private static void ValidateFromMenu()
     {
-        int issueCount = ValidateProject();
-        if (issueCount == 0)
-        {
-            Debug.Log("Project validation passed. No missing scripts, invalid materials, or broken LOD references were found.");
-            return;
-        }
-
-        Debug.LogError($"Project validation found {issueCount} project health issue(s).");
+        ValidateAndLogResult();
     }
 
     public static void ValidateFromCommandLine()
     {
-        int issueCount = ValidateProject();
+        int issueCount = ValidateAndLogResult();
         EditorApplication.Exit(issueCount == 0 ? 0 : 1);
     }
 
-    private static int ValidateProject()
+    private static int ValidateAndLogResult()
+    {
+        int issueCount = ValidateProject();
+        if (issueCount == 0)
+        {
+            Debug.Log("Project validation passed. No missing scripts, broken references, invalid materials, bad audio sources, or prefab rule violations were found.");
+            return issueCount;
+        }
+
+        Debug.LogError($"Project validation found {issueCount} project health issue(s).");
+        return issueCount;
+    }
+
+    internal static int ValidateProject()
     {
         AssetDatabase.Refresh();
         int issueCount = ValidatePrefabs();
         issueCount += ValidateScenes();
+        issueCount += ValidateMaterialAssets();
         return issueCount;
+    }
+
+    internal static int ValidateGameObjectForTests(GameObject root, string assetPath)
+    {
+        return ValidateGameObject(root, assetPath);
     }
 
     private static int ValidatePrefabs()
@@ -50,8 +64,7 @@ internal static class ProjectHealthValidator
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if (prefab != null)
             {
-                issueCount += ReportMissingScripts(prefab, path);
-                issueCount += ReportVisualHealth(prefab, path);
+                issueCount += ValidateGameObject(prefab, path);
             }
         }
 
@@ -80,8 +93,7 @@ internal static class ProjectHealthValidator
                 GameObject[] roots = scene.GetRootGameObjects();
                 for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
                 {
-                    issueCount += ReportMissingScripts(roots[rootIndex], path);
-                    issueCount += ReportVisualHealth(roots[rootIndex], path);
+                    issueCount += ValidateGameObject(roots[rootIndex], path);
                 }
             }
             catch (Exception exception)
@@ -103,6 +115,47 @@ internal static class ProjectHealthValidator
             SceneManager.SetActiveScene(activeScene);
         }
 
+        return issueCount;
+    }
+
+    private static int ValidateMaterialAssets()
+    {
+        int issueCount = 0;
+        string[] materialGuids = AssetDatabase.FindAssets("t:Material", new[] { "Assets" });
+        for (int i = 0; i < materialGuids.Length; i++)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(materialGuids[i]);
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                continue;
+            }
+
+            Shader shader = material.shader;
+            if (shader != null && !IsErrorShader(shader))
+            {
+                continue;
+            }
+
+            Debug.LogError($"Material asset has an invalid shader: '{path}'.", material);
+            issueCount++;
+        }
+
+        return issueCount;
+    }
+
+    private static int ValidateGameObject(GameObject root, string assetPath)
+    {
+        if (root == null)
+        {
+            return 0;
+        }
+
+        int issueCount = ReportMissingScripts(root, assetPath);
+        issueCount += ReportVisualHealth(root, assetPath);
+        issueCount += ReportBrokenSerializedReferences(root, assetPath);
+        issueCount += ReportAudioSourceIssues(root, assetPath);
+        issueCount += ReportPrefabRuleIssues(root, assetPath);
         return issueCount;
     }
 
@@ -128,6 +181,182 @@ internal static class ProjectHealthValidator
         }
 
         return issueCount;
+    }
+
+    private static int ReportAudioSourceIssues(GameObject root, string assetPath)
+    {
+        int issueCount = 0;
+        AudioSource[] audioSources = root.GetComponentsInChildren<AudioSource>(true);
+        for (int i = 0; i < audioSources.Length; i++)
+        {
+            AudioSource audioSource = audioSources[i];
+            if (audioSource == null)
+            {
+                continue;
+            }
+
+            string sourcePath = GetHierarchyPath(audioSource.transform);
+            if (audioSource.playOnAwake && audioSource.clip == null)
+            {
+                Debug.LogError(
+                    $"AudioSource plays on awake without a clip: '{sourcePath}' in '{assetPath}'.",
+                    audioSource);
+                issueCount++;
+            }
+
+            if (audioSource.maxDistance < audioSource.minDistance)
+            {
+                Debug.LogError(
+                    $"AudioSource max distance below min distance: '{sourcePath}' in '{assetPath}' ({audioSource.maxDistance:0.##} < {audioSource.minDistance:0.##}).",
+                    audioSource);
+                issueCount++;
+            }
+
+            if (audioSource.spatialBlend > 0.01f && audioSource.maxDistance <= 0f)
+            {
+                Debug.LogError(
+                    $"3D AudioSource has a non-positive max distance: '{sourcePath}' in '{assetPath}'.",
+                    audioSource);
+                issueCount++;
+            }
+        }
+
+        return issueCount;
+    }
+
+    private static int ReportPrefabRuleIssues(GameObject root, string assetPath)
+    {
+        int issueCount = 0;
+        Pickupable[] pickupables = root.GetComponentsInChildren<Pickupable>(true);
+        for (int i = 0; i < pickupables.Length; i++)
+        {
+            issueCount += ReportPickupableRuleIssues(pickupables[i], assetPath);
+        }
+
+        DoorKey[] keys = root.GetComponentsInChildren<DoorKey>(true);
+        for (int i = 0; i < keys.Length; i++)
+        {
+            issueCount += ReportDoorKeyRuleIssues(keys[i], assetPath);
+        }
+
+        Door[] doors = root.GetComponentsInChildren<Door>(true);
+        for (int i = 0; i < doors.Length; i++)
+        {
+            issueCount += ReportDoorRuleIssues(doors[i], assetPath);
+        }
+
+        ObjectiveTriggerZone[] objectiveZones = root.GetComponentsInChildren<ObjectiveTriggerZone>(true);
+        for (int i = 0; i < objectiveZones.Length; i++)
+        {
+            issueCount += ReportObjectiveZoneRuleIssues(objectiveZones[i], assetPath);
+        }
+
+        return issueCount;
+    }
+
+    private static int ReportPickupableRuleIssues(Pickupable pickupable, string assetPath)
+    {
+        if (pickupable == null)
+        {
+            return 0;
+        }
+
+        int issueCount = 0;
+        string pickupPath = GetHierarchyPath(pickupable.transform);
+        if (pickupable.GetComponent<Rigidbody>() == null)
+        {
+            Debug.LogError(
+                $"Pickupable is missing a Rigidbody: '{pickupPath}' in '{assetPath}'.",
+                pickupable);
+            issueCount++;
+        }
+
+        Collider[] colliders = pickupable.GetComponentsInChildren<Collider>(true);
+        bool hasEnabledPhysicsCollider = false;
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            Collider collider = colliders[i];
+            if (collider != null && collider.enabled && !collider.isTrigger)
+            {
+                hasEnabledPhysicsCollider = true;
+                break;
+            }
+        }
+
+        if (!hasEnabledPhysicsCollider)
+        {
+            Debug.LogError(
+                $"Pickupable has no enabled non-trigger collider: '{pickupPath}' in '{assetPath}'.",
+                pickupable);
+            issueCount++;
+        }
+
+        return issueCount;
+    }
+
+    private static int ReportDoorKeyRuleIssues(DoorKey key, string assetPath)
+    {
+        if (key == null)
+        {
+            return 0;
+        }
+
+        int issueCount = 0;
+        string keyPath = GetHierarchyPath(key.transform);
+        if (string.IsNullOrWhiteSpace(key.KeyId))
+        {
+            Debug.LogError(
+                $"DoorKey has no key id: '{keyPath}' in '{assetPath}'.",
+                key);
+            issueCount++;
+        }
+
+        if (key.GetComponentInParent<Pickupable>(true) == null)
+        {
+            Debug.LogError(
+                $"DoorKey is not attached to a Pickupable hierarchy: '{keyPath}' in '{assetPath}'.",
+                key);
+            issueCount++;
+        }
+
+        return issueCount;
+    }
+
+    private static int ReportDoorRuleIssues(Door door, string assetPath)
+    {
+        if (door == null)
+        {
+            return 0;
+        }
+
+        if (door.GetComponentsInChildren<Collider>(true).Length > 0)
+        {
+            return 0;
+        }
+
+        Debug.LogError(
+            $"Door has no collider in its hierarchy: '{GetHierarchyPath(door.transform)}' in '{assetPath}'.",
+            door);
+        return 1;
+    }
+
+    private static int ReportObjectiveZoneRuleIssues(ObjectiveTriggerZone zone, string assetPath)
+    {
+        if (zone == null)
+        {
+            return 0;
+        }
+
+        Collider trigger = zone.GetComponent<Collider>();
+        if (trigger != null && trigger.isTrigger)
+        {
+            return 0;
+        }
+
+        Debug.LogError(
+            $"Objective trigger zone requires a trigger collider: '{GetHierarchyPath(zone.transform)}' in '{assetPath}'.",
+            zone);
+        return 1;
     }
 
     private static int ReportTerrainPerformanceIssues(Terrain terrain, string assetPath)
@@ -171,6 +400,74 @@ internal static class ProjectHealthValidator
         }
 
         return issueCount;
+    }
+
+    private static int ReportBrokenSerializedReferences(GameObject root, string assetPath)
+    {
+        int issueCount = 0;
+        Component[] components = root.GetComponentsInChildren<Component>(true);
+        for (int i = 0; i < components.Length; i++)
+        {
+            Component component = components[i];
+            if (component == null)
+            {
+                continue;
+            }
+
+            issueCount += ReportBrokenSerializedReferences(component, assetPath);
+        }
+
+        return issueCount;
+    }
+
+    private static int ReportBrokenSerializedReferences(Component component, string assetPath)
+    {
+        int issueCount = 0;
+        SerializedObject serializedObject;
+        try
+        {
+            serializedObject = new SerializedObject(component);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError(
+                $"Failed to inspect serialized references on '{GetHierarchyPath(component.transform)}' in '{assetPath}': {exception.Message}",
+                component);
+            return 1;
+        }
+
+        SerializedProperty property = serializedObject.GetIterator();
+        bool enterChildren = true;
+        while (property.NextVisible(enterChildren))
+        {
+            enterChildren = false;
+            if (property.propertyType != SerializedPropertyType.ObjectReference
+                || property.objectReferenceValue != null
+                || !HasMissingObjectReference(property)
+                || IsAllowedMissingObjectReference(property))
+            {
+                continue;
+            }
+
+            Debug.LogError(
+                $"Broken object reference: '{property.propertyPath}' on '{GetHierarchyPath(component.transform)}' in '{assetPath}'.",
+                component);
+            issueCount++;
+        }
+
+        return issueCount;
+    }
+
+#pragma warning disable CS0618
+    private static bool HasMissingObjectReference(SerializedProperty property)
+    {
+        return property.objectReferenceValue == null && property.objectReferenceInstanceIDValue != 0;
+    }
+#pragma warning restore CS0618
+
+    private static bool IsAllowedMissingObjectReference(SerializedProperty property)
+    {
+        return property.propertyPath == "m_Script";
     }
 
     private static int ReportRendererMaterialIssues(Renderer renderer, string assetPath)
