@@ -4,6 +4,7 @@ using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Neighbor.Main.Tests
 {
@@ -430,6 +431,37 @@ namespace Neighbor.Main.Tests
 
             Assert.That(interactor.IsPlacementPreviewVisible, Is.False);
             Assert.That(interactor.IsPlacementPreviewValid, Is.False);
+        }
+
+        [Test]
+        public void HeldPickupTooltip_ReflectsPlacementPreviewState()
+        {
+            GameObject interactorObject = context.CreateObject("PlayerInteractor");
+            PlayerInteractor interactor = interactorObject.AddComponent<PlayerInteractor>();
+            InteractionTooltipView tooltipView = context.CreateObject("Tooltip").AddComponent<InteractionTooltipView>();
+            LineRenderer previewRenderer = context.CreateObject("PlacementPreview").AddComponent<LineRenderer>();
+            Pickupable pickup = CreatePickup("TooltipPickup");
+
+            GameplaySmokeTestReflection.SetField(interactor, "tooltipView", tooltipView);
+            interactor.Pickup(pickup);
+
+            previewRenderer.enabled = true;
+            GameplaySmokeTestReflection.SetField(interactor, "placementPreviewRenderer", previewRenderer);
+            GameplaySmokeTestReflection.SetField(interactor, "placementPreviewValid", false);
+            GameplaySmokeTestReflection.Invoke(interactor, "ShowHeldPickupTooltip", null);
+
+            Text actionText = GameplaySmokeTestReflection.GetField<Text>(tooltipView, "actionText");
+            Assert.That(actionText.text, Is.EqualTo("Blocked placement"));
+
+            GameplaySmokeTestReflection.SetField(interactor, "placementPreviewValid", true);
+            GameplaySmokeTestReflection.Invoke(interactor, "ShowHeldPickupTooltip", null);
+
+            Assert.That(actionText.text, Is.EqualTo("Place"));
+
+            previewRenderer.enabled = false;
+            GameplaySmokeTestReflection.Invoke(interactor, "ShowHeldPickupTooltip", null);
+
+            Assert.That(actionText.text, Is.EqualTo("Drop"));
         }
 
         [Test]
