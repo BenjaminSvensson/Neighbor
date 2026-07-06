@@ -311,6 +311,31 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void HeldPickupInspectRotation_OffsetsCameraAlignedHoldRotation()
+        {
+            GameObject interactorObject = context.CreateObject("PlayerInteractor");
+            interactorObject.transform.rotation = Quaternion.Euler(0f, 15f, 0f);
+            PlayerInteractor interactor = interactorObject.AddComponent<PlayerInteractor>();
+            GameplaySmokeTestReflection.SetField(interactor, "heldInspectRotationSensitivity", 1f);
+            GameplaySmokeTestReflection.SetField(interactor, "heldInspectPitchLimit", 45f);
+
+            Quaternion originalRotation = GameplaySmokeTestReflection.InvokeResult<Quaternion>(interactor, "GetHeldTargetRotation");
+
+            GameplaySmokeTestReflection.Invoke(interactor, "ApplyHeldInspectLookDelta", new Vector2(30f, 20f));
+
+            Vector2 inspectEuler = GameplaySmokeTestReflection.GetField<Vector2>(interactor, "heldInspectEuler");
+            Quaternion inspectedRotation = GameplaySmokeTestReflection.InvokeResult<Quaternion>(interactor, "GetHeldTargetRotation");
+            Assert.That(inspectEuler.x, Is.EqualTo(-20f).Within(0.001f));
+            Assert.That(inspectEuler.y, Is.EqualTo(30f).Within(0.001f));
+            Assert.That(Quaternion.Angle(originalRotation, inspectedRotation), Is.GreaterThan(20f));
+
+            GameplaySmokeTestReflection.Invoke(interactor, "ApplyHeldInspectLookDelta", new Vector2(0f, 200f));
+
+            Vector2 clampedInspectEuler = GameplaySmokeTestReflection.GetField<Vector2>(interactor, "heldInspectEuler");
+            Assert.That(clampedInspectEuler.x, Is.EqualTo(-45f).Within(0.001f));
+        }
+
+        [Test]
         public void PlayerInteraction_StartsAnimationBeforeInteractableRuns()
         {
             PlayerInteractor interactor = context.CreateObject("PlayerInteractor").AddComponent<PlayerInteractor>();
