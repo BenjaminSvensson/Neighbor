@@ -28,6 +28,18 @@ namespace Neighbor.Main.Features.Neighbor
             Repair
         }
 
+        public enum RoutineRole
+        {
+            Auto,
+            General,
+            Relax,
+            Rest,
+            Chore,
+            Maintenance,
+            Garage,
+            Security
+        }
+
         private static readonly List<NeighborTaskLocation> ActiveLocations = new();
 
         [Header("Task")]
@@ -41,6 +53,10 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0.1f)] private float lookArrowLength = 1.2f;
         [SerializeField, Min(0.05f)] private float lookArrowHeadSize = 0.25f;
         [SerializeField] private Color lookArrowColor = new Color(0.1f, 0.85f, 1f, 0.9f);
+
+        [Header("Routine Identity")]
+        [SerializeField] private RoutineRole routineRole = RoutineRole.Auto;
+        [SerializeField, Min(0f)] private float routineRoleCooldown = 40f;
 
         [Header("Object Task")]
         [SerializeField] private ObjectTaskType objectTaskType;
@@ -108,6 +124,8 @@ namespace Neighbor.Main.Features.Neighbor
         public float MaximumUseVerticalOffset => maximumUseVerticalOffset;
         public float NavigationSampleRadius => navigationSampleRadius;
         public ObjectTaskType TaskType => objectTaskType;
+        public RoutineRole Role => GetEffectiveRoutineRole();
+        public float RoutineRoleCooldown => routineRoleCooldown;
         public bool IsObjectPoseUsable => IsTaskObjectPoseUsable();
         public bool NeedsObjectRecovery => objectTaskType == ObjectTaskType.Sit
             && (taskPickupable == null || !taskPickupable.IsHeld)
@@ -319,6 +337,7 @@ namespace Neighbor.Main.Features.Neighbor
             startAnimationPlaybackSpeed = Mathf.Max(0.05f, startAnimationPlaybackSpeed);
             animationPlaybackSpeed = Mathf.Max(0.05f, animationPlaybackSpeed);
             endAnimationPlaybackSpeed = Mathf.Max(0.05f, endAnimationPlaybackSpeed);
+            routineRoleCooldown = Mathf.Max(0f, routineRoleCooldown);
             audioMaxDistance = Mathf.Max(0.1f, audioMaxDistance);
             audioMinDistance = Mathf.Min(audioMinDistance, audioMaxDistance);
         }
@@ -402,6 +421,72 @@ namespace Neighbor.Main.Features.Neighbor
                     <= maximumObjectSpeedForUse * maximumObjectSpeedForUse
                 && taskObjectBody.angularVelocity.sqrMagnitude
                     <= maximumObjectAngularSpeedForUse * maximumObjectAngularSpeedForUse;
+        }
+
+        private RoutineRole GetEffectiveRoutineRole()
+        {
+            if (routineRole != RoutineRole.Auto)
+            {
+                return routineRole;
+            }
+
+            switch (objectTaskType)
+            {
+                case ObjectTaskType.Sit:
+                    return RoutineRole.Relax;
+                case ObjectTaskType.Sleep:
+                    return RoutineRole.Rest;
+                case ObjectTaskType.Repair:
+                    return RoutineRole.Maintenance;
+            }
+
+            string lowerName = name.ToLowerInvariant();
+            if (lowerName.Contains("garage") || lowerName.Contains("car"))
+            {
+                return RoutineRole.Garage;
+            }
+
+            if (lowerName.Contains("security")
+                || lowerName.Contains("patrol")
+                || lowerName.Contains("lock")
+                || lowerName.Contains("camera"))
+            {
+                return RoutineRole.Security;
+            }
+
+            if (lowerName.Contains("repair")
+                || lowerName.Contains("fuse")
+                || lowerName.Contains("tool")
+                || lowerName.Contains("workbench"))
+            {
+                return RoutineRole.Maintenance;
+            }
+
+            if (lowerName.Contains("bed") || lowerName.Contains("sleep"))
+            {
+                return RoutineRole.Rest;
+            }
+
+            if (lowerName.Contains("chair")
+                || lowerName.Contains("sofa")
+                || lowerName.Contains("couch")
+                || lowerName.Contains("tv"))
+            {
+                return RoutineRole.Relax;
+            }
+
+            if (lowerName.Contains("kitchen")
+                || lowerName.Contains("eat")
+                || lowerName.Contains("table")
+                || lowerName.Contains("sink")
+                || lowerName.Contains("toilet")
+                || lowerName.Contains("bath")
+                || lowerName.Contains("shower"))
+            {
+                return RoutineRole.Chore;
+            }
+
+            return RoutineRole.General;
         }
 
         private void ApplyTaskObjectProtection(NeighborBrain neighbor)

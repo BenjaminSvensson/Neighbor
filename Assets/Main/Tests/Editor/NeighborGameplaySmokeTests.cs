@@ -933,6 +933,98 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void TaskLocation_AutoRoutineRoleInfersHouseActivity()
+        {
+            NeighborTaskLocation chairTask = context.AddInitializedComponent<NeighborTaskLocation>(
+                context.CreateObject("Living Room Chair Task"));
+            GameplaySmokeTestReflection.SetField(
+                chairTask,
+                "objectTaskType",
+                NeighborTaskLocation.ObjectTaskType.Sit);
+
+            NeighborTaskLocation fuseTask = context.AddInitializedComponent<NeighborTaskLocation>(
+                context.CreateObject("Fuse Repair Task"));
+
+            Assert.That(chairTask.Role, Is.EqualTo(NeighborTaskLocation.RoutineRole.Relax));
+            Assert.That(fuseTask.Role, Is.EqualTo(NeighborTaskLocation.RoutineRole.Maintenance));
+        }
+
+        [Test]
+        public void RoutineSelection_PenalizesRepeatedRoutineRoleWhenAlternativeExists()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>();
+            GameplaySmokeTestReflection.SetField(
+                brain,
+                "lastRoutineRole",
+                NeighborTaskLocation.RoutineRole.Relax);
+
+            NeighborTaskLocation repeatRelaxTask = context.AddInitializedComponent<NeighborTaskLocation>(
+                context.CreateObject("Sofa Task"));
+            GameplaySmokeTestReflection.SetField(
+                repeatRelaxTask,
+                "routineRole",
+                NeighborTaskLocation.RoutineRole.Relax);
+
+            NeighborTaskLocation choreTask = context.AddInitializedComponent<NeighborTaskLocation>(
+                context.CreateObject("Kitchen Task"));
+            GameplaySmokeTestReflection.SetField(
+                choreTask,
+                "routineRole",
+                NeighborTaskLocation.RoutineRole.Chore);
+
+            float repeatScore = GameplaySmokeTestReflection.InvokeResult<float>(
+                brain,
+                "GetTaskSelectionScore",
+                repeatRelaxTask,
+                2,
+                0f);
+            float choreScore = GameplaySmokeTestReflection.InvokeResult<float>(
+                brain,
+                "GetTaskSelectionScore",
+                choreTask,
+                2,
+                0f);
+
+            Assert.That(choreScore, Is.GreaterThan(repeatScore));
+        }
+
+        [Test]
+        public void RoutineSelection_SuspicionFavorsSecurityWorkOverRest()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>();
+            GameplaySmokeTestReflection.SetField(brain, "suspicion", 0.65f);
+
+            NeighborTaskLocation restTask = context.AddInitializedComponent<NeighborTaskLocation>(
+                context.CreateObject("Bedroom Sleep Task"));
+            GameplaySmokeTestReflection.SetField(
+                restTask,
+                "routineRole",
+                NeighborTaskLocation.RoutineRole.Rest);
+
+            NeighborTaskLocation securityTask = context.AddInitializedComponent<NeighborTaskLocation>(
+                context.CreateObject("Security Camera Check Task"));
+            GameplaySmokeTestReflection.SetField(
+                securityTask,
+                "routineRole",
+                NeighborTaskLocation.RoutineRole.Security);
+
+            float restScore = GameplaySmokeTestReflection.InvokeResult<float>(
+                brain,
+                "GetTaskSelectionScore",
+                restTask,
+                2,
+                0f);
+            float securityScore = GameplaySmokeTestReflection.InvokeResult<float>(
+                brain,
+                "GetTaskSelectionScore",
+                securityTask,
+                2,
+                0f);
+
+            Assert.That(securityScore, Is.GreaterThan(restScore));
+        }
+
+        [Test]
         public void DynamicObstacleAvoidance_OnlyUsesUsefulDetours()
         {
             NeighborMotor motor = context.AddInitializedComponent<NeighborMotor>();
