@@ -10,12 +10,22 @@ namespace Neighbor.Main.Features.Interaction
     {
         private const int MaximumInventorySlots = 6;
 
+        public enum InteractionReticleState
+        {
+            Idle,
+            Usable,
+            Locked,
+            TooFar,
+            Holding
+        }
+
         [Header("Raycast")]
         [SerializeField] private Camera viewCamera;
         [SerializeField] private InputActionAsset inputActions;
         [SerializeField] private string interactActionMap = "Player";
         [SerializeField] private string interactActionName = "Interact";
         [SerializeField, Min(0.1f)] private float interactRange = 3f;
+        [SerializeField, Min(0.1f)] private float reticleProbeRange = 5f;
         [SerializeField, Min(0f)] private float interactRadius = 0.18f;
         [SerializeField, Min(0f)] private float interactAlignmentTieTolerance = 0.002f;
         [SerializeField] private LayerMask interactMask = ~0;
@@ -82,6 +92,7 @@ namespace Neighbor.Main.Features.Interaction
         private IHoldInteractable activeHoldInteractable;
         private Collider[] playerColliders;
         private readonly RaycastHit[] interactHits = new RaycastHit[12];
+        private readonly RaycastHit[] reticleHits = new RaycastHit[12];
         private readonly RaycastHit[] interactionOcclusionHits = new RaycastHit[12];
         private readonly RaycastHit[] throwArcHits = new RaycastHit[8];
         private readonly RaycastHit[] holdObstructionHits = new RaycastHit[12];
@@ -117,6 +128,9 @@ namespace Neighbor.Main.Features.Interaction
 
         public bool HasFocusedInteractable { get; private set; }
         public IInteractable FocusedInteractable { get; private set; }
+        public IInteractable ReticleTarget { get; private set; }
+        public InteractionReticleState ReticleState { get; private set; }
+        public float ReticleTargetDistance { get; private set; }
         public Vector3 ViewForward => ViewTransform.forward;
         public Transform ViewTransform => viewCamera != null ? viewCamera.transform : transform;
 
@@ -148,6 +162,7 @@ namespace Neighbor.Main.Features.Interaction
             EndActiveHoldInteraction(false);
             DropInventoryForDisable();
             HideThrowArc();
+            ClearFocusState();
             if (tooltipView != null)
             {
                 tooltipView.Hide();
@@ -176,6 +191,7 @@ namespace Neighbor.Main.Features.Interaction
             {
                 EndActiveHoldInteraction(false);
                 HideThrowArc();
+                ClearFocusState();
                 if (tooltipView != null)
                 {
                     tooltipView.Hide();
@@ -322,7 +338,7 @@ namespace Neighbor.Main.Features.Interaction
         private void TryInteract()
         {
             Ray ray = new Ray(ViewTransform.position, ViewTransform.forward);
-            IInteractable interactable = FocusedInteractable ?? FindBestInteractable(ray);
+            IInteractable interactable = FindBestInteractable(ray);
 
             if (interactable != null && interactable.CanInteract(this))
             {
@@ -426,8 +442,9 @@ namespace Neighbor.Main.Features.Interaction
 
             if (throwPickup)
             {
+                float charge01 = ThrowCharge01;
                 ThrowStarted?.Invoke();
-                Vector3 throwVelocity = CalculateThrowVelocity(1f);
+                Vector3 throwVelocity = CalculateThrowVelocity(charge01);
                 releasedPickup.Throw(throwVelocity, playerColliders);
                 HideThrowArc();
                 QueueMatchingInventoryPickup(releasedPickup, autoEquipAfterThrowDelay);
@@ -1273,6 +1290,16 @@ namespace Neighbor.Main.Features.Interaction
             Ray ray = new Ray(ViewTransform.position, ViewTransform.forward);
             FocusedInteractable = FindBestInteractable(ray);
             HasFocusedInteractable = FocusedInteractable != null;
+            UpdateReticleState(ray);
+        }
+
+        private void ClearFocusState()
+        {
+            FocusedInteractable = null;
+            ReticleTarget = null;
+            HasFocusedInteractable = false;
+            ReticleState = InteractionReticleState.Idle;
+            ReticleTargetDistance = 0f;
         }
 
         private void UpdateInteractionTooltip(Mouse mouse)
@@ -1309,6 +1336,12 @@ namespace Neighbor.Main.Features.Interaction
                 && TryGetTooltip(holdInteractable, InteractionTooltipContext.HoldInteractable, "Hold interact", "Hold E", out string holdAction, out string holdKey))
             {
                 tooltipView.Show(holdKey, holdAction);
+                return;
+            }
+
+            if (ReticleState == InteractionReticleState.TooFar && ReticleTarget != null)
+            {
+                tooltipView.Show("E", "Move closer");
                 return;
             }
 
@@ -1506,6 +1539,111 @@ namespace Neighbor.Main.Features.Interaction
             return bestInteractable;
         }
 
+        private void UpdateReticleState(Ray ray)
+        {
+            ReticleTarget = FocusedInteractable;
+            ReticleTargetDistance = 0f;
+
+            if (heldPickup != null && releaseButtonWasHeld)
+            {
+                ReticleState = InteractionReticleState.Holding;
+                return;
+            }
+
+            if (FocusedInteractable != null)
+            {
+                ReticleState = IsLockedForReticle(FocusedInteractable)
+                    ? InteractionReticleState.Locked
+                    : InteractionReticleState.Usable;
+                return;
+            }
+
+            if (!FindBestReticleInteractable(ray, out IInteractable reticleTarget, out float targetDistance))
+            {
+                ReticleState = InteractionReticleState.Idle;
+                return;
+            }
+
+            ReticleTarget = reticleTarget;
+            ReticleTargetDistance = targetDistance;
+            ReticleState = targetDistance > interactRange
+                ? InteractionReticleState.TooFar
+                : IsLockedForReticle(reticleTarget)
+                    ? InteractionReticleState.Locked
+                    : InteractionReticleState.Usable;
+        }
+
+        private bool FindBestReticleInteractable(Ray ray, out IInteractable bestInteractable, out float bestDistance)
+        {
+            float probeRange = Mathf.Max(interactRange, reticleProbeRange);
+            int hitCount = interactRadius > 0f
+                ? Physics.SphereCastNonAlloc(ray, interactRadius, reticleHits, probeRange, interactMask, triggerInteraction)
+                : Physics.RaycastNonAlloc(ray, reticleHits, probeRange, interactMask, triggerInteraction);
+
+            bestInteractable = null;
+            float bestAlignment = -1f;
+            bestDistance = float.PositiveInfinity;
+
+            for (int i = 0; i < hitCount; i++)
+            {
+                RaycastHit hit = reticleHits[i];
+                if (hit.collider == null || IsPlayerCollider(hit.collider))
+                {
+                    continue;
+                }
+
+                IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
+                if (interactable == null || IsInteractionLineOfSightBlocked(ray, hit, interactable))
+                {
+                    continue;
+                }
+
+                float alignment = GetViewAlignment(ray, hit);
+                bool isMoreCentered = alignment > bestAlignment + interactAlignmentTieTolerance;
+                bool isTiedAndCloser = Mathf.Abs(alignment - bestAlignment) <= interactAlignmentTieTolerance && hit.distance < bestDistance;
+
+                if (isMoreCentered || isTiedAndCloser)
+                {
+                    bestAlignment = alignment;
+                    bestDistance = hit.distance;
+                    bestInteractable = interactable;
+                }
+            }
+
+            return bestInteractable != null;
+        }
+
+        private bool IsLockedForReticle(IInteractable interactable)
+        {
+            if (interactable == null)
+            {
+                return false;
+            }
+
+            if (!interactable.CanInteract(this))
+            {
+                return true;
+            }
+
+            if (interactable is not Door door)
+            {
+                return false;
+            }
+
+            if (door.IsBlocked)
+            {
+                return true;
+            }
+
+            if (!door.IsLocked)
+            {
+                return false;
+            }
+
+            DoorKey heldKey = GetHeldDoorKey();
+            return heldKey == null || !heldKey.Opens(door);
+        }
+
         private IHoldInteractable FindBestHoldInteractable(Ray ray)
         {
             int hitCount = interactRadius > 0f
@@ -1687,13 +1825,16 @@ namespace Neighbor.Main.Features.Interaction
             throwArcRenderer.enabled = true;
 
             Vector3 origin = GetThrowArcOrigin();
-            Vector3 velocity = CalculateThrowVelocity(ThrowCharge01);
+            float charge01 = ThrowCharge01;
+            Vector3 velocity = CalculateThrowVelocity(charge01);
             Vector3 previousPoint = origin;
             int pointCount = 1;
 
             throwArcRenderer.positionCount = throwArcSegments;
             throwArcRenderer.SetPosition(0, origin);
-            throwArcRenderer.widthMultiplier = throwArcLineWidth;
+            throwArcRenderer.widthMultiplier = Mathf.Lerp(throwArcLineWidth * 0.7f, throwArcLineWidth * 1.35f, charge01);
+            throwArcRenderer.startColor = Color.Lerp(new Color(1f, 1f, 1f, 0.68f), throwArcStartColor, charge01);
+            throwArcRenderer.endColor = Color.Lerp(new Color(1f, 1f, 1f, 0.08f), throwArcEndColor, charge01);
 
             for (int i = 1; i < throwArcSegments; i++)
             {

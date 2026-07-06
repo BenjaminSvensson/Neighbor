@@ -13,6 +13,7 @@ namespace Neighbor.Main.Features.Player
         private CanvasGroup canvasGroup;
         private Image suspicionFill;
         private Image noiseFill;
+        private Image staminaFill;
         private Text awarenessText;
         private Text warningText;
         private PlayerController player;
@@ -52,6 +53,7 @@ namespace Neighbor.Main.Features.Player
 
             UpdateAwareness();
             UpdateNoise();
+            UpdateStamina();
             UpdateWarning();
         }
 
@@ -121,6 +123,21 @@ namespace Neighbor.Main.Features.Player
                 noiseLevel);
         }
 
+        private void UpdateStamina()
+        {
+            if (staminaFill == null)
+            {
+                return;
+            }
+
+            float stamina = player != null ? player.Stamina01 : 1f;
+            staminaFill.fillAmount = stamina;
+            staminaFill.color = Color.Lerp(
+                new Color(1f, 0.3f, 0.16f, 0.95f),
+                new Color(0.35f, 1f, 0.68f, 0.9f),
+                stamina);
+        }
+
         private void UpdateWarning()
         {
             if (Time.unscaledTime < cameraWarningUntil)
@@ -132,6 +149,13 @@ namespace Neighbor.Main.Features.Player
 
             if (Time.unscaledTime < messageUntil)
             {
+                return;
+            }
+
+            if (player != null && player.IsExhausted)
+            {
+                warningText.text = "EXHAUSTED";
+                warningText.color = new Color(1f, 0.45f, 0.18f, 1f);
                 return;
             }
 
@@ -189,6 +213,15 @@ namespace Neighbor.Main.Features.Player
             Image suspicionBackground = CreateImage("SuspicionBackground", new Color(0f, 0f, 0f, 0.55f));
             SetRect(suspicionBackground.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -62f), new Vector2(280f, 8f));
             suspicionFill = CreateFill("SuspicionFill", suspicionBackground.transform);
+
+            Text staminaLabel = CreateText("StaminaLabel", font, 12, FontStyle.Bold, TextAnchor.MiddleLeft);
+            staminaLabel.text = "STAMINA";
+            staminaLabel.color = new Color(1f, 1f, 1f, 0.68f);
+            SetRect(staminaLabel.rectTransform, Vector2.zero, Vector2.zero, new Vector2(42f, 136f), new Vector2(78f, 18f));
+
+            Image staminaBackground = CreateImage("StaminaBackground", new Color(0f, 0f, 0f, 0.5f));
+            SetRect(staminaBackground.rectTransform, Vector2.zero, Vector2.zero, new Vector2(132f, 140f), new Vector2(170f, 7f));
+            staminaFill = CreateFill("StaminaFill", staminaBackground.transform);
 
             Text noiseLabel = CreateText("NoiseLabel", font, 12, FontStyle.Bold, TextAnchor.MiddleLeft);
             noiseLabel.text = "NOISE";

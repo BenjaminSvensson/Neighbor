@@ -38,6 +38,10 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Range(0, 12)] private int reinforcedDoorsPerDeath = 2;
         [SerializeField, Min(0f)] private float neighborRespawnSightGraceTime = 2.5f;
 
+        [Header("Death UI")]
+        [SerializeField] private string caughtMessage = "CAUGHT";
+        [SerializeField] private string resetMessage = "RESETTING HOUSE";
+
         private readonly List<Behaviour> disabledBehaviours = new();
         private readonly List<Collider> disabledColliders = new();
         private PlayerController playerController;
@@ -46,6 +50,7 @@ namespace Neighbor.Main.Features.Player
         private Camera playerCamera;
         private Transform cameraTransform;
         private CanvasGroup fadeGroup;
+        private Text deathText;
         private Vector3 spawnPosition;
         private Quaternion spawnRotation;
         private Vector3 cameraRestLocalPosition;
@@ -128,6 +133,7 @@ namespace Neighbor.Main.Features.Player
             IsDead = true;
             EnsureFadeOverlay();
             SetFade(0f);
+            SetDeathMessage(caughtMessage);
             DisableGameplay();
             playerController?.PrepareForDeath();
 
@@ -174,6 +180,7 @@ namespace Neighbor.Main.Features.Player
             while (timer < effectiveGroundHoldDuration)
             {
                 timer += Time.deltaTime;
+                SetDeathMessage(timer > effectiveGroundHoldDuration * 0.45f ? resetMessage : caughtMessage);
                 float fadeStart = effectiveGroundHoldDuration * 0.2f;
                 float fade = Mathf.InverseLerp(fadeStart, Mathf.Max(fadeStart + 0.01f, effectiveGroundHoldDuration), timer);
                 SetFade(fade);
@@ -201,6 +208,7 @@ namespace Neighbor.Main.Features.Player
             }
 
             SetFade(0f);
+            SetDeathMessage(null);
             IsDead = false;
         }
 
@@ -393,6 +401,24 @@ namespace Neighbor.Main.Features.Player
             rect.anchorMax = Vector2.one;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
+
+            GameObject textObject = new GameObject("Death Message", typeof(RectTransform));
+            textObject.transform.SetParent(canvasObject.transform, false);
+            deathText = textObject.AddComponent<Text>();
+            deathText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            deathText.fontSize = 34;
+            deathText.fontStyle = FontStyle.Bold;
+            deathText.alignment = TextAnchor.MiddleCenter;
+            deathText.color = new Color(1f, 0.82f, 0.46f, 0.95f);
+            deathText.raycastTarget = false;
+
+            RectTransform textRect = deathText.rectTransform;
+            textRect.anchorMin = new Vector2(0.5f, 0.5f);
+            textRect.anchorMax = new Vector2(0.5f, 0.5f);
+            textRect.pivot = new Vector2(0.5f, 0.5f);
+            textRect.anchoredPosition = new Vector2(0f, -28f);
+            textRect.sizeDelta = new Vector2(620f, 70f);
+            SetDeathMessage(null);
         }
 
         private void SetFade(float alpha)
@@ -401,6 +427,18 @@ namespace Neighbor.Main.Features.Player
             {
                 fadeGroup.alpha = Mathf.Clamp01(alpha);
             }
+        }
+
+        private void SetDeathMessage(string message)
+        {
+            if (deathText == null)
+            {
+                return;
+            }
+
+            bool hasMessage = !string.IsNullOrWhiteSpace(message);
+            deathText.gameObject.SetActive(hasMessage);
+            deathText.text = hasMessage ? message : string.Empty;
         }
     }
 }

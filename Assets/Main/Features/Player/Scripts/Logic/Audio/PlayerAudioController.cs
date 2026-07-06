@@ -12,6 +12,7 @@ namespace Neighbor.Main.Features.Player
         [SerializeField] private AudioSource footstepLoopSource;
         [SerializeField] private AudioSource slideLoopSource;
         [SerializeField] private AudioSource zoomLoopSource;
+        [SerializeField] private AudioSource breathLoopSource;
 
         [Header("Footsteps")]
         [SerializeField] private AudioClip walkFootstepLoop;
@@ -23,6 +24,12 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, HideInInspector] private AudioClip[] walkFootsteps;
         [SerializeField, HideInInspector] private AudioClip[] runFootsteps;
         [SerializeField, HideInInspector] private AudioClip[] crouchFootsteps;
+
+        [Header("Breathing")]
+        [SerializeField] private AudioClip tiredBreathLoop;
+        [SerializeField, Range(0f, 1f)] private float tiredBreathVolume = 0.34f;
+        [SerializeField, Range(0f, 1f)] private float breathStartStamina = 0.38f;
+        [SerializeField, Min(0f)] private float breathLoopFadeSharpness = 8f;
 
         [Header("Movement Actions")]
         [SerializeField] private AudioClip[] jumpClips;
@@ -106,12 +113,20 @@ namespace Neighbor.Main.Features.Player
                 zoomLoopSource = audioAnchor.gameObject.AddComponent<AudioSource>();
             }
 
+            if (breathLoopSource == null)
+            {
+                breathLoopSource = audioAnchor.gameObject.AddComponent<AudioSource>();
+            }
+
             ConfigureSource(oneShotSource, false);
             ConfigureSource(footstepLoopSource, true);
             ConfigureSource(slideLoopSource, true);
             ConfigureSource(zoomLoopSource, true);
+            ConfigureSource(breathLoopSource, true);
             zoomLoopSource.spatialBlend = 0f;
             zoomLoopSource.dopplerLevel = 0f;
+            breathLoopSource.spatialBlend = 0f;
+            breathLoopSource.dopplerLevel = 0f;
             MigrateFootstepLoopClips();
             SubscribeToCameraZoom();
             wasCrouching = playerController != null && playerController.IsCrouching;
@@ -138,6 +153,7 @@ namespace Neighbor.Main.Features.Player
 
             UpdateOneShotMovementSounds();
             UpdateFootsteps();
+            UpdateBreathing();
             UpdateSlideLoop();
             UpdatePreviousState();
         }
@@ -326,6 +342,47 @@ namespace Neighbor.Main.Features.Player
             }
         }
 
+        private void UpdateBreathing()
+        {
+            if (breathLoopSource == null || tiredBreathLoop == null)
+            {
+                return;
+            }
+
+            if (breathLoopSource.clip != tiredBreathLoop)
+            {
+                breathLoopSource.clip = tiredBreathLoop;
+            }
+
+            float staminaStress = breathStartStamina <= 0f
+                ? 0f
+                : Mathf.Clamp01((breathStartStamina - playerController.Stamina01) / breathStartStamina);
+            if (playerController.IsRunning)
+            {
+                staminaStress = Mathf.Max(staminaStress, 0.2f);
+            }
+
+            if (playerController.IsExhausted)
+            {
+                staminaStress = 1f;
+            }
+
+            float targetVolume = tiredBreathVolume * staminaStress;
+            breathLoopSource.volume = Mathf.Lerp(
+                breathLoopSource.volume,
+                targetVolume,
+                1f - Mathf.Exp(-breathLoopFadeSharpness * Time.deltaTime));
+
+            if (targetVolume > 0.001f && !breathLoopSource.isPlaying)
+            {
+                breathLoopSource.Play();
+            }
+            else if (targetVolume <= 0.001f && breathLoopSource.isPlaying && breathLoopSource.volume <= 0.01f)
+            {
+                breathLoopSource.Stop();
+            }
+        }
+
         private void UpdateZoomLoop(int zoomDirection)
         {
             if (zoomLoopSource == null)
@@ -386,6 +443,11 @@ namespace Neighbor.Main.Features.Player
             if (zoomLoopSource != null)
             {
                 zoomLoopSource.Stop();
+            }
+
+            if (breathLoopSource != null)
+            {
+                breathLoopSource.Stop();
             }
 
             activeFootstepLoopClip = null;
