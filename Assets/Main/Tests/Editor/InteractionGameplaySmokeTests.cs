@@ -336,6 +336,54 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void PlacementPreview_ShowsValidFootprintOnClearSurface()
+        {
+            GameObject interactorObject = context.CreateObject("PlayerInteractor");
+            interactorObject.transform.SetPositionAndRotation(Vector3.up, Quaternion.LookRotation(Vector3.forward, Vector3.up));
+            PlayerInteractor interactor = interactorObject.AddComponent<PlayerInteractor>();
+            GameplaySmokeTestReflection.SetField(interactor, "holdObstructionRadius", 0f);
+            GameplaySmokeTestReflection.SetField(interactor, "placementFallbackDownDistance", 3f);
+            GameplaySmokeTestReflection.SetField(interactor, "showPlacementPreview", true);
+
+            GameObject floor = context.CreateObject("PlacementFloor");
+            floor.transform.position = new Vector3(0f, -0.05f, 1.65f);
+            BoxCollider floorCollider = floor.AddComponent<BoxCollider>();
+            floorCollider.size = new Vector3(4f, 0.1f, 4f);
+
+            Pickupable pickup = CreatePickup("PreviewPickup");
+            interactor.Pickup(pickup);
+            Physics.SyncTransforms();
+
+            GameplaySmokeTestReflection.Invoke(interactor, "UpdatePlacementPreview");
+
+            LineRenderer previewRenderer = GameplaySmokeTestReflection.GetField<LineRenderer>(interactor, "placementPreviewRenderer");
+            Assert.That(interactor.IsPlacementPreviewVisible, Is.True);
+            Assert.That(interactor.IsPlacementPreviewValid, Is.True);
+            Assert.That(previewRenderer, Is.Not.Null);
+            Assert.That(previewRenderer.positionCount, Is.EqualTo(5));
+        }
+
+        [Test]
+        public void PlacementPreview_HidesWhenNoPlacementSurfaceExists()
+        {
+            GameObject interactorObject = context.CreateObject("PlayerInteractor");
+            interactorObject.transform.SetPositionAndRotation(Vector3.up, Quaternion.LookRotation(Vector3.forward, Vector3.up));
+            PlayerInteractor interactor = interactorObject.AddComponent<PlayerInteractor>();
+            GameplaySmokeTestReflection.SetField(interactor, "holdObstructionRadius", 0f);
+            GameplaySmokeTestReflection.SetField(interactor, "placementFallbackDownDistance", 0f);
+            GameplaySmokeTestReflection.SetField(interactor, "showPlacementPreview", true);
+
+            Pickupable pickup = CreatePickup("PreviewPickup");
+            interactor.Pickup(pickup);
+            Physics.SyncTransforms();
+
+            GameplaySmokeTestReflection.Invoke(interactor, "UpdatePlacementPreview");
+
+            Assert.That(interactor.IsPlacementPreviewVisible, Is.False);
+            Assert.That(interactor.IsPlacementPreviewValid, Is.False);
+        }
+
+        [Test]
         public void PlayerInteraction_StartsAnimationBeforeInteractableRuns()
         {
             PlayerInteractor interactor = context.CreateObject("PlayerInteractor").AddComponent<PlayerInteractor>();
