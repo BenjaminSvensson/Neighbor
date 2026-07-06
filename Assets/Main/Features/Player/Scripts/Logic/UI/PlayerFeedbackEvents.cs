@@ -81,11 +81,22 @@ namespace Neighbor.Main.Features.Player
             }
         }
 
+        public readonly struct CheckpointFeedback
+        {
+            public string Name { get; }
+
+            public CheckpointFeedback(string name)
+            {
+                Name = string.IsNullOrWhiteSpace(name) ? "Checkpoint" : name.Trim();
+            }
+        }
+
         public static event Action<NoiseFeedback> NoiseEmitted;
         public static event Action CameraDetectedPlayer;
         public static event Action<SecurityEscalationFeedback> SecurityEscalated;
         public static event Action<AmbienceZoneFeedback> AmbienceZoneChanged;
         public static event Action<DayPhaseFeedback> DayPhaseChanged;
+        public static event Action<CheckpointFeedback> CheckpointReached;
 
         public static void ReportNoise(Vector3 origin, float loudness, float radius)
         {
@@ -141,6 +152,11 @@ namespace Neighbor.Main.Features.Player
             DayPhaseChanged?.Invoke(new DayPhaseFeedback(phase, message, intensity, timeOfDay));
         }
 
+        public static void ReportCheckpoint(string checkpointName)
+        {
+            CheckpointReached?.Invoke(new CheckpointFeedback(checkpointName));
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Reset()
         {
@@ -149,6 +165,7 @@ namespace Neighbor.Main.Features.Player
             SecurityEscalated = null;
             AmbienceZoneChanged = null;
             DayPhaseChanged = null;
+            CheckpointReached = null;
         }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Neighbor;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace Neighbor.Main.Features.Player
@@ -38,6 +39,11 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Range(0, 12)] private int reinforcedDoorsPerDeath = 2;
         [SerializeField, Min(0f)] private float neighborRespawnSightGraceTime = 2.5f;
 
+        [Header("Checkpoint")]
+        [SerializeField] private bool loadSavedCheckpointOnAwake = true;
+        [SerializeField] private bool persistCheckpoints = true;
+        [SerializeField] private string checkpointSaveKey = "Neighbor.RespawnCheckpoint";
+
         [Header("Death UI")]
         [SerializeField] private string caughtMessage = "CAUGHT";
         [SerializeField] private string resetMessage = "RESETTING HOUSE";
@@ -53,12 +59,20 @@ namespace Neighbor.Main.Features.Player
         private Text deathText;
         private Vector3 spawnPosition;
         private Quaternion spawnRotation;
+        private Vector3 checkpointPosition;
+        private Quaternion checkpointRotation;
+        private string checkpointId;
+        private bool hasCheckpoint;
         private Vector3 cameraRestLocalPosition;
         private Quaternion cameraRestLocalRotation;
         private float cameraRestFieldOfView;
         private bool initialized;
 
         public bool IsDead { get; private set; }
+        public bool HasCheckpoint => hasCheckpoint;
+        public string ActiveCheckpointId => checkpointId;
+        public Vector3 CurrentRespawnPosition => hasCheckpoint ? checkpointPosition : spawnPosition;
+        public Quaternion CurrentRespawnRotation => hasCheckpoint ? checkpointRotation : spawnRotation;
 
         private void Awake()
         {
@@ -87,6 +101,7 @@ namespace Neighbor.Main.Features.Player
             }
 
             cameraRestFieldOfView = playerCamera != null ? playerCamera.fieldOfView : 60f;
+            LoadSavedCheckpoint();
             initialized = true;
         }
 
@@ -105,6 +120,40 @@ namespace Neighbor.Main.Features.Player
             }
 
             return deathController.TryKill(sourcePosition);
+        }
+
+        public bool SetCheckpoint(Vector3 position, Quaternion rotation, string id = null, bool persist = true)
+        {
+            if (!IsFinite(position) || !IsFinite(rotation))
+            {
+                return false;
+            }
+
+            checkpointPosition = position;
+            checkpointRotation = NormalizeRotation(rotation);
+            checkpointId = string.IsNullOrWhiteSpace(id) ? "Checkpoint" : id.Trim();
+            hasCheckpoint = true;
+
+            if (persist && persistCheckpoints)
+            {
+                SaveCheckpoint();
+            }
+
+            PlayerFeedbackEvents.ReportCheckpoint(checkpointId);
+            return true;
+        }
+
+        public void ClearCheckpoint(bool clearSaved = false)
+        {
+            hasCheckpoint = false;
+            checkpointPosition = default;
+            checkpointRotation = default;
+            checkpointId = null;
+
+            if (clearSaved)
+            {
+                ClearSavedCheckpoint();
+            }
         }
 
         public bool TryKill(Vector3 sourcePosition)
@@ -319,7 +368,7 @@ namespace Neighbor.Main.Features.Player
         private void ResetRun()
         {
             ReleasePlayerFromWorldConstraints();
-            playerController?.ResetForRespawn(spawnPosition, spawnRotation);
+            playerController?.ResetForRespawn(CurrentRespawnPosition, CurrentRespawnRotation);
 
             if (cameraTransform != null)
             {
@@ -359,6 +408,115 @@ namespace Neighbor.Main.Features.Player
             }
 
             disabledBehaviours.Clear();
+        }
+
+        private void LoadSavedCheckpoint()
+        {
+            if (!loadSavedCheckpointOnAwake || !persistCheckpoints)
+            {
+                return;
+            }
+
+            string prefix = GetCheckpointPreferencePrefix();
+            if (!PlayerPrefs.HasKey(prefix + "Has"))
+            {
+                return;
+            }
+
+            Vector3 savedPosition = new(
+                PlayerPrefs.GetFloat(prefix + "X", spawnPosition.x),
+                PlayerPrefs.GetFloat(prefix + "Y", spawnPosition.y),
+                PlayerPrefs.GetFloat(prefix + "Z", spawnPosition.z));
+            Quaternion savedRotation = new(
+                PlayerPrefs.GetFloat(prefix + "RotX", spawnRotation.x),
+                PlayerPrefs.GetFloat(prefix + "RotY", spawnRotation.y),
+                PlayerPrefs.GetFloat(prefix + "RotZ", spawnRotation.z),
+                PlayerPrefs.GetFloat(prefix + "RotW", spawnRotation.w));
+
+            if (!IsFinite(savedPosition) || !IsFinite(savedRotation))
+            {
+                ClearSavedCheckpoint();
+                return;
+            }
+
+            checkpointPosition = savedPosition;
+            checkpointRotation = NormalizeRotation(savedRotation);
+            checkpointId = PlayerPrefs.GetString(prefix + "Id", "Checkpoint");
+            hasCheckpoint = true;
+        }
+
+        private void SaveCheckpoint()
+        {
+            string prefix = GetCheckpointPreferencePrefix();
+            PlayerPrefs.SetInt(prefix + "Has", 1);
+            PlayerPrefs.SetFloat(prefix + "X", checkpointPosition.x);
+            PlayerPrefs.SetFloat(prefix + "Y", checkpointPosition.y);
+            PlayerPrefs.SetFloat(prefix + "Z", checkpointPosition.z);
+            PlayerPrefs.SetFloat(prefix + "RotX", checkpointRotation.x);
+            PlayerPrefs.SetFloat(prefix + "RotY", checkpointRotation.y);
+            PlayerPrefs.SetFloat(prefix + "RotZ", checkpointRotation.z);
+            PlayerPrefs.SetFloat(prefix + "RotW", checkpointRotation.w);
+            PlayerPrefs.SetString(prefix + "Id", checkpointId ?? "Checkpoint");
+            PlayerPrefs.Save();
+        }
+
+        private void ClearSavedCheckpoint()
+        {
+            string prefix = GetCheckpointPreferencePrefix();
+            PlayerPrefs.DeleteKey(prefix + "Has");
+            PlayerPrefs.DeleteKey(prefix + "X");
+            PlayerPrefs.DeleteKey(prefix + "Y");
+            PlayerPrefs.DeleteKey(prefix + "Z");
+            PlayerPrefs.DeleteKey(prefix + "RotX");
+            PlayerPrefs.DeleteKey(prefix + "RotY");
+            PlayerPrefs.DeleteKey(prefix + "RotZ");
+            PlayerPrefs.DeleteKey(prefix + "RotW");
+            PlayerPrefs.DeleteKey(prefix + "Id");
+            PlayerPrefs.Save();
+        }
+
+        private string GetCheckpointPreferencePrefix()
+        {
+            Scene scene = SceneManager.GetActiveScene();
+            string sceneKey = !string.IsNullOrWhiteSpace(scene.path) ? scene.path : scene.name;
+            if (string.IsNullOrWhiteSpace(sceneKey))
+            {
+                sceneKey = "UntitledScene";
+            }
+
+            return $"{checkpointSaveKey}.{sceneKey}.";
+        }
+
+        private static bool IsFinite(Vector3 value)
+        {
+            return IsFinite(value.x) && IsFinite(value.y) && IsFinite(value.z);
+        }
+
+        private static bool IsFinite(Quaternion value)
+        {
+            return IsFinite(value.x)
+                && IsFinite(value.y)
+                && IsFinite(value.z)
+                && IsFinite(value.w);
+        }
+
+        private static Quaternion NormalizeRotation(Quaternion rotation)
+        {
+            float magnitude = Mathf.Sqrt(
+                rotation.x * rotation.x +
+                rotation.y * rotation.y +
+                rotation.z * rotation.z +
+                rotation.w * rotation.w);
+            return magnitude > 0.0001f ? new Quaternion(
+                rotation.x / magnitude,
+                rotation.y / magnitude,
+                rotation.z / magnitude,
+                rotation.w / magnitude) : Quaternion.identity;
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
         }
 
         private void ReleasePlayerFromWorldConstraints()
