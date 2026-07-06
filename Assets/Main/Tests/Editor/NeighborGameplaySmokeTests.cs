@@ -1054,6 +1054,27 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void Vision_SeesHiddenPlayerWhenPeekExposureIsHigh()
+        {
+            NeighborVision vision = context.AddInitializedComponent<NeighborVision>();
+            Transform target = context.CreateObject("PlayerTarget").transform;
+            GameplaySmokeTestReflection.SetField(vision, "target", target);
+            GameplaySmokeTestReflection.SetField(vision, "eyeHeight", 0f);
+            GameplaySmokeTestReflection.SetField(vision, "lineOfSightMask", (LayerMask)0);
+            target.position = Vector3.forward * 5f;
+            PlayerHidingState hidingState = target.gameObject.AddComponent<PlayerHidingState>();
+
+            hidingState.SetHidden(true);
+            Assert.That(vision.TrySeeTarget(out _, out _), Is.False);
+
+            hidingState.SetPeekExposure(1f, 0f);
+
+            Assert.That(hidingState.IsDangerouslyExposed, Is.True);
+            Assert.That(hidingState.IsConcealedFromVision, Is.False);
+            Assert.That(vision.TrySeeTarget(out _, out _), Is.True);
+        }
+
+        [Test]
         public void HidingState_InspectionRaisesBreathTensionAndCompromisesFoundPlayer()
         {
             PlayerHidingState hidingState = context.CreateObject("HiddenPlayer").AddComponent<PlayerHidingState>();
@@ -1067,6 +1088,23 @@ namespace Neighbor.Main.Tests
             Assert.That(hidingState.BreathTension01, Is.GreaterThan(0f));
             Assert.That(hidingState.WasInspectedRecently, Is.True);
             Assert.That(hidingState.IsCompromised, Is.True);
+        }
+
+        [Test]
+        public void HidingState_PeekExposureBuildsTensionAndResetsOnExit()
+        {
+            PlayerHidingState hidingState = context.CreateObject("HiddenPlayer").AddComponent<PlayerHidingState>();
+
+            hidingState.SetHidden(true);
+            hidingState.SetPeekExposure(0.8f, 1f);
+
+            Assert.That(hidingState.PeekExposure01, Is.EqualTo(0.8f).Within(0.001f));
+            Assert.That(hidingState.BreathTension01, Is.GreaterThan(0f));
+
+            hidingState.SetHidden(false);
+
+            Assert.That(hidingState.PeekExposure01, Is.Zero);
+            Assert.That(hidingState.IsConcealedFromVision, Is.False);
         }
 
         [Test]

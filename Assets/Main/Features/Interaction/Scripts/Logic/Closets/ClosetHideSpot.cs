@@ -22,6 +22,8 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private bool allowSidePeek = true;
         [SerializeField, Min(0f)] private float maximumSidePeek = 0.32f;
         [SerializeField, Min(0f)] private float sidePeekSpeed = 0.36f;
+        [SerializeField, Min(0f)] private float sidePeekReturnSpeed = 0.65f;
+        [SerializeField, Range(0f, 1f)] private float safePeekFraction = 0.35f;
 
         private PlayerController hiddenPlayer;
         private PlayerHidingState hiddenState;
@@ -235,13 +237,33 @@ namespace Neighbor.Main.Features.Interaction
 
             Transform center = hidePoint != null ? hidePoint : transform;
             float input = PlayerInputReader.ReadFrameInput().Move.x;
-            sidePeekOffset = Mathf.Clamp(
-                sidePeekOffset + Mathf.Clamp(input, -1f, 1f) * sidePeekSpeed * Time.deltaTime,
-                -maximumSidePeek,
-                maximumSidePeek);
+            if (Mathf.Abs(input) > 0.05f)
+            {
+                sidePeekOffset = Mathf.Clamp(
+                    sidePeekOffset + Mathf.Clamp(input, -1f, 1f) * sidePeekSpeed * Time.deltaTime,
+                    -maximumSidePeek,
+                    maximumSidePeek);
+            }
+            else
+            {
+                sidePeekOffset = Mathf.MoveTowards(sidePeekOffset, 0f, sidePeekReturnSpeed * Time.deltaTime);
+            }
+
+            hiddenState.SetPeekExposure(GetPeekExposure(sidePeekOffset), Time.deltaTime);
             hiddenPlayer.transform.SetPositionAndRotation(
                 center.position + center.right * sidePeekOffset,
                 center.rotation);
+        }
+
+        private float GetPeekExposure(float offset)
+        {
+            if (maximumSidePeek <= 0f)
+            {
+                return 0f;
+            }
+
+            float safeDistance = maximumSidePeek * Mathf.Clamp01(safePeekFraction);
+            return Mathf.InverseLerp(safeDistance, maximumSidePeek, Mathf.Abs(offset));
         }
 
         private IEnumerator MovePlayer(Transform playerTransform, Transform target)
@@ -300,6 +322,8 @@ namespace Neighbor.Main.Features.Interaction
             doorCloseDelay = Mathf.Max(0f, doorCloseDelay);
             maximumSidePeek = Mathf.Max(0f, maximumSidePeek);
             sidePeekSpeed = Mathf.Max(0f, sidePeekSpeed);
+            sidePeekReturnSpeed = Mathf.Max(0f, sidePeekReturnSpeed);
+            safePeekFraction = Mathf.Clamp01(safePeekFraction);
         }
     }
 }

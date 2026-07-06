@@ -165,6 +165,20 @@ namespace Neighbor.Main.Features.Player
 
             if (hidingState != null && hidingState.IsHidden)
             {
+                if (hidingState.IsDangerouslyExposed)
+                {
+                    warningText.text = "EXPOSED";
+                    warningText.color = new Color(1f, 0.16f, 0.08f, 1f);
+                    return;
+                }
+
+                if (hidingState.PeekExposure01 >= 0.45f)
+                {
+                    warningText.text = "PEEKING";
+                    warningText.color = new Color(1f, 0.62f, 0.18f, 1f);
+                    return;
+                }
+
                 if (hidingState.IsCompromised)
                 {
                     warningText.text = "FOUND";
