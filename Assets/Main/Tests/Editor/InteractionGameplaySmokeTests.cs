@@ -245,6 +245,55 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void Door_ReportsFeedbackForLockedBlockedAndUnlockedAttempts()
+        {
+            Door door = context.AddInitializedComponent<Door>();
+            List<PlayerFeedbackEvents.DoorInteractionFeedback> feedback = new();
+            PlayerFeedbackEvents.DoorInteractionReported += HandleDoorFeedback;
+
+            try
+            {
+                door.Interact(null);
+
+                Assert.That(feedback, Has.Count.EqualTo(1));
+                Assert.That(feedback[0].Kind, Is.EqualTo(PlayerFeedbackEvents.DoorInteractionFeedbackKind.Locked));
+                Assert.That(feedback[0].Message, Does.Contain("Test Key"));
+
+                door.Unlock();
+                DoorBlockerChair blocker = CreateBoardBlocker("FeedbackBoard");
+                Assert.That(blocker.TryBlockDoorAsReinforcement(door, 0), Is.True);
+
+                door.Interact(null);
+
+                Assert.That(feedback, Has.Count.EqualTo(2));
+                Assert.That(feedback[1].Kind, Is.EqualTo(PlayerFeedbackEvents.DoorInteractionFeedbackKind.Blocked));
+                Assert.That(feedback[1].Message, Does.Contain("blocked").IgnoreCase);
+
+                Door keyRingDoor = context.AddInitializedComponent<Door>("KeyRingDoor");
+                GameObject playerObject = context.CreateObject("KeyOwner");
+                PlayerKeyRing keyRing = playerObject.AddComponent<PlayerKeyRing>();
+                keyRing.AddKey(keyRingDoor.RequiredKeyId);
+                PlayerInteractor interactor = playerObject.AddComponent<PlayerInteractor>();
+
+                feedback.Clear();
+                keyRingDoor.Interact(interactor);
+
+                Assert.That(keyRingDoor.IsLocked, Is.False);
+                Assert.That(feedback, Has.Count.EqualTo(1));
+                Assert.That(feedback[0].Kind, Is.EqualTo(PlayerFeedbackEvents.DoorInteractionFeedbackKind.Unlocked));
+            }
+            finally
+            {
+                PlayerFeedbackEvents.DoorInteractionReported -= HandleDoorFeedback;
+            }
+
+            void HandleDoorFeedback(PlayerFeedbackEvents.DoorInteractionFeedback doorFeedback)
+            {
+                feedback.Add(doorFeedback);
+            }
+        }
+
+        [Test]
         public void PickupDrop_RestoresPhysicsAndHeldState()
         {
             GameObject pickupObject = context.CreateObject("Pickup");
