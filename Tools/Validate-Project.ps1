@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [switch]$SkipUnity
+    [switch]$SkipUnity,
+    [switch]$SkipPlayMode
 )
 
 $ErrorActionPreference = "Stop"
@@ -119,6 +120,35 @@ function Get-UnityEditorPath {
     return $unityPath
 }
 
+function Wait-UnityBatchProcesses {
+    param(
+        [datetime]$StartedAt,
+        [string]$UnityPath,
+        [int]$TimeoutSeconds = 600
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $startedAtWindow = $StartedAt.AddSeconds(-2)
+    while ((Get-Date) -lt $deadline) {
+        $matchingProcesses = @(Get-Process Unity -ErrorAction SilentlyContinue |
+            Where-Object {
+                $_.Path -eq $UnityPath -and $_.StartTime -ge $startedAtWindow
+            })
+        if ($matchingProcesses.Count -eq 0) {
+            return $true
+        }
+
+        Start-Sleep -Seconds 2
+    }
+
+    Get-Process Unity -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.Path -eq $UnityPath -and $_.StartTime -ge $startedAtWindow
+        } |
+        Stop-Process -Force
+    return $false
+}
+
 function Test-UnityEditModeTests {
     if ($SkipUnity) {
         Write-Host "Skipping Unity EditMode tests by request." -ForegroundColor Yellow
@@ -169,6 +199,66 @@ function Test-UnityEditModeTests {
     }
 }
 
+function Test-UnityPlayModeTests {
+    if ($SkipUnity -or $SkipPlayMode) {
+        Write-Host "Skipping Unity PlayMode tests by request." -ForegroundColor Yellow
+        return
+    }
+
+    if (Test-Path -LiteralPath "Temp\UnityLockfile") {
+        Write-Host "Skipping Unity PlayMode tests because this project is open in the editor." -ForegroundColor Yellow
+        return
+    }
+
+    $unityPath = Get-UnityEditorPath
+    if ($null -eq $unityPath) {
+        return
+    }
+
+    Write-Host "Running Unity PlayMode tests..."
+    $logPath = Join-Path $projectRoot "Logs\PlayModeTests.log"
+    $resultsDirectory = Join-Path $projectRoot "TestResults"
+    $resultsPath = Join-Path $resultsDirectory "PlayModeTestResults.xml"
+    New-Item -ItemType Directory -Force -Path $resultsDirectory | Out-Null
+    Remove-Item -LiteralPath $resultsPath -Force -ErrorAction SilentlyContinue
+    $arguments = @(
+        "-batchmode",
+        "-projectPath", "`"$projectRoot`"",
+        "-runTests",
+        "-testPlatform", "PlayMode",
+        "-testResults", "`"$resultsPath`"",
+        "-logFile", "`"$logPath`""
+    )
+
+    $startedAt = Get-Date
+    $unityProcess = Start-Process -FilePath $unityPath -ArgumentList $arguments -PassThru -WindowStyle Hidden
+    Wait-Process -Id $unityProcess.Id -ErrorAction SilentlyContinue
+    if (-not (Wait-UnityBatchProcesses $startedAt $unityPath 600)) {
+        Write-Issue "Unity PlayMode tests timed out and the batch editor was stopped. See $logPath"
+        return
+    }
+
+    $logText = ""
+    if (Test-Path -LiteralPath $logPath) {
+        $logText = Get-Content -LiteralPath $logPath -Raw
+    }
+
+    if ($logText -match "another Unity instance is running") {
+        Write-Host "Skipping Unity PlayMode tests because this project is open in the editor." -ForegroundColor Yellow
+        return
+    }
+
+    if (-not (Test-Path -LiteralPath $resultsPath)) {
+        Write-Issue "Unity PlayMode tests did not produce results. See $logPath"
+        return
+    }
+
+    [xml]$testResults = Get-Content -LiteralPath $resultsPath -Raw
+    if ([int]$testResults."test-run".failed -gt 0) {
+        Write-Issue "Unity PlayMode tests reported failures. See $logPath and $resultsPath"
+    }
+}
+
 function Test-UnityAssets {
     if ($SkipUnity) {
         Write-Host "Skipping Unity asset validation by request." -ForegroundColor Yellow
@@ -210,6 +300,47 @@ function Test-UnityAssets {
     }
 }
 
+function Test-ProjectStateParity {
+    if ($SkipUnity) {
+        Write-Host "Skipping Unity project-state parity validation by request." -ForegroundColor Yellow
+        return
+    }
+
+    if (Test-Path -LiteralPath "Temp\UnityLockfile") {
+        Write-Host "Skipping Unity project-state parity validation because this project is open in the editor." -ForegroundColor Yellow
+        return
+    }
+
+    $unityPath = Get-UnityEditorPath
+    if ($null -eq $unityPath) {
+        return
+    }
+
+    Write-Host "Validating project-state parity..."
+    $logPath = Join-Path $projectRoot "Logs\ProjectStateParityValidation.log"
+    $arguments = @(
+        "-batchmode",
+        "-quit",
+        "-projectPath", "`"$projectRoot`"",
+        "-executeMethod", "ProjectStateParityValidator.ValidateFromCommandLine",
+        "-logFile", "`"$logPath`""
+    )
+    $unityProcess = Start-Process -FilePath $unityPath -ArgumentList $arguments -Wait -PassThru -WindowStyle Hidden
+    $logText = ""
+    if (Test-Path -LiteralPath $logPath) {
+        $logText = Get-Content -LiteralPath $logPath -Raw
+    }
+
+    if ($logText -match "another Unity instance is running") {
+        Write-Host "Skipping Unity project-state parity validation because this project is open in the editor." -ForegroundColor Yellow
+        return
+    }
+
+    if ($unityProcess.ExitCode -ne 0) {
+        Write-Issue "Unity project-state parity validation failed. See $logPath"
+    }
+}
+
 Push-Location $projectRoot
 try {
     Test-MetaFiles
@@ -217,7 +348,9 @@ try {
     Test-GitLfs
     Test-CSharpCompilation
     Test-UnityEditModeTests
+    Test-UnityPlayModeTests
     Test-UnityAssets
+    Test-ProjectStateParity
 
     if ($issueCount -gt 0) {
         Write-Host "Project validation found $issueCount issue(s)." -ForegroundColor Red
