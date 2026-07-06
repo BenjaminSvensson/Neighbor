@@ -238,6 +238,7 @@ namespace Neighbor.Main.Features.Player
 
             Door.ResetAllToStartingState();
             GlassShatter.ResetAllToStartingState();
+            Pickupable.ResetMissingPickupsToHome();
             AdaptiveSecurityPlan securityPlan = AdaptiveSecurityDirector.CompleteRun(
                 reinforcementBudgetPerDeath,
                 reinforcementLocationsPerDeath,

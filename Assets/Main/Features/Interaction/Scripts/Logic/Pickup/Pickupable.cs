@@ -157,6 +157,24 @@ namespace Neighbor.Main.Features.Interaction
             ActivePickups.Clear();
         }
 
+        public static int ResetMissingPickupsToHome(bool sleepAfterPlacing = true)
+        {
+            int restoredCount = 0;
+            for (int i = 0; i < ActivePickups.Count; i++)
+            {
+                Pickupable pickup = ActivePickups[i];
+                if (pickup == null || !pickup.NeedsHomeRestoration)
+                {
+                    continue;
+                }
+
+                pickup.PlaceAtHome(sleepAfterPlacing);
+                restoredCount++;
+            }
+
+            return restoredCount;
+        }
+
         private void Update()
         {
             RefreshHomeDisplacementAttribution();
@@ -458,6 +476,7 @@ namespace Neighbor.Main.Features.Interaction
             Place(homePosition, homeRotation, sleepAfterPlacing);
             transform.SetParent(homeParent, true);
             SetBodyPose(homePosition, homeRotation);
+            ClearHomeDisplacementAttribution();
         }
 
         public void MarkNeighborHomeDisplacement(GameObject neighborInstigator)
