@@ -1,3 +1,4 @@
+using System.IO;
 using System.Linq;
 using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Player;
@@ -5,6 +6,7 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
@@ -220,6 +222,12 @@ namespace Neighbor.Main.Tests
             Assert.That(
                 AssetDatabase.LoadAssetAtPath<MonoScript>("Assets/Main/Features/Player/Scripts/Logic/UI/PlayerPauseMenu.cs"),
                 Is.Not.Null);
+            Assert.That(
+                AssetDatabase.LoadAssetAtPath<MonoScript>("Assets/Main/Features/Player/Scripts/Logic/Movement/PlayerInputBindings.cs"),
+                Is.Not.Null);
+            Assert.That(
+                AssetDatabase.LoadAssetAtPath<MonoScript>("Assets/Main/Features/Player/Scripts/Logic/UI/PlayerPerformanceSettings.cs"),
+                Is.Not.Null);
 
             SerializedObject canvasSettings = new(playerCanvas);
             SerializedProperty receivesEventsProperty = canvasSettings.FindProperty("m_ReceivesEvents");
@@ -227,6 +235,55 @@ namespace Neighbor.Main.Tests
             Assert.That(receivesEventsProperty.boolValue, Is.False);
             Assert.That(playerCanvas.sortingOrder, Is.GreaterThanOrEqualTo(80));
             Assert.That(canvasScaler.referenceResolution, Is.EqualTo(new Vector2(1920f, 1080f)));
+        }
+
+        [Test]
+        public void PlayerInputBindings_ArePersistentAndDuplicateSafe()
+        {
+            try
+            {
+                PlayerInputBindings.ResetToDefaults();
+
+                Assert.That(PlayerInputBindings.GetBoundKey(PlayerInputBindingAction.Forward), Is.EqualTo(Key.W));
+                Assert.That(PlayerInputBindings.GetBoundKey(PlayerInputBindingAction.Backward), Is.EqualTo(Key.S));
+                Assert.That(PlayerInputBindings.TrySetBoundKey(PlayerInputBindingAction.Forward, Key.UpArrow), Is.True);
+                Assert.That(PlayerInputBindings.GetBoundKey(PlayerInputBindingAction.Forward), Is.EqualTo(Key.UpArrow));
+
+                Assert.That(PlayerInputBindings.TrySetBoundKey(PlayerInputBindingAction.Backward, Key.UpArrow), Is.True);
+                Assert.That(PlayerInputBindings.GetBoundKey(PlayerInputBindingAction.Backward), Is.EqualTo(Key.UpArrow));
+                Assert.That(PlayerInputBindings.GetBoundKey(PlayerInputBindingAction.Forward), Is.EqualTo(Key.S));
+                Assert.That(PlayerInputBindings.TrySetBoundKey(PlayerInputBindingAction.Forward, Key.Escape), Is.False);
+            }
+            finally
+            {
+                PlayerInputBindings.ResetToDefaults();
+            }
+        }
+
+        [Test]
+        public void PlayerPerformanceProfiles_CycleThroughExpectedProfiles()
+        {
+            Assert.That(
+                PlayerPerformanceSettings.GetNextProfile(PlayerPerformanceProfile.Performance),
+                Is.EqualTo(PlayerPerformanceProfile.Balanced));
+            Assert.That(
+                PlayerPerformanceSettings.GetNextProfile(PlayerPerformanceProfile.Balanced),
+                Is.EqualTo(PlayerPerformanceProfile.Quality));
+            Assert.That(
+                PlayerPerformanceSettings.GetPreviousProfile(PlayerPerformanceProfile.Performance),
+                Is.EqualTo(PlayerPerformanceProfile.Quality));
+        }
+
+        [Test]
+        public void ProjectQualitySettings_UsePrototypePerformanceBudgets()
+        {
+            string qualitySettings = File.ReadAllText("ProjectSettings/QualitySettings.asset");
+
+            Assert.That(qualitySettings, Does.Not.Contain("terrainTreeDistance: 5000"));
+            Assert.That(qualitySettings, Does.Contain("terrainTreeDistance: 260"));
+            Assert.That(qualitySettings, Does.Contain("terrainTreeDistance: 420"));
+            Assert.That(qualitySettings, Does.Contain("terrainMaxTrees: 18"));
+            Assert.That(qualitySettings, Does.Contain("terrainMaxTrees: 32"));
         }
 
         [Test]

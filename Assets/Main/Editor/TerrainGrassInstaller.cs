@@ -69,8 +69,14 @@ internal static class TerrainGrassInstaller
 
         int detailIndex = EnsureGrassDetailPrototype(terrainData, grassTexture, out _);
         SeedGrassDetailLayerIfEmpty(terrainData, detailIndex);
-        terrain.detailObjectDistance = Mathf.Max(terrain.detailObjectDistance, 90f);
-        terrain.detailObjectDensity = Mathf.Max(terrain.detailObjectDensity, 0.8f);
+        terrain.detailObjectDistance = Mathf.Clamp(
+            terrain.detailObjectDistance <= 0f ? 70f : terrain.detailObjectDistance,
+            45f,
+            90f);
+        terrain.detailObjectDensity = Mathf.Clamp(
+            terrain.detailObjectDensity <= 0f ? 0.85f : terrain.detailObjectDensity,
+            0.55f,
+            1f);
 
         EditorUtility.SetDirty(terrainData);
         EditorUtility.SetDirty(terrain);
@@ -109,10 +115,22 @@ internal static class TerrainGrassInstaller
 
         bool changed = EnsureBasicTreePrototype(terrainData, basicTreePrefab);
         terrain.drawTreesAndFoliage = true;
-        terrain.treeDistance = Mathf.Max(terrain.treeDistance, 350f);
-        terrain.treeBillboardDistance = Mathf.Max(terrain.treeBillboardDistance, 80f);
-        terrain.treeCrossFadeLength = Mathf.Max(terrain.treeCrossFadeLength, 15f);
-        terrain.treeMaximumFullLODCount = Mathf.Max(terrain.treeMaximumFullLODCount, 80);
+        terrain.treeDistance = Mathf.Clamp(
+            terrain.treeDistance <= 0f ? 360f : terrain.treeDistance,
+            220f,
+            550f);
+        terrain.treeBillboardDistance = Mathf.Clamp(
+            terrain.treeBillboardDistance <= 0f ? 45f : terrain.treeBillboardDistance,
+            32f,
+            70f);
+        terrain.treeCrossFadeLength = Mathf.Clamp(
+            terrain.treeCrossFadeLength <= 0f ? 5f : terrain.treeCrossFadeLength,
+            4f,
+            8f);
+        terrain.treeMaximumFullLODCount = Mathf.Clamp(
+            terrain.treeMaximumFullLODCount <= 0 ? 32 : terrain.treeMaximumFullLODCount,
+            16,
+            60);
 
         if (changed)
         {

@@ -8,6 +8,10 @@ using UnityEngine.SceneManagement;
 internal static class ProjectHealthValidator
 {
     private const string MenuPath = "Tools/Neighbor/Validate Project";
+    private const float MaximumTerrainTreeDistance = 800f;
+    private const float MaximumTerrainBillboardDistance = 120f;
+    private const int MaximumTerrainFullLodTrees = 80;
+    private const float MaximumTerrainDetailDistance = 120f;
 
     [MenuItem(MenuPath)]
     private static void ValidateFromMenu()
@@ -115,6 +119,55 @@ internal static class ProjectHealthValidator
         for (int i = 0; i < lodGroups.Length; i++)
         {
             issueCount += ReportLodIssues(lodGroups[i], assetPath);
+        }
+
+        Terrain[] terrains = root.GetComponentsInChildren<Terrain>(true);
+        for (int i = 0; i < terrains.Length; i++)
+        {
+            issueCount += ReportTerrainPerformanceIssues(terrains[i], assetPath);
+        }
+
+        return issueCount;
+    }
+
+    private static int ReportTerrainPerformanceIssues(Terrain terrain, string assetPath)
+    {
+        if (terrain == null)
+        {
+            return 0;
+        }
+
+        int issueCount = 0;
+        if (terrain.treeDistance > MaximumTerrainTreeDistance)
+        {
+            Debug.LogError(
+                $"Terrain tree distance exceeds prototype budget ({terrain.treeDistance:0.#} > {MaximumTerrainTreeDistance:0.#}): '{GetHierarchyPath(terrain.transform)}' in '{assetPath}'.",
+                terrain);
+            issueCount++;
+        }
+
+        if (terrain.treeBillboardDistance > MaximumTerrainBillboardDistance)
+        {
+            Debug.LogError(
+                $"Terrain tree billboard distance exceeds prototype budget ({terrain.treeBillboardDistance:0.#} > {MaximumTerrainBillboardDistance:0.#}): '{GetHierarchyPath(terrain.transform)}' in '{assetPath}'.",
+                terrain);
+            issueCount++;
+        }
+
+        if (terrain.treeMaximumFullLODCount > MaximumTerrainFullLodTrees)
+        {
+            Debug.LogError(
+                $"Terrain full-LOD tree count exceeds prototype budget ({terrain.treeMaximumFullLODCount} > {MaximumTerrainFullLodTrees}): '{GetHierarchyPath(terrain.transform)}' in '{assetPath}'.",
+                terrain);
+            issueCount++;
+        }
+
+        if (terrain.detailObjectDistance > MaximumTerrainDetailDistance)
+        {
+            Debug.LogError(
+                $"Terrain detail distance exceeds prototype budget ({terrain.detailObjectDistance:0.#} > {MaximumTerrainDetailDistance:0.#}): '{GetHierarchyPath(terrain.transform)}' in '{assetPath}'.",
+                terrain);
+            issueCount++;
         }
 
         return issueCount;

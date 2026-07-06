@@ -1233,7 +1233,7 @@ namespace Neighbor.Main.Features.Interaction
         private bool InteractWasPressedThisFrame(Keyboard keyboard)
         {
             bool actionPressed = interactAction != null && interactAction.WasPressedThisFrame();
-            bool fallbackPressed = keyboard != null && keyboard.eKey.wasPressedThisFrame;
+            bool fallbackPressed = PlayerInputBindings.WasPressedThisFrame(PlayerInputBindingAction.Interact);
 
             return actionPressed || fallbackPressed;
         }
@@ -1241,7 +1241,7 @@ namespace Neighbor.Main.Features.Interaction
         private bool InteractIsPressed(Keyboard keyboard)
         {
             bool actionHeld = interactAction != null && interactAction.IsPressed();
-            bool fallbackHeld = keyboard != null && keyboard.eKey.isPressed;
+            bool fallbackHeld = PlayerInputBindings.IsPressed(PlayerInputBindingAction.Interact);
 
             return actionHeld || fallbackHeld;
         }
