@@ -21,6 +21,10 @@ namespace Neighbor.Main.Features.Audio
 
         private readonly List<ProfilePlayback> playbacks = new List<ProfilePlayback>();
         private AmbienceProfile targetProfile;
+        private AudioLowPassFilter listenerLowPassFilter;
+        private AudioReverbFilter listenerReverbFilter;
+        private AmbienceZoneLocation lastReportedZoneLocation = (AmbienceZoneLocation)(-1);
+        private AmbienceProfile lastReportedZoneProfile;
         private float nextListenerSearchTime;
         private float nextPlayerSearchTime;
 
@@ -53,6 +57,8 @@ namespace Neighbor.Main.Features.Audio
 
             DesiredAmbienceState desiredState = GetDesiredState();
             CurrentZoneLocation = desiredState.ZoneLocation;
+            ApplyListenerZoneFeel(desiredState.Profile);
+            ReportZoneChange(desiredState);
             if (desiredState.Profile != targetProfile)
             {
                 TransitionTo(desiredState.Profile);
@@ -150,6 +156,126 @@ namespace Neighbor.Main.Features.Audio
             return new DesiredAmbienceState(defaultProfile, AmbienceZoneLocation.Outside);
         }
 
+        private void ApplyListenerZoneFeel(AmbienceProfile profile)
+        {
+            ReleaseStaleListenerFilters();
+
+            if (listener == null || !CanUseAudioFilters(listener))
+            {
+                return;
+            }
+
+            float cutoff = profile != null ? profile.ListenerLowPassCutoff : 22000f;
+            AudioReverbPreset reverbPreset = profile != null ? profile.ListenerReverbPreset : AudioReverbPreset.Off;
+
+            if (cutoff < 21999f || listenerLowPassFilter != null)
+            {
+                if (listenerLowPassFilter == null)
+                {
+                    listenerLowPassFilter = listener.GetComponent<AudioLowPassFilter>();
+                }
+
+                if (listenerLowPassFilter == null)
+                {
+                    listenerLowPassFilter = listener.gameObject.AddComponent<AudioLowPassFilter>();
+                }
+
+                listenerLowPassFilter.enabled = cutoff < 21999f;
+                listenerLowPassFilter.cutoffFrequency = Mathf.MoveTowards(
+                    listenerLowPassFilter.cutoffFrequency,
+                    cutoff,
+                    Time.unscaledDeltaTime * 12000f);
+            }
+
+            if (reverbPreset != AudioReverbPreset.Off || listenerReverbFilter != null)
+            {
+                if (listenerReverbFilter == null)
+                {
+                    listenerReverbFilter = listener.GetComponent<AudioReverbFilter>();
+                }
+
+                if (listenerReverbFilter == null)
+                {
+                    listenerReverbFilter = listener.gameObject.AddComponent<AudioReverbFilter>();
+                }
+
+                listenerReverbFilter.reverbPreset = reverbPreset;
+                listenerReverbFilter.enabled = reverbPreset != AudioReverbPreset.Off;
+            }
+        }
+
+        private void ReleaseStaleListenerFilters()
+        {
+            if (listenerLowPassFilter != null && listenerLowPassFilter.transform != listener)
+            {
+                listenerLowPassFilter.enabled = false;
+                listenerLowPassFilter = null;
+            }
+
+            if (listenerReverbFilter != null && listenerReverbFilter.transform != listener)
+            {
+                listenerReverbFilter.enabled = false;
+                listenerReverbFilter = null;
+            }
+        }
+
+        private static bool CanUseAudioFilters(Transform candidate)
+        {
+            return candidate != null
+                && (candidate.GetComponent<AudioListener>() != null || candidate.GetComponent<AudioSource>() != null);
+        }
+
+        private void ReportZoneChange(DesiredAmbienceState desiredState)
+        {
+            if (desiredState.ZoneLocation == lastReportedZoneLocation && desiredState.Profile == lastReportedZoneProfile)
+            {
+                return;
+            }
+
+            lastReportedZoneLocation = desiredState.ZoneLocation;
+            lastReportedZoneProfile = desiredState.Profile;
+
+            string warningText = desiredState.Profile != null
+                ? desiredState.Profile.ZoneWarningText
+                : null;
+            float warningIntensity = desiredState.Profile != null
+                ? desiredState.Profile.ZoneWarningIntensity
+                : 0f;
+
+            if (string.IsNullOrWhiteSpace(warningText))
+            {
+                warningText = GetDefaultZoneWarning(desiredState.ZoneLocation);
+                warningIntensity = Mathf.Max(warningIntensity, GetDefaultZoneWarningIntensity(desiredState.ZoneLocation));
+            }
+
+            if (warningIntensity <= 0f || string.IsNullOrWhiteSpace(warningText))
+            {
+                return;
+            }
+
+            PlayerFeedbackEvents.ReportAmbienceZone(warningText, warningIntensity);
+        }
+
+        private static string GetDefaultZoneWarning(AmbienceZoneLocation zoneLocation)
+        {
+            return zoneLocation switch
+            {
+                AmbienceZoneLocation.Basement => "BASEMENT AIR FEELS HEAVY",
+                AmbienceZoneLocation.Garage => "GARAGE ECHOES",
+                _ => null
+            };
+        }
+
+        private static float GetDefaultZoneWarningIntensity(AmbienceZoneLocation zoneLocation)
+        {
+            return zoneLocation switch
+            {
+                AmbienceZoneLocation.Basement => 0.72f,
+                AmbienceZoneLocation.Garage => 0.45f,
+                _ => 0f
+            };
+        }
+
         private void TransitionTo(AmbienceProfile profile)
         {
             targetProfile = profile;
@@ -193,7 +319,7 @@ namespace Neighbor.Main.Features.Audio
 
             if (layers == null)
             {
-                Destroy(root);
+                DestroyPlaybackRoot(root);
                 return null;
             }
 
@@ -236,7 +362,7 @@ namespace Neighbor.Main.Features.Audio
 
             if (playback.Layers.Count == 0)
             {
-                Destroy(root);
+                DestroyPlaybackRoot(root);
                 return null;
             }
 
@@ -262,7 +388,7 @@ namespace Neighbor.Main.Features.Audio
 
                 if (playback.TargetGain <= 0f && playback.Gain <= 0f)
                 {
-                    Destroy(playback.Root);
+                    DestroyPlaybackRoot(playback.Root);
                     playbacks.RemoveAt(i);
                 }
             }
@@ -299,12 +425,29 @@ namespace Neighbor.Main.Features.Audio
             {
                 if (playbacks[i].Root != null)
                 {
-                    Destroy(playbacks[i].Root);
+                    DestroyPlaybackRoot(playbacks[i].Root);
                 }
             }
 
             playbacks.Clear();
             targetProfile = null;
+        }
+
+        private static void DestroyPlaybackRoot(GameObject root)
+        {
+            if (root == null)
+            {
+                return;
+            }
+
+            if (Application.isPlaying)
+            {
+                Object.Destroy(root);
+            }
+            else
+            {
+                Object.DestroyImmediate(root);
+            }
         }
 
         private sealed class ProfilePlayback

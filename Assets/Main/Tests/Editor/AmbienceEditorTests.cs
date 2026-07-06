@@ -132,6 +132,62 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AmbienceManager_BasementZoneAppliesListenerFeelAndWarning()
+        {
+            GameObject managerObject = new("Ambience Manager Test");
+            GameObject listenerObject = new("Listener Test");
+            GameObject areaObject = new("Basement Area Test");
+            AmbienceProfile basementProfile = ScriptableObject.CreateInstance<AmbienceProfile>();
+            PlayerFeedbackEvents.AmbienceZoneFeedback receivedFeedback = default;
+            bool receivedWarning = false;
+            void HandleZoneWarning(PlayerFeedbackEvents.AmbienceZoneFeedback feedback)
+            {
+                receivedFeedback = feedback;
+                receivedWarning = true;
+            }
+
+            try
+            {
+                listenerObject.AddComponent<AudioListener>();
+                GameplaySmokeTestReflection.SetField(basementProfile, "listenerLowPassCutoff", 1800f);
+                GameplaySmokeTestReflection.SetField(basementProfile, "listenerReverbPreset", AudioReverbPreset.Cave);
+                GameplaySmokeTestReflection.SetField(basementProfile, "zoneWarningIntensity", 0.85f);
+                GameplaySmokeTestReflection.SetField(basementProfile, "zoneWarningText", "Basement pressure");
+
+                AmbienceManager manager = managerObject.AddComponent<AmbienceManager>();
+                GameplaySmokeTestReflection.SetField(manager, "listener", listenerObject.transform);
+                GameplaySmokeTestReflection.SetField<PlayerController>(manager, "player", null);
+
+                AmbienceArea area = CreateArea(areaObject, basementProfile, false, Vector3.zero, AmbienceZoneLocation.Basement);
+                GameplaySmokeTestReflection.InvokeIfPresent(area, "OnEnable");
+                listenerObject.transform.position = new Vector3(0f, 1.5f, 0f);
+                Physics.SyncTransforms();
+
+                PlayerFeedbackEvents.AmbienceZoneChanged += HandleZoneWarning;
+                GameplaySmokeTestReflection.Invoke(manager, "Update");
+
+                Assert.That(manager.CurrentZoneLocation, Is.EqualTo(AmbienceZoneLocation.Basement));
+                Assert.That(listenerObject.GetComponent<AudioLowPassFilter>(), Is.Not.Null);
+                Assert.That(listenerObject.GetComponent<AudioLowPassFilter>().enabled, Is.True);
+                Assert.That(listenerObject.GetComponent<AudioReverbFilter>(), Is.Not.Null);
+                Assert.That(listenerObject.GetComponent<AudioReverbFilter>().reverbPreset, Is.EqualTo(AudioReverbPreset.Cave));
+                Assert.That(receivedWarning, Is.True);
+                Assert.That(receivedFeedback.Message, Is.EqualTo("Basement pressure"));
+                Assert.That(receivedFeedback.Intensity, Is.EqualTo(0.85f).Within(0.001f));
+
+                GameplaySmokeTestReflection.InvokeIfPresent(area, "OnDisable");
+            }
+            finally
+            {
+                PlayerFeedbackEvents.AmbienceZoneChanged -= HandleZoneWarning;
+                Object.DestroyImmediate(basementProfile);
+                Object.DestroyImmediate(managerObject);
+                Object.DestroyImmediate(listenerObject);
+                Object.DestroyImmediate(areaObject);
+            }
+        }
+
+        [Test]
         public void AmbienceLayer_ZeroPitchFallsBackToNormalPlaybackSpeed()
         {
             AmbienceLayer layer = new();

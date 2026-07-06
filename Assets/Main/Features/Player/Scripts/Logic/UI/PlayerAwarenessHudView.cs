@@ -35,6 +35,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.NoiseEmitted += HandleNoise;
             PlayerFeedbackEvents.CameraDetectedPlayer += HandleCameraDetection;
             PlayerFeedbackEvents.SecurityEscalated += HandleSecurityEscalation;
+            PlayerFeedbackEvents.AmbienceZoneChanged += HandleAmbienceZoneChanged;
         }
 
         private void OnDisable()
@@ -42,6 +43,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.NoiseEmitted -= HandleNoise;
             PlayerFeedbackEvents.CameraDetectedPlayer -= HandleCameraDetection;
             PlayerFeedbackEvents.SecurityEscalated -= HandleSecurityEscalation;
+            PlayerFeedbackEvents.AmbienceZoneChanged -= HandleAmbienceZoneChanged;
         }
 
         private void Update()
@@ -220,6 +222,16 @@ namespace Neighbor.Main.Features.Player
                 ? new Color(1f, 0.58f, 0.18f, 1f)
                 : new Color(0.8f, 0.82f, 0.86f, 1f);
             messageUntil = Time.unscaledTime + MessageDuration;
+        }
+
+        private void HandleAmbienceZoneChanged(PlayerFeedbackEvents.AmbienceZoneFeedback feedback)
+        {
+            warningText.text = feedback.Message.ToUpperInvariant();
+            warningText.color = Color.Lerp(
+                new Color(0.72f, 0.78f, 0.9f, 0.92f),
+                new Color(1f, 0.55f, 0.18f, 1f),
+                feedback.Intensity);
+            messageUntil = Time.unscaledTime + Mathf.Lerp(2.2f, MessageDuration, feedback.Intensity);
         }
 
         private void BuildHud()

@@ -35,9 +35,22 @@ namespace Neighbor.Main.Features.Player
             }
         }
 
+        public readonly struct AmbienceZoneFeedback
+        {
+            public string Message { get; }
+            public float Intensity { get; }
+
+            public AmbienceZoneFeedback(string message, float intensity)
+            {
+                Message = message;
+                Intensity = Mathf.Clamp01(intensity);
+            }
+        }
+
         public static event Action<NoiseFeedback> NoiseEmitted;
         public static event Action CameraDetectedPlayer;
         public static event Action<SecurityEscalationFeedback> SecurityEscalated;
+        public static event Action<AmbienceZoneFeedback> AmbienceZoneChanged;
 
         public static void ReportNoise(Vector3 origin, float loudness, float radius)
         {
@@ -54,12 +67,23 @@ namespace Neighbor.Main.Features.Player
             SecurityEscalated?.Invoke(new SecurityEscalationFeedback(level, budget, doorCount, locationCount));
         }
 
+        public static void ReportAmbienceZone(string message, float intensity)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return;
+            }
+
+            AmbienceZoneChanged?.Invoke(new AmbienceZoneFeedback(message, intensity));
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Reset()
         {
             NoiseEmitted = null;
             CameraDetectedPlayer = null;
             SecurityEscalated = null;
+            AmbienceZoneChanged = null;
         }
     }
 }
