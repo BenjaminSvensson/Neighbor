@@ -14,10 +14,10 @@ namespace Neighbor.Main.Features.Player
             Vector2 move = Vector2.zero;
             if (keyboard != null)
             {
-                move.x += IsPressed(keyboard.dKey) || IsPressed(keyboard.rightArrowKey) ? 1f : 0f;
-                move.x -= IsPressed(keyboard.aKey) || IsPressed(keyboard.leftArrowKey) ? 1f : 0f;
-                move.y += IsPressed(keyboard.wKey) || IsPressed(keyboard.upArrowKey) ? 1f : 0f;
-                move.y -= IsPressed(keyboard.sKey) || IsPressed(keyboard.downArrowKey) ? 1f : 0f;
+                move.x += PlayerInputBindings.IsPressed(PlayerInputBindingAction.Right) || IsPressed(keyboard.rightArrowKey) ? 1f : 0f;
+                move.x -= PlayerInputBindings.IsPressed(PlayerInputBindingAction.Left) || IsPressed(keyboard.leftArrowKey) ? 1f : 0f;
+                move.y += PlayerInputBindings.IsPressed(PlayerInputBindingAction.Forward) || IsPressed(keyboard.upArrowKey) ? 1f : 0f;
+                move.y -= PlayerInputBindings.IsPressed(PlayerInputBindingAction.Backward) || IsPressed(keyboard.downArrowKey) ? 1f : 0f;
             }
 
             move = Vector2.ClampMagnitude(move, 1f);
@@ -33,12 +33,12 @@ namespace Neighbor.Main.Features.Player
             {
                 Move = move,
                 Look = look,
-                JumpPressed = keyboard != null && keyboard.spaceKey.wasPressedThisFrame,
-                RunHeld = keyboard != null && IsPressed(keyboard.leftShiftKey),
-                CrouchHeld = keyboard != null && IsPressed(keyboard.leftCtrlKey),
-                CrouchPressed = keyboard != null && keyboard.leftCtrlKey.wasPressedThisFrame,
-                LeanLeftHeld = keyboard != null && IsPressed(keyboard.qKey),
-                LeanRightHeld = keyboard != null && IsPressed(keyboard.rKey),
+                JumpPressed = PlayerInputBindings.WasPressedThisFrame(PlayerInputBindingAction.Jump),
+                RunHeld = PlayerInputBindings.IsPressed(PlayerInputBindingAction.Run),
+                CrouchHeld = PlayerInputBindings.IsPressed(PlayerInputBindingAction.Crouch),
+                CrouchPressed = PlayerInputBindings.WasPressedThisFrame(PlayerInputBindingAction.Crouch),
+                LeanLeftHeld = PlayerInputBindings.IsPressed(PlayerInputBindingAction.LeanLeft),
+                LeanRightHeld = PlayerInputBindings.IsPressed(PlayerInputBindingAction.LeanRight),
                 ZoomHeld = mouse != null && IsPressed(mouse.middleButton),
                 ZoomDrag = zoomDrag,
                 ZoomScroll = mouse != null ? mouse.scroll.ReadValue().y : 0f,

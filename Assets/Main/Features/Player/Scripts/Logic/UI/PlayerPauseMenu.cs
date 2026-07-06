@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Neighbor.Main.Features.Interaction;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -22,12 +23,16 @@ namespace Neighbor.Main.Features.Player
         private PlayerController playerController;
         private PlayerCameraController cameraController;
         private CanvasGroup canvasGroup;
+        private readonly Dictionary<PlayerInputBindingAction, Text> bindingValueTexts = new();
         private Text sensitivityValueText;
         private Text volumeValueText;
         private Text fieldOfViewValueText;
+        private Text performanceProfileValueText;
         private CursorLockMode previousCursorLockMode;
         private bool previousCursorVisible;
         private float previousTimeScale = 1f;
+        private PlayerPerformanceProfile currentPerformanceProfile = PlayerPerformanceProfile.Balanced;
+        private PlayerInputBindingAction? pendingRebindAction;
         private bool isOpen;
 
         private void Awake()
@@ -40,6 +45,7 @@ namespace Neighbor.Main.Features.Player
 
         private void OnDisable()
         {
+            CancelPendingRebind();
             if (isOpen)
             {
                 Close();
@@ -50,6 +56,12 @@ namespace Neighbor.Main.Features.Player
 
         private void Update()
         {
+            if (pendingRebindAction.HasValue)
+            {
+                UpdatePendingRebind();
+                return;
+            }
+
             Keyboard keyboard = Keyboard.current;
             if (keyboard == null || !keyboard.escapeKey.wasPressedThisFrame)
             {
@@ -95,6 +107,7 @@ namespace Neighbor.Main.Features.Player
             }
 
             isOpen = false;
+            CancelPendingRebind();
             Time.timeScale = Mathf.Approximately(previousTimeScale, 0f) ? 1f : previousTimeScale;
             InteractionOverlayState.SetExternalGameplayInputBlocked(this, false);
             Cursor.lockState = previousCursorLockMode;
@@ -155,12 +168,18 @@ namespace Neighbor.Main.Features.Player
             ApplySensitivity(sensitivity);
             ApplyVolume(volume);
             ApplyFieldOfView(fieldOfView);
+
+            currentPerformanceProfile = PlayerPerformanceSettings.LoadProfile();
+            PlayerPerformanceSettings.ApplyProfile(currentPerformanceProfile);
+            RefreshPerformanceProfileText();
+            RefreshBindingButtons();
         }
 
         private void ApplySensitivity(float sensitivity)
         {
             sensitivity = Mathf.Clamp(sensitivity, 0.02f, 0.2f);
             PlayerPrefs.SetFloat(SensitivityPreferenceKey, sensitivity);
+            PlayerPrefs.Save();
             playerController?.SetRuntimeMouseSensitivity(sensitivity);
             cameraController?.SetRuntimeMouseSensitivity(sensitivity);
             if (sensitivityValueText != null)
@@ -173,6 +192,7 @@ namespace Neighbor.Main.Features.Player
         {
             volume = Mathf.Clamp01(volume);
             PlayerPrefs.SetFloat(VolumePreferenceKey, volume);
+            PlayerPrefs.Save();
             AudioListener.volume = volume;
             if (volumeValueText != null)
             {
@@ -184,6 +204,7 @@ namespace Neighbor.Main.Features.Player
         {
             fieldOfView = Mathf.Clamp(fieldOfView, 45f, 100f);
             PlayerPrefs.SetFloat(FieldOfViewPreferenceKey, fieldOfView);
+            PlayerPrefs.Save();
             cameraController?.SetRuntimeFieldOfView(fieldOfView);
             if (fieldOfViewValueText != null)
             {
@@ -229,19 +250,72 @@ namespace Neighbor.Main.Features.Player
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
             panelRect.pivot = new Vector2(0.5f, 0.5f);
             panelRect.anchoredPosition = Vector2.zero;
-            panelRect.sizeDelta = new Vector2(520f, 520f);
+            panelRect.sizeDelta = new Vector2(640f, 780f);
 
             Text title = CreateText("Title", panel.transform, font, 30, FontStyle.Bold, TextAnchor.MiddleCenter);
             SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -54f), new Vector2(440f, 44f));
             title.text = "PAUSED";
 
-            CreateSliderRow(panel.transform, font, "Sensitivity", new Vector2(0f, -130f), 0.02f, 0.2f, defaultSensitivity, ApplySensitivity, out sensitivityValueText);
-            CreateSliderRow(panel.transform, font, "Volume", new Vector2(0f, -205f), 0f, 1f, defaultVolume, ApplyVolume, out volumeValueText);
-            CreateSliderRow(panel.transform, font, "FOV", new Vector2(0f, -280f), 45f, 100f, defaultFieldOfView, ApplyFieldOfView, out fieldOfViewValueText);
+            CreateSliderRow(panel.transform, font, "Sensitivity", new Vector2(0f, 235f), 0.02f, 0.2f, defaultSensitivity, ApplySensitivity, out sensitivityValueText);
+            CreateSliderRow(panel.transform, font, "Volume", new Vector2(0f, 170f), 0f, 1f, defaultVolume, ApplyVolume, out volumeValueText);
+            CreateSliderRow(panel.transform, font, "FOV", new Vector2(0f, 105f), 45f, 100f, defaultFieldOfView, ApplyFieldOfView, out fieldOfViewValueText);
 
-            CreateButton(panel.transform, font, "Resume", new Vector2(0f, -365f), Close);
-            CreateButton(panel.transform, font, "Restart", new Vector2(-122f, -432f), RestartScene);
-            CreateButton(panel.transform, font, "Quit", new Vector2(122f, -432f), QuitGame);
+            CreatePerformanceRow(panel.transform, font, new Vector2(0f, 35f));
+
+            Text controlsTitle = CreateText("Controls Title", panel.transform, font, 15, FontStyle.Bold, TextAnchor.MiddleLeft);
+            controlsTitle.text = "CONTROLS";
+            controlsTitle.color = new Color(1f, 1f, 1f, 0.76f);
+            SetRect(controlsTitle.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-200f, -35f), new Vector2(180f, 24f));
+
+            CreateButton(panel.transform, font, "Reset Controls", new Vector2(210f, -35f), ResetControlBindings, new Vector2(150f, 32f));
+
+            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.Forward, new Vector2(-160f, -82f));
+            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.Backward, new Vector2(160f, -82f));
+            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.Left, new Vector2(-160f, -124f));
+            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.Right, new Vector2(160f, -124f));
+            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.Jump, new Vector2(-160f, -166f));
+            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.Run, new Vector2(160f, -166f));
+            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.Crouch, new Vector2(-160f, -208f));
+            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.Interact, new Vector2(160f, -208f));
+            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.LeanLeft, new Vector2(-160f, -250f));
+            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.LeanRight, new Vector2(160f, -250f));
+
+            CreateButton(panel.transform, font, "Resume", new Vector2(0f, -310f), Close, new Vector2(280f, 44f));
+            CreateButton(panel.transform, font, "Restart", new Vector2(-122f, -360f), RestartScene, new Vector2(210f, 42f));
+            CreateButton(panel.transform, font, "Quit", new Vector2(122f, -360f), QuitGame, new Vector2(210f, 42f));
+        }
+
+        private void CreatePerformanceRow(Transform parent, Font font, Vector2 position)
+        {
+            Text labelText = CreateText("Performance Label", parent, font, 15, FontStyle.Bold, TextAnchor.MiddleLeft);
+            labelText.text = "PERFORMANCE";
+            labelText.color = new Color(1f, 1f, 1f, 0.76f);
+            SetRect(labelText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(-185f, 0f), new Vector2(170f, 28f));
+
+            CreateButton(parent, font, "<", position + new Vector2(38f, 0f), () => CyclePerformanceProfile(-1), new Vector2(42f, 34f));
+
+            performanceProfileValueText = CreateText("Performance Value", parent, font, 15, FontStyle.Bold, TextAnchor.MiddleCenter);
+            performanceProfileValueText.color = new Color(1f, 0.86f, 0.42f, 0.95f);
+            SetRect(performanceProfileValueText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(124f, 0f), new Vector2(120f, 28f));
+
+            CreateButton(parent, font, ">", position + new Vector2(210f, 0f), () => CyclePerformanceProfile(1), new Vector2(42f, 34f));
+        }
+
+        private void CreateBindingRow(Transform parent, Font font, PlayerInputBindingAction action, Vector2 position)
+        {
+            Text labelText = CreateText($"{action} Binding Label", parent, font, 13, FontStyle.Bold, TextAnchor.MiddleLeft);
+            labelText.text = PlayerInputBindings.GetActionLabel(action).ToUpperInvariant();
+            labelText.color = new Color(1f, 1f, 1f, 0.72f);
+            SetRect(labelText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(-55f, 0f), new Vector2(118f, 28f));
+
+            Button button = CreateButton(
+                parent,
+                font,
+                PlayerInputBindings.GetKeyLabel(action),
+                position + new Vector2(68f, 0f),
+                () => BeginRebind(action),
+                new Vector2(112f, 32f));
+            bindingValueTexts[action] = button.GetComponentInChildren<Text>(true);
         }
 
         private void CreateSliderRow(
@@ -275,6 +349,12 @@ namespace Neighbor.Main.Features.Player
 
         private Button CreateButton(Transform parent, Font font, string label, Vector2 position, UnityEngine.Events.UnityAction clicked)
         {
+            Vector2 size = label == "Resume" ? new Vector2(260f, 48f) : new Vector2(210f, 48f);
+            return CreateButton(parent, font, label, position, clicked, size);
+        }
+
+        private Button CreateButton(Transform parent, Font font, string label, Vector2 position, UnityEngine.Events.UnityAction clicked, Vector2 size)
+        {
             Image image = CreateImage($"{label} Button", parent, new Color(0.16f, 0.18f, 0.19f, 0.96f));
             Button button = image.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
@@ -286,11 +366,93 @@ namespace Neighbor.Main.Features.Player
             button.colors = colors;
             button.onClick.AddListener(clicked);
 
-            SetRect(image.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position, new Vector2(label == "Resume" ? 260f : 210f, 48f));
+            SetRect(image.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position, size);
             Text text = CreateText($"{label} Text", image.transform, font, 16, FontStyle.Bold, TextAnchor.MiddleCenter);
             text.text = label.ToUpperInvariant();
             Stretch(text.rectTransform);
             return button;
+        }
+
+        private void CyclePerformanceProfile(int direction)
+        {
+            currentPerformanceProfile = direction >= 0
+                ? PlayerPerformanceSettings.GetNextProfile(currentPerformanceProfile)
+                : PlayerPerformanceSettings.GetPreviousProfile(currentPerformanceProfile);
+            PlayerPerformanceSettings.SetProfile(currentPerformanceProfile);
+            RefreshPerformanceProfileText();
+        }
+
+        private void BeginRebind(PlayerInputBindingAction action)
+        {
+            pendingRebindAction = action;
+            RefreshBindingButtons();
+        }
+
+        private void UpdatePendingRebind()
+        {
+            Keyboard keyboard = Keyboard.current;
+            if (keyboard == null)
+            {
+                return;
+            }
+
+            if (keyboard.escapeKey.wasPressedThisFrame)
+            {
+                CancelPendingRebind();
+                return;
+            }
+
+            if (!PlayerInputBindings.TryGetPressedKeyThisFrame(out Key key))
+            {
+                return;
+            }
+
+            if (pendingRebindAction.HasValue && PlayerInputBindings.TrySetBoundKey(pendingRebindAction.Value, key))
+            {
+                pendingRebindAction = null;
+                RefreshBindingButtons();
+            }
+        }
+
+        private void ResetControlBindings()
+        {
+            pendingRebindAction = null;
+            PlayerInputBindings.ResetToDefaults();
+            RefreshBindingButtons();
+        }
+
+        private void CancelPendingRebind()
+        {
+            if (!pendingRebindAction.HasValue)
+            {
+                return;
+            }
+
+            pendingRebindAction = null;
+            RefreshBindingButtons();
+        }
+
+        private void RefreshBindingButtons()
+        {
+            foreach (KeyValuePair<PlayerInputBindingAction, Text> bindingValueText in bindingValueTexts)
+            {
+                if (bindingValueText.Value == null)
+                {
+                    continue;
+                }
+
+                bindingValueText.Value.text = pendingRebindAction.HasValue && pendingRebindAction.Value == bindingValueText.Key
+                    ? "PRESS KEY"
+                    : PlayerInputBindings.GetKeyLabel(bindingValueText.Key);
+            }
+        }
+
+        private void RefreshPerformanceProfileText()
+        {
+            if (performanceProfileValueText != null)
+            {
+                performanceProfileValueText.text = PlayerPerformanceSettings.GetDisplayName(currentPerformanceProfile).ToUpperInvariant();
+            }
         }
 
         private Slider CreateSlider(string objectName, Transform parent)
