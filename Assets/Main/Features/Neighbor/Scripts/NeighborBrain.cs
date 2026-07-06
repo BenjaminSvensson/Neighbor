@@ -1342,8 +1342,13 @@ namespace Neighbor.Main.Features.Neighbor
                 case BehaviorState.Investigate:
                     RememberFalseAlarm();
                     ClearInvestigationState();
-                    ClearPreInvestigationRoutine();
                     suspicion = Mathf.Max(0f, suspicion - 0.08f);
+                    if (TryResumePreInvestigationRoutine())
+                    {
+                        return;
+                    }
+
+                    ClearPreInvestigationRoutine();
                     ChooseNextRoutineGoal();
                     return;
                 case BehaviorState.Task:
