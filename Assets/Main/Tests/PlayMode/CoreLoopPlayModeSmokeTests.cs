@@ -112,6 +112,7 @@ namespace Neighbor.Main.Tests
             PlayerController player = CreatePlayer("Player", spawnPosition, out _);
             PlayerDeathController deathController = player.GetComponent<PlayerDeathController>();
             Assert.That(deathController, Is.Not.Null);
+            deathController.ClearCheckpoint(true);
 
             SetField(deathController, "fallDuration", 0.01f);
             SetField(deathController, "impactDuration", 0.01f);
@@ -127,6 +128,40 @@ namespace Neighbor.Main.Tests
             Assert.That(Vector3.Distance(player.transform.position, spawnPosition), Is.LessThan(0.05f));
             Assert.That(player.enabled, Is.True);
             Assert.That(player.IsBeartrapLocked, Is.False);
+        }
+
+        [Test]
+        public void PlayerDeath_RespawnsAtActivatedCheckpoint()
+        {
+            Vector3 spawnPosition = new(2f, 0f, 0f);
+            PlayerController player = CreatePlayer("Player", spawnPosition, out _);
+            PlayerDeathController deathController = player.GetComponent<PlayerDeathController>();
+            Assert.That(deathController, Is.Not.Null);
+            deathController.ClearCheckpoint(true);
+
+            PlayerRespawnCheckpoint checkpoint = CreateObject("BedCheckpoint").AddComponent<PlayerRespawnCheckpoint>();
+            checkpoint.transform.SetPositionAndRotation(new Vector3(9f, 0f, 3f), Quaternion.Euler(0f, 135f, 0f));
+            SetField(checkpoint, "checkpointId", "Bed");
+            SetField(checkpoint, "persistCheckpoint", false);
+
+            Assert.That(checkpoint.Activate(player), Is.True);
+            Assert.That(deathController.HasCheckpoint, Is.True);
+            Assert.That(deathController.ActiveCheckpointId, Is.EqualTo("Bed"));
+
+            SetField(deathController, "fallDuration", 0.01f);
+            SetField(deathController, "impactDuration", 0.01f);
+            SetField(deathController, "groundHoldDuration", 0.01f);
+            SetField(deathController, "fadeOutDuration", 0.01f);
+
+            player.transform.position = new Vector3(12f, 0f, -4f);
+            RunCoroutine(
+                InvokeResult<IEnumerator>(deathController, "DeathAndReset", Vector3.zero),
+                "Player checkpoint death reset did not finish.");
+
+            Assert.That(deathController.IsDead, Is.False);
+            Assert.That(Vector3.Distance(player.transform.position, checkpoint.RespawnPosition), Is.LessThan(0.05f));
+            Assert.That(Quaternion.Angle(player.transform.rotation, checkpoint.RespawnRotation), Is.LessThan(1f));
+            Assert.That(player.enabled, Is.True);
         }
 
         private PlayerController CreatePlayer(string name, Vector3 position, out PlayerInteractor interactor)

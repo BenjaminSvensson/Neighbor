@@ -37,6 +37,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.SecurityEscalated += HandleSecurityEscalation;
             PlayerFeedbackEvents.AmbienceZoneChanged += HandleAmbienceZoneChanged;
             PlayerFeedbackEvents.DayPhaseChanged += HandleDayPhaseChanged;
+            PlayerFeedbackEvents.CheckpointReached += HandleCheckpointReached;
         }
 
         private void OnDisable()
@@ -46,6 +47,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.SecurityEscalated -= HandleSecurityEscalation;
             PlayerFeedbackEvents.AmbienceZoneChanged -= HandleAmbienceZoneChanged;
             PlayerFeedbackEvents.DayPhaseChanged -= HandleDayPhaseChanged;
+            PlayerFeedbackEvents.CheckpointReached -= HandleCheckpointReached;
         }
 
         private void Update()
@@ -268,6 +270,13 @@ namespace Neighbor.Main.Features.Player
                 new Color(1f, 0.52f, 0.16f, 1f),
                 feedback.Intensity);
             messageUntil = Time.unscaledTime + Mathf.Lerp(2f, MessageDuration, feedback.Intensity);
+        }
+
+        private void HandleCheckpointReached(PlayerFeedbackEvents.CheckpointFeedback feedback)
+        {
+            warningText.text = $"{feedback.Name} SAVED".ToUpperInvariant();
+            warningText.color = new Color(0.58f, 0.9f, 1f, 0.95f);
+            messageUntil = Time.unscaledTime + 2.6f;
         }
 
         private void BuildHud()
