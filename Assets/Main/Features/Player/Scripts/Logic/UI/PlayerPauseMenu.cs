@@ -21,6 +21,9 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float defaultSensitivity = 0.08f;
         [SerializeField, Range(0f, 1f)] private float defaultVolume = 1f;
         [SerializeField, Range(45f, 100f)] private float defaultFieldOfView = 72f;
+        [SerializeField] private bool defaultInvertLookY;
+        [SerializeField] private bool defaultFullscreen = true;
+        [SerializeField] private PlayerPerformanceProfile defaultPerformanceProfile = PlayerPerformanceProfile.Balanced;
 
         private PlayerController playerController;
         private PlayerCameraController cameraController;
@@ -173,8 +176,8 @@ namespace Neighbor.Main.Features.Player
                 cameraController != null ? cameraController.RuntimeFieldOfView : defaultFieldOfView);
             bool savedInvertLookY = PlayerPrefs.GetInt(
                 InvertLookYPreferenceKey,
-                cameraController != null && cameraController.RuntimeInvertLookY ? 1 : 0) != 0;
-            bool savedFullscreen = PlayerPrefs.GetInt(FullscreenPreferenceKey, Screen.fullScreen ? 1 : 0) != 0;
+                defaultInvertLookY || cameraController != null && cameraController.RuntimeInvertLookY ? 1 : 0) != 0;
+            bool savedFullscreen = PlayerPrefs.GetInt(FullscreenPreferenceKey, defaultFullscreen ? 1 : 0) != 0;
 
             ApplySensitivity(sensitivity);
             ApplyVolume(volume);
@@ -182,7 +185,9 @@ namespace Neighbor.Main.Features.Player
             ApplyInvertLookY(savedInvertLookY);
             ApplyFullscreen(savedFullscreen);
 
-            currentPerformanceProfile = PlayerPerformanceSettings.LoadProfile();
+            currentPerformanceProfile = PlayerPrefs.HasKey(PlayerPerformanceSettings.PreferenceKey)
+                ? PlayerPerformanceSettings.LoadProfile()
+                : defaultPerformanceProfile;
             PlayerPerformanceSettings.ApplyProfile(currentPerformanceProfile);
             RefreshPerformanceProfileText();
             RefreshBindingButtons();
@@ -317,6 +322,7 @@ namespace Neighbor.Main.Features.Player
             controlsTitle.color = new Color(1f, 1f, 1f, 0.76f);
             SetRect(controlsTitle.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-220f, -8f), new Vector2(180f, 24f));
 
+            CreateButton(panel.transform, font, "Reset Settings", new Vector2(55f, -8f), ResetUserSettings, new Vector2(150f, 32f));
             CreateButton(panel.transform, font, "Reset Controls", new Vector2(215f, -8f), ResetControlBindings, new Vector2(150f, 32f));
 
             CreateBindingRows(panel.transform, font);
@@ -498,6 +504,44 @@ namespace Neighbor.Main.Features.Player
             pendingRebindAction = null;
             PlayerInputBindings.ResetToDefaults();
             RefreshBindingButtons();
+        }
+
+        private void ResetUserSettings()
+        {
+            CancelPendingRebind();
+            ResetPersistentSettings(
+                defaultSensitivity,
+                defaultVolume,
+                defaultFieldOfView,
+                defaultInvertLookY,
+                defaultFullscreen,
+                defaultPerformanceProfile);
+
+            ApplySensitivity(defaultSensitivity);
+            ApplyVolume(defaultVolume);
+            ApplyFieldOfView(defaultFieldOfView);
+            ApplyInvertLookY(defaultInvertLookY);
+            ApplyFullscreen(defaultFullscreen);
+            currentPerformanceProfile = defaultPerformanceProfile;
+            PlayerPerformanceSettings.ApplyProfile(currentPerformanceProfile);
+            RefreshPerformanceProfileText();
+        }
+
+        private static void ResetPersistentSettings(
+            float sensitivity,
+            float volume,
+            float fieldOfView,
+            bool invertLookY,
+            bool fullscreen,
+            PlayerPerformanceProfile performanceProfile)
+        {
+            PlayerPrefs.SetFloat(SensitivityPreferenceKey, Mathf.Clamp(sensitivity, 0.02f, 0.2f));
+            PlayerPrefs.SetFloat(VolumePreferenceKey, Mathf.Clamp01(volume));
+            PlayerPrefs.SetFloat(FieldOfViewPreferenceKey, Mathf.Clamp(fieldOfView, 45f, 100f));
+            PlayerPrefs.SetInt(InvertLookYPreferenceKey, invertLookY ? 1 : 0);
+            PlayerPrefs.SetInt(FullscreenPreferenceKey, fullscreen ? 1 : 0);
+            PlayerPrefs.SetInt(PlayerPerformanceSettings.PreferenceKey, (int)performanceProfile);
+            PlayerPrefs.Save();
         }
 
         private void CancelPendingRebind()

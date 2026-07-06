@@ -1,5 +1,6 @@
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Player;
 using NUnit.Framework;
@@ -281,6 +282,58 @@ namespace Neighbor.Main.Tests
             finally
             {
                 PlayerInputBindings.ResetToDefaults();
+            }
+        }
+
+        [Test]
+        public void PlayerPauseMenu_ResetPersistentSettingsDoesNotResetControlBindings()
+        {
+            const string SensitivityKey = "Neighbor.MouseSensitivity";
+            const string VolumeKey = "Neighbor.MasterVolume";
+            const string FieldOfViewKey = "Neighbor.FieldOfView";
+            const string InvertYKey = "Neighbor.InvertLookY";
+            const string FullscreenKey = "Neighbor.Fullscreen";
+
+            try
+            {
+                PlayerInputBindings.ResetToDefaults();
+                Assert.That(PlayerInputBindings.TrySetBoundKey(PlayerInputBindingAction.Forward, Key.UpArrow), Is.True);
+
+                MethodInfo resetSettings = typeof(PlayerPauseMenu).GetMethod(
+                    "ResetPersistentSettings",
+                    BindingFlags.Static | BindingFlags.NonPublic);
+                Assert.That(resetSettings, Is.Not.Null);
+
+                resetSettings.Invoke(
+                    null,
+                    new object[]
+                    {
+                        0.11f,
+                        0.42f,
+                        80f,
+                        true,
+                        false,
+                        PlayerPerformanceProfile.Quality
+                    });
+
+                Assert.That(PlayerPrefs.GetFloat(SensitivityKey), Is.EqualTo(0.11f).Within(0.001f));
+                Assert.That(PlayerPrefs.GetFloat(VolumeKey), Is.EqualTo(0.42f).Within(0.001f));
+                Assert.That(PlayerPrefs.GetFloat(FieldOfViewKey), Is.EqualTo(80f).Within(0.001f));
+                Assert.That(PlayerPrefs.GetInt(InvertYKey), Is.EqualTo(1));
+                Assert.That(PlayerPrefs.GetInt(FullscreenKey), Is.EqualTo(0));
+                Assert.That(PlayerPerformanceSettings.LoadProfile(), Is.EqualTo(PlayerPerformanceProfile.Quality));
+                Assert.That(PlayerInputBindings.GetBoundKey(PlayerInputBindingAction.Forward), Is.EqualTo(Key.UpArrow));
+            }
+            finally
+            {
+                PlayerPrefs.DeleteKey(SensitivityKey);
+                PlayerPrefs.DeleteKey(VolumeKey);
+                PlayerPrefs.DeleteKey(FieldOfViewKey);
+                PlayerPrefs.DeleteKey(InvertYKey);
+                PlayerPrefs.DeleteKey(FullscreenKey);
+                PlayerPrefs.DeleteKey(PlayerPerformanceSettings.PreferenceKey);
+                PlayerInputBindings.ResetToDefaults();
+                PlayerPrefs.Save();
             }
         }
 
