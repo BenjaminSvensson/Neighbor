@@ -1442,7 +1442,7 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
-            string secondaryAction = releaseButtonWasHeld ? "Release to throw" : "Place";
+            string secondaryAction = GetHeldSecondaryActionText();
             string secondaryKey = releaseButtonWasHeld
                 ? $"Release {PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.SecondaryUse)}"
                 : PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.SecondaryUse);
@@ -1453,6 +1453,33 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             tooltipView.Hide();
+        }
+
+        private string GetHeldSecondaryActionText()
+        {
+            if (releaseButtonWasHeld)
+            {
+                return "Release to throw";
+            }
+
+            if (placementPreviewRenderer != null && placementPreviewRenderer.enabled)
+            {
+                return placementPreviewValid ? "Place" : "Blocked placement";
+            }
+
+            if (!showPlacementPreview)
+            {
+                return "Place";
+            }
+
+            return TryGetPlacementPose(
+                heldPickup,
+                out _,
+                out _,
+                out bool foundPlacementSurface,
+                out _)
+                ? "Place"
+                : foundPlacementSurface ? "Blocked placement" : "Drop";
         }
 
         private bool TryGetTooltip(
