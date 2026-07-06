@@ -176,7 +176,11 @@ namespace Neighbor.Main.Features.Player
                 cameraController != null ? cameraController.RuntimeFieldOfView : defaultFieldOfView);
             bool savedInvertLookY = PlayerPrefs.GetInt(
                 InvertLookYPreferenceKey,
-                defaultInvertLookY || cameraController != null && cameraController.RuntimeInvertLookY ? 1 : 0) != 0;
+                (defaultInvertLookY
+                    || playerController != null && playerController.RuntimeInvertLookY
+                    || cameraController != null && cameraController.RuntimeInvertLookY)
+                    ? 1
+                    : 0) != 0;
             bool savedFullscreen = PlayerPrefs.GetInt(FullscreenPreferenceKey, defaultFullscreen ? 1 : 0) != 0;
 
             ApplySensitivity(sensitivity);
@@ -240,6 +244,7 @@ namespace Neighbor.Main.Features.Player
             invertLookY = invert;
             PlayerPrefs.SetInt(InvertLookYPreferenceKey, invertLookY ? 1 : 0);
             PlayerPrefs.Save();
+            playerController?.SetRuntimeInvertLookY(invertLookY);
             cameraController?.SetRuntimeInvertLookY(invertLookY);
             if (invertLookYValueText != null)
             {
@@ -565,7 +570,7 @@ namespace Neighbor.Main.Features.Player
                 }
 
                 bindingValueText.Value.text = pendingRebindAction.HasValue && pendingRebindAction.Value == bindingValueText.Key
-                    ? "PRESS KEY"
+                    ? "PRESS INPUT"
                     : PlayerInputBindings.GetKeyLabel(bindingValueText.Key);
             }
         }

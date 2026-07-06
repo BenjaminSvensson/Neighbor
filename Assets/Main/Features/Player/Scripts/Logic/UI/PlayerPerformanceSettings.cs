@@ -17,12 +17,15 @@ namespace Neighbor.Main.Features.Player
     {
         public const string PreferenceKey = "Neighbor.PerformanceProfile";
 
-        private static bool sceneHookRegistered;
+        private static bool runtimeHooksRegistered;
+        private static PlayerPerformanceProfile currentProfile = PlayerPerformanceProfile.Balanced;
+
+        public static PlayerPerformanceProfile CurrentProfile => currentProfile;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void InitializeRuntime()
         {
-            RegisterSceneHook();
+            RegisterRuntimeHooks();
             ApplySavedProfile();
         }
 
@@ -49,11 +52,17 @@ namespace Neighbor.Main.Features.Player
 
         public static void ApplyProfile(PlayerPerformanceProfile profile)
         {
-            RegisterSceneHook();
-            ProfileSettings settings = GetProfileSettings(Normalize(profile));
+            RegisterRuntimeHooks();
+            currentProfile = Normalize(profile);
+            ProfileSettings settings = GetProfileSettings(currentProfile);
             ApplyQualitySettings(settings);
             ApplyTerrainSettings(settings);
             ApplyCameraSettings(settings);
+        }
+
+        public static void ApplyCurrentProfileToCamera(Camera camera)
+        {
+            ApplyCameraSettings(camera, GetProfileSettings(currentProfile));
         }
 
         public static PlayerPerformanceProfile GetNextProfile(PlayerPerformanceProfile profile)
@@ -87,20 +96,26 @@ namespace Neighbor.Main.Features.Player
             };
         }
 
-        private static void RegisterSceneHook()
+        private static void RegisterRuntimeHooks()
         {
-            if (sceneHookRegistered)
+            if (runtimeHooksRegistered)
             {
                 return;
             }
 
             SceneManager.sceneLoaded += HandleSceneLoaded;
-            sceneHookRegistered = true;
+            RenderPipelineManager.beginCameraRendering += HandleBeginCameraRendering;
+            runtimeHooksRegistered = true;
         }
 
         private static void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             ApplySavedProfile();
+        }
+
+        private static void HandleBeginCameraRendering(ScriptableRenderContext context, Camera camera)
+        {
+            ApplyCurrentProfileToCamera(camera);
         }
 
         private static PlayerPerformanceProfile Normalize(PlayerPerformanceProfile profile)
@@ -274,15 +289,19 @@ namespace Neighbor.Main.Features.Player
             Camera[] cameras = Camera.allCameras;
             for (int i = 0; i < cameras.Length; i++)
             {
-                Camera camera = cameras[i];
-                if (camera == null)
-                {
-                    continue;
-                }
-
-                camera.allowHDR = settings.SupportsHdr;
-                camera.allowMSAA = settings.MsaaSampleCount > 1;
+                ApplyCameraSettings(cameras[i], settings);
             }
+        }
+
+        private static void ApplyCameraSettings(Camera camera, ProfileSettings settings)
+        {
+            if (camera == null)
+            {
+                return;
+            }
+
+            camera.allowHDR = settings.SupportsHdr;
+            camera.allowMSAA = settings.MsaaSampleCount > 1;
         }
 
         private readonly struct ProfileSettings
