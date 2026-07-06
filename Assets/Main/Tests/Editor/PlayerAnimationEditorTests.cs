@@ -228,6 +228,9 @@ namespace Neighbor.Main.Tests
             Assert.That(
                 AssetDatabase.LoadAssetAtPath<MonoScript>("Assets/Main/Features/Player/Scripts/Logic/UI/PlayerPerformanceSettings.cs"),
                 Is.Not.Null);
+            Assert.That(
+                AssetDatabase.LoadAssetAtPath<MonoScript>("Assets/Main/Features/Player/Scripts/Logic/UI/PlayerOnboardingDirector.cs"),
+                Is.Not.Null);
 
             SerializedObject canvasSettings = new(playerCanvas);
             SerializedProperty receivesEventsProperty = canvasSettings.FindProperty("m_ReceivesEvents");
