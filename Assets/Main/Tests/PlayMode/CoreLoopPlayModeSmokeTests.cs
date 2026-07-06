@@ -226,6 +226,34 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void PlayerDeath_ResetRestoresMovedPickupHomeState()
+        {
+            PlayerController player = CreatePlayer("Player", Vector3.zero, out _);
+            PlayerDeathController deathController = player.GetComponent<PlayerDeathController>();
+            deathController.ClearCheckpoint(true);
+
+            Pickupable pickup = CreatePickup("MovedPickup", new Vector3(3f, 0f, 0f));
+            Vector3 homePosition = pickup.HomePosition;
+            Quaternion homeRotation = pickup.HomeRotation;
+            pickup.transform.SetPositionAndRotation(new Vector3(8f, 0f, 2f), Quaternion.Euler(0f, 90f, 0f));
+
+            Assert.That(pickup.IsMissingFromHome, Is.True);
+
+            SetField(deathController, "fallDuration", 0.01f);
+            SetField(deathController, "impactDuration", 0.01f);
+            SetField(deathController, "groundHoldDuration", 0.01f);
+            SetField(deathController, "fadeOutDuration", 0.01f);
+
+            RunCoroutine(
+                InvokeResult<IEnumerator>(deathController, "DeathAndReset", Vector3.zero),
+                "Player death reset did not restore pickup world state.");
+
+            Assert.That(Vector3.Distance(pickup.transform.position, homePosition), Is.LessThan(0.05f));
+            Assert.That(Quaternion.Angle(pickup.transform.rotation, homeRotation), Is.LessThan(1f));
+            Assert.That(pickup.IsAtHome, Is.True);
+        }
+
+        [Test]
         public void PlayerOnboardingDirector_IsRuntimeInstalledAndEmitsFeedback()
         {
             PlayerController player = CreatePlayer("Player", Vector3.zero, out _);
@@ -280,6 +308,15 @@ namespace Neighbor.Main.Tests
             keyObject.AddComponent<DoorKey>();
             keyObject.AddComponent<ObjectiveKeyItem>();
             return keyObject.AddComponent<Pickupable>();
+        }
+
+        private Pickupable CreatePickup(string name, Vector3 position)
+        {
+            GameObject pickupObject = CreateObject(name);
+            pickupObject.transform.position = position;
+            pickupObject.AddComponent<Rigidbody>();
+            pickupObject.AddComponent<BoxCollider>();
+            return pickupObject.AddComponent<Pickupable>();
         }
 
         private Door CreateObjectiveDoor(string name)
