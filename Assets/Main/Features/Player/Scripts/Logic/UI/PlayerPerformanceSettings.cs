@@ -53,6 +53,7 @@ namespace Neighbor.Main.Features.Player
             ProfileSettings settings = GetProfileSettings(Normalize(profile));
             ApplyQualitySettings(settings);
             ApplyTerrainSettings(settings);
+            ApplyCameraSettings(settings);
         }
 
         public static PlayerPerformanceProfile GetNextProfile(PlayerPerformanceProfile profile)
@@ -120,6 +121,11 @@ namespace Neighbor.Main.Features.Player
                     maximumLodLevel: 1,
                     renderScale: 0.85f,
                     supportsHdr: false,
+                    msaaSampleCount: 1,
+                    globalTextureMipmapLimit: 1,
+                    streamingMipmapsActive: true,
+                    streamingMipmapsMemoryBudget: 256f,
+                    particleRaycastBudget: 128,
                     shadowDistance: 24f,
                     shadowResolution: EngineShadowResolution.Low,
                     shadowCascadeCount: 1,
@@ -141,6 +147,11 @@ namespace Neighbor.Main.Features.Player
                     maximumLodLevel: 0,
                     renderScale: 1f,
                     supportsHdr: true,
+                    msaaSampleCount: 2,
+                    globalTextureMipmapLimit: 0,
+                    streamingMipmapsActive: true,
+                    streamingMipmapsMemoryBudget: 512f,
+                    particleRaycastBudget: 384,
                     shadowDistance: 55f,
                     shadowResolution: EngineShadowResolution.High,
                     shadowCascadeCount: 2,
@@ -162,6 +173,11 @@ namespace Neighbor.Main.Features.Player
                     maximumLodLevel: 0,
                     renderScale: 1f,
                     supportsHdr: true,
+                    msaaSampleCount: 1,
+                    globalTextureMipmapLimit: 0,
+                    streamingMipmapsActive: true,
+                    streamingMipmapsMemoryBudget: 384f,
+                    particleRaycastBudget: 256,
                     shadowDistance: 38f,
                     shadowResolution: EngineShadowResolution.Medium,
                     shadowCascadeCount: 2,
@@ -194,6 +210,10 @@ namespace Neighbor.Main.Features.Player
             QualitySettings.vSyncCount = 0;
             QualitySettings.lodBias = settings.LodBias;
             QualitySettings.maximumLODLevel = settings.MaximumLodLevel;
+            QualitySettings.globalTextureMipmapLimit = settings.GlobalTextureMipmapLimit;
+            QualitySettings.streamingMipmapsActive = settings.StreamingMipmapsActive;
+            QualitySettings.streamingMipmapsMemoryBudget = settings.StreamingMipmapsMemoryBudget;
+            QualitySettings.particleRaycastBudget = settings.ParticleRaycastBudget;
             QualitySettings.shadowDistance = settings.ShadowDistance;
             QualitySettings.shadowResolution = settings.ShadowResolution;
             ApplyUniversalRenderPipelineSettings(settings);
@@ -213,7 +233,7 @@ namespace Neighbor.Main.Features.Player
             urpAsset.renderScale = settings.RenderScale;
             urpAsset.supportsHDR = settings.SupportsHdr;
             urpAsset.supportsCameraOpaqueTexture = false;
-            urpAsset.msaaSampleCount = 1;
+            urpAsset.msaaSampleCount = settings.MsaaSampleCount;
             urpAsset.shadowDistance = settings.ShadowDistance;
             urpAsset.shadowCascadeCount = settings.ShadowCascadeCount;
             urpAsset.mainLightShadowmapResolution = settings.MainLightShadowmapResolution;
@@ -249,6 +269,22 @@ namespace Neighbor.Main.Features.Player
             }
         }
 
+        private static void ApplyCameraSettings(ProfileSettings settings)
+        {
+            Camera[] cameras = Camera.allCameras;
+            for (int i = 0; i < cameras.Length; i++)
+            {
+                Camera camera = cameras[i];
+                if (camera == null)
+                {
+                    continue;
+                }
+
+                camera.allowHDR = settings.SupportsHdr;
+                camera.allowMSAA = settings.MsaaSampleCount > 1;
+            }
+        }
+
         private readonly struct ProfileSettings
         {
             public ProfileSettings(
@@ -258,6 +294,11 @@ namespace Neighbor.Main.Features.Player
                 int maximumLodLevel,
                 float renderScale,
                 bool supportsHdr,
+                int msaaSampleCount,
+                int globalTextureMipmapLimit,
+                bool streamingMipmapsActive,
+                float streamingMipmapsMemoryBudget,
+                int particleRaycastBudget,
                 float shadowDistance,
                 EngineShadowResolution shadowResolution,
                 int shadowCascadeCount,
@@ -279,6 +320,11 @@ namespace Neighbor.Main.Features.Player
                 MaximumLodLevel = maximumLodLevel;
                 RenderScale = renderScale;
                 SupportsHdr = supportsHdr;
+                MsaaSampleCount = msaaSampleCount;
+                GlobalTextureMipmapLimit = globalTextureMipmapLimit;
+                StreamingMipmapsActive = streamingMipmapsActive;
+                StreamingMipmapsMemoryBudget = streamingMipmapsMemoryBudget;
+                ParticleRaycastBudget = particleRaycastBudget;
                 ShadowDistance = shadowDistance;
                 ShadowResolution = shadowResolution;
                 ShadowCascadeCount = shadowCascadeCount;
@@ -301,6 +347,11 @@ namespace Neighbor.Main.Features.Player
             public int MaximumLodLevel { get; }
             public float RenderScale { get; }
             public bool SupportsHdr { get; }
+            public int MsaaSampleCount { get; }
+            public int GlobalTextureMipmapLimit { get; }
+            public bool StreamingMipmapsActive { get; }
+            public float StreamingMipmapsMemoryBudget { get; }
+            public int ParticleRaycastBudget { get; }
             public float ShadowDistance { get; }
             public EngineShadowResolution ShadowResolution { get; }
             public int ShadowCascadeCount { get; }

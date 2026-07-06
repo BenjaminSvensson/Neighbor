@@ -39,7 +39,7 @@ namespace Neighbor.Main.Features.Player
                 CrouchPressed = PlayerInputBindings.WasPressedThisFrame(PlayerInputBindingAction.Crouch),
                 LeanLeftHeld = PlayerInputBindings.IsPressed(PlayerInputBindingAction.LeanLeft),
                 LeanRightHeld = PlayerInputBindings.IsPressed(PlayerInputBindingAction.LeanRight),
-                ZoomHeld = mouse != null && IsPressed(mouse.middleButton),
+                ZoomHeld = PlayerInputBindings.IsPressed(PlayerInputBindingAction.Zoom),
                 ZoomDrag = zoomDrag,
                 ZoomScroll = mouse != null ? mouse.scroll.ReadValue().y : 0f,
                 CursorUnlockPressed = keyboard != null && keyboard.escapeKey.wasPressedThisFrame

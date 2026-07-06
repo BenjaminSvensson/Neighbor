@@ -14,6 +14,8 @@ namespace Neighbor.Main.Features.Player
         private const string SensitivityPreferenceKey = "Neighbor.MouseSensitivity";
         private const string VolumePreferenceKey = "Neighbor.MasterVolume";
         private const string FieldOfViewPreferenceKey = "Neighbor.FieldOfView";
+        private const string InvertLookYPreferenceKey = "Neighbor.InvertLookY";
+        private const string FullscreenPreferenceKey = "Neighbor.Fullscreen";
 
         [Header("Defaults")]
         [SerializeField, Min(0f)] private float defaultSensitivity = 0.08f;
@@ -27,12 +29,17 @@ namespace Neighbor.Main.Features.Player
         private Text sensitivityValueText;
         private Text volumeValueText;
         private Text fieldOfViewValueText;
+        private Text invertLookYValueText;
+        private Text fullscreenValueText;
         private Text performanceProfileValueText;
         private CursorLockMode previousCursorLockMode;
         private bool previousCursorVisible;
         private float previousTimeScale = 1f;
         private PlayerPerformanceProfile currentPerformanceProfile = PlayerPerformanceProfile.Balanced;
         private PlayerInputBindingAction? pendingRebindAction;
+        private int pendingRebindStartFrame;
+        private bool invertLookY;
+        private bool fullscreen;
         private bool isOpen;
 
         private void Awake()
@@ -164,10 +171,16 @@ namespace Neighbor.Main.Features.Player
             float fieldOfView = PlayerPrefs.GetFloat(
                 FieldOfViewPreferenceKey,
                 cameraController != null ? cameraController.RuntimeFieldOfView : defaultFieldOfView);
+            bool savedInvertLookY = PlayerPrefs.GetInt(
+                InvertLookYPreferenceKey,
+                cameraController != null && cameraController.RuntimeInvertLookY ? 1 : 0) != 0;
+            bool savedFullscreen = PlayerPrefs.GetInt(FullscreenPreferenceKey, Screen.fullScreen ? 1 : 0) != 0;
 
             ApplySensitivity(sensitivity);
             ApplyVolume(volume);
             ApplyFieldOfView(fieldOfView);
+            ApplyInvertLookY(savedInvertLookY);
+            ApplyFullscreen(savedFullscreen);
 
             currentPerformanceProfile = PlayerPerformanceSettings.LoadProfile();
             PlayerPerformanceSettings.ApplyProfile(currentPerformanceProfile);
@@ -212,6 +225,40 @@ namespace Neighbor.Main.Features.Player
             }
         }
 
+        private void ToggleInvertLookY()
+        {
+            ApplyInvertLookY(!invertLookY);
+        }
+
+        private void ApplyInvertLookY(bool invert)
+        {
+            invertLookY = invert;
+            PlayerPrefs.SetInt(InvertLookYPreferenceKey, invertLookY ? 1 : 0);
+            PlayerPrefs.Save();
+            cameraController?.SetRuntimeInvertLookY(invertLookY);
+            if (invertLookYValueText != null)
+            {
+                invertLookYValueText.text = invertLookY ? "ON" : "OFF";
+            }
+        }
+
+        private void ToggleFullscreen()
+        {
+            ApplyFullscreen(!fullscreen);
+        }
+
+        private void ApplyFullscreen(bool enabled)
+        {
+            fullscreen = enabled;
+            PlayerPrefs.SetInt(FullscreenPreferenceKey, fullscreen ? 1 : 0);
+            PlayerPrefs.Save();
+            Screen.fullScreen = fullscreen;
+            if (fullscreenValueText != null)
+            {
+                fullscreenValueText.text = fullscreen ? "ON" : "OFF";
+            }
+        }
+
         private void SetVisible(bool visible)
         {
             if (canvasGroup == null)
@@ -250,39 +297,63 @@ namespace Neighbor.Main.Features.Player
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
             panelRect.pivot = new Vector2(0.5f, 0.5f);
             panelRect.anchoredPosition = Vector2.zero;
-            panelRect.sizeDelta = new Vector2(640f, 780f);
+            panelRect.sizeDelta = new Vector2(680f, 960f);
 
             Text title = CreateText("Title", panel.transform, font, 30, FontStyle.Bold, TextAnchor.MiddleCenter);
-            SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -54f), new Vector2(440f, 44f));
+            SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -44f), new Vector2(440f, 44f));
             title.text = "PAUSED";
 
-            CreateSliderRow(panel.transform, font, "Sensitivity", new Vector2(0f, 235f), 0.02f, 0.2f, defaultSensitivity, ApplySensitivity, out sensitivityValueText);
-            CreateSliderRow(panel.transform, font, "Volume", new Vector2(0f, 170f), 0f, 1f, defaultVolume, ApplyVolume, out volumeValueText);
-            CreateSliderRow(panel.transform, font, "FOV", new Vector2(0f, 105f), 45f, 100f, defaultFieldOfView, ApplyFieldOfView, out fieldOfViewValueText);
+            CreateSliderRow(panel.transform, font, "Sensitivity", new Vector2(0f, 295f), 0.02f, 0.2f, defaultSensitivity, ApplySensitivity, out sensitivityValueText);
+            CreateSliderRow(panel.transform, font, "Volume", new Vector2(0f, 235f), 0f, 1f, defaultVolume, ApplyVolume, out volumeValueText);
+            CreateSliderRow(panel.transform, font, "FOV", new Vector2(0f, 175f), 45f, 100f, defaultFieldOfView, ApplyFieldOfView, out fieldOfViewValueText);
 
-            CreatePerformanceRow(panel.transform, font, new Vector2(0f, 35f));
+            CreateToggleRow(panel.transform, font, "Invert Y", new Vector2(-150f, 112f), ToggleInvertLookY, out invertLookYValueText);
+            CreateToggleRow(panel.transform, font, "Fullscreen", new Vector2(170f, 112f), ToggleFullscreen, out fullscreenValueText);
+
+            CreatePerformanceRow(panel.transform, font, new Vector2(0f, 52f));
 
             Text controlsTitle = CreateText("Controls Title", panel.transform, font, 15, FontStyle.Bold, TextAnchor.MiddleLeft);
             controlsTitle.text = "CONTROLS";
             controlsTitle.color = new Color(1f, 1f, 1f, 0.76f);
-            SetRect(controlsTitle.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-200f, -35f), new Vector2(180f, 24f));
+            SetRect(controlsTitle.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-220f, -8f), new Vector2(180f, 24f));
 
-            CreateButton(panel.transform, font, "Reset Controls", new Vector2(210f, -35f), ResetControlBindings, new Vector2(150f, 32f));
+            CreateButton(panel.transform, font, "Reset Controls", new Vector2(215f, -8f), ResetControlBindings, new Vector2(150f, 32f));
 
-            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.Forward, new Vector2(-160f, -82f));
-            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.Backward, new Vector2(160f, -82f));
-            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.Left, new Vector2(-160f, -124f));
-            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.Right, new Vector2(160f, -124f));
-            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.Jump, new Vector2(-160f, -166f));
-            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.Run, new Vector2(160f, -166f));
-            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.Crouch, new Vector2(-160f, -208f));
-            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.Interact, new Vector2(160f, -208f));
-            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.LeanLeft, new Vector2(-160f, -250f));
-            CreateBindingRow(panel.transform, font, PlayerInputBindingAction.LeanRight, new Vector2(160f, -250f));
+            CreateBindingRows(panel.transform, font);
 
-            CreateButton(panel.transform, font, "Resume", new Vector2(0f, -310f), Close, new Vector2(280f, 44f));
-            CreateButton(panel.transform, font, "Restart", new Vector2(-122f, -360f), RestartScene, new Vector2(210f, 42f));
-            CreateButton(panel.transform, font, "Quit", new Vector2(122f, -360f), QuitGame, new Vector2(210f, 42f));
+            CreateButton(panel.transform, font, "Resume", new Vector2(0f, -405f), Close, new Vector2(280f, 44f));
+            CreateButton(panel.transform, font, "Restart", new Vector2(-122f, -455f), RestartScene, new Vector2(210f, 42f));
+            CreateButton(panel.transform, font, "Quit", new Vector2(122f, -455f), QuitGame, new Vector2(210f, 42f));
+        }
+
+        private void CreateToggleRow(
+            Transform parent,
+            Font font,
+            string label,
+            Vector2 position,
+            UnityEngine.Events.UnityAction clicked,
+            out Text valueText)
+        {
+            Text labelText = CreateText($"{label} Label", parent, font, 15, FontStyle.Bold, TextAnchor.MiddleLeft);
+            labelText.text = label.ToUpperInvariant();
+            labelText.color = new Color(1f, 1f, 1f, 0.76f);
+            SetRect(labelText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(-70f, 0f), new Vector2(130f, 28f));
+
+            Button button = CreateButton(parent, font, "OFF", position + new Vector2(80f, 0f), clicked, new Vector2(82f, 34f));
+            valueText = button.GetComponentInChildren<Text>(true);
+        }
+
+        private void CreateBindingRows(Transform parent, Font font)
+        {
+            PlayerInputBindingAction[] actions = PlayerInputBindings.GetRebindableActions();
+            for (int i = 0; i < actions.Length; i++)
+            {
+                int column = i % 2;
+                int row = i / 2;
+                float x = column == 0 ? -175f : 175f;
+                float y = -52f - row * 34f;
+                CreateBindingRow(parent, font, actions[i], new Vector2(x, y));
+            }
         }
 
         private void CreatePerformanceRow(Transform parent, Font font, Vector2 position)
@@ -306,15 +377,15 @@ namespace Neighbor.Main.Features.Player
             Text labelText = CreateText($"{action} Binding Label", parent, font, 13, FontStyle.Bold, TextAnchor.MiddleLeft);
             labelText.text = PlayerInputBindings.GetActionLabel(action).ToUpperInvariant();
             labelText.color = new Color(1f, 1f, 1f, 0.72f);
-            SetRect(labelText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(-55f, 0f), new Vector2(118f, 28f));
+            SetRect(labelText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(-62f, 0f), new Vector2(126f, 28f));
 
             Button button = CreateButton(
                 parent,
                 font,
                 PlayerInputBindings.GetKeyLabel(action),
-                position + new Vector2(68f, 0f),
+                position + new Vector2(76f, 0f),
                 () => BeginRebind(action),
-                new Vector2(112f, 32f));
+                new Vector2(130f, 32f));
             bindingValueTexts[action] = button.GetComponentInChildren<Text>(true);
         }
 
@@ -385,29 +456,37 @@ namespace Neighbor.Main.Features.Player
         private void BeginRebind(PlayerInputBindingAction action)
         {
             pendingRebindAction = action;
+            pendingRebindStartFrame = Time.frameCount;
             RefreshBindingButtons();
         }
 
         private void UpdatePendingRebind()
         {
-            Keyboard keyboard = Keyboard.current;
-            if (keyboard == null)
+            if (Time.frameCount <= pendingRebindStartFrame)
             {
                 return;
             }
 
-            if (keyboard.escapeKey.wasPressedThisFrame)
+            Keyboard keyboard = Keyboard.current;
+            if (keyboard == null)
+            {
+                if (!PlayerInputBindings.TryGetPressedControlThisFrame(out _))
+                {
+                    return;
+                }
+            }
+            else if (keyboard.escapeKey.wasPressedThisFrame)
             {
                 CancelPendingRebind();
                 return;
             }
 
-            if (!PlayerInputBindings.TryGetPressedKeyThisFrame(out Key key))
+            if (!PlayerInputBindings.TryGetPressedControlThisFrame(out PlayerInputControlBinding binding))
             {
                 return;
             }
 
-            if (pendingRebindAction.HasValue && PlayerInputBindings.TrySetBoundKey(pendingRebindAction.Value, key))
+            if (pendingRebindAction.HasValue && PlayerInputBindings.TrySetBinding(pendingRebindAction.Value, binding))
             {
                 pendingRebindAction = null;
                 RefreshBindingButtons();
