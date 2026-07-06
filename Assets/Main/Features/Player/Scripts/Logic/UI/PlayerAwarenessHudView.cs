@@ -17,6 +17,7 @@ namespace Neighbor.Main.Features.Player
         private Text awarenessText;
         private Text warningText;
         private PlayerController player;
+        private PlayerHidingState hidingState;
         private NeighborBrain trackedNeighbor;
         private float noiseLevel;
         private float cameraWarningUntil;
@@ -67,6 +68,9 @@ namespace Neighbor.Main.Features.Player
         {
             if (player != null)
             {
+                hidingState = hidingState != null
+                    ? hidingState
+                    : player.GetComponent<PlayerHidingState>() ?? player.GetComponentInChildren<PlayerHidingState>();
                 return;
             }
 
@@ -77,6 +81,9 @@ namespace Neighbor.Main.Features.Player
             }
 
             player = FindAnyObjectByType<PlayerController>();
+            hidingState = player != null
+                ? player.GetComponent<PlayerHidingState>() ?? player.GetComponentInChildren<PlayerHidingState>()
+                : null;
             nextPlayerSearchTime = now + TargetSearchInterval;
         }
 
@@ -150,6 +157,30 @@ namespace Neighbor.Main.Features.Player
             if (Time.unscaledTime < messageUntil)
             {
                 return;
+            }
+
+            if (hidingState != null && hidingState.IsHidden)
+            {
+                if (hidingState.IsCompromised)
+                {
+                    warningText.text = "FOUND";
+                    warningText.color = new Color(1f, 0.12f, 0.08f, 1f);
+                    return;
+                }
+
+                if (hidingState.WasInspectedRecently)
+                {
+                    warningText.text = "STAY STILL";
+                    warningText.color = new Color(1f, 0.72f, 0.18f, 1f);
+                    return;
+                }
+
+                if (hidingState.BreathTension01 >= 0.7f)
+                {
+                    warningText.text = "BREATH TOO LOUD";
+                    warningText.color = new Color(1f, 0.58f, 0.18f, 1f);
+                    return;
+                }
             }
 
             if (player != null && player.IsExhausted)

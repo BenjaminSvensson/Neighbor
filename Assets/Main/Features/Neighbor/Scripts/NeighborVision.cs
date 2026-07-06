@@ -50,7 +50,7 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             PlayerHidingState hidingState = target.GetComponent<PlayerHidingState>() ?? target.GetComponentInChildren<PlayerHidingState>();
-            if (hidingState != null && hidingState.IsHidden)
+            if (hidingState != null && hidingState.IsConcealedFromVision)
             {
                 return false;
             }

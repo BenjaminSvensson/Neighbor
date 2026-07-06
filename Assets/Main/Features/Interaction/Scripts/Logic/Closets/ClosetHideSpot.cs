@@ -139,7 +139,7 @@ namespace Neighbor.Main.Features.Interaction
 
             Transform target = hidePoint != null ? hidePoint : transform;
             yield return MovePlayer(hiddenPlayer.transform, target);
-            hiddenState?.SetHidden(true);
+            hiddenState?.SetHidden(true, this);
             NotifyNeighborsPlayerFinishedHiding(hiddenPlayer);
             yield return WaitForSeconds(doorCloseDelay);
             doors?.SetOpen(false);
@@ -187,6 +187,7 @@ namespace Neighbor.Main.Features.Interaction
         {
             doors?.SetOpen(true);
             PlayerController foundPlayer = hiddenPlayer;
+            hiddenState?.RegisterNeighborInspection(foundPlayer != null);
             if (foundPlayer != null)
             {
                 CancelTransition();
