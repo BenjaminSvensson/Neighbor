@@ -4,6 +4,7 @@ using Neighbor.Main.Features.Environment;
 using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
+using Neighbor.Main.Features.Progression;
 using Unity.AI.Navigation;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -19,6 +20,7 @@ internal static class ScenePlayableSetupUtility
     private const string MenuPathWithoutBake = "Tools/Neighbor/Make Scene Playable Without NavMesh Bake";
     private const string PlayerPrefabPath = "Assets/Main/Features/Player/Prefabs/Main/Player.prefab";
     private const string NeighborPrefabPath = "Assets/Main/Features/Neighbor/Prefabs/Neighbor.prefab";
+    private const string StartCheckpointName = "Start Checkpoint";
 
     [MenuItem(MenuPath)]
     private static void MakeActiveScenePlayableFromMenu()
@@ -56,7 +58,10 @@ internal static class ScenePlayableSetupUtility
         Vector3 playerPosition = FindPlayableOrigin(scene);
 
         PlayerController player = EnsurePlayer(scene, playerPosition, result);
+        EnsurePlayerRuntimeComponents(player, result);
         NeighborBrain neighbor = EnsureNeighbor(scene, GetGroundedPosition(scene, playerPosition + new Vector3(4f, 0f, 4f)), result);
+        CoreLoopObjectiveTracker objectiveTracker = EnsureObjectiveTracker(scene, result);
+        PlayerRespawnCheckpoint startCheckpoint = EnsureStartCheckpoint(scene, player, playerPosition, result);
         NavMeshSurface navMeshSurface = EnsureNavMeshSurface(scene, result);
         AmbienceManager ambienceManager = EnsureAmbienceManager(scene, player, result);
         PlayerAwarenessHudView awarenessHud = EnsureAwarenessHud(scene, result);
@@ -68,6 +73,8 @@ internal static class ScenePlayableSetupUtility
 
         result.Player = player;
         result.Neighbor = neighbor;
+        result.ObjectiveTracker = objectiveTracker;
+        result.StartCheckpoint = startCheckpoint;
         result.NavMeshSurface = navMeshSurface;
         result.AmbienceManager = ambienceManager;
         result.AwarenessHud = awarenessHud;
@@ -121,6 +128,145 @@ internal static class ScenePlayableSetupUtility
         result.CreatedObjectCount++;
         result.CreatedNeighbor = true;
         return neighborObject.GetComponentInChildren<NeighborBrain>(true);
+    }
+
+    private static void EnsurePlayerRuntimeComponents(PlayerController player, ScenePlayableSetupResult result)
+    {
+        if (player == null)
+        {
+            return;
+        }
+
+        GameObject playerObject = player.gameObject;
+
+        result.PlayerDeathController = playerObject.GetComponent<PlayerDeathController>();
+        if (result.PlayerDeathController == null)
+        {
+            result.PlayerDeathController = Undo.AddComponent<PlayerDeathController>(playerObject);
+            result.AddedComponentCount++;
+            result.AddedPlayerDeathController = true;
+        }
+
+        result.PlayerKeyRing = playerObject.GetComponent<PlayerKeyRing>();
+        if (result.PlayerKeyRing == null)
+        {
+            result.PlayerKeyRing = Undo.AddComponent<PlayerKeyRing>(playerObject);
+            result.AddedComponentCount++;
+            result.AddedPlayerKeyRing = true;
+        }
+
+        result.PlayerHidingState = playerObject.GetComponent<PlayerHidingState>();
+        if (result.PlayerHidingState == null)
+        {
+            result.PlayerHidingState = Undo.AddComponent<PlayerHidingState>(playerObject);
+            result.AddedComponentCount++;
+            result.AddedPlayerHidingState = true;
+        }
+
+        result.OnboardingDirector = playerObject.GetComponent<PlayerOnboardingDirector>();
+        if (result.OnboardingDirector == null)
+        {
+            result.OnboardingDirector = Undo.AddComponent<PlayerOnboardingDirector>(playerObject);
+            result.AddedComponentCount++;
+            result.AddedOnboardingDirector = true;
+        }
+
+        if (SetSerializedObjectReference(player, "deathController", result.PlayerDeathController))
+        {
+            result.UpdatedPlayerReferences = true;
+        }
+    }
+
+    private static CoreLoopObjectiveTracker EnsureObjectiveTracker(Scene scene, ScenePlayableSetupResult result)
+    {
+        CoreLoopObjectiveTracker tracker = FindInScene<CoreLoopObjectiveTracker>(scene);
+        if (tracker != null)
+        {
+            return tracker;
+        }
+
+        GameObject trackerObject = CreateSceneObject(scene, "CoreLoopObjectiveTracker");
+        tracker = Undo.AddComponent<CoreLoopObjectiveTracker>(trackerObject);
+        result.CreatedObjectCount++;
+        result.CreatedObjectiveTracker = true;
+        return tracker;
+    }
+
+    private static PlayerRespawnCheckpoint EnsureStartCheckpoint(
+        Scene scene,
+        PlayerController player,
+        Vector3 fallbackPosition,
+        ScenePlayableSetupResult result)
+    {
+        PlayerRespawnCheckpoint checkpoint = FindNamedInScene<PlayerRespawnCheckpoint>(scene, StartCheckpointName);
+        bool created = false;
+        if (checkpoint == null)
+        {
+            GameObject checkpointObject = CreateSceneObject(scene, StartCheckpointName);
+            checkpointObject.transform.SetPositionAndRotation(
+                player != null ? player.transform.position : fallbackPosition,
+                player != null ? player.transform.rotation : Quaternion.identity);
+            checkpoint = Undo.AddComponent<PlayerRespawnCheckpoint>(checkpointObject);
+            result.CreatedObjectCount++;
+            result.CreatedStartCheckpoint = true;
+            created = true;
+        }
+
+        if (checkpoint == null)
+        {
+            return null;
+        }
+
+        bool updated = ConfigureStartCheckpoint(checkpoint);
+        result.UpdatedStartCheckpoint = result.UpdatedStartCheckpoint || updated && !created;
+        return checkpoint;
+    }
+
+    private static bool ConfigureStartCheckpoint(PlayerRespawnCheckpoint checkpoint)
+    {
+        bool changed = false;
+        Transform checkpointTransform = checkpoint.transform;
+        changed |= SetSerializedObjectReference(checkpoint, "respawnPoint", checkpointTransform);
+        changed |= SetSerializedString(checkpoint, "checkpointId", "Start");
+        changed |= SetSerializedBool(checkpoint, "persistCheckpoint", false);
+        changed |= SetSerializedBool(checkpoint, "activateOnTrigger", true);
+        changed |= SetSerializedBool(checkpoint, "activateOnInteract", false);
+        changed |= SetSerializedBool(checkpoint, "activateOnce", true);
+
+        BoxCollider trigger = checkpoint.GetComponent<BoxCollider>();
+        if (trigger == null)
+        {
+            trigger = Undo.AddComponent<BoxCollider>(checkpoint.gameObject);
+            changed = true;
+        }
+
+        if (!trigger.isTrigger)
+        {
+            trigger.isTrigger = true;
+            changed = true;
+        }
+
+        Vector3 desiredSize = new(1.5f, 2.2f, 1.5f);
+        if ((trigger.size - desiredSize).sqrMagnitude > 0.0001f)
+        {
+            trigger.size = desiredSize;
+            changed = true;
+        }
+
+        Vector3 desiredCenter = Vector3.up * 1.1f;
+        if ((trigger.center - desiredCenter).sqrMagnitude > 0.0001f)
+        {
+            trigger.center = desiredCenter;
+            changed = true;
+        }
+
+        if (changed)
+        {
+            EditorUtility.SetDirty(checkpoint);
+            EditorUtility.SetDirty(trigger);
+        }
+
+        return changed;
     }
 
     private static NavMeshSurface EnsureNavMeshSurface(Scene scene, ScenePlayableSetupResult result)
@@ -408,6 +554,21 @@ internal static class ScenePlayableSetupUtility
         return components.Length > 0 ? components[0] : null;
     }
 
+    private static T FindNamedInScene<T>(Scene scene, string objectName) where T : Component
+    {
+        T[] components = FindAllInScene<T>(scene);
+        for (int i = 0; i < components.Length; i++)
+        {
+            T component = components[i];
+            if (component != null && component.name == objectName)
+            {
+                return component;
+            }
+        }
+
+        return null;
+    }
+
     private static T[] FindAllInScene<T>(Scene scene) where T : Component
     {
         T[] components = Object.FindObjectsByType<T>(FindObjectsInactive.Include);
@@ -431,6 +592,51 @@ internal static class ScenePlayableSetupUtility
         System.Array.Copy(components, filtered, writeIndex);
         return filtered;
     }
+
+    private static bool SetSerializedObjectReference(Object target, string propertyName, Object value)
+    {
+        SerializedObject serializedObject = new(target);
+        SerializedProperty property = serializedObject.FindProperty(propertyName);
+        if (property == null || property.objectReferenceValue == value)
+        {
+            return false;
+        }
+
+        property.objectReferenceValue = value;
+        serializedObject.ApplyModifiedProperties();
+        EditorUtility.SetDirty(target);
+        return true;
+    }
+
+    private static bool SetSerializedString(Object target, string propertyName, string value)
+    {
+        SerializedObject serializedObject = new(target);
+        SerializedProperty property = serializedObject.FindProperty(propertyName);
+        if (property == null || property.stringValue == value)
+        {
+            return false;
+        }
+
+        property.stringValue = value;
+        serializedObject.ApplyModifiedProperties();
+        EditorUtility.SetDirty(target);
+        return true;
+    }
+
+    private static bool SetSerializedBool(Object target, string propertyName, bool value)
+    {
+        SerializedObject serializedObject = new(target);
+        SerializedProperty property = serializedObject.FindProperty(propertyName);
+        if (property == null || property.boolValue == value)
+        {
+            return false;
+        }
+
+        property.boolValue = value;
+        serializedObject.ApplyModifiedProperties();
+        EditorUtility.SetDirty(target);
+        return true;
+    }
 }
 
 internal sealed class ScenePlayableSetupResult
@@ -442,7 +648,13 @@ internal sealed class ScenePlayableSetupResult
 
     public string ScenePath { get; }
     public PlayerController Player { get; set; }
+    public PlayerDeathController PlayerDeathController { get; set; }
+    public PlayerKeyRing PlayerKeyRing { get; set; }
+    public PlayerHidingState PlayerHidingState { get; set; }
+    public PlayerOnboardingDirector OnboardingDirector { get; set; }
     public NeighborBrain Neighbor { get; set; }
+    public CoreLoopObjectiveTracker ObjectiveTracker { get; set; }
+    public PlayerRespawnCheckpoint StartCheckpoint { get; set; }
     public NavMeshSurface NavMeshSurface { get; set; }
     public AmbienceManager AmbienceManager { get; set; }
     public PlayerAwarenessHudView AwarenessHud { get; set; }
@@ -452,8 +664,17 @@ internal sealed class ScenePlayableSetupResult
     public Light MoonLight { get; set; }
     public DayNightCycle DayNightCycle { get; set; }
     public int CreatedObjectCount { get; set; }
+    public int AddedComponentCount { get; set; }
     public bool CreatedPlayer { get; set; }
+    public bool AddedPlayerDeathController { get; set; }
+    public bool AddedPlayerKeyRing { get; set; }
+    public bool AddedPlayerHidingState { get; set; }
+    public bool AddedOnboardingDirector { get; set; }
+    public bool UpdatedPlayerReferences { get; set; }
     public bool CreatedNeighbor { get; set; }
+    public bool CreatedObjectiveTracker { get; set; }
+    public bool CreatedStartCheckpoint { get; set; }
+    public bool UpdatedStartCheckpoint { get; set; }
     public bool CreatedNavMeshSurface { get; set; }
     public bool CreatedAmbienceManager { get; set; }
     public bool CreatedAwarenessHud { get; set; }
@@ -465,12 +686,19 @@ internal sealed class ScenePlayableSetupResult
     public bool CreatedDayNightCycle { get; set; }
     public bool UpdatedDayNightCycle { get; set; }
     public bool BakedNavMesh { get; set; }
-    public bool HasChanges => CreatedObjectCount > 0 || UpdatedEventSystem || UpdatedDayNightCycle || BakedNavMesh;
+    public bool HasChanges =>
+        CreatedObjectCount > 0
+        || AddedComponentCount > 0
+        || UpdatedPlayerReferences
+        || UpdatedStartCheckpoint
+        || UpdatedEventSystem
+        || UpdatedDayNightCycle
+        || BakedNavMesh;
 
     public string GetSummary()
     {
         string sceneLabel = string.IsNullOrWhiteSpace(ScenePath) ? "unsaved active scene" : ScenePath;
-        return $"Made '{sceneLabel}' playable. Created {CreatedObjectCount} object(s). NavMesh baked: {BakedNavMesh}.";
+        return $"Made '{sceneLabel}' playable. Created {CreatedObjectCount} object(s), added {AddedComponentCount} component(s). NavMesh baked: {BakedNavMesh}.";
     }
 }
 #endif

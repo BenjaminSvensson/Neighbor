@@ -3,6 +3,7 @@ using Neighbor.Main.Features.Environment;
 using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
+using Neighbor.Main.Features.Progression;
 using NUnit.Framework;
 using Unity.AI.Navigation;
 using UnityEditor;
@@ -32,6 +33,8 @@ namespace Neighbor.Main.Tests
 
             Assert.That(result.CreatedPlayer, Is.True);
             Assert.That(result.CreatedNeighbor, Is.True);
+            Assert.That(result.CreatedObjectiveTracker, Is.True);
+            Assert.That(result.CreatedStartCheckpoint, Is.True);
             Assert.That(result.CreatedNavMeshSurface, Is.True);
             Assert.That(result.CreatedAmbienceManager, Is.True);
             Assert.That(result.CreatedAwarenessHud, Is.True);
@@ -41,7 +44,13 @@ namespace Neighbor.Main.Tests
             Assert.That(result.CreatedMoonLight, Is.True);
             Assert.That(result.CreatedDayNightCycle, Is.True);
             Assert.That(result.Player, Is.Not.Null);
+            Assert.That(result.PlayerDeathController, Is.Not.Null);
+            Assert.That(result.PlayerKeyRing, Is.Not.Null);
+            Assert.That(result.PlayerHidingState, Is.Not.Null);
+            Assert.That(result.OnboardingDirector, Is.Not.Null);
             Assert.That(result.Neighbor, Is.Not.Null);
+            Assert.That(result.ObjectiveTracker, Is.Not.Null);
+            Assert.That(result.StartCheckpoint, Is.Not.Null);
             Assert.That(result.NavMeshSurface, Is.Not.Null);
             Assert.That(result.AmbienceManager, Is.Not.Null);
             Assert.That(result.AwarenessHud, Is.Not.Null);
@@ -52,9 +61,18 @@ namespace Neighbor.Main.Tests
             Assert.That(result.DirectionalLight, Is.Not.Null);
             Assert.That(result.MoonLight, Is.Not.Null);
             Assert.That(result.DayNightCycle, Is.Not.Null);
+            Assert.That(result.StartCheckpoint.CheckpointId, Is.EqualTo("Start"));
+            Assert.That(result.StartCheckpoint.GetComponent<BoxCollider>(), Is.Not.Null);
+            Assert.That(result.StartCheckpoint.GetComponent<BoxCollider>().isTrigger, Is.True);
 
             Assert.That(CountInScene<PlayerController>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<PlayerDeathController>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<PlayerKeyRing>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<PlayerHidingState>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<PlayerOnboardingDirector>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<NeighborBrain>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<CoreLoopObjectiveTracker>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<PlayerRespawnCheckpoint>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<NavMeshSurface>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<AmbienceManager>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<PlayerAwarenessHudView>(scene), Is.EqualTo(1));
@@ -72,8 +90,17 @@ namespace Neighbor.Main.Tests
             ScenePlayableSetupResult secondRun = ScenePlayableSetupUtility.MakeActiveScenePlayable(false);
 
             Assert.That(secondRun.CreatedObjectCount, Is.Zero);
+            Assert.That(secondRun.AddedComponentCount, Is.Zero);
             Assert.That(secondRun.CreatedPlayer, Is.False);
+            Assert.That(secondRun.AddedPlayerDeathController, Is.False);
+            Assert.That(secondRun.AddedPlayerKeyRing, Is.False);
+            Assert.That(secondRun.AddedPlayerHidingState, Is.False);
+            Assert.That(secondRun.AddedOnboardingDirector, Is.False);
+            Assert.That(secondRun.UpdatedPlayerReferences, Is.False);
             Assert.That(secondRun.CreatedNeighbor, Is.False);
+            Assert.That(secondRun.CreatedObjectiveTracker, Is.False);
+            Assert.That(secondRun.CreatedStartCheckpoint, Is.False);
+            Assert.That(secondRun.UpdatedStartCheckpoint, Is.False);
             Assert.That(secondRun.CreatedNavMeshSurface, Is.False);
             Assert.That(secondRun.CreatedAmbienceManager, Is.False);
             Assert.That(secondRun.CreatedAwarenessHud, Is.False);
@@ -84,7 +111,13 @@ namespace Neighbor.Main.Tests
             Assert.That(secondRun.CreatedDayNightCycle, Is.False);
             Assert.That(secondRun.UpdatedDayNightCycle, Is.False);
             Assert.That(CountInScene<PlayerController>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<PlayerDeathController>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<PlayerKeyRing>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<PlayerHidingState>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<PlayerOnboardingDirector>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<NeighborBrain>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<CoreLoopObjectiveTracker>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<PlayerRespawnCheckpoint>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<NavMeshSurface>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<AmbienceManager>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<PlayerAwarenessHudView>(scene), Is.EqualTo(1));
