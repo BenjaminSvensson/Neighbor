@@ -10,6 +10,15 @@ namespace Neighbor.Main.Features.Interaction
     {
         private static readonly List<ClosetHideSpot> ActiveHideSpots = new();
 
+        public enum HideSpotKind
+        {
+            Closet,
+            Bed,
+            Curtain
+        }
+
+        [Header("Hide Spot")]
+        [SerializeField] private HideSpotKind hideSpotKind = HideSpotKind.Closet;
         [SerializeField] private ClosetDoorPair doors;
         [SerializeField] private Transform hidePoint;
         [SerializeField] private Transform exitPoint;
@@ -33,6 +42,8 @@ namespace Neighbor.Main.Features.Interaction
 
         public bool HasHiddenPlayer => hiddenPlayer != null;
         public bool IsTransitioning => isTransitioning;
+        public HideSpotKind Kind => hideSpotKind;
+        public string DisplayName => GetDisplayName(hideSpotKind);
         public Vector3 SearchPosition => exitPoint != null ? exitPoint.position : transform.position;
         public static IReadOnlyList<ClosetHideSpot> HideSpots => ActiveHideSpots;
 
@@ -198,6 +209,26 @@ namespace Neighbor.Main.Features.Interaction
             return foundPlayer;
         }
 
+        public string GetInteractionActionText()
+        {
+            if (HasHiddenPlayer)
+            {
+                return hideSpotKind switch
+                {
+                    HideSpotKind.Bed => "Slide out",
+                    HideSpotKind.Curtain => "Step out",
+                    _ => "Exit closet"
+                };
+            }
+
+            return hideSpotKind switch
+            {
+                HideSpotKind.Bed => "Hide under bed",
+                HideSpotKind.Curtain => "Hide behind curtain",
+                _ => "Hide in closet"
+            };
+        }
+
         private bool IsHiddenPlayer(PlayerInteractor interactor)
         {
             return interactor != null
@@ -226,6 +257,7 @@ namespace Neighbor.Main.Features.Interaction
         private void UpdateSidePeek()
         {
             if (!allowSidePeek
+                || hideSpotKind == HideSpotKind.Bed
                 || doors == null
                 || hiddenPlayer == null
                 || hiddenState == null
@@ -313,6 +345,16 @@ namespace Neighbor.Main.Features.Interaction
 
             isTransitioning = false;
             sidePeekOffset = 0f;
+        }
+
+        private static string GetDisplayName(HideSpotKind kind)
+        {
+            return kind switch
+            {
+                HideSpotKind.Bed => "bed",
+                HideSpotKind.Curtain => "curtain",
+                _ => "closet"
+            };
         }
 
         private void OnValidate()
