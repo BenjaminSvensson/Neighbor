@@ -74,6 +74,14 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float placementFallbackDownDistance = 3f;
         [SerializeField] private LayerMask placementMask = ~0;
 
+        [Header("Placement Preview")]
+        [SerializeField] private bool showPlacementPreview = true;
+        [SerializeField] private LineRenderer placementPreviewRenderer;
+        [SerializeField, Min(0.001f)] private float placementPreviewLineWidth = 0.025f;
+        [SerializeField, Min(0.05f)] private float placementPreviewMinimumHalfSize = 0.18f;
+        [SerializeField] private Color placementPreviewValidColor = new Color(0.34f, 1f, 0.58f, 0.86f);
+        [SerializeField] private Color placementPreviewBlockedColor = new Color(1f, 0.25f, 0.12f, 0.92f);
+
         [Header("Throwing")]
         [SerializeField, Min(0f)] private float throwHoldThreshold = 0.22f;
         [SerializeField, Min(0f)] private float throwChargePullDistance = 0.35f;
@@ -111,6 +119,8 @@ namespace Neighbor.Main.Features.Interaction
         private string pendingAutoEquipMatchKey;
         private float pendingAutoEquipAt;
         private Material throwArcMaterial;
+        private Material placementPreviewMaterial;
+        private bool placementPreviewValid;
         private Pickupable cachedHeldPickup;
         private DoorKey cachedHeldDoorKey;
         private DoorBlockerChair cachedHeldDoorBlocker;
@@ -123,6 +133,8 @@ namespace Neighbor.Main.Features.Interaction
 
         public bool IsHoldingPickup => heldPickup != null;
         public bool IsInspectingHeldPickup => isInspectingHeldPickup;
+        public bool IsPlacementPreviewVisible => placementPreviewRenderer != null && placementPreviewRenderer.enabled;
+        public bool IsPlacementPreviewValid => placementPreviewValid;
         public Pickupable HeldPickup => heldPickup;
         public float ThrowCharge => ThrowCharge01;
         public int ActiveInventorySlot => activeInventorySlot;
@@ -169,6 +181,7 @@ namespace Neighbor.Main.Features.Interaction
             EndActiveHoldInteraction(false);
             DropInventoryForDisable();
             HideThrowArc();
+            HidePlacementPreview();
             ClearFocusState();
             if (tooltipView != null)
             {
@@ -184,6 +197,7 @@ namespace Neighbor.Main.Features.Interaction
         private void OnDestroy()
         {
             ReleaseThrowArcResources();
+            ReleasePlacementPreviewResources();
         }
 
         private void Update()
@@ -270,6 +284,7 @@ namespace Neighbor.Main.Features.Interaction
 
         private void LateUpdate()
         {
+            UpdatePlacementPreview();
             UpdateThrowArc();
         }
 
@@ -1892,6 +1907,109 @@ namespace Neighbor.Main.Features.Interaction
                 : inputActions.FindAction(interactActionName, false);
         }
 
+        private void UpdatePlacementPreview()
+        {
+            if (!showPlacementPreview || heldPickup == null || releaseButtonWasHeld || isInspectingHeldPickup)
+            {
+                HidePlacementPreview();
+                return;
+            }
+
+            bool validPose = TryGetPlacementPose(
+                heldPickup,
+                out Vector3 previewPosition,
+                out Quaternion previewRotation,
+                out bool foundPlacementSurface,
+                out _);
+            if (!foundPlacementSurface)
+            {
+                HidePlacementPreview();
+                return;
+            }
+
+            EnsurePlacementPreviewRenderer();
+            if (placementPreviewRenderer == null)
+            {
+                return;
+            }
+
+            placementPreviewValid = validPose;
+            placementPreviewRenderer.enabled = true;
+            Color previewColor = validPose ? placementPreviewValidColor : placementPreviewBlockedColor;
+            placementPreviewRenderer.startColor = previewColor;
+            placementPreviewRenderer.endColor = previewColor;
+            placementPreviewRenderer.widthMultiplier = validPose
+                ? placementPreviewLineWidth
+                : placementPreviewLineWidth * 1.35f;
+            UpdatePlacementPreviewFootprint(heldPickup, previewPosition, previewRotation);
+        }
+
+        private void UpdatePlacementPreviewFootprint(Pickupable pickupable, Vector3 position, Quaternion rotation)
+        {
+            if (placementPreviewRenderer == null || pickupable == null)
+            {
+                return;
+            }
+
+            Quaternion originalRotation = pickupable.transform.rotation;
+            pickupable.transform.rotation = rotation;
+            Bounds bounds = pickupable.GetPlacementBounds();
+            pickupable.transform.rotation = originalRotation;
+
+            Vector3 transformToBoundsCenter = pickupable.transform.position - bounds.center;
+            Vector3 center = position - transformToBoundsCenter;
+            Vector3 extents = bounds.extents;
+            Vector3 right = Vector3.ProjectOnPlane(rotation * Vector3.right, Vector3.up);
+            if (right.sqrMagnitude <= 0.0001f)
+            {
+                right = Vector3.right;
+            }
+
+            right.Normalize();
+            Vector3 forward = Vector3.ProjectOnPlane(rotation * Vector3.forward, Vector3.up);
+            if (forward.sqrMagnitude <= 0.0001f)
+            {
+                forward = Vector3.Cross(Vector3.up, right);
+            }
+
+            forward.Normalize();
+            float halfRight = Mathf.Max(placementPreviewMinimumHalfSize, Mathf.Abs(extents.x));
+            float halfForward = Mathf.Max(placementPreviewMinimumHalfSize, Mathf.Abs(extents.z));
+            Vector3 previewCenter = center - Vector3.up * Mathf.Max(0f, extents.y - placementSurfacePadding);
+            previewCenter += Vector3.up * 0.015f;
+
+            placementPreviewRenderer.positionCount = 5;
+            placementPreviewRenderer.SetPosition(0, previewCenter + right * halfRight + forward * halfForward);
+            placementPreviewRenderer.SetPosition(1, previewCenter - right * halfRight + forward * halfForward);
+            placementPreviewRenderer.SetPosition(2, previewCenter - right * halfRight - forward * halfForward);
+            placementPreviewRenderer.SetPosition(3, previewCenter + right * halfRight - forward * halfForward);
+            placementPreviewRenderer.SetPosition(4, previewCenter + right * halfRight + forward * halfForward);
+        }
+
+        private void EnsurePlacementPreviewRenderer()
+        {
+            if (placementPreviewRenderer != null)
+            {
+                return;
+            }
+
+            GameObject previewObject = new GameObject("PlacementPreview");
+            previewObject.transform.SetParent(transform, false);
+            placementPreviewRenderer = previewObject.AddComponent<LineRenderer>();
+            placementPreviewRenderer.enabled = false;
+            placementPreviewRenderer.useWorldSpace = true;
+            placementPreviewRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            placementPreviewRenderer.receiveShadows = false;
+            placementPreviewRenderer.textureMode = LineTextureMode.Stretch;
+            placementPreviewRenderer.alignment = LineAlignment.View;
+            placementPreviewRenderer.widthMultiplier = placementPreviewLineWidth;
+            placementPreviewRenderer.numCapVertices = 4;
+            placementPreviewRenderer.numCornerVertices = 4;
+            placementPreviewRenderer.sortingOrder = 99;
+            placementPreviewMaterial = CreateThrowArcMaterial();
+            placementPreviewRenderer.sharedMaterial = placementPreviewMaterial;
+        }
+
         private void UpdateThrowArc()
         {
             if (!showThrowArc || heldPickup == null || !releaseButtonWasHeld)
@@ -2012,6 +2130,16 @@ namespace Neighbor.Main.Features.Interaction
             {
                 throwArcRenderer.enabled = false;
                 throwArcRenderer.positionCount = 0;
+            }
+        }
+
+        private void HidePlacementPreview()
+        {
+            placementPreviewValid = false;
+            if (placementPreviewRenderer != null)
+            {
+                placementPreviewRenderer.enabled = false;
+                placementPreviewRenderer.positionCount = 0;
             }
         }
 
@@ -2138,6 +2266,20 @@ namespace Neighbor.Main.Features.Interaction
             {
                 Destroy(throwArcMaterial);
                 throwArcMaterial = null;
+            }
+        }
+
+        private void ReleasePlacementPreviewResources()
+        {
+            if (placementPreviewRenderer != null && placementPreviewMaterial != null && placementPreviewRenderer.sharedMaterial == placementPreviewMaterial)
+            {
+                placementPreviewRenderer.sharedMaterial = null;
+            }
+
+            if (placementPreviewMaterial != null)
+            {
+                Destroy(placementPreviewMaterial);
+                placementPreviewMaterial = null;
             }
         }
 
