@@ -7,6 +7,7 @@ namespace Neighbor.Main.Features.Player
         [Header("References")]
         [SerializeField] private PlayerController playerController;
         [SerializeField] private PlayerCameraController cameraController;
+        [SerializeField] private PlayerHidingState hidingState;
         [SerializeField] private Transform audioAnchor;
         [SerializeField] private AudioSource oneShotSource;
         [SerializeField] private AudioSource footstepLoopSource;
@@ -30,6 +31,10 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Range(0f, 1f)] private float tiredBreathVolume = 0.34f;
         [SerializeField, Range(0f, 1f)] private float breathStartStamina = 0.38f;
         [SerializeField, Min(0f)] private float breathLoopFadeSharpness = 8f;
+        [SerializeField, Range(0f, 1f)] private float hiddenBreathVolume = 0.42f;
+        [SerializeField, Range(0f, 1f)] private float hiddenBreathMinimumStress = 0.18f;
+        [SerializeField, Range(0f, 1f)] private float hiddenInspectionBreathStress = 0.62f;
+        [SerializeField, Min(0f)] private float hiddenBreathPitchLift = 0.08f;
 
         [Header("Movement Actions")]
         [SerializeField] private AudioClip[] jumpClips;
@@ -76,6 +81,9 @@ namespace Neighbor.Main.Features.Player
         private int pausedZoomSample;
         private float zoomPausedAt = float.NegativeInfinity;
 
+        public float CurrentBreathStress01 { get; private set; }
+        public float CurrentBreathTargetVolume { get; private set; }
+
         private void Awake()
         {
             if (playerController == null)
@@ -92,6 +100,8 @@ namespace Neighbor.Main.Features.Player
             {
                 cameraController = GetComponentInChildren<PlayerCameraController>();
             }
+
+            ResolveHidingState();
 
             if (oneShotSource == null)
             {
@@ -346,12 +356,49 @@ namespace Neighbor.Main.Features.Player
         {
             if (breathLoopSource == null || tiredBreathLoop == null)
             {
+                CurrentBreathStress01 = 0f;
+                CurrentBreathTargetVolume = 0f;
                 return;
             }
 
             if (breathLoopSource.clip != tiredBreathLoop)
             {
                 breathLoopSource.clip = tiredBreathLoop;
+            }
+
+            float staminaStress = CalculateStaminaBreathStress01();
+            float hidingStress = CalculateHidingBreathStress01();
+            CurrentBreathStress01 = Mathf.Max(staminaStress, hidingStress);
+            CurrentBreathTargetVolume = Mathf.Max(
+                tiredBreathVolume * staminaStress,
+                hiddenBreathVolume * hidingStress);
+
+            breathLoopSource.volume = Mathf.Lerp(
+                breathLoopSource.volume,
+                CurrentBreathTargetVolume,
+                1f - Mathf.Exp(-breathLoopFadeSharpness * Time.deltaTime));
+
+            float targetPitch = 1f + hidingStress * hiddenBreathPitchLift;
+            breathLoopSource.pitch = Mathf.Lerp(
+                breathLoopSource.pitch,
+                targetPitch,
+                1f - Mathf.Exp(-breathLoopFadeSharpness * Time.deltaTime));
+
+            if (CurrentBreathTargetVolume > 0.001f && !breathLoopSource.isPlaying)
+            {
+                breathLoopSource.Play();
+            }
+            else if (CurrentBreathTargetVolume <= 0.001f && breathLoopSource.isPlaying && breathLoopSource.volume <= 0.01f)
+            {
+                breathLoopSource.Stop();
+            }
+        }
+
+        private float CalculateStaminaBreathStress01()
+        {
+            if (playerController == null)
+            {
+                return 0f;
             }
 
             float staminaStress = breathStartStamina <= 0f
@@ -367,19 +414,36 @@ namespace Neighbor.Main.Features.Player
                 staminaStress = 1f;
             }
 
-            float targetVolume = tiredBreathVolume * staminaStress;
-            breathLoopSource.volume = Mathf.Lerp(
-                breathLoopSource.volume,
-                targetVolume,
-                1f - Mathf.Exp(-breathLoopFadeSharpness * Time.deltaTime));
+            return staminaStress;
+        }
 
-            if (targetVolume > 0.001f && !breathLoopSource.isPlaying)
+        private float CalculateHidingBreathStress01()
+        {
+            ResolveHidingState();
+            if (hidingState == null || !hidingState.IsHidden)
             {
-                breathLoopSource.Play();
+                return 0f;
             }
-            else if (targetVolume <= 0.001f && breathLoopSource.isPlaying && breathLoopSource.volume <= 0.01f)
+
+            float hidingStress = Mathf.Max(hiddenBreathMinimumStress, hidingState.BreathTension01);
+            if (hidingState.WasInspectedRecently)
             {
-                breathLoopSource.Stop();
+                hidingStress = Mathf.Max(hidingStress, hiddenInspectionBreathStress);
+            }
+
+            if (hidingState.IsCompromised || hidingState.IsDangerouslyExposed)
+            {
+                hidingStress = 1f;
+            }
+
+            return Mathf.Clamp01(hidingStress);
+        }
+
+        private void ResolveHidingState()
+        {
+            if (hidingState == null)
+            {
+                hidingState = GetComponent<PlayerHidingState>() ?? GetComponentInChildren<PlayerHidingState>(true);
             }
         }
 
@@ -448,6 +512,7 @@ namespace Neighbor.Main.Features.Player
             if (breathLoopSource != null)
             {
                 breathLoopSource.Stop();
+                breathLoopSource.pitch = 1f;
             }
 
             activeFootstepLoopClip = null;
