@@ -9,6 +9,7 @@ namespace Neighbor.Main.Features.Progression
     {
         public enum TriggerRole
         {
+            EnterHouse,
             ReachRoom,
             Escape
         }
@@ -42,9 +43,12 @@ namespace Neighbor.Main.Features.Progression
                 return false;
             }
 
-            return role == TriggerRole.Escape
-                ? objectiveTracker.RegisterEscaped(player)
-                : objectiveTracker.RegisterRoomReached(player);
+            return role switch
+            {
+                TriggerRole.EnterHouse => objectiveTracker.RegisterEnteredHouse(player),
+                TriggerRole.Escape => objectiveTracker.RegisterEscaped(player),
+                _ => objectiveTracker.RegisterRoomReached(player)
+            };
         }
 
         private void ConfigureCollider()
