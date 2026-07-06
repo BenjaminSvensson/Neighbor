@@ -180,8 +180,10 @@ namespace Neighbor.Main.Features.Neighbor
         private readonly Dictionary<Door, int> observedUnexpectedDoorOpenSequences = new();
         private readonly Dictionary<NeighborTaskLocation, float> lastTaskCompletionTimes = new();
         private readonly Dictionary<NeighborTaskLocation, float> blockedTaskUntilTimes = new();
+        private readonly Dictionary<NeighborTaskLocation.RoutineRole, float> lastRoutineRoleCompletionTimes = new();
         private readonly HashSet<Pickupable> noticedObjectLocationChanges = new();
         private NeighborTaskLocation lastTaskLocation;
+        private NeighborTaskLocation.RoutineRole lastRoutineRole = NeighborTaskLocation.RoutineRole.General;
         private NeighborSearchPoint currentSearchPoint;
         private ClosetHideSpot currentHideSpot;
         private ClosetHideSpot witnessedPlayerHideSpot;
@@ -295,6 +297,9 @@ namespace Neighbor.Main.Features.Neighbor
             && currentTaskAnimationPhase != NeighborTaskLocation.TaskAnimationPhase.None
             ? currentTaskLocation
             : null;
+        public NeighborTaskLocation.RoutineRole CurrentRoutineRole => currentTaskLocation != null
+            ? currentTaskLocation.Role
+            : NeighborTaskLocation.RoutineRole.General;
         public NeighborTaskLocation.TaskAnimationPhase ActiveTaskAnimationPhase => ActiveTaskLocation != null
             ? currentTaskAnimationPhase
             : NeighborTaskLocation.TaskAnimationPhase.None;
@@ -1584,8 +1589,7 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 if (currentTaskLocation != null)
                 {
-                    taskCompletionMemory[currentTaskLocation] = GetMemory(taskCompletionMemory, currentTaskLocation) + 1f;
-                    lastTaskCompletionTimes[currentTaskLocation] = Time.time;
+                    RecordTaskCompletion(currentTaskLocation);
                 }
 
                 StopActiveTaskAudio(true);
@@ -2290,19 +2294,10 @@ namespace Neighbor.Main.Features.Neighbor
                     continue;
                 }
 
-                float score = candidate.SelectionPriority + Random.Range(0f, 0.35f);
-                score -= Vector3.Distance(transform.position, candidate.Position) * 0.035f;
-                score -= GetMemory(taskCompletionMemory, candidate) * 0.18f;
-
-                if (candidate == lastTaskLocation && !candidate.CanRepeatImmediately && locations.Count > 1)
-                {
-                    score -= 4f;
-                }
-
-                if (lastTaskCompletionTimes.TryGetValue(candidate, out float lastCompletedTime))
-                {
-                    score -= Mathf.Clamp01(1f - (Time.time - lastCompletedTime) / 35f) * 1.5f;
-                }
+                float score = GetTaskSelectionScore(
+                    candidate,
+                    locations.Count,
+                    Random.Range(0f, 0.35f));
 
                 if (score > bestScore)
                 {
@@ -2312,6 +2307,103 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             return bestLocation;
+        }
+
+        private void RecordTaskCompletion(NeighborTaskLocation taskLocation)
+        {
+            if (taskLocation == null)
+            {
+                return;
+            }
+
+            taskCompletionMemory[taskLocation] = GetMemory(taskCompletionMemory, taskLocation) + 1f;
+            lastTaskCompletionTimes[taskLocation] = Time.time;
+
+            NeighborTaskLocation.RoutineRole role = taskLocation.Role;
+            lastRoutineRole = role;
+            if (role != NeighborTaskLocation.RoutineRole.General)
+            {
+                lastRoutineRoleCompletionTimes[role] = Time.time;
+            }
+        }
+
+        private float GetTaskSelectionScore(
+            NeighborTaskLocation candidate,
+            int availableLocationCount,
+            float randomTieBreaker)
+        {
+            float score = candidate.SelectionPriority + randomTieBreaker;
+            score -= Vector3.Distance(transform.position, candidate.Position) * 0.035f;
+            score -= GetMemory(taskCompletionMemory, candidate) * 0.18f;
+
+            NeighborTaskLocation.RoutineRole role = candidate.Role;
+            score += GetRoutineRoleSuspicionBias(role);
+
+            if (candidate == lastTaskLocation && !candidate.CanRepeatImmediately && availableLocationCount > 1)
+            {
+                score -= 4f;
+            }
+
+            if (role != NeighborTaskLocation.RoutineRole.General
+                && role == lastRoutineRole
+                && !candidate.CanRepeatImmediately
+                && availableLocationCount > 1)
+            {
+                score -= 0.85f;
+            }
+
+            if (lastTaskCompletionTimes.TryGetValue(candidate, out float lastCompletedTime))
+            {
+                score -= Mathf.Clamp01(1f - (Time.time - lastCompletedTime) / 35f) * 1.5f;
+            }
+
+            if (role != NeighborTaskLocation.RoutineRole.General
+                && lastRoutineRoleCompletionTimes.TryGetValue(role, out float lastRoleCompletedTime))
+            {
+                float roleCooldown = Mathf.Max(0f, candidate.RoutineRoleCooldown);
+                if (roleCooldown > 0f)
+                {
+                    score -= Mathf.Clamp01(1f - (Time.time - lastRoleCompletedTime) / roleCooldown) * 1.25f;
+                }
+            }
+
+            return score;
+        }
+
+        private float GetRoutineRoleSuspicionBias(NeighborTaskLocation.RoutineRole role)
+        {
+            switch (CurrentSuspicionLevel)
+            {
+                case SuspicionLevel.Curious:
+                    return role switch
+                    {
+                        NeighborTaskLocation.RoutineRole.Security => 0.35f,
+                        NeighborTaskLocation.RoutineRole.Maintenance => 0.3f,
+                        NeighborTaskLocation.RoutineRole.Garage => 0.25f,
+                        NeighborTaskLocation.RoutineRole.Rest => -0.2f,
+                        _ => 0f
+                    };
+                case SuspicionLevel.Suspicious:
+                case SuspicionLevel.Certain:
+                    return role switch
+                    {
+                        NeighborTaskLocation.RoutineRole.Security => 0.75f,
+                        NeighborTaskLocation.RoutineRole.Maintenance => 0.55f,
+                        NeighborTaskLocation.RoutineRole.Garage => 0.45f,
+                        NeighborTaskLocation.RoutineRole.Rest => -0.45f,
+                        NeighborTaskLocation.RoutineRole.Relax => -0.25f,
+                        _ => 0f
+                    };
+                default:
+                    return role switch
+                    {
+                        NeighborTaskLocation.RoutineRole.Relax => 0.15f,
+                        NeighborTaskLocation.RoutineRole.Chore => 0.12f,
+                        NeighborTaskLocation.RoutineRole.Rest => 0.08f,
+                        NeighborTaskLocation.RoutineRole.Security => -0.2f,
+                        _ => 0f
+                    };
+            }
         }
 
         private void UpdateLastSeenPlayerDirection(Vector3 seenPosition)

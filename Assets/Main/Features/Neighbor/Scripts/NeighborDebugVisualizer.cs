@@ -224,7 +224,7 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (brain.CurrentTaskLocation != null)
             {
-                return $"Task {brain.CurrentTaskLocation.name} ({brain.ActiveTaskAnimationPhase})";
+                return $"Task {brain.CurrentTaskLocation.name} [{brain.CurrentRoutineRole}] ({brain.ActiveTaskAnimationPhase})";
             }
 
             if (brain.CurrentState == NeighborBrain.BehaviorState.ObjectHandling && brain.ObjectHandling != null)
