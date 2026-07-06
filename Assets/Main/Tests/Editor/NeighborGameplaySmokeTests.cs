@@ -1,11 +1,13 @@
 using System;
 using System.Reflection;
+using Unity.AI.Navigation;
 using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using Neighbor.Main.HouseBuilder;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace Neighbor.Main.Tests
 {
@@ -1371,6 +1373,68 @@ namespace Neighbor.Main.Tests
             Assert.That(
                 GameplaySmokeTestReflection.GetField<NeighborTaskLocation>(brain, "currentTaskLocation"),
                 Is.Null);
+        }
+
+        [Test]
+        public void AbandonedNoiseInvestigation_ReturnsToInterruptedWanderGoal()
+        {
+            GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            NavMeshSurface surface = null;
+            try
+            {
+                ground.name = "TemporaryNavMeshGround";
+                ground.transform.position = new Vector3(0f, -0.1f, 0f);
+                ground.transform.localScale = new Vector3(10f, 0.2f, 10f);
+                surface = ground.AddComponent<NavMeshSurface>();
+                surface.collectObjects = CollectObjects.All;
+                surface.useGeometry = NavMeshCollectGeometry.RenderMeshes;
+                surface.layerMask = ~0;
+                surface.defaultArea = 0;
+                surface.BuildNavMesh();
+
+                GameObject neighborObject = context.CreateObject("Neighbor");
+                neighborObject.transform.position = Vector3.zero;
+                NavMeshAgent agent = neighborObject.AddComponent<NavMeshAgent>();
+                agent.radius = 0.3f;
+                agent.height = 2f;
+                agent.stoppingDistance = 0.1f;
+                NeighborMotor motor = context.AddInitializedComponent<NeighborMotor>(neighborObject);
+                NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+                GameObject source = context.CreateObject("NoiseSource");
+                Vector3 resumeGoal = new(1f, 0f, 1f);
+                Vector3 noisePosition = new(3f, 0f, 2f);
+
+                GameplaySmokeTestReflection.SetField(brain, "wanderChance", 0f);
+                GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.Wander);
+                GameplaySmokeTestReflection.SetField(brain, "currentGoal", resumeGoal);
+
+                GameplaySmokeTestReflection.Invoke(
+                    brain,
+                    "BeginInvestigation",
+                    noisePosition,
+                    source,
+                    1f,
+                    NeighborMotor.MoveMode.Walk,
+                    false);
+
+                Assert.That(brain.CurrentState, Is.EqualTo(NeighborBrain.BehaviorState.Investigate));
+                Assert.That(brain.HasActiveInvestigation, Is.True);
+
+                GameplaySmokeTestReflection.Invoke(brain, "HandleDestinationAbandoned", noisePosition);
+
+                Assert.That(brain.HasActiveInvestigation, Is.False);
+                Assert.That(brain.CurrentState, Is.EqualTo(NeighborBrain.BehaviorState.Wander));
+                Assert.That(Vector3.Distance(brain.CurrentGoal, resumeGoal), Is.LessThan(0.35f));
+            }
+            finally
+            {
+                if (surface != null)
+                {
+                    surface.RemoveData();
+                }
+
+                UnityEngine.Object.DestroyImmediate(ground);
+            }
         }
 
         [Test]
