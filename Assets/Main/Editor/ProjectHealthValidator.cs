@@ -329,15 +329,64 @@ internal static class ProjectHealthValidator
             return 0;
         }
 
-        if (door.GetComponentsInChildren<Collider>(true).Length > 0)
+        int issueCount = 0;
+        string doorPath = GetHierarchyPath(door.transform);
+        if (door.GetComponentsInChildren<Collider>(true).Length == 0)
         {
-            return 0;
+            Debug.LogError(
+                $"Door has no collider in its hierarchy: '{doorPath}' in '{assetPath}'.",
+                door);
+            issueCount++;
         }
 
-        Debug.LogError(
-            $"Door has no collider in its hierarchy: '{GetHierarchyPath(door.transform)}' in '{assetPath}'.",
-            door);
-        return 1;
+        SerializedObject serializedDoor = new SerializedObject(door);
+        SerializedProperty startsLockedProperty = serializedDoor.FindProperty("startsLocked");
+        if (startsLockedProperty == null || !startsLockedProperty.boolValue)
+        {
+            return issueCount;
+        }
+
+        SerializedProperty requiredKeyIdProperty = serializedDoor.FindProperty("requiredKeyId");
+        string requiredKeyId = requiredKeyIdProperty != null ? requiredKeyIdProperty.stringValue : string.Empty;
+        if (string.IsNullOrWhiteSpace(requiredKeyId))
+        {
+            Debug.LogError(
+                $"Locked Door has no required key id: '{doorPath}' in '{assetPath}'.",
+                door);
+            issueCount++;
+        }
+
+        SerializedProperty reportFeedbackProperty = serializedDoor.FindProperty("reportPlayerFeedback");
+        if (reportFeedbackProperty != null && !reportFeedbackProperty.boolValue)
+        {
+            Debug.LogError(
+                $"Locked Door has player feedback disabled: '{doorPath}' in '{assetPath}'.",
+                door);
+            issueCount++;
+        }
+
+        SerializedProperty missingKeyFeedbackProperty = serializedDoor.FindProperty("missingKeyFeedbackFormat");
+        string missingKeyFeedback = missingKeyFeedbackProperty != null ? missingKeyFeedbackProperty.stringValue : string.Empty;
+        if (reportFeedbackProperty == null || reportFeedbackProperty.boolValue)
+        {
+            if (string.IsNullOrWhiteSpace(missingKeyFeedback))
+            {
+                Debug.LogError(
+                    $"Locked Door has no missing-key feedback text: '{doorPath}' in '{assetPath}'.",
+                    door);
+                issueCount++;
+            }
+            else if (!string.IsNullOrWhiteSpace(requiredKeyId)
+                && missingKeyFeedback.IndexOf("{0}", StringComparison.Ordinal) < 0)
+            {
+                Debug.LogError(
+                    $"Locked Door missing-key feedback must include '{{0}}' for the key name: '{doorPath}' in '{assetPath}'.",
+                    door);
+                issueCount++;
+            }
+        }
+
+        return issueCount;
     }
 
     private static int ReportObjectiveZoneRuleIssues(ObjectiveTriggerZone zone, string assetPath)

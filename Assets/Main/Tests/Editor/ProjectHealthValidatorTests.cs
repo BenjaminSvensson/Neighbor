@@ -74,6 +74,46 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void Validator_FlagsLockedDoorWithoutRequiredKeyId()
+        {
+            GameObject root = new("LockedDoorWithoutKeyId");
+            try
+            {
+                root.AddComponent<BoxCollider>();
+                Door door = root.AddComponent<Door>();
+                SetDoorString(door, "requiredKeyId", " ");
+                SetDoorString(door, "missingKeyFeedbackFormat", "Need {0}");
+
+                LogAssert.Expect(LogType.Error, new Regex("Locked Door has no required key id"));
+                Assert.That(ProjectHealthValidator.ValidateGameObjectForTests(root, "SyntheticLockedDoor.prefab"), Is.EqualTo(1));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void Validator_FlagsLockedDoorFeedbackWithoutKeyNamePlaceholder()
+        {
+            GameObject root = new("LockedDoorWithoutReadableHint");
+            try
+            {
+                root.AddComponent<BoxCollider>();
+                Door door = root.AddComponent<Door>();
+                SetDoorString(door, "requiredKeyId", "basement_key");
+                SetDoorString(door, "missingKeyFeedbackFormat", "Locked");
+
+                LogAssert.Expect(LogType.Error, new Regex("missing-key feedback must include"));
+                Assert.That(ProjectHealthValidator.ValidateGameObjectForTests(root, "SyntheticLockedDoor.prefab"), Is.EqualTo(1));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
         public void Validator_FlagsObjectiveZoneWithoutTriggerCollider()
         {
             GameObject root = new("ObjectiveZoneWithoutTrigger");
@@ -192,6 +232,15 @@ namespace Neighbor.Main.Tests
             terrain.treeBillboardDistance = 80f;
             terrain.treeMaximumFullLODCount = 20;
             terrain.detailObjectDistance = 80f;
+        }
+
+        private static void SetDoorString(Door door, string propertyName, string value)
+        {
+            SerializedObject serializedDoor = new(door);
+            SerializedProperty property = serializedDoor.FindProperty(propertyName);
+            Assert.That(property, Is.Not.Null, $"Could not find Door property '{propertyName}'.");
+            property.stringValue = value;
+            serializedDoor.ApplyModifiedPropertiesWithoutUndo();
         }
     }
 }
