@@ -224,6 +224,59 @@ namespace Neighbor.Main.Tests
             }
         }
 
+        [Test]
+        public void Validator_FlagsTerrainTreePrototypeWithPinkFallbackMaterial()
+        {
+            GameObject root = new("TerrainWithPinkTreePrototypeMaterial");
+            GameObject treePrefab = new("TreePrototypePinkMaterial");
+            Material material = CreatePinkFallbackMaterial();
+            TerrainData terrainData = new();
+            try
+            {
+                AddBudgetedTerrain(root, terrainData);
+                MeshRenderer renderer = treePrefab.AddComponent<MeshRenderer>();
+                renderer.sharedMaterial = material;
+                terrainData.treePrototypes = new[]
+                {
+                    new TreePrototype { prefab = treePrefab }
+                };
+
+                LogAssert.Expect(LogType.Error, new Regex("Pink fallback material likely missing texture"));
+                Assert.That(ProjectHealthValidator.ValidateGameObjectForTests(root, "SyntheticTerrain.prefab"), Is.EqualTo(1));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                Object.DestroyImmediate(treePrefab);
+                Object.DestroyImmediate(material);
+                Object.DestroyImmediate(terrainData);
+            }
+        }
+
+        [Test]
+        public void Validator_FlagsLodRendererWithPinkFallbackMaterial()
+        {
+            GameObject root = new("TreeLodRoot");
+            GameObject lodObject = new("TreeLod0");
+            Material material = CreatePinkFallbackMaterial();
+            try
+            {
+                lodObject.transform.SetParent(root.transform);
+                MeshRenderer renderer = lodObject.AddComponent<MeshRenderer>();
+                renderer.sharedMaterial = material;
+                LODGroup lodGroup = root.AddComponent<LODGroup>();
+                lodGroup.SetLODs(new[] { new LOD(0.5f, new Renderer[] { renderer }) });
+
+                LogAssert.Expect(LogType.Error, new Regex("Pink fallback material likely missing texture"));
+                Assert.That(ProjectHealthValidator.ValidateGameObjectForTests(root, "SyntheticTree.prefab"), Is.EqualTo(1));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                Object.DestroyImmediate(material);
+            }
+        }
+
         private static void AddBudgetedTerrain(GameObject root, TerrainData terrainData)
         {
             Terrain terrain = root.AddComponent<Terrain>();
@@ -241,6 +294,32 @@ namespace Neighbor.Main.Tests
             Assert.That(property, Is.Not.Null, $"Could not find Door property '{propertyName}'.");
             property.stringValue = value;
             serializedDoor.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static Material CreatePinkFallbackMaterial()
+        {
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit")
+                ?? Shader.Find("Standard")
+                ?? Shader.Find("Sprites/Default")
+                ?? Shader.Find("Unlit/Color");
+            Assert.That(shader, Is.Not.Null, "No built-in shader was available for material validation test.");
+
+            Material material = new(shader)
+            {
+                name = "PinkMissingTextureMaterial"
+            };
+
+            if (material.HasProperty("_BaseColor"))
+            {
+                material.SetColor("_BaseColor", Color.magenta);
+            }
+
+            if (material.HasProperty("_Color"))
+            {
+                material.SetColor("_Color", Color.magenta);
+            }
+
+            return material;
         }
     }
 }

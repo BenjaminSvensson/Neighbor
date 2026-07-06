@@ -497,6 +497,9 @@ internal static class ProjectHealthValidator
                 issueCount += ReportRendererMaterialIssues(
                     renderers[rendererIndex],
                     $"{assetPath} (terrain tree prototype {prototypeIndex}: {prefab.name})");
+                issueCount += ReportRendererPinkFallbackMaterialIssues(
+                    renderers[rendererIndex],
+                    $"{assetPath} (terrain tree prototype {prototypeIndex}: {prefab.name})");
             }
         }
 
@@ -650,8 +653,12 @@ internal static class ProjectHealthValidator
 
             for (int rendererIndex = 0; rendererIndex < renderers.Length; rendererIndex++)
             {
-                if (renderers[rendererIndex] != null)
+                Renderer renderer = renderers[rendererIndex];
+                if (renderer != null)
                 {
+                    issueCount += ReportRendererPinkFallbackMaterialIssues(
+                        renderer,
+                        $"{assetPath} (LODGroup level {lodIndex})");
                     continue;
                 }
 
@@ -665,11 +672,107 @@ internal static class ProjectHealthValidator
         return issueCount;
     }
 
+    private static int ReportRendererPinkFallbackMaterialIssues(Renderer renderer, string assetPath)
+    {
+        if (renderer == null)
+        {
+            return 0;
+        }
+
+        int issueCount = 0;
+        Material[] materials = renderer.sharedMaterials;
+        if (materials == null)
+        {
+            return 0;
+        }
+
+        for (int materialIndex = 0; materialIndex < materials.Length; materialIndex++)
+        {
+            Material material = materials[materialIndex];
+            if (material == null || !IsSuspiciousPinkFallbackMaterial(material))
+            {
+                continue;
+            }
+
+            Debug.LogError(
+                $"Pink fallback material likely missing texture: '{material.name}' slot {materialIndex} on '{GetHierarchyPath(renderer.transform)}' in '{assetPath}'.",
+                material);
+            issueCount++;
+        }
+
+        return issueCount;
+    }
+
     private static bool IsErrorShader(Shader shader)
     {
         string shaderName = shader.name;
         return string.Equals(shaderName, "Hidden/InternalErrorShader", StringComparison.Ordinal)
             || shaderName.IndexOf("error", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private static bool IsSuspiciousPinkFallbackMaterial(Material material)
+    {
+        if (material == null || HasAlbedoLikeTexture(material))
+        {
+            return false;
+        }
+
+        if (TryGetMaterialColor(material, out Color color) && IsMagentaFallbackColor(color))
+        {
+            return true;
+        }
+
+        string materialName = material.name;
+        return materialName.IndexOf("missing", StringComparison.OrdinalIgnoreCase) >= 0
+            && materialName.IndexOf("texture", StringComparison.OrdinalIgnoreCase) >= 0
+            || materialName.IndexOf("pink", StringComparison.OrdinalIgnoreCase) >= 0
+            || materialName.IndexOf("magenta", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private static bool HasAlbedoLikeTexture(Material material)
+    {
+        return HasTexture(material, "_BaseMap")
+            || HasTexture(material, "_MainTex")
+            || HasTexture(material, "_BaseColorMap")
+            || HasTexture(material, "_Albedo")
+            || material.mainTexture != null;
+    }
+
+    private static bool HasTexture(Material material, string propertyName)
+    {
+        return material.HasProperty(propertyName) && material.GetTexture(propertyName) != null;
+    }
+
+    private static bool TryGetMaterialColor(Material material, out Color color)
+    {
+        if (material.HasProperty("_BaseColor"))
+        {
+            color = material.GetColor("_BaseColor");
+            return true;
+        }
+
+        if (material.HasProperty("_Color"))
+        {
+            color = material.GetColor("_Color");
+            return true;
+        }
+
+        if (material.HasProperty("_TintColor"))
+        {
+            color = material.GetColor("_TintColor");
+            return true;
+        }
+
+        color = default;
+        return false;
+    }
+
+    private static bool IsMagentaFallbackColor(Color color)
+    {
+        return color.a > 0.2f
+            && color.r >= 0.85f
+            && color.b >= 0.85f
+            && color.g <= 0.25f;
     }
 
     private static int ReportMissingScripts(GameObject root, string assetPath)
