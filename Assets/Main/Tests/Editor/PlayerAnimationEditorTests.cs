@@ -8,7 +8,10 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
+using EngineShadowResolution = UnityEngine.ShadowResolution;
 using Object = UnityEngine.Object;
 
 namespace Neighbor.Main.Tests
@@ -364,6 +367,60 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void PlayerPerformanceProfile_AppliesPrototypeRuntimeBudgets()
+        {
+            QualityRuntimeSnapshot qualitySnapshot = QualityRuntimeSnapshot.Capture();
+            UrpRuntimeSnapshot urpSnapshot = UrpRuntimeSnapshot.Capture();
+            TerrainRuntimeSnapshot[] terrainSnapshots = TerrainRuntimeSnapshot.CaptureAll();
+
+            try
+            {
+                PlayerPerformanceSettings.ApplyProfile(PlayerPerformanceProfile.Performance);
+
+                Assert.That(Application.targetFrameRate, Is.EqualTo(60));
+                Assert.That(QualitySettings.vSyncCount, Is.Zero);
+                Assert.That(QualitySettings.lodBias, Is.EqualTo(0.85f).Within(0.001f));
+                Assert.That(QualitySettings.maximumLODLevel, Is.EqualTo(1));
+                Assert.That(QualitySettings.globalTextureMipmapLimit, Is.EqualTo(1));
+                Assert.That(QualitySettings.shadowDistance, Is.EqualTo(24f).Within(0.001f));
+                Assert.That(QualitySettings.shadowResolution, Is.EqualTo(EngineShadowResolution.Low));
+
+                Terrain[] terrains = Terrain.activeTerrains;
+                for (int i = 0; i < terrains.Length; i++)
+                {
+                    Terrain terrain = terrains[i];
+                    if (terrain == null)
+                    {
+                        continue;
+                    }
+
+                    Assert.That(terrain.treeDistance, Is.EqualTo(220f).Within(0.001f));
+                    Assert.That(terrain.treeBillboardDistance, Is.EqualTo(32f).Within(0.001f));
+                    Assert.That(terrain.treeMaximumFullLODCount, Is.EqualTo(16));
+                    Assert.That(terrain.detailObjectDistance, Is.EqualTo(45f).Within(0.001f));
+                    Assert.That(terrain.detailObjectDensity, Is.EqualTo(0.55f).Within(0.001f));
+                }
+
+                UniversalRenderPipelineAsset urpAsset = UrpRuntimeSnapshot.GetActiveAsset();
+                if (urpAsset != null)
+                {
+                    Assert.That(urpAsset.renderScale, Is.EqualTo(0.85f).Within(0.001f));
+                    Assert.That(urpAsset.supportsHDR, Is.False);
+                    Assert.That(urpAsset.msaaSampleCount, Is.EqualTo(1));
+                    Assert.That(urpAsset.shadowDistance, Is.EqualTo(24f).Within(0.001f));
+                    Assert.That(urpAsset.shadowCascadeCount, Is.EqualTo(1));
+                    Assert.That(urpAsset.maxAdditionalLightsCount, Is.EqualTo(1));
+                }
+            }
+            finally
+            {
+                qualitySnapshot.Restore();
+                urpSnapshot.Restore();
+                TerrainRuntimeSnapshot.RestoreAll(terrainSnapshots);
+            }
+        }
+
+        [Test]
         public void PlayerCamera_ClampsProceduralLeanBeforeWall()
         {
             GameObject root = new("CameraCollisionRoot");
@@ -435,6 +492,204 @@ namespace Neighbor.Main.Tests
                 Object.DestroyImmediate(cameraObject);
                 Object.DestroyImmediate(head);
                 Object.DestroyImmediate(root);
+            }
+        }
+
+        private readonly struct QualityRuntimeSnapshot
+        {
+            private readonly int qualityLevel;
+            private readonly int targetFrameRate;
+            private readonly int vSyncCount;
+            private readonly float lodBias;
+            private readonly int maximumLodLevel;
+            private readonly int globalTextureMipmapLimit;
+            private readonly bool streamingMipmapsActive;
+            private readonly float streamingMipmapsMemoryBudget;
+            private readonly int particleRaycastBudget;
+            private readonly float shadowDistance;
+            private readonly EngineShadowResolution shadowResolution;
+
+            private QualityRuntimeSnapshot(
+                int qualityLevel,
+                int targetFrameRate,
+                int vSyncCount,
+                float lodBias,
+                int maximumLodLevel,
+                int globalTextureMipmapLimit,
+                bool streamingMipmapsActive,
+                float streamingMipmapsMemoryBudget,
+                int particleRaycastBudget,
+                float shadowDistance,
+                EngineShadowResolution shadowResolution)
+            {
+                this.qualityLevel = qualityLevel;
+                this.targetFrameRate = targetFrameRate;
+                this.vSyncCount = vSyncCount;
+                this.lodBias = lodBias;
+                this.maximumLodLevel = maximumLodLevel;
+                this.globalTextureMipmapLimit = globalTextureMipmapLimit;
+                this.streamingMipmapsActive = streamingMipmapsActive;
+                this.streamingMipmapsMemoryBudget = streamingMipmapsMemoryBudget;
+                this.particleRaycastBudget = particleRaycastBudget;
+                this.shadowDistance = shadowDistance;
+                this.shadowResolution = shadowResolution;
+            }
+
+            public static QualityRuntimeSnapshot Capture()
+            {
+                return new QualityRuntimeSnapshot(
+                    QualitySettings.GetQualityLevel(),
+                    Application.targetFrameRate,
+                    QualitySettings.vSyncCount,
+                    QualitySettings.lodBias,
+                    QualitySettings.maximumLODLevel,
+                    QualitySettings.globalTextureMipmapLimit,
+                    QualitySettings.streamingMipmapsActive,
+                    QualitySettings.streamingMipmapsMemoryBudget,
+                    QualitySettings.particleRaycastBudget,
+                    QualitySettings.shadowDistance,
+                    QualitySettings.shadowResolution);
+            }
+
+            public void Restore()
+            {
+                string[] qualityNames = QualitySettings.names;
+                if (qualityNames != null && qualityNames.Length > 0)
+                {
+                    QualitySettings.SetQualityLevel(Mathf.Clamp(qualityLevel, 0, qualityNames.Length - 1), true);
+                }
+
+                Application.targetFrameRate = targetFrameRate;
+                QualitySettings.vSyncCount = vSyncCount;
+                QualitySettings.lodBias = lodBias;
+                QualitySettings.maximumLODLevel = maximumLodLevel;
+                QualitySettings.globalTextureMipmapLimit = globalTextureMipmapLimit;
+                QualitySettings.streamingMipmapsActive = streamingMipmapsActive;
+                QualitySettings.streamingMipmapsMemoryBudget = streamingMipmapsMemoryBudget;
+                QualitySettings.particleRaycastBudget = particleRaycastBudget;
+                QualitySettings.shadowDistance = shadowDistance;
+                QualitySettings.shadowResolution = shadowResolution;
+            }
+        }
+
+        private readonly struct UrpRuntimeSnapshot
+        {
+            private readonly UniversalRenderPipelineAsset asset;
+            private readonly float renderScale;
+            private readonly bool supportsHdr;
+            private readonly bool supportsCameraOpaqueTexture;
+            private readonly int msaaSampleCount;
+            private readonly float shadowDistance;
+            private readonly int shadowCascadeCount;
+            private readonly int mainLightShadowmapResolution;
+            private readonly int maxAdditionalLightsCount;
+            private readonly int additionalLightsShadowmapResolution;
+
+            private UrpRuntimeSnapshot(UniversalRenderPipelineAsset asset)
+            {
+                this.asset = asset;
+                renderScale = asset != null ? asset.renderScale : 0f;
+                supportsHdr = asset != null && asset.supportsHDR;
+                supportsCameraOpaqueTexture = asset != null && asset.supportsCameraOpaqueTexture;
+                msaaSampleCount = asset != null ? asset.msaaSampleCount : 0;
+                shadowDistance = asset != null ? asset.shadowDistance : 0f;
+                shadowCascadeCount = asset != null ? asset.shadowCascadeCount : 0;
+                mainLightShadowmapResolution = asset != null ? asset.mainLightShadowmapResolution : 0;
+                maxAdditionalLightsCount = asset != null ? asset.maxAdditionalLightsCount : 0;
+                additionalLightsShadowmapResolution = asset != null ? asset.additionalLightsShadowmapResolution : 0;
+            }
+
+            public static UrpRuntimeSnapshot Capture()
+            {
+                return new UrpRuntimeSnapshot(GetActiveAsset());
+            }
+
+            public static UniversalRenderPipelineAsset GetActiveAsset()
+            {
+                RenderPipelineAsset renderPipelineAsset = GraphicsSettings.currentRenderPipeline != null
+                    ? GraphicsSettings.currentRenderPipeline
+                    : QualitySettings.renderPipeline;
+                return renderPipelineAsset as UniversalRenderPipelineAsset;
+            }
+
+            public void Restore()
+            {
+                if (asset == null)
+                {
+                    return;
+                }
+
+                asset.renderScale = renderScale;
+                asset.supportsHDR = supportsHdr;
+                asset.supportsCameraOpaqueTexture = supportsCameraOpaqueTexture;
+                asset.msaaSampleCount = msaaSampleCount;
+                asset.shadowDistance = shadowDistance;
+                asset.shadowCascadeCount = shadowCascadeCount;
+                asset.mainLightShadowmapResolution = mainLightShadowmapResolution;
+                asset.maxAdditionalLightsCount = maxAdditionalLightsCount;
+                asset.additionalLightsShadowmapResolution = additionalLightsShadowmapResolution;
+            }
+        }
+
+        private readonly struct TerrainRuntimeSnapshot
+        {
+            private readonly Terrain terrain;
+            private readonly bool drawTreesAndFoliage;
+            private readonly float treeDistance;
+            private readonly float treeBillboardDistance;
+            private readonly float treeCrossFadeLength;
+            private readonly int treeMaximumFullLodCount;
+            private readonly float detailObjectDistance;
+            private readonly float detailObjectDensity;
+            private readonly float heightmapPixelError;
+            private readonly float basemapDistance;
+
+            private TerrainRuntimeSnapshot(Terrain terrain)
+            {
+                this.terrain = terrain;
+                drawTreesAndFoliage = terrain != null && terrain.drawTreesAndFoliage;
+                treeDistance = terrain != null ? terrain.treeDistance : 0f;
+                treeBillboardDistance = terrain != null ? terrain.treeBillboardDistance : 0f;
+                treeCrossFadeLength = terrain != null ? terrain.treeCrossFadeLength : 0f;
+                treeMaximumFullLodCount = terrain != null ? terrain.treeMaximumFullLODCount : 0;
+                detailObjectDistance = terrain != null ? terrain.detailObjectDistance : 0f;
+                detailObjectDensity = terrain != null ? terrain.detailObjectDensity : 0f;
+                heightmapPixelError = terrain != null ? terrain.heightmapPixelError : 0f;
+                basemapDistance = terrain != null ? terrain.basemapDistance : 0f;
+            }
+
+            public static TerrainRuntimeSnapshot[] CaptureAll()
+            {
+                Terrain[] terrains = Terrain.activeTerrains;
+                return terrains == null
+                    ? new TerrainRuntimeSnapshot[0]
+                    : terrains.Where(terrain => terrain != null).Select(terrain => new TerrainRuntimeSnapshot(terrain)).ToArray();
+            }
+
+            public static void RestoreAll(TerrainRuntimeSnapshot[] snapshots)
+            {
+                for (int i = 0; i < snapshots.Length; i++)
+                {
+                    snapshots[i].Restore();
+                }
+            }
+
+            private void Restore()
+            {
+                if (terrain == null)
+                {
+                    return;
+                }
+
+                terrain.drawTreesAndFoliage = drawTreesAndFoliage;
+                terrain.treeDistance = treeDistance;
+                terrain.treeBillboardDistance = treeBillboardDistance;
+                terrain.treeCrossFadeLength = treeCrossFadeLength;
+                terrain.treeMaximumFullLODCount = treeMaximumFullLodCount;
+                terrain.detailObjectDistance = detailObjectDistance;
+                terrain.detailObjectDensity = detailObjectDensity;
+                terrain.heightmapPixelError = heightmapPixelError;
+                terrain.basemapDistance = basemapDistance;
             }
         }
     }
