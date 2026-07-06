@@ -11,6 +11,7 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float breathTensionRecoveryRate = 0.3f;
         [SerializeField, Range(0f, 1f)] private float inspectionTensionIncrease = 0.42f;
         [SerializeField, Range(0f, 1f)] private float compromisedTensionThreshold = 0.94f;
+        [SerializeField, Range(0f, 1f)] private float exposedVisibilityThreshold = 0.78f;
 
         [Header("Breath Noise")]
         [SerializeField] private bool emitBreathNoise = true;
@@ -20,6 +21,10 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Range(0f, 1f)] private float breathNoiseLoudness = 0.18f;
         [SerializeField, Min(0f)] private float breathNoiseLifetime = 0.35f;
 
+        [Header("Peek Risk")]
+        [SerializeField, Min(0f)] private float peekExposureRecoveryRate = 2.2f;
+        [SerializeField, Min(0f)] private float peekTensionBuildRate = 0.08f;
+
         private float hiddenSinceTime;
         private float lastInspectionTime = float.NegativeInfinity;
         private float nextBreathNoiseTime = float.NegativeInfinity;
@@ -27,8 +32,10 @@ namespace Neighbor.Main.Features.Player
         public bool IsHidden { get; private set; }
         public ClosetHideSpot CurrentHideSpot { get; private set; }
         public float BreathTension01 { get; private set; }
+        public float PeekExposure01 { get; private set; }
         public bool IsCompromised { get; private set; }
-        public bool IsConcealedFromVision => IsHidden && !IsCompromised;
+        public bool IsDangerouslyExposed => IsHidden && PeekExposure01 >= exposedVisibilityThreshold;
+        public bool IsConcealedFromVision => IsHidden && !IsCompromised && !IsDangerouslyExposed;
         public bool WasInspectedRecently => Time.time - lastInspectionTime <= 2.5f;
         public float HiddenDuration => IsHidden ? Mathf.Max(0f, Time.time - hiddenSinceTime) : 0f;
 
@@ -40,8 +47,17 @@ namespace Neighbor.Main.Features.Player
                     BreathTension01,
                     0f,
                     breathTensionRecoveryRate * Time.deltaTime);
+                PeekExposure01 = Mathf.MoveTowards(
+                    PeekExposure01,
+                    0f,
+                    peekExposureRecoveryRate * Time.deltaTime);
                 return;
             }
+
+            PeekExposure01 = Mathf.MoveTowards(
+                PeekExposure01,
+                0f,
+                peekExposureRecoveryRate * Time.deltaTime);
 
             if (HiddenDuration > hiddenBreathGraceTime)
             {
@@ -63,6 +79,7 @@ namespace Neighbor.Main.Features.Player
                 IsHidden = false;
                 CurrentHideSpot = null;
                 IsCompromised = false;
+                PeekExposure01 = 0f;
                 return;
             }
 
@@ -70,6 +87,7 @@ namespace Neighbor.Main.Features.Player
             {
                 hiddenSinceTime = Time.time;
                 BreathTension01 = 0f;
+                PeekExposure01 = 0f;
                 lastInspectionTime = float.NegativeInfinity;
                 nextBreathNoiseTime = Time.time + breathNoiseCooldown;
                 IsCompromised = false;
@@ -95,6 +113,15 @@ namespace Neighbor.Main.Features.Player
             if (BreathTension01 >= compromisedTensionThreshold)
             {
                 IsCompromised = true;
+            }
+        }
+
+        public void SetPeekExposure(float exposure, float deltaTime)
+        {
+            PeekExposure01 = Mathf.Clamp01(exposure);
+            if (IsHidden && PeekExposure01 > 0f && deltaTime > 0f)
+            {
+                AddBreathTension(PeekExposure01 * peekTensionBuildRate * deltaTime);
             }
         }
 
