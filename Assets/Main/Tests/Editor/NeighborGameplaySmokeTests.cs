@@ -1,5 +1,6 @@
 using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Neighbor;
+using Neighbor.Main.Features.Player;
 using Neighbor.Main.HouseBuilder;
 using NUnit.Framework;
 using UnityEngine;
@@ -958,6 +959,64 @@ namespace Neighbor.Main.Tests
 
             target.position = Vector3.forward * 5f + Vector3.up;
             Assert.That(vision.TrySeeTarget(out _, out _), Is.True);
+        }
+
+        [Test]
+        public void Vision_IgnoresHiddenPlayerUntilHideSpotIsCompromised()
+        {
+            NeighborVision vision = context.AddInitializedComponent<NeighborVision>();
+            Transform target = context.CreateObject("PlayerTarget").transform;
+            GameplaySmokeTestReflection.SetField(vision, "target", target);
+            GameplaySmokeTestReflection.SetField(vision, "eyeHeight", 0f);
+            GameplaySmokeTestReflection.SetField(vision, "lineOfSightMask", (LayerMask)0);
+            target.position = Vector3.forward * 5f;
+            PlayerHidingState hidingState = target.gameObject.AddComponent<PlayerHidingState>();
+
+            hidingState.SetHidden(true);
+
+            Assert.That(vision.TrySeeTarget(out _, out _), Is.False);
+
+            hidingState.RegisterNeighborInspection(true);
+
+            Assert.That(hidingState.IsHidden, Is.True);
+            Assert.That(hidingState.IsCompromised, Is.True);
+            Assert.That(hidingState.IsConcealedFromVision, Is.False);
+            Assert.That(vision.TrySeeTarget(out _, out _), Is.True);
+        }
+
+        [Test]
+        public void HidingState_InspectionRaisesBreathTensionAndCompromisesFoundPlayer()
+        {
+            PlayerHidingState hidingState = context.CreateObject("HiddenPlayer").AddComponent<PlayerHidingState>();
+            ClosetHideSpot hideSpot = context.CreateObject("HideSpot").AddComponent<ClosetHideSpot>();
+
+            hidingState.SetHidden(true, hideSpot);
+            hidingState.RegisterNeighborInspection(true);
+
+            Assert.That(hidingState.IsHidden, Is.True);
+            Assert.That(hidingState.CurrentHideSpot, Is.SameAs(hideSpot));
+            Assert.That(hidingState.BreathTension01, Is.GreaterThan(0f));
+            Assert.That(hidingState.WasInspectedRecently, Is.True);
+            Assert.That(hidingState.IsCompromised, Is.True);
+        }
+
+        [Test]
+        public void ClosetSearch_MarksHiddenPlayerAsInspected()
+        {
+            GameObject playerObject = context.CreateObject("Player");
+            playerObject.AddComponent<CharacterController>();
+            PlayerController player = playerObject.AddComponent<PlayerController>();
+            PlayerHidingState hidingState = playerObject.AddComponent<PlayerHidingState>();
+            ClosetHideSpot hideSpot = context.CreateObject("HideSpot").AddComponent<ClosetHideSpot>();
+            GameplaySmokeTestReflection.SetField(hideSpot, "hiddenPlayer", player);
+            GameplaySmokeTestReflection.SetField(hideSpot, "hiddenState", hidingState);
+            hidingState.SetHidden(true, hideSpot);
+
+            Assert.That(hideSpot.SearchByNeighbor(), Is.SameAs(player));
+
+            Assert.That(hidingState.WasInspectedRecently, Is.True);
+            Assert.That(hidingState.IsCompromised, Is.True);
+            Assert.That(hidingState.BreathTension01, Is.GreaterThan(0f));
         }
 
         [Test]

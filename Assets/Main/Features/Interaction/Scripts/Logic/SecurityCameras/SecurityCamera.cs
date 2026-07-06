@@ -505,7 +505,7 @@ namespace Neighbor.Main.Features.Interaction
                 return false;
             }
 
-            if (playerHidingState != null && playerHidingState.IsHidden)
+            if (playerHidingState != null && playerHidingState.IsConcealedFromVision)
             {
                 return false;
             }
