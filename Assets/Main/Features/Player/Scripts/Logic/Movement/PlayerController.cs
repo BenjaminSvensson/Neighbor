@@ -89,6 +89,7 @@ namespace Neighbor.Main.Features.Player
 
         [Header("Input")]
         [SerializeField, Min(0f)] private float mouseSensitivity = 0.08f;
+        [SerializeField] private bool invertLookY;
 
         private CharacterController characterController;
         private Vector3 horizontalVelocity;
@@ -139,6 +140,7 @@ namespace Neighbor.Main.Features.Player
         public bool IsBeartrapLocked => isBeartrapLocked;
         public float Stamina01 => maximumStamina <= 0f ? 1f : Mathf.Clamp01(stamina / maximumStamina);
         public bool IsExhausted => sprintExhausted;
+        public bool RuntimeInvertLookY => invertLookY;
         public PlayerFrameInput LastInput { get; private set; }
 
         private void Awake()
@@ -180,9 +182,14 @@ namespace Neighbor.Main.Features.Player
             mouseSensitivity = Mathf.Max(0f, sensitivity);
         }
 
+        public void SetRuntimeInvertLookY(bool invert)
+        {
+            invertLookY = invert;
+        }
+
         private void Update()
         {
-            LastInput = PlayerInputReader.ReadFrameInput(mouseSensitivity);
+            LastInput = PlayerInputReader.ReadFrameInput(mouseSensitivity, invertLookY);
             if (InteractionOverlayState.IsGameplayInputBlocked)
             {
                 LastInput = default;

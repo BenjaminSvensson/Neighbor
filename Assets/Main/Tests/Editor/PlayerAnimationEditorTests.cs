@@ -352,6 +352,7 @@ namespace Neighbor.Main.Tests
             QualityRuntimeSnapshot qualitySnapshot = QualityRuntimeSnapshot.Capture();
             UrpRuntimeSnapshot urpSnapshot = UrpRuntimeSnapshot.Capture();
             TerrainRuntimeSnapshot[] terrainSnapshots = TerrainRuntimeSnapshot.CaptureAll();
+            PlayerPerformanceProfile originalPerformanceProfile = PlayerPerformanceSettings.CurrentProfile;
             float originalVolume = AudioListener.volume;
             bool originalFullscreen = Screen.fullScreen;
             GameObject root = new("PauseMenuSettingsSmokePlayer");
@@ -382,6 +383,7 @@ namespace Neighbor.Main.Tests
                     Is.EqualTo(0.123f).Within(0.001f));
                 Assert.That(cameraController.RuntimeMouseSensitivity, Is.EqualTo(0.123f).Within(0.001f));
                 Assert.That(cameraController.RuntimeFieldOfView, Is.EqualTo(82f).Within(0.001f));
+                Assert.That(playerController.RuntimeInvertLookY, Is.True);
                 Assert.That(cameraController.RuntimeInvertLookY, Is.True);
                 Assert.That(playerCamera.fieldOfView, Is.EqualTo(82f).Within(0.001f));
                 Assert.That(AudioListener.volume, Is.EqualTo(0.37f).Within(0.001f));
@@ -415,6 +417,7 @@ namespace Neighbor.Main.Tests
                 PlayerPrefs.DeleteKey(FullscreenKey);
                 PlayerPrefs.DeleteKey(PlayerPerformanceSettings.PreferenceKey);
                 PlayerPrefs.Save();
+                PlayerPerformanceSettings.ApplyProfile(originalPerformanceProfile);
                 AudioListener.volume = originalVolume;
                 Screen.fullScreen = originalFullscreen;
                 qualitySnapshot.Restore();
@@ -455,6 +458,7 @@ namespace Neighbor.Main.Tests
             QualityRuntimeSnapshot qualitySnapshot = QualityRuntimeSnapshot.Capture();
             UrpRuntimeSnapshot urpSnapshot = UrpRuntimeSnapshot.Capture();
             TerrainRuntimeSnapshot[] terrainSnapshots = TerrainRuntimeSnapshot.CaptureAll();
+            PlayerPerformanceProfile originalPerformanceProfile = PlayerPerformanceSettings.CurrentProfile;
 
             try
             {
@@ -497,6 +501,39 @@ namespace Neighbor.Main.Tests
             }
             finally
             {
+                PlayerPerformanceSettings.ApplyProfile(originalPerformanceProfile);
+                qualitySnapshot.Restore();
+                urpSnapshot.Restore();
+                TerrainRuntimeSnapshot.RestoreAll(terrainSnapshots);
+            }
+        }
+
+        [Test]
+        public void PlayerPerformanceProfile_AppliesCurrentProfileToLateCamera()
+        {
+            QualityRuntimeSnapshot qualitySnapshot = QualityRuntimeSnapshot.Capture();
+            UrpRuntimeSnapshot urpSnapshot = UrpRuntimeSnapshot.Capture();
+            TerrainRuntimeSnapshot[] terrainSnapshots = TerrainRuntimeSnapshot.CaptureAll();
+            PlayerPerformanceProfile originalPerformanceProfile = PlayerPerformanceSettings.CurrentProfile;
+            GameObject cameraObject = new("LatePerformanceCamera");
+
+            try
+            {
+                PlayerPerformanceSettings.ApplyProfile(PlayerPerformanceProfile.Performance);
+                Camera camera = cameraObject.AddComponent<Camera>();
+                camera.allowHDR = true;
+                camera.allowMSAA = true;
+
+                PlayerPerformanceSettings.ApplyCurrentProfileToCamera(camera);
+
+                Assert.That(PlayerPerformanceSettings.CurrentProfile, Is.EqualTo(PlayerPerformanceProfile.Performance));
+                Assert.That(camera.allowHDR, Is.False);
+                Assert.That(camera.allowMSAA, Is.False);
+            }
+            finally
+            {
+                Object.DestroyImmediate(cameraObject);
+                PlayerPerformanceSettings.ApplyProfile(originalPerformanceProfile);
                 qualitySnapshot.Restore();
                 urpSnapshot.Restore();
                 TerrainRuntimeSnapshot.RestoreAll(terrainSnapshots);
