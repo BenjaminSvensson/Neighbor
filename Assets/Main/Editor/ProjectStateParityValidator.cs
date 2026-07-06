@@ -41,25 +41,37 @@ internal static class ProjectStateParityValidator
         "Assets/**/*.mat"
     };
 
+    private static readonly string[] TerrainImageExtensions =
+    {
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".tif",
+        ".tiff"
+    };
+
     [MenuItem(ValidateMenuPath)]
     private static void ValidateFromMenu()
     {
         IReadOnlyList<string> issues = ValidateProjectState(true);
+        IReadOnlyList<string> stashWarnings = CollectProjectStateStashWarnings();
         if (issues.Count == 0)
         {
             Debug.Log("Project state parity validation passed. Unity metas, binary project-state LFS coverage, and content hash inputs are ready.");
-            return;
         }
 
         for (int i = 0; i < issues.Count; i++)
         {
             Debug.LogError(issues[i]);
         }
+
+        LogStashWarnings(stashWarnings);
     }
 
     public static void ValidateFromCommandLine()
     {
         IReadOnlyList<string> issues = ValidateProjectState(true);
+        IReadOnlyList<string> stashWarnings = CollectProjectStateStashWarnings();
         for (int i = 0; i < issues.Count; i++)
         {
             Debug.LogError(issues[i]);
@@ -70,6 +82,7 @@ internal static class ProjectStateParityValidator
             Debug.Log("Project state parity validation passed.");
         }
 
+        LogStashWarnings(stashWarnings);
         EditorApplication.Exit(issues.Count == 0 ? 0 : 1);
     }
 
@@ -98,6 +111,13 @@ internal static class ProjectStateParityValidator
         }
 
         return issues;
+    }
+
+    internal static IReadOnlyList<string> CollectProjectStateStashWarningsForTests(
+        string[] stashListLines,
+        Func<string, string[]> getStashPaths)
+    {
+        return CollectProjectStateStashWarnings(stashListLines, getStashPaths);
     }
 
     internal static string ExportHashManifest(string outputPath)
@@ -200,6 +220,122 @@ internal static class ProjectStateParityValidator
             {
                 issues.Add($"Tracked project-state file is missing from disk: '{NormalizePath(path)}'.");
             }
+        }
+    }
+
+    private static IReadOnlyList<string> CollectProjectStateStashWarnings()
+    {
+        try
+        {
+            string[] stashListLines = GetGitOutputLines("stash", "list", "--format=%gd:%gs");
+            return CollectProjectStateStashWarnings(
+                stashListLines,
+                stashReference => GetGitOutputLines("stash", "show", "--name-only", "--format=", stashReference));
+        }
+        catch (Exception exception)
+        {
+            return new[] { $"Could not inspect git stash project-state contents: {exception.Message}" };
+        }
+    }
+
+    private static IReadOnlyList<string> CollectProjectStateStashWarnings(
+        string[] stashListLines,
+        Func<string, string[]> getStashPaths)
+    {
+        List<string> warnings = new();
+        if (stashListLines == null || getStashPaths == null)
+        {
+            return warnings;
+        }
+
+        for (int i = 0; i < stashListLines.Length; i++)
+        {
+            string stashReference = ParseStashReference(stashListLines[i]);
+            if (string.IsNullOrWhiteSpace(stashReference))
+            {
+                continue;
+            }
+
+            string[] paths = getStashPaths(stashReference) ?? Array.Empty<string>();
+            List<string> projectStatePaths = paths
+                .Select(NormalizePath)
+                .Where(IsProjectStateStashPath)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(path => path, StringComparer.Ordinal)
+                .ToList();
+            if (projectStatePaths.Count == 0)
+            {
+                continue;
+            }
+
+            warnings.Add(
+                $"Git stash '{stashReference}' contains Unity project-state files that may not be published: {string.Join(", ", projectStatePaths)}.");
+        }
+
+        return warnings;
+    }
+
+    private static string ParseStashReference(string stashListLine)
+    {
+        if (string.IsNullOrWhiteSpace(stashListLine))
+        {
+            return string.Empty;
+        }
+
+        int separator = stashListLine.IndexOf(':');
+        return separator > 0 ? stashListLine.Substring(0, separator).Trim() : stashListLine.Trim();
+    }
+
+    private static bool IsProjectStateStashPath(string path)
+    {
+        path = NormalizePath(path);
+        if (!path.StartsWith("Assets/", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        string lowerPath = path.ToLowerInvariant();
+        if (lowerPath.EndsWith(".unity", StringComparison.Ordinal)
+            || lowerPath.EndsWith(".unity.meta", StringComparison.Ordinal)
+            || lowerPath.EndsWith(".terrainlayer", StringComparison.Ordinal)
+            || lowerPath.EndsWith(".terrainlayer.meta", StringComparison.Ordinal)
+            || lowerPath.EndsWith(".mat", StringComparison.Ordinal)
+            || lowerPath.EndsWith(".mat.meta", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        if ((lowerPath.EndsWith(".asset", StringComparison.Ordinal) || lowerPath.EndsWith(".asset.meta", StringComparison.Ordinal))
+            && (path.StartsWith("Assets/New Terrain", StringComparison.Ordinal)
+                || path.StartsWith("Assets/Main/Art/Terrain/Data/", StringComparison.Ordinal)
+                || path.IndexOf("/NavMesh", StringComparison.OrdinalIgnoreCase) >= 0))
+        {
+            return true;
+        }
+
+        if (path.StartsWith("Assets/Main/Art/Terrain/", StringComparison.Ordinal))
+        {
+            for (int i = 0; i < TerrainImageExtensions.Length; i++)
+            {
+                string extension = TerrainImageExtensions[i];
+                if (lowerPath.EndsWith(extension, StringComparison.Ordinal)
+                    || lowerPath.EndsWith(extension + ".meta", StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return path.IndexOf("/Materials/", StringComparison.OrdinalIgnoreCase) >= 0
+            && (lowerPath.EndsWith(".mat", StringComparison.Ordinal)
+                || lowerPath.EndsWith(".mat.meta", StringComparison.Ordinal));
+    }
+
+    private static void LogStashWarnings(IReadOnlyList<string> warnings)
+    {
+        for (int i = 0; i < warnings.Count; i++)
+        {
+            Debug.LogWarning(warnings[i]);
         }
     }
 
