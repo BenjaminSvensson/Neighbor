@@ -108,5 +108,90 @@ namespace Neighbor.Main.Tests
                 Object.DestroyImmediate(root);
             }
         }
+
+        [Test]
+        public void Validator_FlagsTerrainTreePrototypeWithoutPrefab()
+        {
+            GameObject root = new("TerrainWithMissingTreePrototypePrefab");
+            TerrainData terrainData = new();
+            try
+            {
+                AddBudgetedTerrain(root, terrainData);
+                terrainData.treePrototypes = new[]
+                {
+                    new TreePrototype()
+                };
+
+                LogAssert.Expect(LogType.Error, new Regex("Terrain tree prototype 0 is missing a prefab"));
+                Assert.That(ProjectHealthValidator.ValidateGameObjectForTests(root, "SyntheticTerrain.prefab"), Is.EqualTo(1));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                Object.DestroyImmediate(terrainData);
+            }
+        }
+
+        [Test]
+        public void Validator_FlagsTerrainTreePrototypeWithoutRenderer()
+        {
+            GameObject root = new("TerrainWithRendererlessTreePrototype");
+            GameObject treePrefab = new("TreePrototypeWithoutRenderer");
+            TerrainData terrainData = new();
+            try
+            {
+                AddBudgetedTerrain(root, terrainData);
+                terrainData.treePrototypes = new[]
+                {
+                    new TreePrototype { prefab = treePrefab }
+                };
+
+                LogAssert.Expect(LogType.Error, new Regex("Terrain tree prototype 0 prefab has no renderers"));
+                Assert.That(ProjectHealthValidator.ValidateGameObjectForTests(root, "SyntheticTerrain.prefab"), Is.EqualTo(1));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                Object.DestroyImmediate(treePrefab);
+                Object.DestroyImmediate(terrainData);
+            }
+        }
+
+        [Test]
+        public void Validator_FlagsTerrainTreePrototypeWithMissingMaterial()
+        {
+            GameObject root = new("TerrainWithMissingTreePrototypeMaterial");
+            GameObject treePrefab = new("TreePrototypeMissingMaterial");
+            TerrainData terrainData = new();
+            try
+            {
+                AddBudgetedTerrain(root, terrainData);
+                MeshRenderer renderer = treePrefab.AddComponent<MeshRenderer>();
+                renderer.sharedMaterials = new Material[] { null };
+                terrainData.treePrototypes = new[]
+                {
+                    new TreePrototype { prefab = treePrefab }
+                };
+
+                LogAssert.Expect(LogType.Error, new Regex("Missing material reference: slot 0"));
+                Assert.That(ProjectHealthValidator.ValidateGameObjectForTests(root, "SyntheticTerrain.prefab"), Is.EqualTo(1));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                Object.DestroyImmediate(treePrefab);
+                Object.DestroyImmediate(terrainData);
+            }
+        }
+
+        private static void AddBudgetedTerrain(GameObject root, TerrainData terrainData)
+        {
+            Terrain terrain = root.AddComponent<Terrain>();
+            terrain.terrainData = terrainData;
+            terrain.treeDistance = 200f;
+            terrain.treeBillboardDistance = 80f;
+            terrain.treeMaximumFullLODCount = 20;
+            terrain.detailObjectDistance = 80f;
+        }
     }
 }

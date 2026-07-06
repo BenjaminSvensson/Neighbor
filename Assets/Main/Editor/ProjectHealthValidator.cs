@@ -375,6 +375,8 @@ internal static class ProjectHealthValidator
             return 1;
         }
 
+        issueCount += ReportTerrainTreePrototypeIssues(terrain, assetPath);
+
         if (terrain.treeDistance > MaximumTerrainTreeDistance)
         {
             Debug.LogError(
@@ -405,6 +407,48 @@ internal static class ProjectHealthValidator
                 $"Terrain detail distance exceeds prototype budget ({terrain.detailObjectDistance:0.#} > {MaximumTerrainDetailDistance:0.#}): '{GetHierarchyPath(terrain.transform)}' in '{assetPath}'.",
                 terrain);
             issueCount++;
+        }
+
+        return issueCount;
+    }
+
+    private static int ReportTerrainTreePrototypeIssues(Terrain terrain, string assetPath)
+    {
+        TreePrototype[] treePrototypes = terrain.terrainData.treePrototypes;
+        if (treePrototypes == null || treePrototypes.Length == 0)
+        {
+            return 0;
+        }
+
+        int issueCount = 0;
+        for (int prototypeIndex = 0; prototypeIndex < treePrototypes.Length; prototypeIndex++)
+        {
+            GameObject prefab = treePrototypes[prototypeIndex].prefab;
+            if (prefab == null)
+            {
+                Debug.LogError(
+                    $"Terrain tree prototype {prototypeIndex} is missing a prefab: '{GetHierarchyPath(terrain.transform)}' in '{assetPath}'.",
+                    terrain);
+                issueCount++;
+                continue;
+            }
+
+            Renderer[] renderers = prefab.GetComponentsInChildren<Renderer>(true);
+            if (renderers == null || renderers.Length == 0)
+            {
+                Debug.LogError(
+                    $"Terrain tree prototype {prototypeIndex} prefab has no renderers: '{prefab.name}' referenced by '{GetHierarchyPath(terrain.transform)}' in '{assetPath}'.",
+                    prefab);
+                issueCount++;
+                continue;
+            }
+
+            for (int rendererIndex = 0; rendererIndex < renderers.Length; rendererIndex++)
+            {
+                issueCount += ReportRendererMaterialIssues(
+                    renderers[rendererIndex],
+                    $"{assetPath} (terrain tree prototype {prototypeIndex}: {prefab.name})");
+            }
         }
 
         return issueCount;
