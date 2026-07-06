@@ -1523,14 +1523,12 @@ namespace Neighbor.Main.Features.Interaction
 
             if (tooltipSource is ClosetHideSpot closet)
             {
-                return closet.HasHiddenPlayer ? "Exit hiding spot" : "Hide";
+                return closet.GetInteractionActionText();
             }
 
             if (tooltipSource is ClosetDoorPair closetDoors)
             {
-                return closetDoors.HideSpot != null && closetDoors.HideSpot.HasHiddenPlayer
-                    ? "Exit hiding spot"
-                    : "Hide";
+                return closetDoors.HideSpot != null ? closetDoors.HideSpot.GetInteractionActionText() : "Hide";
             }
 
             if (tooltipSource is SlidingCupboardCompartment)

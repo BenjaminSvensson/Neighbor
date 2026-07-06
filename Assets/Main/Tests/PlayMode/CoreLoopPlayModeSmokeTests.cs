@@ -105,6 +105,46 @@ namespace Neighbor.Main.Tests
             Assert.That(hideSpot.SearchByNeighbor(), Is.SameAs(player));
         }
 
+        [TestCase(ClosetHideSpot.HideSpotKind.Bed, "bed", "Hide under bed", "Slide out")]
+        [TestCase(ClosetHideSpot.HideSpotKind.Curtain, "curtain", "Hide behind curtain", "Step out")]
+        public void TypedHideSpot_PlayerHidesAndNeighborCanInspect(
+            ClosetHideSpot.HideSpotKind kind,
+            string displayName,
+            string hideAction,
+            string exitAction)
+        {
+            PlayerController player = CreatePlayer("Player", Vector3.zero, out _);
+            ClosetHideSpot hideSpot = CreateObject($"{kind}HideSpot").AddComponent<ClosetHideSpot>();
+            SetField(hideSpot, "hideSpotKind", kind);
+            SetField(hideSpot, "transitionDuration", 0.05f);
+            SetField(hideSpot, "doorLeadTime", 0f);
+            SetField(hideSpot, "doorCloseDelay", 0f);
+
+            PlayerHidingState hiddenState = player.gameObject.AddComponent<PlayerHidingState>();
+            SetField(hideSpot, "hiddenPlayer", player);
+            SetField(hideSpot, "hiddenState", hiddenState);
+
+            Assert.That(hideSpot.DisplayName, Is.EqualTo(displayName));
+            Assert.That(hideSpot.GetInteractionActionText(), Is.EqualTo(exitAction));
+
+            RunCoroutine(InvokeResult<IEnumerator>(hideSpot, "HideTransition"), $"{kind} hide transition did not complete.");
+
+            Assert.That(hideSpot.Kind, Is.EqualTo(kind));
+            Assert.That(hideSpot.HasHiddenPlayer, Is.True);
+            Assert.That(hiddenState.IsHidden, Is.True);
+            Assert.That(hiddenState.CurrentHideSpot, Is.SameAs(hideSpot));
+            Assert.That(player.enabled, Is.False);
+
+            Assert.That(hideSpot.SearchByNeighbor(), Is.SameAs(player));
+            Assert.That(hiddenState.WasInspectedRecently, Is.True);
+            Assert.That(hiddenState.IsCompromised, Is.True);
+            Assert.That(hideSpot.GetInteractionActionText(), Is.EqualTo(exitAction));
+
+            hiddenState.SetHidden(false);
+            SetField<PlayerController>(hideSpot, "hiddenPlayer", null);
+            Assert.That(hideSpot.GetInteractionActionText(), Is.EqualTo(hideAction));
+        }
+
         [Test]
         public void PlayerDeath_RespawnsAtStartAndClearsDeathState()
         {
