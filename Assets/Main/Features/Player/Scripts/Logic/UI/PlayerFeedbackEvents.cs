@@ -103,6 +103,28 @@ namespace Neighbor.Main.Features.Player
             }
         }
 
+        public enum DoorInteractionFeedbackKind
+        {
+            Info,
+            Locked,
+            Blocked,
+            Unlocked
+        }
+
+        public readonly struct DoorInteractionFeedback
+        {
+            public string Message { get; }
+            public DoorInteractionFeedbackKind Kind { get; }
+            public float Intensity { get; }
+
+            public DoorInteractionFeedback(string message, DoorInteractionFeedbackKind kind, float intensity)
+            {
+                Message = string.IsNullOrWhiteSpace(message) ? string.Empty : message.Trim();
+                Kind = kind;
+                Intensity = Mathf.Clamp01(intensity);
+            }
+        }
+
         public static event Action<NoiseFeedback> NoiseEmitted;
         public static event Action CameraDetectedPlayer;
         public static event Action<SecurityEscalationFeedback> SecurityEscalated;
@@ -110,6 +132,7 @@ namespace Neighbor.Main.Features.Player
         public static event Action<DayPhaseFeedback> DayPhaseChanged;
         public static event Action<CheckpointFeedback> CheckpointReached;
         public static event Action<OnboardingPromptFeedback> OnboardingPrompted;
+        public static event Action<DoorInteractionFeedback> DoorInteractionReported;
 
         public static void ReportNoise(Vector3 origin, float loudness, float radius)
         {
@@ -180,6 +203,19 @@ namespace Neighbor.Main.Features.Player
             OnboardingPrompted?.Invoke(new OnboardingPromptFeedback(message, intensity));
         }
 
+        public static void ReportDoorInteraction(
+            string message,
+            DoorInteractionFeedbackKind kind = DoorInteractionFeedbackKind.Info,
+            float intensity = 0.5f)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return;
+            }
+
+            DoorInteractionReported?.Invoke(new DoorInteractionFeedback(message, kind, intensity));
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Reset()
         {
@@ -190,6 +226,7 @@ namespace Neighbor.Main.Features.Player
             DayPhaseChanged = null;
             CheckpointReached = null;
             OnboardingPrompted = null;
+            DoorInteractionReported = null;
         }
     }
 }

@@ -39,6 +39,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.DayPhaseChanged += HandleDayPhaseChanged;
             PlayerFeedbackEvents.CheckpointReached += HandleCheckpointReached;
             PlayerFeedbackEvents.OnboardingPrompted += HandleOnboardingPrompted;
+            PlayerFeedbackEvents.DoorInteractionReported += HandleDoorInteractionReported;
         }
 
         private void OnDisable()
@@ -50,6 +51,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.DayPhaseChanged -= HandleDayPhaseChanged;
             PlayerFeedbackEvents.CheckpointReached -= HandleCheckpointReached;
             PlayerFeedbackEvents.OnboardingPrompted -= HandleOnboardingPrompted;
+            PlayerFeedbackEvents.DoorInteractionReported -= HandleDoorInteractionReported;
         }
 
         private void Update()
@@ -296,6 +298,18 @@ namespace Neighbor.Main.Features.Player
             messageUntil = Time.unscaledTime + Mathf.Lerp(2.4f, 3.8f, feedback.Intensity);
         }
 
+        private void HandleDoorInteractionReported(PlayerFeedbackEvents.DoorInteractionFeedback feedback)
+        {
+            if (string.IsNullOrWhiteSpace(feedback.Message))
+            {
+                return;
+            }
+
+            warningText.text = feedback.Message.ToUpperInvariant();
+            warningText.color = GetDoorFeedbackColor(feedback);
+            messageUntil = Time.unscaledTime + Mathf.Lerp(1.8f, 3.2f, feedback.Intensity);
+        }
+
         private void BuildHud()
         {
             Canvas canvas = gameObject.AddComponent<Canvas>();
@@ -392,6 +406,32 @@ namespace Neighbor.Main.Features.Player
             return suspicion < 0.48f
                 ? new Color(1f, 0.76f, 0.2f, 0.9f)
                 : Color.Lerp(new Color(1f, 0.48f, 0.12f, 0.95f), new Color(1f, 0.08f, 0.05f, 1f), suspicion);
+        }
+
+        private static Color GetDoorFeedbackColor(PlayerFeedbackEvents.DoorInteractionFeedback feedback)
+        {
+            if (feedback.Kind == PlayerFeedbackEvents.DoorInteractionFeedbackKind.Unlocked)
+            {
+                return new Color(0.55f, 0.9f, 1f, 0.95f);
+            }
+
+            if (feedback.Kind == PlayerFeedbackEvents.DoorInteractionFeedbackKind.Blocked)
+            {
+                return Color.Lerp(
+                    new Color(1f, 0.58f, 0.16f, 0.96f),
+                    new Color(1f, 0.2f, 0.1f, 1f),
+                    feedback.Intensity);
+            }
+
+            if (feedback.Kind == PlayerFeedbackEvents.DoorInteractionFeedbackKind.Locked)
+            {
+                return Color.Lerp(
+                    new Color(1f, 0.72f, 0.22f, 0.96f),
+                    new Color(1f, 0.36f, 0.12f, 1f),
+                    feedback.Intensity);
+            }
+
+            return new Color(0.82f, 0.86f, 0.92f, 0.95f);
         }
     }
 }

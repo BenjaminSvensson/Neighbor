@@ -36,6 +36,16 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float lockedNudgeAngle = 6f;
         [SerializeField, Min(0.01f)] private float lockedNudgeDuration = 0.12f;
 
+        [Header("Player Feedback")]
+        [SerializeField] private bool reportPlayerFeedback = true;
+        [SerializeField] private string lockedDoorFeedback = "Locked";
+        [SerializeField] private string missingKeyFeedbackFormat = "Need {0}";
+        [SerializeField] private string blockedDoorFeedback = "Door blocked";
+        [SerializeField] private string unlockedDoorFeedback = "Unlocked";
+        [SerializeField, Range(0f, 1f)] private float lockedFeedbackIntensity = 0.72f;
+        [SerializeField, Range(0f, 1f)] private float blockedFeedbackIntensity = 0.86f;
+        [SerializeField, Range(0f, 1f)] private float unlockedFeedbackIntensity = 0.42f;
+
         [Header("Neighbor Kick")]
         [SerializeField] private bool neighborCanKickBlockedDoor = true;
         [SerializeField, Min(0f)] private float blockerKickImpulse = 3.5f;
@@ -170,6 +180,10 @@ namespace Neighbor.Main.Features.Interaction
         {
             if (IsBlocked)
             {
+                ReportDoorFeedback(
+                    blockedDoorFeedback,
+                    PlayerFeedbackEvents.DoorInteractionFeedbackKind.Blocked,
+                    blockedFeedbackIntensity);
                 ReportDisturbance(alertNeighborWhenLockedOrBlocked);
                 PlayLockedNudge();
                 return;
@@ -177,16 +191,20 @@ namespace Neighbor.Main.Features.Interaction
 
             if (isLocked)
             {
-                DoorKey heldKey = interactor != null && interactor.HeldPickup != null
-                    ? interactor.HeldPickup.GetComponentInChildren<DoorKey>()
-                    : null;
-
-                if (heldKey != null && heldKey.Opens(this))
+                if (HasMatchingHeldKey(interactor) || PlayerOwnsRequiredKey(interactor))
                 {
                     Unlock();
+                    ReportDoorFeedback(
+                        unlockedDoorFeedback,
+                        PlayerFeedbackEvents.DoorInteractionFeedbackKind.Unlocked,
+                        unlockedFeedbackIntensity);
                 }
                 else
                 {
+                    ReportDoorFeedback(
+                        BuildMissingKeyFeedbackMessage(),
+                        PlayerFeedbackEvents.DoorInteractionFeedbackKind.Locked,
+                        lockedFeedbackIntensity);
                     ReportDisturbance(alertNeighborWhenLockedOrBlocked);
                     PlayLockedNudge();
                     return;
@@ -496,6 +514,80 @@ namespace Neighbor.Main.Features.Interaction
             {
                 Disturbed?.Invoke(this, neighborInteractionSuspicion);
             }
+        }
+
+        private bool HasMatchingHeldKey(PlayerInteractor interactor)
+        {
+            DoorKey heldKey = interactor != null && interactor.HeldPickup != null
+                ? interactor.HeldPickup.GetComponentInChildren<DoorKey>()
+                : null;
+            return heldKey != null && heldKey.Opens(this);
+        }
+
+        private bool PlayerOwnsRequiredKey(PlayerInteractor interactor)
+        {
+            if (interactor == null || string.IsNullOrWhiteSpace(requiredKeyId))
+            {
+                return false;
+            }
+
+            PlayerKeyRing keyRing =
+                interactor.GetComponentInParent<PlayerKeyRing>()
+                ?? interactor.GetComponentInChildren<PlayerKeyRing>();
+            return keyRing != null && keyRing.HasKey(requiredKeyId);
+        }
+
+        private void ReportDoorFeedback(
+            string message,
+            PlayerFeedbackEvents.DoorInteractionFeedbackKind kind,
+            float intensity)
+        {
+            if (!reportPlayerFeedback)
+            {
+                return;
+            }
+
+            PlayerFeedbackEvents.ReportDoorInteraction(message, kind, intensity);
+        }
+
+        private string BuildMissingKeyFeedbackMessage()
+        {
+            string keyName = FormatKeyIdForFeedback(requiredKeyId);
+            if (string.IsNullOrWhiteSpace(keyName))
+            {
+                return lockedDoorFeedback;
+            }
+
+            if (string.IsNullOrWhiteSpace(missingKeyFeedbackFormat))
+            {
+                return lockedDoorFeedback;
+            }
+
+            return missingKeyFeedbackFormat.IndexOf("{0}", System.StringComparison.Ordinal) >= 0
+                ? missingKeyFeedbackFormat.Replace("{0}", keyName)
+                : $"{missingKeyFeedbackFormat} {keyName}";
+        }
+
+        private static string FormatKeyIdForFeedback(string keyId)
+        {
+            if (string.IsNullOrWhiteSpace(keyId))
+            {
+                return string.Empty;
+            }
+
+            string[] words = keyId.Trim()
+                .Replace('_', ' ')
+                .Replace('-', ' ')
+                .Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
+            for (int i = 0; i < words.Length; i++)
+            {
+                string lower = words[i].ToLowerInvariant();
+                words[i] = lower.Length > 1
+                    ? char.ToUpperInvariant(lower[0]) + lower.Substring(1)
+                    : lower.ToUpperInvariant();
+            }
+
+            return string.Join(" ", words);
         }
 
         public void Close()
