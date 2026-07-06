@@ -125,6 +125,7 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float vigilancePatrolRadius = 10f;
         [SerializeField, Min(0f)] private float vigilanceWaitMinimum = 1.4f;
         [SerializeField, Min(0f)] private float vigilanceWaitMaximum = 3f;
+        [SerializeField, Min(0)] private int maximumAdaptiveSecurityPatrols = 4;
 
         [Header("Readable Searching")]
         [SerializeField, Min(0f)] private float searchLookAngle = 70f;
@@ -233,6 +234,8 @@ namespace Neighbor.Main.Features.Neighbor
         private float lastSeenVerificationUntilTime;
         private bool hasChaseDestination;
         private float tasksSuppressedUntilTime;
+        private int adaptiveSecurityPatrolsRemaining;
+        private bool adaptiveSecurityPatrolActive;
         private HouseGarageDoorMotion activeGarageDoor;
         private LightSwitch activeGarageSwitch;
         private Door activeSecurityDoor;
@@ -282,8 +285,11 @@ namespace Neighbor.Main.Features.Neighbor
         public float LastSeenVerificationTimeRemaining => IsVerifyingLastSeenPosition && lastSeenVerificationUntilTime > 0f
             ? Mathf.Max(0f, lastSeenVerificationUntilTime - Time.time)
             : 0f;
-        public bool IsPostEncounterVigilant => Time.time < tasksSuppressedUntilTime;
+        public bool IsPostEncounterVigilant => Time.time < tasksSuppressedUntilTime
+            || adaptiveSecurityPatrolsRemaining > 0
+            || adaptiveSecurityPatrolActive;
         public float PostEncounterVigilanceTimeRemaining => Mathf.Max(0f, tasksSuppressedUntilTime - Time.time);
+        public int AdaptiveSecurityPatrolsRemaining => adaptiveSecurityPatrolsRemaining;
         public SuspicionLevel CurrentSuspicionLevel => GetSuspicionLevel();
         public NeighborTaskLocation ActiveTaskLocation => currentState == BehaviorState.Task
             && currentTaskAnimationPhase != NeighborTaskLocation.TaskAnimationPhase.None
@@ -807,7 +813,7 @@ namespace Neighbor.Main.Features.Neighbor
             return Time.time - lastChaseProgressTime >= unreachableGiveUpTime;
         }
 
-        public void HandlePlayerRespawned(float sightGraceTime)
+        public void HandlePlayerRespawned(float sightGraceTime, int adaptiveSecurityPatrolPoints = 0)
         {
             objectHandling?.CancelActivity();
             ClearGarageDoorUse();
@@ -841,6 +847,11 @@ namespace Neighbor.Main.Features.Neighbor
             isVerifyingLastSeenPosition = false;
             lastSeenVerificationUntilTime = 0f;
             tasksSuppressedUntilTime = 0f;
+            adaptiveSecurityPatrolsRemaining = Mathf.Clamp(
+                adaptiveSecurityPatrolPoints,
+                0,
+                maximumAdaptiveSecurityPatrols);
+            adaptiveSecurityPatrolActive = false;
             DecayPersistentMemory();
             ChooseNextRoutineGoal();
         }
@@ -1118,6 +1129,11 @@ namespace Neighbor.Main.Features.Neighbor
             if (currentState == BehaviorState.Task && TryStartForcedNextTask())
             {
                 return;
+            }
+
+            if (currentState == BehaviorState.Wander && adaptiveSecurityPatrolActive)
+            {
+                adaptiveSecurityPatrolActive = false;
             }
 
             ChooseNextRoutineGoal();
@@ -1514,6 +1530,12 @@ namespace Neighbor.Main.Features.Neighbor
             if (!motor.SetDestination(currentGoal))
             {
                 return false;
+            }
+
+            if (adaptiveSecurityPatrolsRemaining > 0)
+            {
+                adaptiveSecurityPatrolsRemaining--;
+                adaptiveSecurityPatrolActive = true;
             }
 
             SetState(BehaviorState.Wander);

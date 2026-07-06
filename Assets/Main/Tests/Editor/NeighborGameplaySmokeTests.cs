@@ -67,6 +67,22 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AdaptiveSecurity_PatrolPlanMarksNeighborPostRespawnVigilant()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>();
+
+            brain.HandlePlayerRespawned(0f, 3);
+
+            Assert.That(brain.AdaptiveSecurityPatrolsRemaining, Is.EqualTo(3));
+            Assert.That(brain.IsPostEncounterVigilant, Is.True);
+
+            brain.HandlePlayerRespawned(0f, 0);
+
+            Assert.That(brain.AdaptiveSecurityPatrolsRemaining, Is.Zero);
+            Assert.That(brain.IsPostEncounterVigilant, Is.False);
+        }
+
+        [Test]
         public void ReinforcementTrigger_RecognizesCameraAndTrapPreferredPlacements()
         {
             GameObject triggerObject = context.CreateObject("ReinforcementTrigger");
