@@ -21,6 +21,7 @@ namespace Neighbor.Main.Tests
             {
                 Assert.That(global::TerrainGrassInstaller.IsRenderableTerrainTreeMaterial(material), Is.True);
                 Assert.That(global::TerrainGrassInstaller.UsesTerrainTreeShader(material), Is.True);
+                Assert.That(global::TerrainGrassInstaller.HasTerrainTreeAlbedoTexture(material), Is.True);
                 Assert.That(material.shader.name, Does.StartWith("Nature/Soft Occlusion"));
             }
         }

@@ -255,6 +255,35 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void Validator_FlagsTerrainTreePrototypeWithTexturelessVegetationMaterial()
+        {
+            GameObject root = new("TerrainWithTexturelessTreePrototypeMaterial");
+            GameObject treePrefab = new("TreePrototypeTexturelessLeafMaterial");
+            Material material = CreateTexturelessVegetationMaterial("leaf_textureless");
+            TerrainData terrainData = new();
+            try
+            {
+                AddBudgetedTerrain(root, terrainData);
+                MeshRenderer renderer = treePrefab.AddComponent<MeshRenderer>();
+                renderer.sharedMaterial = material;
+                terrainData.treePrototypes = new[]
+                {
+                    new TreePrototype { prefab = treePrefab }
+                };
+
+                LogAssert.Expect(LogType.Error, new Regex("Vegetation material has no albedo texture"));
+                Assert.That(ProjectHealthValidator.ValidateGameObjectForTests(root, "SyntheticTerrain.prefab"), Is.EqualTo(1));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                Object.DestroyImmediate(treePrefab);
+                Object.DestroyImmediate(material);
+                Object.DestroyImmediate(terrainData);
+            }
+        }
+
+        [Test]
         public void Validator_FlagsLodRendererWithPinkFallbackMaterial()
         {
             GameObject root = new("TreeLodRoot");
@@ -269,6 +298,30 @@ namespace Neighbor.Main.Tests
                 lodGroup.SetLODs(new[] { new LOD(0.5f, new Renderer[] { renderer }) });
 
                 LogAssert.Expect(LogType.Error, new Regex("Pink fallback material likely missing texture"));
+                Assert.That(ProjectHealthValidator.ValidateGameObjectForTests(root, "SyntheticTree.prefab"), Is.EqualTo(1));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                Object.DestroyImmediate(material);
+            }
+        }
+
+        [Test]
+        public void Validator_FlagsLodRendererWithTexturelessVegetationMaterial()
+        {
+            GameObject root = new("TreeLodRoot");
+            GameObject lodObject = new("TreeLod0");
+            Material material = CreateTexturelessVegetationMaterial("bark_textureless");
+            try
+            {
+                lodObject.transform.SetParent(root.transform);
+                MeshRenderer renderer = lodObject.AddComponent<MeshRenderer>();
+                renderer.sharedMaterial = material;
+                LODGroup lodGroup = root.AddComponent<LODGroup>();
+                lodGroup.SetLODs(new[] { new LOD(0.5f, new Renderer[] { renderer }) });
+
+                LogAssert.Expect(LogType.Error, new Regex("Vegetation material has no albedo texture"));
                 Assert.That(ProjectHealthValidator.ValidateGameObjectForTests(root, "SyntheticTree.prefab"), Is.EqualTo(1));
             }
             finally
@@ -318,6 +371,33 @@ namespace Neighbor.Main.Tests
             if (material.HasProperty("_Color"))
             {
                 material.SetColor("_Color", Color.magenta);
+            }
+
+            return material;
+        }
+
+        private static Material CreateTexturelessVegetationMaterial(string materialName)
+        {
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit")
+                ?? Shader.Find("Standard")
+                ?? Shader.Find("Sprites/Default")
+                ?? Shader.Find("Unlit/Color");
+            Assert.That(shader, Is.Not.Null, "No built-in shader was available for material validation test.");
+
+            Material material = new(shader)
+            {
+                name = materialName
+            };
+
+            Color naturalTint = new(0.31f, 0.42f, 0.19f, 1f);
+            if (material.HasProperty("_BaseColor"))
+            {
+                material.SetColor("_BaseColor", naturalTint);
+            }
+
+            if (material.HasProperty("_Color"))
+            {
+                material.SetColor("_Color", naturalTint);
             }
 
             return material;

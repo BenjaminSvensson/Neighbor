@@ -500,6 +500,9 @@ internal static class ProjectHealthValidator
                 issueCount += ReportRendererPinkFallbackMaterialIssues(
                     renderers[rendererIndex],
                     $"{assetPath} (terrain tree prototype {prototypeIndex}: {prefab.name})");
+                issueCount += ReportRendererTexturelessVegetationMaterialIssues(
+                    renderers[rendererIndex],
+                    $"{assetPath} (terrain tree prototype {prototypeIndex}: {prefab.name})");
             }
         }
 
@@ -659,6 +662,9 @@ internal static class ProjectHealthValidator
                     issueCount += ReportRendererPinkFallbackMaterialIssues(
                         renderer,
                         $"{assetPath} (LODGroup level {lodIndex})");
+                    issueCount += ReportRendererTexturelessVegetationMaterialIssues(
+                        renderer,
+                        $"{assetPath} (LODGroup level {lodIndex})");
                     continue;
                 }
 
@@ -667,6 +673,40 @@ internal static class ProjectHealthValidator
                     lodGroup);
                 issueCount++;
             }
+        }
+
+        return issueCount;
+    }
+
+    private static int ReportRendererTexturelessVegetationMaterialIssues(Renderer renderer, string assetPath)
+    {
+        if (renderer == null)
+        {
+            return 0;
+        }
+
+        int issueCount = 0;
+        Material[] materials = renderer.sharedMaterials;
+        if (materials == null)
+        {
+            return 0;
+        }
+
+        for (int materialIndex = 0; materialIndex < materials.Length; materialIndex++)
+        {
+            Material material = materials[materialIndex];
+            if (material == null
+                || HasAlbedoLikeTexture(material)
+                || IsSuspiciousPinkFallbackMaterial(material)
+                || !LooksLikeVegetation(renderer, material))
+            {
+                continue;
+            }
+
+            Debug.LogError(
+                $"Vegetation material has no albedo texture: '{material.name}' slot {materialIndex} on '{GetHierarchyPath(renderer.transform)}' in '{assetPath}'.",
+                material);
+            issueCount++;
         }
 
         return issueCount;
@@ -741,6 +781,50 @@ internal static class ProjectHealthValidator
     private static bool HasTexture(Material material, string propertyName)
     {
         return material.HasProperty(propertyName) && material.GetTexture(propertyName) != null;
+    }
+
+    private static bool LooksLikeVegetation(Renderer renderer, Material material)
+    {
+        return ContainsVegetationToken(material != null ? material.name : null)
+            || ContainsVegetationToken(renderer != null ? renderer.name : null)
+            || ContainsVegetationToken(renderer != null ? renderer.gameObject.name : null)
+            || ContainsVegetationToken(GetAncestorNames(renderer != null ? renderer.transform : null));
+    }
+
+    private static string GetAncestorNames(Transform transform)
+    {
+        if (transform == null)
+        {
+            return string.Empty;
+        }
+
+        string names = string.Empty;
+        Transform current = transform.parent;
+        for (int i = 0; i < 4 && current != null; i++)
+        {
+            names += $" {current.name}";
+            current = current.parent;
+        }
+
+        return names;
+    }
+
+    private static bool ContainsVegetationToken(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        return value.IndexOf("tree", StringComparison.OrdinalIgnoreCase) >= 0
+            || value.IndexOf("leaf", StringComparison.OrdinalIgnoreCase) >= 0
+            || value.IndexOf("leaves", StringComparison.OrdinalIgnoreCase) >= 0
+            || value.IndexOf("bark", StringComparison.OrdinalIgnoreCase) >= 0
+            || value.IndexOf("branch", StringComparison.OrdinalIgnoreCase) >= 0
+            || value.IndexOf("trunk", StringComparison.OrdinalIgnoreCase) >= 0
+            || value.IndexOf("bush", StringComparison.OrdinalIgnoreCase) >= 0
+            || value.IndexOf("grass", StringComparison.OrdinalIgnoreCase) >= 0
+            || value.IndexOf("vegetation", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     private static bool TryGetMaterialColor(Material material, out Color color)
