@@ -126,6 +126,9 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float memoryFollowUpWaitTime = 1.6f;
         [SerializeField, Min(0f)] private float memoryFollowUpCooldown = 8f;
         [SerializeField, Range(0f, 1f)] private float memoryFollowUpMinimumSuspicion = 0.22f;
+        [SerializeField, Range(0f, 1f)] private float stackedMemorySuspicionBoost = 0.07f;
+        [SerializeField, Range(0f, 1f)] private float maximumStackedMemorySuspicionBoost = 0.24f;
+        [SerializeField, Min(0f)] private float stackedMemoryVigilanceDuration = 14f;
 
         [Header("Post-Encounter Vigilance")]
         [SerializeField, Min(0f)] private float postEncounterTaskCooldown = 25f;
@@ -368,6 +371,7 @@ namespace Neighbor.Main.Features.Neighbor
         public PlayerFeedbackEvents.NeighborMemoryClueKind PendingMemoryClueKind => pendingMemoryClueKind;
         public GameObject PendingMemoryClueSource => pendingMemoryClueSource;
         public Vector3 PendingMemoryCluePosition => pendingMemoryCluePosition;
+        public float PendingMemoryClueSuspicion => pendingMemoryClueSuspicion;
         public SuspicionLevel CurrentSuspicionLevel => GetSuspicionLevel();
         public NeighborTaskLocation ActiveTaskLocation => currentState == BehaviorState.Task
             && currentTaskAnimationPhase != NeighborTaskLocation.TaskAnimationPhase.None
@@ -3563,15 +3567,16 @@ namespace Neighbor.Main.Features.Neighbor
                     break;
             }
 
+            float pressureSuspicion = ApplyRememberedCluePressure(clueSuspicion);
             lastRememberedClueKind = kind;
             lastRememberedClueName = clue.name;
             lastRememberedCluePosition = position;
-            QueueMemoryClueFollowUp(kind, clue, position, clueSuspicion);
+            QueueMemoryClueFollowUp(kind, clue, position, pressureSuspicion);
             PlayerFeedbackEvents.ReportNeighborMemory(
                 kind,
                 clue.name,
                 position,
-                Mathf.Max(suspicion, clueSuspicion),
+                Mathf.Max(suspicion, pressureSuspicion),
                 TotalRememberedClueCount);
         }
 
@@ -3651,13 +3656,37 @@ namespace Neighbor.Main.Features.Neighbor
             pendingMemoryClueKind = candidate.Kind;
             pendingMemoryClueSource = candidate.Source;
             pendingMemoryCluePosition = candidate.Position;
-            pendingMemoryClueSuspicion = candidate.Suspicion;
+            pendingMemoryClueSuspicion = ApplyRememberedCluePressure(candidate.Suspicion);
             PlayerFeedbackEvents.ReportNeighborMemory(
                 candidate.Kind,
                 candidate.Source.name,
                 candidate.Position,
-                candidate.Suspicion,
+                pendingMemoryClueSuspicion,
                 TotalRememberedClueCount);
+        }
+
+        private float ApplyRememberedCluePressure(float clueSuspicion)
+        {
+            suspicion = Mathf.Max(suspicion, Mathf.Clamp01(clueSuspicion));
+
+            int stackedClueCount = Mathf.Max(0, TotalRememberedClueCount - 1);
+            if (stackedClueCount <= 0)
+            {
+                return suspicion;
+            }
+
+            float suspicionBoost = Mathf.Min(
+                maximumStackedMemorySuspicionBoost,
+                stackedClueCount * stackedMemorySuspicionBoost);
+            suspicion = Mathf.Clamp01(suspicion + suspicionBoost);
+            if (stackedMemoryVigilanceDuration > 0f)
+            {
+                tasksSuppressedUntilTime = Mathf.Max(
+                    tasksSuppressedUntilTime,
+                    Time.time + stackedMemoryVigilanceDuration);
+            }
+
+            return suspicion;
         }
 
         private bool TryGetStrongestRememberedClue(out RememberedClueFollowUpCandidate candidate)
