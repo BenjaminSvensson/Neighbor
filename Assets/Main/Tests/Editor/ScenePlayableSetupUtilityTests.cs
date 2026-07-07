@@ -11,6 +11,8 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 
 namespace Neighbor.Main.Tests
@@ -166,6 +168,71 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void SceneAtmosphereDirector_StealthLoopDangerIntensifiesFogAndGrade()
+        {
+            RenderSettingsSnapshot snapshot = RenderSettingsSnapshot.Capture();
+            GameObject directorObject = new("Atmosphere Director Test");
+            GameObject volumeObject = new("Atmosphere Volume Test");
+
+            try
+            {
+                Volume volume = volumeObject.AddComponent<Volume>();
+                SceneAtmosphereDirector director = directorObject.AddComponent<SceneAtmosphereDirector>();
+                director.Configure(
+                    null,
+                    null,
+                    volume,
+                    new AtmosphereFlickerLight[0],
+                    new AtmosphereDressingAnchor[0]);
+
+                Assert.That(volume.profile, Is.Not.Null);
+                Assert.That(volume.profile.TryGet(out ColorAdjustments colorAdjustments), Is.True);
+                Assert.That(volume.profile.TryGet(out Vignette vignette), Is.True);
+                Assert.That(volume.profile.TryGet(out FilmGrain filmGrain), Is.True);
+
+                float baseFogDensity = RenderSettings.fogDensity;
+                float baseExposure = colorAdjustments.postExposure.value;
+                float baseContrast = colorAdjustments.contrast.value;
+                float baseSaturation = colorAdjustments.saturation.value;
+                float baseVignette = vignette.intensity.value;
+                float baseFilmGrain = filmGrain.intensity.value;
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.Chased,
+                    1f,
+                    0.8f,
+                    0.9f,
+                    "Run or hide");
+
+                Assert.That(director.CurrentStealthAtmosphereIntensity, Is.GreaterThan(0.95f));
+                Assert.That(director.TargetStealthAtmosphereIntensity, Is.GreaterThan(0.95f));
+                Assert.That(RenderSettings.fogDensity, Is.GreaterThan(baseFogDensity));
+                Assert.That(colorAdjustments.postExposure.value, Is.LessThan(baseExposure));
+                Assert.That(colorAdjustments.contrast.value, Is.GreaterThan(baseContrast));
+                Assert.That(colorAdjustments.saturation.value, Is.LessThan(baseSaturation));
+                Assert.That(vignette.intensity.value, Is.GreaterThan(baseVignette));
+                Assert.That(filmGrain.intensity.value, Is.GreaterThan(baseFilmGrain));
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.Quiet,
+                    0f,
+                    0f,
+                    0f,
+                    string.Empty);
+                GameplaySmokeTestReflection.Invoke(director, "UpdateStealthAtmosphere", 2f);
+
+                Assert.That(director.CurrentStealthAtmosphereIntensity, Is.Zero.Within(0.001f));
+            }
+            finally
+            {
+                snapshot.Restore();
+                GameplaySmokeTestReflection.InvokeIfPresent(directorObject.GetComponent<SceneAtmosphereDirector>(), "OnDisable");
+                Object.DestroyImmediate(directorObject);
+                Object.DestroyImmediate(volumeObject);
+            }
+        }
+
+        [Test]
         public void MakeActiveScenePlayable_IsIdempotent()
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -234,6 +301,58 @@ namespace Neighbor.Main.Tests
             }
 
             return count;
+        }
+
+        private readonly struct RenderSettingsSnapshot
+        {
+            private readonly bool fog;
+            private readonly Color fogColor;
+            private readonly float fogDensity;
+            private readonly AmbientMode ambientMode;
+            private readonly Color ambientLight;
+            private readonly Light sun;
+            private readonly Material skybox;
+
+            private RenderSettingsSnapshot(
+                bool fog,
+                Color fogColor,
+                float fogDensity,
+                AmbientMode ambientMode,
+                Color ambientLight,
+                Light sun,
+                Material skybox)
+            {
+                this.fog = fog;
+                this.fogColor = fogColor;
+                this.fogDensity = fogDensity;
+                this.ambientMode = ambientMode;
+                this.ambientLight = ambientLight;
+                this.sun = sun;
+                this.skybox = skybox;
+            }
+
+            public static RenderSettingsSnapshot Capture()
+            {
+                return new RenderSettingsSnapshot(
+                    RenderSettings.fog,
+                    RenderSettings.fogColor,
+                    RenderSettings.fogDensity,
+                    RenderSettings.ambientMode,
+                    RenderSettings.ambientLight,
+                    RenderSettings.sun,
+                    RenderSettings.skybox);
+            }
+
+            public void Restore()
+            {
+                RenderSettings.fog = fog;
+                RenderSettings.fogColor = fogColor;
+                RenderSettings.fogDensity = fogDensity;
+                RenderSettings.ambientMode = ambientMode;
+                RenderSettings.ambientLight = ambientLight;
+                RenderSettings.sun = sun;
+                RenderSettings.skybox = skybox;
+            }
         }
     }
 }
