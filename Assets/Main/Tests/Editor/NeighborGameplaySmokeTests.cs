@@ -835,6 +835,49 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NeighborMemory_SearchCommitmentScalesWithClueSeverityAndStackedTrail()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            Door door = context.AddInitializedComponent<Door>("RememberedDoor");
+            door.SetLocked(false, false, false);
+            GlassShatter glass = context.AddInitializedComponent<GlassShatter>("BrokenKitchenWindow");
+
+            float doorSearchDuration = GameplaySmokeTestReflection.InvokeResult<float>(
+                brain,
+                "GetMemoryFollowUpSearchDuration",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
+                0.26f);
+            float keySearchDuration = GameplaySmokeTestReflection.InvokeResult<float>(
+                brain,
+                "GetMemoryFollowUpSearchDuration",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
+                0.72f);
+
+            GameplaySmokeTestReflection.Invoke(
+                brain,
+                "RememberMemoryClue",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
+                door,
+                door.transform.position,
+                0.26f);
+            GameplaySmokeTestReflection.Invoke(
+                brain,
+                "RememberMemoryClue",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken,
+                glass,
+                glass.transform.position,
+                0.56f);
+            float stackedDoorSearchDuration = GameplaySmokeTestReflection.InvokeResult<float>(
+                brain,
+                "GetMemoryFollowUpSearchDuration",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
+                0.26f);
+
+            Assert.That(keySearchDuration, Is.GreaterThan(doorSearchDuration + 0.6f));
+            Assert.That(stackedDoorSearchDuration, Is.GreaterThan(doorSearchDuration + 0.2f));
+        }
+
+        [Test]
         public void NeighborMemory_RespawnRequeuesStrongestRememberedClue()
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
@@ -942,6 +985,11 @@ namespace Neighbor.Main.Tests
                         0.65f);
 
                     Assert.That(brain.HasPendingMemoryClueFollowUp, Is.True);
+                    float expectedSearchDuration = GameplaySmokeTestReflection.InvokeResult<float>(
+                        brain,
+                        "GetMemoryFollowUpSearchDuration",
+                        PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken,
+                        brain.PendingMemoryClueSuspicion);
 
                     GameplaySmokeTestReflection.Invoke(brain, "ChooseNextRoutineGoal");
 
@@ -951,6 +999,9 @@ namespace Neighbor.Main.Tests
                     Assert.That(brain.LastKnownInvestigationPosition, Is.EqualTo(glassObject.transform.position));
                     Assert.That(brain.HasPendingMemoryClueFollowUp, Is.False);
                     Assert.That(brain.CurrentSuspicionLevel, Is.EqualTo(NeighborBrain.SuspicionLevel.Suspicious));
+                    Assert.That(
+                        GameplaySmokeTestReflection.GetField<float>(brain, "goalWaitDuration"),
+                        Is.EqualTo(expectedSearchDuration).Within(0.001f));
                     Assert.That(receivedInvestigation, Is.True);
                     Assert.That(
                         investigationFeedback.Kind,
