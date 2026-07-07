@@ -371,6 +371,54 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void SceneAtmosphereDirector_CalmingPostChaseLetsFogAndGradeBreathe()
+        {
+            RenderSettingsSnapshot snapshot = RenderSettingsSnapshot.Capture();
+            GameObject directorObject = new("Calming Post Chase Atmosphere Director Test");
+            GameObject volumeObject = new("Calming Post Chase Atmosphere Volume Test");
+
+            try
+            {
+                Volume volume = volumeObject.AddComponent<Volume>();
+                SceneAtmosphereDirector director = directorObject.AddComponent<SceneAtmosphereDirector>();
+                director.Configure(
+                    null,
+                    null,
+                    volume,
+                    new AtmosphereFlickerLight[0],
+                    new AtmosphereDressingAnchor[0]);
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.PostChase,
+                    0.9f,
+                    0.4f,
+                    0.65f,
+                    "Stay hidden. He is checking the area.");
+                float dangerIntensity = director.CurrentStealthAtmosphereIntensity;
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.PostChase,
+                    0.9f,
+                    0f,
+                    0.1f,
+                    "He lost your trail. Stay quiet.",
+                    true);
+                GameplaySmokeTestReflection.Invoke(director, "UpdateStealthAtmosphere", 1f);
+
+                Assert.That(director.TargetStealthAtmosphereIntensity, Is.LessThan(0.25f));
+                Assert.That(director.CurrentStealthAtmosphereIntensity, Is.LessThan(dangerIntensity));
+                Assert.That(director.CurrentStealthAtmosphereIntensity, Is.LessThan(0.25f));
+            }
+            finally
+            {
+                snapshot.Restore();
+                GameplaySmokeTestReflection.InvokeIfPresent(directorObject.GetComponent<SceneAtmosphereDirector>(), "OnDisable");
+                Object.DestroyImmediate(directorObject);
+                Object.DestroyImmediate(volumeObject);
+            }
+        }
+
+        [Test]
         public void SceneAtmosphereDirector_CompromisedHidingIntensifiesFogAndGrade()
         {
             RenderSettingsSnapshot snapshot = RenderSettingsSnapshot.Capture();

@@ -18,6 +18,7 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField] private bool respondToStealthLoop = true;
         [SerializeField, Range(0f, 1f)] private float dangerVisibilityBoost = 0.24f;
         [SerializeField, Range(0f, 1f)] private float dangerDarkening = 0.28f;
+        [SerializeField, Range(0f, 1f)] private float calmPostChaseDressingPressure = 0.14f;
         [SerializeField, Range(0f, 1f)] private float calmHidingDressingPressure = 0.08f;
         [SerializeField, Min(0f)] private float dangerHoldDuration = 2.6f;
         [SerializeField, Min(0f)] private float dangerFadeSpeed = 1.8f;
@@ -269,7 +270,9 @@ namespace Neighbor.Main.Features.Environment
             return feedback.Phase switch
             {
                 PlayerFeedbackEvents.StealthLoopPhase.Chased => 1f,
-                PlayerFeedbackEvents.StealthLoopPhase.PostChase => Mathf.Max(0.62f, pressure),
+                PlayerFeedbackEvents.StealthLoopPhase.PostChase => feedback.IsCalming
+                    ? Mathf.Max(calmPostChaseDressingPressure, feedback.Tension)
+                    : Mathf.Max(0.62f, pressure),
                 PlayerFeedbackEvents.StealthLoopPhase.Searching => Mathf.Max(0.52f, pressure),
                 PlayerFeedbackEvents.StealthLoopPhase.Certain => Mathf.Max(0.74f, pressure),
                 PlayerFeedbackEvents.StealthLoopPhase.Suspicious => Mathf.Max(0.42f, pressure),

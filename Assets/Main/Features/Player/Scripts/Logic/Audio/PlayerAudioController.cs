@@ -39,6 +39,7 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Range(0f, 1f)] private float stealthBreathVolume = 0.32f;
         [SerializeField, Min(0f)] private float stealthBreathPitchLift = 0.06f;
         [SerializeField, Range(0f, 1f)] private float calmHidingStealthBreathPressure = 0.04f;
+        [SerializeField, Range(0f, 1f)] private float calmPostChaseStealthBreathPressure = 0.12f;
         [SerializeField, Min(0f)] private float stealthBreathHoldDuration = 2.6f;
         [SerializeField, Min(0f)] private float stealthBreathFadeSpeed = 1.8f;
 
@@ -500,7 +501,9 @@ namespace Neighbor.Main.Features.Player
             return feedback.Phase switch
             {
                 PlayerFeedbackEvents.StealthLoopPhase.Chased => 1f,
-                PlayerFeedbackEvents.StealthLoopPhase.PostChase => Mathf.Max(0.58f, pressure),
+                PlayerFeedbackEvents.StealthLoopPhase.PostChase => feedback.IsCalming
+                    ? Mathf.Max(calmPostChaseStealthBreathPressure, feedback.Tension)
+                    : Mathf.Max(0.58f, pressure),
                 PlayerFeedbackEvents.StealthLoopPhase.Searching => Mathf.Max(0.46f, pressure),
                 PlayerFeedbackEvents.StealthLoopPhase.Certain => Mathf.Max(0.72f, pressure),
                 PlayerFeedbackEvents.StealthLoopPhase.Suspicious => Mathf.Max(0.32f, pressure),

@@ -1031,7 +1031,12 @@ namespace Neighbor.Main.Features.Player
                 case PlayerFeedbackEvents.StealthLoopPhase.Certain:
                     return new Color(1f, 0.24f, 0.08f, 1f);
                 case PlayerFeedbackEvents.StealthLoopPhase.PostChase:
-                    return new Color(1f, 0.58f, 0.16f, 1f);
+                    return feedback.IsCalming
+                        ? Color.Lerp(
+                            new Color(0.66f, 0.84f, 1f, 0.95f),
+                            new Color(1f, 0.64f, 0.18f, 1f),
+                            feedback.Tension)
+                        : new Color(1f, 0.58f, 0.16f, 1f);
                 case PlayerFeedbackEvents.StealthLoopPhase.Searching:
                     return new Color(1f, 0.68f, 0.18f, 0.98f);
                 case PlayerFeedbackEvents.StealthLoopPhase.Hiding:

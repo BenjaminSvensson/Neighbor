@@ -139,6 +139,8 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float postEncounterTaskCooldown = 25f;
         [SerializeField, Min(0f)] private float postChaseTensionDuration = 12f;
         [SerializeField, Range(0f, 1f)] private float postChaseSuspicionFloor = 0.32f;
+        [SerializeField, Range(0f, 1f)] private float postChaseRecoveryTension = 0.18f;
+        [SerializeField] private string postChaseRecoveryMessage = "He lost your trail. Stay quiet.";
         [SerializeField, Min(0f)] private float vigilancePatrolRadius = 10f;
         [SerializeField, Min(0f)] private float vigilanceWaitMinimum = 1.4f;
         [SerializeField, Min(0f)] private float vigilanceWaitMaximum = 3f;
@@ -2984,6 +2986,7 @@ namespace Neighbor.Main.Features.Neighbor
             suspicion = Mathf.Max(suspicion, suspiciousThreshold);
             RefreshPostEncounterVigilance();
             ChooseNextRoutineGoal();
+            ReportPostChaseRecoveryIfSafe();
         }
 
         private void SetState(BehaviorState state)
@@ -3468,17 +3471,60 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            hasReportedStealthLoopPhase = true;
-            lastReportedStealthLoopPhase = phase;
-            lastReportedStealthSuspicion = suspicion;
-            lastReportedStealthTension = tension;
-            lastReportedStealthNoise = noise;
-            PlayerFeedbackEvents.ReportStealthLoop(
+            ReportStealthLoop(
                 phase,
                 suspicion,
                 noise,
                 tension,
                 GetStealthLoopMessage(phase, rememberedClueTension, noise));
+        }
+
+        private void ReportStealthLoop(
+            PlayerFeedbackEvents.StealthLoopPhase phase,
+            float suspicionAmount,
+            float noise,
+            float tension,
+            string message,
+            bool isCalming = false)
+        {
+            hasReportedStealthLoopPhase = true;
+            lastReportedStealthLoopPhase = phase;
+            lastReportedStealthSuspicion = suspicionAmount;
+            lastReportedStealthTension = tension;
+            lastReportedStealthNoise = noise;
+            PlayerFeedbackEvents.ReportStealthLoop(
+                phase,
+                suspicionAmount,
+                noise,
+                tension,
+                message,
+                isCalming);
+        }
+
+        private void ReportPostChaseRecoveryIfSafe()
+        {
+            if (!IsPostChaseTensionActive
+                || currentState == BehaviorState.Chase
+                || currentState == BehaviorState.Catching
+                || currentState == BehaviorState.HuntMode
+                || currentState == BehaviorState.Investigate
+                || currentState == BehaviorState.DoorSecurityCheck
+                || currentHuntMemoryClueActive
+                || currentInvestigationMemoryClueActive)
+            {
+                return;
+            }
+
+            float recoveryTension = Mathf.Min(
+                postChaseRecoveryTension,
+                Mathf.Max(0.08f, PostChaseTension01 * 0.35f));
+            ReportStealthLoop(
+                PlayerFeedbackEvents.StealthLoopPhase.PostChase,
+                suspicion,
+                0f,
+                recoveryTension,
+                postChaseRecoveryMessage,
+                true);
         }
 
         private void RegisterHeardNoiseFeedback(float loudness)

@@ -50,6 +50,7 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float stealthShakeAmount = 0.18f;
         [SerializeField, Min(0f)] private float stealthFieldOfViewKick = 2.4f;
         [SerializeField, Range(0f, 1f)] private float calmHidingCameraPressure = 0.08f;
+        [SerializeField, Range(0f, 1f)] private float calmPostChaseCameraPressure = 0.14f;
         [SerializeField, Min(0f)] private float stealthCameraPressureHoldDuration = 2.4f;
         [SerializeField, Min(0f)] private float stealthCameraPressureFadeSpeed = 2.1f;
 
@@ -761,7 +762,9 @@ namespace Neighbor.Main.Features.Player
             return feedback.Phase switch
             {
                 PlayerFeedbackEvents.StealthLoopPhase.Chased => 1f,
-                PlayerFeedbackEvents.StealthLoopPhase.PostChase => Mathf.Max(0.64f, pressure),
+                PlayerFeedbackEvents.StealthLoopPhase.PostChase => feedback.IsCalming
+                    ? Mathf.Max(calmPostChaseCameraPressure, feedback.Tension)
+                    : Mathf.Max(0.64f, pressure),
                 PlayerFeedbackEvents.StealthLoopPhase.Searching => Mathf.Max(0.52f, pressure),
                 PlayerFeedbackEvents.StealthLoopPhase.Certain => Mathf.Max(0.78f, pressure),
                 PlayerFeedbackEvents.StealthLoopPhase.Suspicious => Mathf.Max(0.4f, pressure),

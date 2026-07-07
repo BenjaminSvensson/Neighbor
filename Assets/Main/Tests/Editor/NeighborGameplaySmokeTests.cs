@@ -604,6 +604,43 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void StealthLoop_EndingHuntReportsCalmingPostChaseRecovery()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            PlayerFeedbackEvents.StealthLoopFeedback feedback = default;
+            bool received = false;
+            PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
+
+            try
+            {
+                GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.HuntMode);
+                GameplaySmokeTestReflection.SetField(brain, "postChaseTensionDuration", 12f);
+                GameplaySmokeTestReflection.SetField(brain, "postChaseTensionUntilTime", Time.time + 8f);
+                GameplaySmokeTestReflection.SetField(brain, "suspicion", 0.68f);
+
+                GameplaySmokeTestReflection.Invoke(brain, "EndHuntMode");
+
+                Assert.That(received, Is.True);
+                Assert.That(feedback.Phase, Is.EqualTo(PlayerFeedbackEvents.StealthLoopPhase.PostChase));
+                Assert.That(feedback.IsCalming, Is.True);
+                Assert.That(feedback.Message, Is.EqualTo("He lost your trail. Stay quiet."));
+                Assert.That(feedback.Noise, Is.Zero);
+                Assert.That(feedback.Tension, Is.EqualTo(0.18f).Within(0.001f));
+                Assert.That(brain.CurrentState, Is.Not.EqualTo(NeighborBrain.BehaviorState.HuntMode));
+            }
+            finally
+            {
+                PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            }
+
+            void HandleStealthLoopChanged(PlayerFeedbackEvents.StealthLoopFeedback reportedFeedback)
+            {
+                feedback = reportedFeedback;
+                received = true;
+            }
+        }
+
+        [Test]
         public void HidingBreath_RecoversWhenDangerHasPassed()
         {
             PlayerHidingState hidingState = context.AddInitializedComponent<PlayerHidingState>(
@@ -2923,6 +2960,17 @@ namespace Neighbor.Main.Tests
                 GameplaySmokeTestReflection.Invoke(audioController, "UpdateStealthBreathStress", 0.25f);
 
                 Assert.That(audioController.CurrentStealthBreathStress01, Is.LessThan(0.5f));
+
+                GameplaySmokeTestReflection.SetField(audioController, "currentStealthBreathStress", 0f);
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.PostChase,
+                    0.9f,
+                    0f,
+                    0.1f,
+                    "He lost your trail. Stay quiet.",
+                    true);
+
+                Assert.That(audioController.CurrentStealthBreathStress01, Is.InRange(0.11f, 0.13f));
             }
             finally
             {
