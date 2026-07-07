@@ -19,6 +19,15 @@ namespace Neighbor.Main.Features.Interaction
             Holding
         }
 
+        public enum PlacementPreviewState
+        {
+            Hidden,
+            Valid,
+            Unstable,
+            Blocked,
+            NoSurface
+        }
+
         [Header("Raycast")]
         [SerializeField] private Camera viewCamera;
         [SerializeField] private InputActionAsset inputActions;
@@ -80,6 +89,7 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0.001f)] private float placementPreviewLineWidth = 0.025f;
         [SerializeField, Min(0.05f)] private float placementPreviewMinimumHalfSize = 0.18f;
         [SerializeField] private Color placementPreviewValidColor = new Color(0.34f, 1f, 0.58f, 0.86f);
+        [SerializeField] private Color placementPreviewUnstableColor = new Color(1f, 0.78f, 0.22f, 0.9f);
         [SerializeField] private Color placementPreviewBlockedColor = new Color(1f, 0.25f, 0.12f, 0.92f);
 
         [Header("Throwing")]
@@ -121,6 +131,8 @@ namespace Neighbor.Main.Features.Interaction
         private Material throwArcMaterial;
         private Material placementPreviewMaterial;
         private bool placementPreviewValid;
+        private PlacementPreviewState placementPreviewState;
+        private string placementPreviewActionText = "Drop";
         private Pickupable cachedHeldPickup;
         private DoorKey cachedHeldDoorKey;
         private DoorBlockerChair cachedHeldDoorBlocker;
@@ -135,6 +147,8 @@ namespace Neighbor.Main.Features.Interaction
         public bool IsInspectingHeldPickup => isInspectingHeldPickup;
         public bool IsPlacementPreviewVisible => placementPreviewRenderer != null && placementPreviewRenderer.enabled;
         public bool IsPlacementPreviewValid => placementPreviewValid;
+        public PlacementPreviewState CurrentPlacementPreviewState => placementPreviewState;
+        public string CurrentPlacementPreviewActionText => placementPreviewActionText;
         public Pickupable HeldPickup => heldPickup;
         public float ThrowCharge => ThrowCharge01;
         public int ActiveInventorySlot => activeInventorySlot;
@@ -1464,7 +1478,7 @@ namespace Neighbor.Main.Features.Interaction
 
             if (placementPreviewRenderer != null && placementPreviewRenderer.enabled)
             {
-                return placementPreviewValid ? "Place" : "Blocked placement";
+                return placementPreviewActionText;
             }
 
             if (!showPlacementPreview)
@@ -1472,14 +1486,48 @@ namespace Neighbor.Main.Features.Interaction
                 return "Place";
             }
 
-            return TryGetPlacementPose(
+            bool validPose = TryGetPlacementPose(
                 heldPickup,
                 out _,
                 out _,
                 out bool foundPlacementSurface,
-                out _)
-                ? "Place"
-                : foundPlacementSurface ? "Blocked placement" : "Drop";
+                out bool shouldSleepAfterPlacement);
+            return GetPlacementPreviewActionText(GetPlacementPreviewState(
+                validPose,
+                foundPlacementSurface,
+                shouldSleepAfterPlacement));
+        }
+
+        private static PlacementPreviewState GetPlacementPreviewState(
+            bool validPose,
+            bool foundPlacementSurface,
+            bool shouldSleepAfterPlacement)
+        {
+            if (!foundPlacementSurface)
+            {
+                return PlacementPreviewState.NoSurface;
+            }
+
+            if (!validPose)
+            {
+                return PlacementPreviewState.Blocked;
+            }
+
+            return shouldSleepAfterPlacement
+                ? PlacementPreviewState.Valid
+                : PlacementPreviewState.Unstable;
+        }
+
+        private static string GetPlacementPreviewActionText(PlacementPreviewState state)
+        {
+            return state switch
+            {
+                PlacementPreviewState.Valid => "Place",
+                PlacementPreviewState.Unstable => "Place - will settle",
+                PlacementPreviewState.Blocked => "Blocked - no room",
+                PlacementPreviewState.NoSurface => "Drop - no surface",
+                _ => "Drop"
+            };
         }
 
         private bool TryGetTooltip(
@@ -1947,10 +1995,10 @@ namespace Neighbor.Main.Features.Interaction
                 out Vector3 previewPosition,
                 out Quaternion previewRotation,
                 out bool foundPlacementSurface,
-                out _);
+                out bool shouldSleepAfterPlacement);
             if (!foundPlacementSurface)
             {
-                HidePlacementPreview();
+                HidePlacementPreview(PlacementPreviewState.NoSurface);
                 return;
             }
 
@@ -1961,13 +2009,23 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             placementPreviewValid = validPose;
+            placementPreviewState = GetPlacementPreviewState(validPose, foundPlacementSurface, shouldSleepAfterPlacement);
+            placementPreviewActionText = GetPlacementPreviewActionText(placementPreviewState);
             placementPreviewRenderer.enabled = true;
-            Color previewColor = validPose ? placementPreviewValidColor : placementPreviewBlockedColor;
+            Color previewColor = placementPreviewState switch
+            {
+                PlacementPreviewState.Valid => placementPreviewValidColor,
+                PlacementPreviewState.Unstable => placementPreviewUnstableColor,
+                _ => placementPreviewBlockedColor
+            };
             placementPreviewRenderer.startColor = previewColor;
             placementPreviewRenderer.endColor = previewColor;
-            placementPreviewRenderer.widthMultiplier = validPose
-                ? placementPreviewLineWidth
-                : placementPreviewLineWidth * 1.35f;
+            placementPreviewRenderer.widthMultiplier = placementPreviewState switch
+            {
+                PlacementPreviewState.Blocked => placementPreviewLineWidth * 1.35f,
+                PlacementPreviewState.Unstable => placementPreviewLineWidth * 1.18f,
+                _ => placementPreviewLineWidth
+            };
             UpdatePlacementPreviewFootprint(heldPickup, previewPosition, previewRotation);
         }
 
@@ -2160,9 +2218,11 @@ namespace Neighbor.Main.Features.Interaction
             }
         }
 
-        private void HidePlacementPreview()
+        private void HidePlacementPreview(PlacementPreviewState state = PlacementPreviewState.Hidden)
         {
             placementPreviewValid = false;
+            placementPreviewState = state;
+            placementPreviewActionText = GetPlacementPreviewActionText(state);
             if (placementPreviewRenderer != null)
             {
                 placementPreviewRenderer.enabled = false;

@@ -1279,7 +1279,17 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             if (resumeState == BehaviorState.Wander
-                && motor.SetDestination(resumeGoal))
+                && motor.TrySetDestinationNear(resumeGoal, noiseDestinationSampleRadius, out Vector3 wanderReturnPosition))
+            {
+                currentGoal = wanderReturnPosition;
+                goalWaitDuration = Random.Range(idleWaitMinimum, Mathf.Max(idleWaitMinimum, idleWaitMaximum));
+                waitingAtGoal = false;
+                currentTaskLocation = null;
+                SetState(BehaviorState.Wander);
+                return true;
+            }
+
+            if (resumeState == BehaviorState.Wander)
             {
                 currentGoal = resumeGoal;
                 goalWaitDuration = Random.Range(idleWaitMinimum, Mathf.Max(idleWaitMinimum, idleWaitMaximum));
