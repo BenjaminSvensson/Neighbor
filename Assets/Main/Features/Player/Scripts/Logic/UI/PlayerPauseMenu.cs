@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using Neighbor.Main.Features.Interaction;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -206,7 +207,7 @@ namespace Neighbor.Main.Features.Player
             cameraController?.SetRuntimeMouseSensitivity(sensitivity);
             if (sensitivityValueText != null)
             {
-                sensitivityValueText.text = sensitivity.ToString("0.000");
+                sensitivityValueText.text = sensitivity.ToString("0.000", CultureInfo.InvariantCulture);
             }
         }
 

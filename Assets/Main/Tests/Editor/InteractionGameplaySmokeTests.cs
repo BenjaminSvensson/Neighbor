@@ -409,6 +409,10 @@ namespace Neighbor.Main.Tests
             LineRenderer previewRenderer = GameplaySmokeTestReflection.GetField<LineRenderer>(interactor, "placementPreviewRenderer");
             Assert.That(interactor.IsPlacementPreviewVisible, Is.True);
             Assert.That(interactor.IsPlacementPreviewValid, Is.True);
+            Assert.That(
+                interactor.CurrentPlacementPreviewState,
+                Is.EqualTo(PlayerInteractor.PlacementPreviewState.Valid));
+            Assert.That(interactor.CurrentPlacementPreviewActionText, Is.EqualTo("Place"));
             Assert.That(previewRenderer, Is.Not.Null);
             Assert.That(previewRenderer.positionCount, Is.EqualTo(5));
         }
@@ -431,6 +435,10 @@ namespace Neighbor.Main.Tests
 
             Assert.That(interactor.IsPlacementPreviewVisible, Is.False);
             Assert.That(interactor.IsPlacementPreviewValid, Is.False);
+            Assert.That(
+                interactor.CurrentPlacementPreviewState,
+                Is.EqualTo(PlayerInteractor.PlacementPreviewState.NoSurface));
+            Assert.That(interactor.CurrentPlacementPreviewActionText, Is.EqualTo("Drop - no surface"));
         }
 
         [Test]
@@ -448,20 +456,35 @@ namespace Neighbor.Main.Tests
             previewRenderer.enabled = true;
             GameplaySmokeTestReflection.SetField(interactor, "placementPreviewRenderer", previewRenderer);
             GameplaySmokeTestReflection.SetField(interactor, "placementPreviewValid", false);
-            GameplaySmokeTestReflection.Invoke(interactor, "ShowHeldPickupTooltip", null);
+            GameplaySmokeTestReflection.SetField(
+                interactor,
+                "placementPreviewState",
+                PlayerInteractor.PlacementPreviewState.Blocked);
+            GameplaySmokeTestReflection.SetField(interactor, "placementPreviewActionText", "Blocked - no room");
+            GameplaySmokeTestReflection.Invoke(interactor, "ShowHeldPickupTooltip", new object[] { null });
 
             Text actionText = GameplaySmokeTestReflection.GetField<Text>(tooltipView, "actionText");
-            Assert.That(actionText.text, Is.EqualTo("Blocked placement"));
+            Assert.That(actionText.text, Is.EqualTo("Blocked - no room"));
 
             GameplaySmokeTestReflection.SetField(interactor, "placementPreviewValid", true);
-            GameplaySmokeTestReflection.Invoke(interactor, "ShowHeldPickupTooltip", null);
+            GameplaySmokeTestReflection.SetField(
+                interactor,
+                "placementPreviewState",
+                PlayerInteractor.PlacementPreviewState.Valid);
+            GameplaySmokeTestReflection.SetField(interactor, "placementPreviewActionText", "Place");
+            GameplaySmokeTestReflection.Invoke(interactor, "ShowHeldPickupTooltip", new object[] { null });
 
             Assert.That(actionText.text, Is.EqualTo("Place"));
 
             previewRenderer.enabled = false;
-            GameplaySmokeTestReflection.Invoke(interactor, "ShowHeldPickupTooltip", null);
+            GameplaySmokeTestReflection.SetField(
+                interactor,
+                "placementPreviewState",
+                PlayerInteractor.PlacementPreviewState.NoSurface);
+            GameplaySmokeTestReflection.SetField(interactor, "placementPreviewActionText", "Drop - no surface");
+            GameplaySmokeTestReflection.Invoke(interactor, "ShowHeldPickupTooltip", new object[] { null });
 
-            Assert.That(actionText.text, Is.EqualTo("Drop"));
+            Assert.That(actionText.text, Is.EqualTo("Drop - no surface"));
         }
 
         [Test]

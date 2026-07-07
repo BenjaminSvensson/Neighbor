@@ -162,6 +162,7 @@ namespace Neighbor.Main.Tests
                     new TreePrototype()
                 };
 
+                LogAssert.Expect(LogType.Error, new Regex("Tree prefab at index 0 is missing"));
                 LogAssert.Expect(LogType.Error, new Regex("Terrain tree prototype 0 is missing a prefab"));
                 Assert.That(ProjectHealthValidator.ValidateGameObjectForTests(root, "SyntheticTerrain.prefab"), Is.EqualTo(1));
             }

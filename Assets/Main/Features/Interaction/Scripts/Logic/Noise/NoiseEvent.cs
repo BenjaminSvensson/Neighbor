@@ -59,7 +59,7 @@ namespace Neighbor.Main.Features.Interaction
             if (!IsNeighborObject(InstigatorObject)
                 && (sourceObject == null || sourceObject.GetComponentInParent<SecurityCamera>() == null))
             {
-                PlayerFeedbackEvents.ReportNoise(origin, Loudness01, radius);
+                PlayerFeedbackEvents.ReportNoise(origin, Loudness01, Radius);
                 AdaptiveSecurityDirector.ReportDisturbance(Loudness01);
             }
 
