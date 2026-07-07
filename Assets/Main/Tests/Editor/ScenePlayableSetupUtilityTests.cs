@@ -281,6 +281,54 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void SceneAtmosphereDirector_PostChasePressureIntensifiesFogAndGrade()
+        {
+            RenderSettingsSnapshot snapshot = RenderSettingsSnapshot.Capture();
+            GameObject directorObject = new("Post Chase Atmosphere Director Test");
+            GameObject volumeObject = new("Post Chase Atmosphere Volume Test");
+
+            try
+            {
+                Volume volume = volumeObject.AddComponent<Volume>();
+                SceneAtmosphereDirector director = directorObject.AddComponent<SceneAtmosphereDirector>();
+                director.Configure(
+                    null,
+                    null,
+                    volume,
+                    new AtmosphereFlickerLight[0],
+                    new AtmosphereDressingAnchor[0]);
+
+                Assert.That(volume.profile, Is.Not.Null);
+                Assert.That(volume.profile.TryGet(out ColorAdjustments colorAdjustments), Is.True);
+                Assert.That(volume.profile.TryGet(out Vignette vignette), Is.True);
+
+                float baseFogDensity = RenderSettings.fogDensity;
+                float baseExposure = colorAdjustments.postExposure.value;
+                float baseVignette = vignette.intensity.value;
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.PostChase,
+                    0.78f,
+                    0.62f,
+                    0.24f,
+                    "Stay hidden. He is checking the area.");
+
+                Assert.That(director.CurrentStealthAtmosphereIntensity, Is.GreaterThan(0.75f));
+                Assert.That(director.TargetStealthAtmosphereIntensity, Is.GreaterThan(0.75f));
+                Assert.That(RenderSettings.fogDensity, Is.GreaterThan(baseFogDensity));
+                Assert.That(colorAdjustments.postExposure.value, Is.LessThan(baseExposure));
+                Assert.That(vignette.intensity.value, Is.GreaterThan(baseVignette));
+            }
+            finally
+            {
+                snapshot.Restore();
+                GameplaySmokeTestReflection.InvokeIfPresent(directorObject.GetComponent<SceneAtmosphereDirector>(), "OnDisable");
+                Object.DestroyImmediate(directorObject);
+                Object.DestroyImmediate(volumeObject);
+            }
+        }
+
+        [Test]
         public void SceneAtmosphereDirector_CompromisedHidingIntensifiesFogAndGrade()
         {
             RenderSettingsSnapshot snapshot = RenderSettingsSnapshot.Capture();
