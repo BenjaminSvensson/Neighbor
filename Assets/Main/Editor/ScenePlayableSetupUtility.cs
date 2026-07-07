@@ -21,6 +21,7 @@ internal static class ScenePlayableSetupUtility
     private const string MenuPathWithoutBake = "Tools/Neighbor/Make Scene Playable Without NavMesh Bake";
     private const string PlayerPrefabPath = "Assets/Main/Features/Player/Prefabs/Main/Player.prefab";
     private const string NeighborPrefabPath = "Assets/Main/Features/Neighbor/Prefabs/Neighbor.prefab";
+    private const string AtmosphereMaterialFolder = "Assets/Main/Features/Environment/Materials";
     private const string StartCheckpointName = "Start Checkpoint";
 
     [MenuItem(MenuPath)]
@@ -42,6 +43,33 @@ internal static class ScenePlayableSetupUtility
         ScenePlayableSetupResult result = MakeActiveScenePlayable(true);
         Debug.Log(result.GetSummary());
         EditorApplication.Exit(0);
+    }
+
+    public static void ApplyAtmosphereToSceneFromCommandLine()
+    {
+        try
+        {
+            string scenePath = GetCommandLineValue("-scenePath");
+            if (string.IsNullOrWhiteSpace(scenePath))
+            {
+                throw new System.InvalidOperationException("Missing -scenePath argument.");
+            }
+
+            Scene scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+            ScenePlayableSetupResult result = ApplyAtmosphereToActiveScene();
+            if (result.HasChanges)
+            {
+                EditorSceneManager.SaveScene(scene);
+            }
+
+            Debug.Log(result.GetSummary());
+            EditorApplication.Exit(0);
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogException(exception);
+            EditorApplication.Exit(1);
+        }
     }
 
     internal static ScenePlayableSetupResult MakeActiveScenePlayable(bool bakeNavMesh)
@@ -93,6 +121,37 @@ internal static class ScenePlayableSetupUtility
             result.BakedNavMesh = true;
             EditorUtility.SetDirty(navMeshSurface);
         }
+
+        if (result.HasChanges)
+        {
+            EditorSceneManager.MarkSceneDirty(scene);
+        }
+
+        Undo.CollapseUndoOperations(undoGroup);
+        return result;
+    }
+
+    internal static ScenePlayableSetupResult ApplyAtmosphereToActiveScene()
+    {
+        Scene scene = SceneManager.GetActiveScene();
+        if (!scene.IsValid())
+        {
+            throw new System.InvalidOperationException("No valid active scene is open.");
+        }
+
+        int undoGroup = Undo.GetCurrentGroup();
+        Undo.SetCurrentGroupName("Apply Scene Atmosphere");
+
+        ScenePlayableSetupResult result = new(scene.path);
+        Light directionalLight = EnsureDirectionalLight(scene, result);
+        Light moonLight = EnsureMoonLight(scene, result);
+        DayNightCycle dayNightCycle = EnsureDayNightCycle(scene, directionalLight, moonLight, result);
+        SceneAtmosphereDirector atmosphereDirector = EnsureAtmosphereDirector(scene, directionalLight, moonLight, result);
+
+        result.DirectionalLight = directionalLight;
+        result.MoonLight = moonLight;
+        result.DayNightCycle = dayNightCycle;
+        result.AtmosphereDirector = atmosphereDirector;
 
         if (result.HasChanges)
         {
@@ -634,7 +693,7 @@ internal static class ScenePlayableSetupUtility
         Renderer renderer = anchor.GetComponent<Renderer>();
         if (renderer != null)
         {
-            renderer.sharedMaterial = CreateAtmosphereMaterial(objectName, color);
+            renderer.sharedMaterial = CreateAtmosphereMaterial(scene, objectName, kind, color);
             EditorUtility.SetDirty(renderer);
         }
 
@@ -649,7 +708,48 @@ internal static class ScenePlayableSetupUtility
         return anchor;
     }
 
-    private static Material CreateAtmosphereMaterial(string name, Color color)
+    private static Material CreateAtmosphereMaterial(
+        Scene scene,
+        string name,
+        AtmosphereDressingAnchor.DressingKind kind,
+        Color color)
+    {
+        if (!string.IsNullOrWhiteSpace(scene.path))
+        {
+            return GetOrCreateAtmosphereMaterialAsset(name, kind, color);
+        }
+
+        return CreateTemporaryAtmosphereMaterial(name, kind, color);
+    }
+
+    private static Material GetOrCreateAtmosphereMaterialAsset(
+        string name,
+        AtmosphereDressingAnchor.DressingKind kind,
+        Color color)
+    {
+        EnsureAtmosphereMaterialFolder();
+
+        string materialPath = $"{AtmosphereMaterialFolder}/{SanitizeAssetName(name)}.mat";
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
+        if (material == null)
+        {
+            material = CreateTemporaryAtmosphereMaterial(name, kind, color);
+            material.hideFlags = HideFlags.None;
+            AssetDatabase.CreateAsset(material, materialPath);
+        }
+        else
+        {
+            ConfigureAtmosphereMaterial(material, kind, color);
+        }
+
+        EditorUtility.SetDirty(material);
+        return material;
+    }
+
+    private static Material CreateTemporaryAtmosphereMaterial(
+        string name,
+        AtmosphereDressingAnchor.DressingKind kind,
+        Color color)
     {
         Shader shader = Shader.Find("Universal Render Pipeline/Lit")
             ?? Shader.Find("Standard")
@@ -659,6 +759,20 @@ internal static class ScenePlayableSetupUtility
             name = $"{name} Material",
             hideFlags = HideFlags.DontSaveInBuild
         };
+
+        ConfigureAtmosphereMaterial(material, kind, color);
+        return material;
+    }
+
+    private static void ConfigureAtmosphereMaterial(
+        Material material,
+        AtmosphereDressingAnchor.DressingKind kind,
+        Color color)
+    {
+        if (material == null)
+        {
+            return;
+        }
 
         if (material.HasProperty("_BaseColor"))
         {
@@ -675,7 +789,88 @@ internal static class ScenePlayableSetupUtility
             material.SetFloat("_Smoothness", 0.22f);
         }
 
-        return material;
+        if (kind == AtmosphereDressingAnchor.DressingKind.DirtyDecal)
+        {
+            ConfigureTransparentMaterial(material);
+        }
+    }
+
+    private static void ConfigureTransparentMaterial(Material material)
+    {
+        if (material.HasProperty("_Surface"))
+        {
+            material.SetFloat("_Surface", 1f);
+        }
+
+        if (material.HasProperty("_Blend"))
+        {
+            material.SetFloat("_Blend", 0f);
+        }
+
+        if (material.HasProperty("_SrcBlend"))
+        {
+            material.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
+        }
+
+        if (material.HasProperty("_DstBlend"))
+        {
+            material.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
+        }
+
+        if (material.HasProperty("_ZWrite"))
+        {
+            material.SetInt("_ZWrite", 0);
+        }
+
+        material.SetOverrideTag("RenderType", "Transparent");
+        material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        material.renderQueue = (int)RenderQueue.Transparent;
+    }
+
+    private static void EnsureAtmosphereMaterialFolder()
+    {
+        if (AssetDatabase.IsValidFolder(AtmosphereMaterialFolder))
+        {
+            return;
+        }
+
+        if (!AssetDatabase.IsValidFolder("Assets/Main/Features/Environment"))
+        {
+            AssetDatabase.CreateFolder("Assets/Main/Features", "Environment");
+        }
+
+        AssetDatabase.CreateFolder("Assets/Main/Features/Environment", "Materials");
+    }
+
+    private static string SanitizeAssetName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "AtmosphereMaterial";
+        }
+
+        System.Text.StringBuilder builder = new(name.Length);
+        for (int i = 0; i < name.Length; i++)
+        {
+            char character = name[i];
+            builder.Append(char.IsLetterOrDigit(character) ? character : '_');
+        }
+
+        return builder.ToString().Trim('_');
+    }
+
+    private static string GetCommandLineValue(string argumentName)
+    {
+        string[] arguments = System.Environment.GetCommandLineArgs();
+        for (int i = 0; i < arguments.Length - 1; i++)
+        {
+            if (string.Equals(arguments[i], argumentName, System.StringComparison.OrdinalIgnoreCase))
+            {
+                return arguments[i + 1];
+            }
+        }
+
+        return null;
     }
 
     private static GameObject InstantiatePrefab(string path, Scene scene, string fallbackName)

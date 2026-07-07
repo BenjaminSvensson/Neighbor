@@ -20,6 +20,8 @@ namespace Neighbor.Main.Tests
             foreach (Material material in renderer.sharedMaterials)
             {
                 Assert.That(global::TerrainGrassInstaller.IsRenderableTerrainTreeMaterial(material), Is.True);
+                Assert.That(global::TerrainGrassInstaller.UsesTerrainTreeShader(material), Is.True);
+                Assert.That(material.shader.name, Does.StartWith("Nature/Soft Occlusion"));
             }
         }
     }
