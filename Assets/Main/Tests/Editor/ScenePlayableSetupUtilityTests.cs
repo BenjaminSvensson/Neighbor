@@ -512,6 +512,67 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void SceneAtmosphereDirector_StealthPressureDipsSunAndBoostsMoon()
+        {
+            RenderSettingsSnapshot snapshot = RenderSettingsSnapshot.Capture();
+            GameObject directorObject = new("Danger Lighting Director Test");
+            GameObject volumeObject = new("Danger Lighting Volume Test");
+            GameObject sunObject = new("Danger Lighting Sun Test");
+            GameObject moonObject = new("Danger Lighting Moon Test");
+
+            try
+            {
+                Light sun = sunObject.AddComponent<Light>();
+                sun.intensity = 1.2f;
+                Light moon = moonObject.AddComponent<Light>();
+                moon.intensity = 0.05f;
+                Volume volume = volumeObject.AddComponent<Volume>();
+                SceneAtmosphereDirector director = directorObject.AddComponent<SceneAtmosphereDirector>();
+                director.Configure(
+                    sun,
+                    moon,
+                    volume,
+                    new AtmosphereFlickerLight[0],
+                    new AtmosphereDressingAnchor[0]);
+
+                float calmSunIntensity = sun.intensity;
+                float calmMoonIntensity = moon.intensity;
+
+                Assert.That(calmSunIntensity, Is.GreaterThan(0f));
+                Assert.That(calmSunIntensity, Is.LessThanOrEqualTo(0.95f));
+                Assert.That(calmMoonIntensity, Is.GreaterThanOrEqualTo(0.18f));
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.Chased,
+                    1f,
+                    0f,
+                    1f,
+                    "Run or hide");
+
+                Assert.That(director.CurrentStealthAtmosphereIntensity, Is.EqualTo(1f).Within(0.001f));
+                Assert.That(sun.intensity, Is.LessThan(calmSunIntensity));
+                Assert.That(moon.intensity, Is.GreaterThan(calmMoonIntensity));
+
+                float dangerSunIntensity = sun.intensity;
+                float dangerMoonIntensity = moon.intensity;
+                director.ApplyAtmosphere();
+                director.ApplyAtmosphere();
+
+                Assert.That(sun.intensity, Is.EqualTo(dangerSunIntensity).Within(0.001f));
+                Assert.That(moon.intensity, Is.EqualTo(dangerMoonIntensity).Within(0.001f));
+            }
+            finally
+            {
+                snapshot.Restore();
+                GameplaySmokeTestReflection.InvokeIfPresent(directorObject.GetComponent<SceneAtmosphereDirector>(), "OnDisable");
+                Object.DestroyImmediate(directorObject);
+                Object.DestroyImmediate(volumeObject);
+                Object.DestroyImmediate(sunObject);
+                Object.DestroyImmediate(moonObject);
+            }
+        }
+
+        [Test]
         public void SceneAtmosphereDirector_NeighborTrailSearchIntensifiesFogAndGrade()
         {
             RenderSettingsSnapshot snapshot = RenderSettingsSnapshot.Capture();

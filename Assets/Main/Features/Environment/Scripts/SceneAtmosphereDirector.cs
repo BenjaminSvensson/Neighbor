@@ -22,6 +22,8 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField] private Color ambientColor = new(0.2f, 0.23f, 0.28f, 1f);
         [SerializeField, Min(0f)] private float maximumSunIntensity = 0.95f;
         [SerializeField, Min(0f)] private float minimumMoonIntensity = 0.18f;
+        [SerializeField, Range(0f, 1f)] private float stealthSunIntensityDip = 0.32f;
+        [SerializeField, Min(0f)] private float stealthMoonIntensityBoost = 0.34f;
 
         [Header("Color Grade")]
         [SerializeField, Range(-2f, 2f)] private float exposure = -0.18f;
@@ -66,6 +68,10 @@ namespace Neighbor.Main.Features.Environment
         private float currentStealthAtmosphereIntensity;
         private float targetStealthAtmosphereIntensity;
         private float stealthAtmosphereHoldUntilTime;
+        private Light capturedSunLight;
+        private Light capturedMoonLight;
+        private float capturedSunIntensity = -1f;
+        private float capturedMoonIntensity = -1f;
 
         public Light SunLight => sunLight;
         public Light MoonLight => moonLight;
@@ -129,6 +135,7 @@ namespace Neighbor.Main.Features.Environment
             colorGradingVolume = volume;
             flickerLights = flickers;
             dressingAnchors = anchors;
+            CaptureLightingBaselines();
             ApplyAtmosphere();
         }
 
@@ -142,20 +149,53 @@ namespace Neighbor.Main.Features.Environment
 
         private void ApplyLightingMood()
         {
+            CaptureLightingBaselines();
             if (sunLight != null)
             {
-                sunLight.intensity = Mathf.Min(sunLight.intensity, maximumSunIntensity);
+                float baseSunIntensity = capturedSunIntensity >= 0f
+                    ? capturedSunIntensity
+                    : sunLight.intensity;
+                baseSunIntensity = Mathf.Min(baseSunIntensity, maximumSunIntensity);
+                float dangerSunScale = Mathf.Lerp(
+                    1f,
+                    Mathf.Clamp01(1f - stealthSunIntensityDip),
+                    currentStealthAtmosphereIntensity);
+                sunLight.intensity = Mathf.Max(0f, baseSunIntensity * dangerSunScale);
                 sunLight.color = Color.Lerp(sunLight.color, new Color(1f, 0.88f, 0.68f, 1f), 0.2f);
             }
 
             if (moonLight != null)
             {
-                moonLight.intensity = Mathf.Max(moonLight.intensity, minimumMoonIntensity);
+                float baseMoonIntensity = capturedMoonIntensity >= 0f
+                    ? capturedMoonIntensity
+                    : moonLight.intensity;
+                baseMoonIntensity = Mathf.Max(baseMoonIntensity, minimumMoonIntensity);
+                moonLight.intensity = baseMoonIntensity
+                    + stealthMoonIntensityBoost * currentStealthAtmosphereIntensity;
                 moonLight.color = Color.Lerp(moonLight.color, new Color(0.56f, 0.66f, 1f, 1f), 0.35f);
             }
 
             RenderSettings.ambientMode = AmbientMode.Flat;
             RenderSettings.ambientLight = ambientColor;
+        }
+
+        private void CaptureLightingBaselines()
+        {
+            if (sunLight != capturedSunLight)
+            {
+                capturedSunLight = sunLight;
+                capturedSunIntensity = sunLight != null
+                    ? Mathf.Min(sunLight.intensity, maximumSunIntensity)
+                    : -1f;
+            }
+
+            if (moonLight != capturedMoonLight)
+            {
+                capturedMoonLight = moonLight;
+                capturedMoonIntensity = moonLight != null
+                    ? Mathf.Max(moonLight.intensity, minimumMoonIntensity)
+                    : -1f;
+            }
         }
 
         private void ApplyFog()
