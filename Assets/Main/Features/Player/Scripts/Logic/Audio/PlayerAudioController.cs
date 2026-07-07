@@ -37,13 +37,17 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float hiddenBreathPitchLift = 0.08f;
         [SerializeField] private bool respondToStealthLoop = true;
         [SerializeField] private bool respondToNeighborMemory = true;
+        [SerializeField] private bool respondToNoiseFeedback = true;
         [SerializeField, Range(0f, 1f)] private float stealthBreathVolume = 0.32f;
         [SerializeField, Min(0f)] private float stealthBreathPitchLift = 0.06f;
         [SerializeField, Range(0f, 1f)] private float calmHidingStealthBreathPressure = 0.04f;
         [SerializeField, Range(0f, 1f)] private float calmPostChaseStealthBreathPressure = 0.12f;
+        [SerializeField, Range(0f, 1f)] private float heardNoiseStealthBreathPressure = 0.28f;
+        [SerializeField, Range(0f, 1f)] private float heardNoiseListenerStealthBreathBoost = 0.08f;
         [SerializeField, Range(0f, 1f)] private float memoryStealthBreathPressure = 0.2f;
         [SerializeField, Range(0f, 1f)] private float stackedMemoryStealthBreathBoost = 0.1f;
         [SerializeField, Min(0f)] private float stealthBreathHoldDuration = 2.6f;
+        [SerializeField, Min(0f)] private float heardNoiseStealthBreathHoldDuration = 1.8f;
         [SerializeField, Min(0f)] private float memoryStealthBreathHoldDuration = 3f;
         [SerializeField, Min(1f)] private float maximumMemoryStealthBreathHoldMultiplier = 1.5f;
         [SerializeField, Min(0f)] private float stealthBreathFadeSpeed = 1.8f;
@@ -172,6 +176,8 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged += HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NoiseEmitted -= HandleNoiseEmitted;
+            PlayerFeedbackEvents.NoiseEmitted += HandleNoiseEmitted;
         }
 
         private void Update()
@@ -483,6 +489,16 @@ namespace Neighbor.Main.Features.Player
             RaiseStealthBreathStress(GetMemoryBreathStress(feedback), GetMemoryBreathHoldDuration(feedback));
         }
 
+        private void HandleNoiseEmitted(PlayerFeedbackEvents.NoiseFeedback feedback)
+        {
+            if (!respondToNoiseFeedback || !feedback.HeardByNeighbor)
+            {
+                return;
+            }
+
+            RaiseStealthBreathStress(GetNoiseBreathStress(feedback), heardNoiseStealthBreathHoldDuration);
+        }
+
         private void RaiseStealthBreathStress(float stress, float holdDuration)
         {
             targetStealthBreathStress = Mathf.Clamp01(stress);
@@ -498,7 +514,7 @@ namespace Neighbor.Main.Features.Player
 
         private void UpdateStealthBreathStress(float deltaTime)
         {
-            if (!respondToStealthLoop && !respondToNeighborMemory)
+            if (!respondToStealthLoop && !respondToNeighborMemory && !respondToNoiseFeedback)
             {
                 targetStealthBreathStress = 0f;
             }
@@ -530,6 +546,14 @@ namespace Neighbor.Main.Features.Player
                 PlayerFeedbackEvents.StealthLoopPhase.Curious => Mathf.Max(0.14f, pressure * 0.6f),
                 _ => 0f
             };
+        }
+
+        private float GetNoiseBreathStress(PlayerFeedbackEvents.NoiseFeedback feedback)
+        {
+            float listenerPressure = Mathf.Clamp01(Mathf.Max(0, feedback.NeighborListenerCount - 1) / 2f)
+                * heardNoiseListenerStealthBreathBoost;
+            return Mathf.Clamp01(Mathf.Max(heardNoiseStealthBreathPressure, Mathf.Max(feedback.Loudness, feedback.Urgency))
+                + listenerPressure);
         }
 
         private float GetMemoryBreathStress(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
@@ -609,6 +633,7 @@ namespace Neighbor.Main.Features.Player
         {
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NoiseEmitted -= HandleNoiseEmitted;
             if (cameraController != null)
             {
                 cameraController.ZoomDirectionChanged -= UpdateZoomLoop;

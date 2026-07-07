@@ -3072,6 +3072,67 @@ namespace Neighbor.Main.Tests
 
                 Assert.That(audioController.CurrentStealthBreathStress01, Is.InRange(0.11f, 0.13f));
 
+                PlayerFeedbackEvents.NoiseFeedback quietHeardNoise = new(
+                    Vector3.zero,
+                    0.2f,
+                    8f,
+                    0.28f,
+                    true,
+                    1);
+                PlayerFeedbackEvents.NoiseFeedback urgentHeardNoise = new(
+                    Vector3.zero,
+                    0.45f,
+                    8f,
+                    0.72f,
+                    true,
+                    1);
+                PlayerFeedbackEvents.NoiseFeedback multiListenerNoise = new(
+                    Vector3.zero,
+                    0.45f,
+                    8f,
+                    0.72f,
+                    true,
+                    3);
+
+                float quietNoiseStress = GameplaySmokeTestReflection.InvokeResult<float>(
+                    audioController,
+                    "GetNoiseBreathStress",
+                    quietHeardNoise);
+                float urgentNoiseStress = GameplaySmokeTestReflection.InvokeResult<float>(
+                    audioController,
+                    "GetNoiseBreathStress",
+                    urgentHeardNoise);
+                float multiListenerNoiseStress = GameplaySmokeTestReflection.InvokeResult<float>(
+                    audioController,
+                    "GetNoiseBreathStress",
+                    multiListenerNoise);
+
+                Assert.That(urgentNoiseStress, Is.GreaterThan(quietNoiseStress));
+                Assert.That(multiListenerNoiseStress, Is.GreaterThan(urgentNoiseStress));
+
+                GameplaySmokeTestReflection.SetField(audioController, "currentStealthBreathStress", 0f);
+                GameplaySmokeTestReflection.SetField(audioController, "targetStealthBreathStress", 0f);
+                GameplaySmokeTestReflection.SetField(audioController, "stealthBreathHoldUntilTime", 0f);
+                PlayerFeedbackEvents.ReportNoise(
+                    Vector3.zero,
+                    0.9f,
+                    12f,
+                    0.9f,
+                    false,
+                    0);
+
+                Assert.That(audioController.CurrentStealthBreathStress01, Is.EqualTo(0f).Within(0.001f));
+
+                PlayerFeedbackEvents.ReportNoise(
+                    Vector3.zero,
+                    0.52f,
+                    12f,
+                    0.62f,
+                    true,
+                    2);
+
+                Assert.That(audioController.CurrentStealthBreathStress01, Is.GreaterThan(0.6f));
+
                 PlayerFeedbackEvents.NeighborMemoryFeedback openedDoor = new(
                     PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
                     "Front Door",
