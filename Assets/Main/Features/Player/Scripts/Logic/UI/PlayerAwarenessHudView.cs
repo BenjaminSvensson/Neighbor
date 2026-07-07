@@ -47,6 +47,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.OnboardingPrompted += HandleOnboardingPrompted;
             PlayerFeedbackEvents.ObjectiveProgressed += HandleObjectiveProgressed;
             PlayerFeedbackEvents.DoorInteractionReported += HandleDoorInteractionReported;
+            PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
             ResolveObjective(true);
         }
 
@@ -63,6 +64,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.OnboardingPrompted -= HandleOnboardingPrompted;
             PlayerFeedbackEvents.ObjectiveProgressed -= HandleObjectiveProgressed;
             PlayerFeedbackEvents.DoorInteractionReported -= HandleDoorInteractionReported;
+            PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
             UnsubscribeObjective();
         }
 
@@ -159,15 +161,32 @@ namespace Neighbor.Main.Features.Player
             suspicionFill.fillAmount = suspicion;
             suspicionFill.color = GetAwarenessColor(suspicion);
 
-            if (trackedNeighbor == null || trackedNeighbor.CurrentSuspicionLevel == NeighborBrain.SuspicionLevel.Relaxed)
+            if (trackedNeighbor == null)
             {
                 awarenessText.text = "UNNOTICED";
                 return;
             }
 
-            awarenessText.text = trackedNeighbor.CurrentState == NeighborBrain.BehaviorState.Chase
-                ? "CHASE"
-                : trackedNeighbor.CurrentSuspicionLevel.ToString().ToUpperInvariant();
+            string activeStateText = trackedNeighbor.CurrentState switch
+            {
+                NeighborBrain.BehaviorState.Chase => "CHASE",
+                NeighborBrain.BehaviorState.HuntMode => "HUNTING",
+                NeighborBrain.BehaviorState.Investigate => "SEARCHING",
+                _ => string.Empty
+            };
+            if (!string.IsNullOrEmpty(activeStateText))
+            {
+                awarenessText.text = activeStateText;
+                return;
+            }
+
+            if (trackedNeighbor.CurrentSuspicionLevel == NeighborBrain.SuspicionLevel.Relaxed)
+            {
+                awarenessText.text = "UNNOTICED";
+                return;
+            }
+
+            awarenessText.text = trackedNeighbor.CurrentSuspicionLevel.ToString().ToUpperInvariant();
         }
 
         private void UpdateNoise()
@@ -455,6 +474,30 @@ namespace Neighbor.Main.Features.Player
             warningText.text = feedback.Message.ToUpperInvariant();
             warningText.color = GetDoorFeedbackColor(feedback);
             messageUntil = Time.unscaledTime + Mathf.Lerp(1.8f, 3.2f, feedback.Intensity);
+        }
+
+        private void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
+        {
+            warningText.text = feedback.Kind switch
+            {
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started => "NEIGHBOR HEARD SOMETHING",
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching => "NEIGHBOR SEARCHING",
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning => "NEIGHBOR RETURNING",
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned => "NEIGHBOR LOST THE TRAIL",
+                _ => "NEIGHBOR ALERTED"
+            };
+
+            warningText.color = feedback.Kind switch
+            {
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching => new Color(1f, 0.66f, 0.16f, 1f),
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning => new Color(0.76f, 0.84f, 0.94f, 0.95f),
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned => new Color(0.92f, 0.78f, 0.48f, 0.96f),
+                _ => Color.Lerp(
+                    new Color(1f, 0.78f, 0.24f, 0.96f),
+                    new Color(1f, 0.3f, 0.1f, 1f),
+                    Mathf.Max(feedback.Suspicion, feedback.Urgency))
+            };
+            messageUntil = Time.unscaledTime + Mathf.Lerp(2.4f, MessageDuration, Mathf.Max(feedback.Suspicion, feedback.Urgency));
         }
 
         private void BuildHud()

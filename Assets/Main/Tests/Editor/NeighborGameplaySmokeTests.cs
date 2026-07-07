@@ -136,6 +136,33 @@ namespace Neighbor.Main.Tests
                     true));
 
             Assert.That(warningText.text, Is.EqualTo("FOUND IN CURTAIN"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleNeighborInvestigationChanged",
+                new PlayerFeedbackEvents.NeighborInvestigationFeedback(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching,
+                    Vector3.zero,
+                    "Noise Source",
+                    0.6f,
+                    0.8f));
+
+            Assert.That(warningText.text, Is.EqualTo("NEIGHBOR SEARCHING"));
+        }
+
+        [Test]
+        public void AwarenessHud_LabelsActiveInvestigationAsSearching()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.Investigate);
+            GameplaySmokeTestReflection.SetField(hud, "trackedNeighbor", brain);
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateAwareness");
+
+            Text awarenessText = GameplaySmokeTestReflection.GetField<Text>(hud, "awarenessText");
+            Assert.That(awarenessText.text, Is.EqualTo("SEARCHING"));
         }
 
         [Test]
@@ -1636,6 +1663,57 @@ namespace Neighbor.Main.Tests
             Assert.That(
                 GameplaySmokeTestReflection.GetField<NeighborTaskLocation>(brain, "currentTaskLocation"),
                 Is.Null);
+        }
+
+        [Test]
+        public void NoiseInvestigation_ReportsReadableSearchFeedbackPhases()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            GameObject source = context.CreateObject("NoiseSource");
+            Vector3 noisePosition = new(4f, 0f, -3f);
+            List<PlayerFeedbackEvents.NeighborInvestigationFeedback> feedback = new();
+            PlayerFeedbackEvents.NeighborInvestigationChanged += HandleInvestigationFeedback;
+
+            try
+            {
+                GameplaySmokeTestReflection.Invoke(
+                    brain,
+                    "BeginInvestigation",
+                    noisePosition,
+                    source,
+                    2f,
+                    NeighborMotor.MoveMode.Cautious,
+                    false);
+
+                Assert.That(feedback, Has.Count.EqualTo(1));
+                Assert.That(feedback[0].Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started));
+                Assert.That(feedback[0].Position, Is.EqualTo(noisePosition));
+                Assert.That(feedback[0].SourceName, Is.EqualTo("NoiseSource"));
+                Assert.That(feedback[0].Urgency, Is.EqualTo(0.65f).Within(0.001f));
+
+                GameplaySmokeTestReflection.Invoke(brain, "ReportInvestigationSearchIfNeeded");
+                GameplaySmokeTestReflection.Invoke(brain, "ReportInvestigationSearchIfNeeded");
+
+                Assert.That(feedback, Has.Count.EqualTo(2));
+                Assert.That(brain.HasReportedInvestigationSearch, Is.True);
+                Assert.That(feedback[1].Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching));
+
+                GameplaySmokeTestReflection.Invoke(brain, "FinishInvestigationAndReturnToRoutine");
+
+                Assert.That(feedback, Has.Count.EqualTo(3));
+                Assert.That(feedback[2].Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning));
+                Assert.That(brain.HasActiveInvestigation, Is.False);
+            }
+            finally
+            {
+                PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleInvestigationFeedback;
+            }
+
+            void HandleInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedback item)
+            {
+                feedback.Add(item);
+            }
         }
 
         [Test]

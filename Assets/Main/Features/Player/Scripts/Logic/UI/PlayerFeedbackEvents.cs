@@ -193,6 +193,37 @@ namespace Neighbor.Main.Features.Player
             }
         }
 
+        public enum NeighborInvestigationFeedbackKind
+        {
+            Started,
+            Searching,
+            Returning,
+            Abandoned
+        }
+
+        public readonly struct NeighborInvestigationFeedback
+        {
+            public NeighborInvestigationFeedbackKind Kind { get; }
+            public Vector3 Position { get; }
+            public string SourceName { get; }
+            public float Suspicion { get; }
+            public float Urgency { get; }
+
+            public NeighborInvestigationFeedback(
+                NeighborInvestigationFeedbackKind kind,
+                Vector3 position,
+                string sourceName,
+                float suspicion,
+                float urgency)
+            {
+                Kind = kind;
+                Position = position;
+                SourceName = string.IsNullOrWhiteSpace(sourceName) ? "disturbance" : sourceName.Trim();
+                Suspicion = Mathf.Clamp01(suspicion);
+                Urgency = Mathf.Clamp01(urgency);
+            }
+        }
+
         public static event Action<NoiseFeedback> NoiseEmitted;
         public static event Action CameraDetectedPlayer;
         public static event Action<SecurityEscalationFeedback> SecurityEscalated;
@@ -204,6 +235,7 @@ namespace Neighbor.Main.Features.Player
         public static event Action<OnboardingPromptFeedback> OnboardingPrompted;
         public static event Action<ObjectiveProgressFeedback> ObjectiveProgressed;
         public static event Action<DoorInteractionFeedback> DoorInteractionReported;
+        public static event Action<NeighborInvestigationFeedback> NeighborInvestigationChanged;
 
         public static void ReportNoise(Vector3 origin, float loudness, float radius)
         {
@@ -317,6 +349,21 @@ namespace Neighbor.Main.Features.Player
             DoorInteractionReported?.Invoke(new DoorInteractionFeedback(message, kind, intensity));
         }
 
+        public static void ReportNeighborInvestigation(
+            NeighborInvestigationFeedbackKind kind,
+            Vector3 position,
+            string sourceName,
+            float suspicion,
+            float urgency)
+        {
+            NeighborInvestigationChanged?.Invoke(new NeighborInvestigationFeedback(
+                kind,
+                position,
+                sourceName,
+                suspicion,
+                urgency));
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Reset()
         {
@@ -331,6 +378,7 @@ namespace Neighbor.Main.Features.Player
             OnboardingPrompted = null;
             ObjectiveProgressed = null;
             DoorInteractionReported = null;
+            NeighborInvestigationChanged = null;
         }
     }
 }
