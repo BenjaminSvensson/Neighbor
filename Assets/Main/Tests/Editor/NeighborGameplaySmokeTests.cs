@@ -2365,7 +2365,9 @@ namespace Neighbor.Main.Tests
             PlayerHidingState hidingState = context.CreateObject("HiddenPlayer").AddComponent<PlayerHidingState>();
             ClosetHideSpot hideSpot = context.CreateObject("HideSpot").AddComponent<ClosetHideSpot>();
             List<PlayerFeedbackEvents.HidingFeedback> feedback = new();
+            List<PlayerFeedbackEvents.StealthLoopFeedback> stealthFeedback = new();
             PlayerFeedbackEvents.HidingChanged += HandleHidingFeedback;
+            PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopFeedback;
 
             try
             {
@@ -2375,6 +2377,7 @@ namespace Neighbor.Main.Tests
             finally
             {
                 PlayerFeedbackEvents.HidingChanged -= HandleHidingFeedback;
+                PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopFeedback;
             }
 
             Assert.That(hidingState.IsHidden, Is.True);
@@ -2389,10 +2392,20 @@ namespace Neighbor.Main.Tests
             Assert.That(feedback[1].Kind, Is.EqualTo(PlayerFeedbackEvents.HidingFeedbackKind.Found));
             Assert.That(feedback[1].IsCompromised, Is.True);
             Assert.That(feedback[1].BreathTension, Is.GreaterThan(0f));
+            Assert.That(stealthFeedback, Has.Count.GreaterThanOrEqualTo(2));
+            Assert.That(stealthFeedback[^1].Phase, Is.EqualTo(PlayerFeedbackEvents.StealthLoopPhase.Hiding));
+            Assert.That(stealthFeedback[^1].Tension, Is.EqualTo(1f).Within(0.001f));
+            Assert.That(stealthFeedback[^1].Suspicion, Is.EqualTo(1f).Within(0.001f));
+            Assert.That(stealthFeedback[^1].Message, Is.EqualTo("He found your hiding spot."));
 
             void HandleHidingFeedback(PlayerFeedbackEvents.HidingFeedback hidingFeedback)
             {
                 feedback.Add(hidingFeedback);
+            }
+
+            void HandleStealthLoopFeedback(PlayerFeedbackEvents.StealthLoopFeedback item)
+            {
+                stealthFeedback.Add(item);
             }
         }
 
