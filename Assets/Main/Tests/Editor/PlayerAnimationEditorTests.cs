@@ -749,6 +749,41 @@ namespace Neighbor.Main.Tests
 
                 Assert.That(cameraController.CurrentStealthCameraPressure, Is.LessThan(0.08f));
 
+                PlayerFeedbackEvents.NeighborMemoryFeedback openedDoor = new(
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
+                    "Front Door",
+                    Vector3.zero,
+                    0.38f,
+                    1);
+                PlayerFeedbackEvents.NeighborMemoryFeedback stolenKey = new(
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
+                    "Basement Key",
+                    Vector3.zero,
+                    0.38f,
+                    1);
+                PlayerFeedbackEvents.NeighborMemoryFeedback stackedDoor = new(
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
+                    "Front Door",
+                    Vector3.zero,
+                    0.38f,
+                    4);
+
+                float doorHold = GameplaySmokeTestReflection.InvokeResult<float>(
+                    cameraController,
+                    "GetMemoryCameraPressureHoldDuration",
+                    openedDoor);
+                float keyHold = GameplaySmokeTestReflection.InvokeResult<float>(
+                    cameraController,
+                    "GetMemoryCameraPressureHoldDuration",
+                    stolenKey);
+                float stackedDoorHold = GameplaySmokeTestReflection.InvokeResult<float>(
+                    cameraController,
+                    "GetMemoryCameraPressureHoldDuration",
+                    stackedDoor);
+
+                Assert.That(keyHold, Is.GreaterThan(doorHold));
+                Assert.That(stackedDoorHold, Is.GreaterThan(doorHold));
+
                 cameraController.SyncAfterRespawn();
                 PlayerFeedbackEvents.ReportNeighborMemory(
                     PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
