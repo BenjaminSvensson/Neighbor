@@ -216,6 +216,7 @@ namespace Neighbor.Main.Features.Player
             Started,
             FollowingTrail,
             Searching,
+            CheckingHideSpot,
             Returning,
             Abandoned
         }
@@ -371,6 +372,7 @@ namespace Neighbor.Main.Features.Player
                 MemoryClueKind = hasMemoryClueKind ? memoryClueKind : default;
                 IsTrailRelated = isTrailRelated
                     || kind == NeighborInvestigationFeedbackKind.FollowingTrail
+                    || kind == NeighborInvestigationFeedbackKind.CheckingHideSpot
                     || hasMemoryClueKind;
             }
         }

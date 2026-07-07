@@ -337,6 +337,8 @@ namespace Neighbor.Main.Features.Environment
             float feedbackPressure = Mathf.Max(feedback.Suspicion, feedback.Urgency);
             return feedback.Kind switch
             {
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.CheckingHideSpot =>
+                    Mathf.Max(0.92f, feedbackPressure),
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail =>
                     Mathf.Max(trailInvestigationAtmosphereIntensity, feedbackPressure),
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching =>
