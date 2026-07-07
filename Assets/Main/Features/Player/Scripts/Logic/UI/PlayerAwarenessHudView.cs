@@ -16,6 +16,7 @@ namespace Neighbor.Main.Features.Player
         private Image noiseFill;
         private Image tensionFill;
         private Image staminaFill;
+        private Text noiseLabel;
         private Text awarenessText;
         private Text stealthStatusText;
         private Text objectiveText;
@@ -245,18 +246,33 @@ namespace Neighbor.Main.Features.Player
                     hasRecentLoopStatus ? lastStealthLoopTension : 0f));
             float memoryPressure = GetDisplayedMemoryPressure();
             tension = Mathf.Max(tension, memoryPressure);
-            float noise = Mathf.Max(noiseLevel, hasRecentLoopStatus ? lastStealthLoopNoise : 0f);
+            float noise = Mathf.Max(GetDisplayedNoiseLevel(), hasRecentLoopStatus ? lastStealthLoopNoise : 0f);
             stealthStatusText.text = BuildStealthStatusText(phase, suspicion, noise, tension, memoryPressure);
             stealthStatusText.color = GetStealthStatusColor(phase, suspicion, noise, tension, memoryPressure);
         }
 
         private void UpdateNoise()
         {
-            noiseFill.fillAmount = noiseLevel;
-            noiseFill.color = Color.Lerp(
-                new Color(0.35f, 0.72f, 1f, 0.85f),
-                new Color(1f, 0.34f, 0.12f, 0.95f),
-                noiseLevel);
+            float displayedNoise = GetDisplayedNoiseLevel();
+            bool heardByNeighbor = Time.unscaledTime < neighborHeardNoiseUntil && lastNeighborHeardNoise > 0.05f;
+            noiseFill.fillAmount = displayedNoise;
+            noiseFill.color = heardByNeighbor
+                ? Color.Lerp(
+                    new Color(1f, 0.68f, 0.18f, 0.96f),
+                    new Color(1f, 0.16f, 0.06f, 1f),
+                    lastNeighborHeardNoise)
+                : Color.Lerp(
+                    new Color(0.35f, 0.72f, 1f, 0.85f),
+                    new Color(1f, 0.34f, 0.12f, 0.95f),
+                    displayedNoise);
+
+            if (noiseLabel != null)
+            {
+                noiseLabel.text = heardByNeighbor ? "HEARD" : "NOISE";
+                noiseLabel.color = heardByNeighbor
+                    ? new Color(1f, 0.54f, 0.14f, 0.96f)
+                    : new Color(1f, 1f, 1f, 0.68f);
+            }
         }
 
         private void UpdateTension()
@@ -469,10 +485,18 @@ namespace Neighbor.Main.Features.Player
                 return;
             }
 
-            noiseLevel = Mathf.Max(noiseLevel, feedback.Loudness);
+            float feedbackNoise = feedback.HeardByNeighbor
+                ? Mathf.Max(feedback.Loudness, feedback.Urgency)
+                : feedback.Loudness;
+            noiseLevel = Mathf.Max(noiseLevel, feedbackNoise);
             if (feedback.HeardByNeighbor)
             {
-                lastNeighborHeardNoise = Mathf.Max(feedback.Loudness, feedback.Urgency);
+                if (Time.unscaledTime >= neighborHeardNoiseUntil)
+                {
+                    lastNeighborHeardNoise = 0f;
+                }
+
+                lastNeighborHeardNoise = Mathf.Max(lastNeighborHeardNoise, feedbackNoise);
                 neighborHeardNoiseUntil = Time.unscaledTime + Mathf.Lerp(1.8f, 3.4f, lastNeighborHeardNoise);
             }
         }
@@ -753,7 +777,7 @@ namespace Neighbor.Main.Features.Player
             SetRect(staminaBackground.rectTransform, Vector2.zero, Vector2.zero, new Vector2(132f, 140f), new Vector2(170f, 7f));
             staminaFill = CreateFill("StaminaFill", staminaBackground.transform);
 
-            Text noiseLabel = CreateText("NoiseLabel", font, 12, FontStyle.Bold, TextAnchor.MiddleLeft);
+            noiseLabel = CreateText("NoiseLabel", font, 12, FontStyle.Bold, TextAnchor.MiddleLeft);
             noiseLabel.text = "NOISE";
             noiseLabel.color = new Color(1f, 1f, 1f, 0.68f);
             SetRect(noiseLabel.rectTransform, Vector2.zero, Vector2.zero, new Vector2(32f, 104f), new Vector2(58f, 18f));
@@ -941,6 +965,12 @@ namespace Neighbor.Main.Features.Player
             float trackedPressure = trackedNeighbor != null ? trackedNeighbor.RememberedClueTension01 : 0f;
             float recentPressure = Time.unscaledTime < neighborMemoryStatusUntil ? lastNeighborMemorySuspicion : 0f;
             return Mathf.Max(trackedPressure, recentPressure);
+        }
+
+        private float GetDisplayedNoiseLevel()
+        {
+            float heardPressure = Time.unscaledTime < neighborHeardNoiseUntil ? lastNeighborHeardNoise : 0f;
+            return Mathf.Clamp01(Mathf.Max(noiseLevel, heardPressure));
         }
 
         private bool HasRecentStealthLoopStatus()

@@ -334,11 +334,14 @@ namespace Neighbor.Main.Tests
                 hud,
                 "HandleNoise",
                 new PlayerFeedbackEvents.NoiseFeedback(Vector3.zero, 0.82f, 6f));
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateNoise");
             GameplaySmokeTestReflection.Invoke(hud, "UpdateStealthStatus");
             GameplaySmokeTestReflection.Invoke(hud, "UpdateWarning");
 
+            Text noiseLabel = GameplaySmokeTestReflection.GetField<Text>(hud, "noiseLabel");
             Text stealthStatusText = GameplaySmokeTestReflection.GetField<Text>(hud, "stealthStatusText");
             Text warningText = GameplaySmokeTestReflection.GetField<Text>(hud, "warningText");
+            Assert.That(noiseLabel.text, Is.EqualTo("NOISE"));
             Assert.That(stealthStatusText.text, Is.EqualTo("QUIET / NOISE FADING"));
             Assert.That(warningText.text, Is.EqualTo("LOUD NOISE"));
 
@@ -374,9 +377,14 @@ namespace Neighbor.Main.Tests
                     0.9f,
                     true,
                     1));
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateNoise");
             GameplaySmokeTestReflection.Invoke(hud, "UpdateWarning");
 
+            Text noiseLabel = GameplaySmokeTestReflection.GetField<Text>(hud, "noiseLabel");
+            Image noiseFill = GameplaySmokeTestReflection.GetField<Image>(hud, "noiseFill");
             Text warningText = GameplaySmokeTestReflection.GetField<Text>(hud, "warningText");
+            Assert.That(noiseLabel.text, Is.EqualTo("HEARD"));
+            Assert.That(noiseFill.fillAmount, Is.GreaterThan(0.85f));
             Assert.That(warningText.text, Is.EqualTo("HE HEARD THAT"));
         }
 
