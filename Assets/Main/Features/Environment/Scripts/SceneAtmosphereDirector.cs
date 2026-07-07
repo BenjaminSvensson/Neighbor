@@ -46,6 +46,11 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField] private Color stealthColorFilter = new(0.76f, 0.86f, 1f, 1f);
         [SerializeField, Range(0f, 1f)] private float stealthVignetteBoost = 0.24f;
         [SerializeField, Range(0f, 1f)] private float stealthFilmGrainBoost = 0.2f;
+        [Header("Memory Atmosphere Response")]
+        [SerializeField] private bool respondToNeighborMemory = true;
+        [SerializeField, Range(0f, 1f)] private float memoryAtmosphereIntensity = 0.42f;
+        [SerializeField, Range(0f, 1f)] private float stackedMemoryAtmosphereBoost = 0.16f;
+        [SerializeField, Min(0f)] private float memoryAtmosphereHoldDuration = 4.2f;
 
         private float currentStealthAtmosphereIntensity;
         private float targetStealthAtmosphereIntensity;
@@ -72,12 +77,15 @@ namespace Neighbor.Main.Features.Environment
         {
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
             PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
+            PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NeighborMemoryChanged += HandleNeighborMemoryChanged;
             ApplyAtmosphere();
         }
 
         private void OnDisable()
         {
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
         }
 
         private void Update()
@@ -205,15 +213,25 @@ namespace Neighbor.Main.Features.Environment
                 return;
             }
 
-            targetStealthAtmosphereIntensity = GetStealthAtmosphereIntensity(feedback);
-            if (targetStealthAtmosphereIntensity <= 0f)
+            RaiseAtmospherePressure(GetStealthAtmosphereIntensity(feedback), stealthAtmosphereHoldDuration);
+        }
+
+        private void HandleNeighborMemoryChanged(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
+        {
+            if (!respondToNeighborMemory)
             {
-                stealthAtmosphereHoldUntilTime = 0f;
+                return;
             }
-            else
-            {
-                stealthAtmosphereHoldUntilTime = Time.unscaledTime + stealthAtmosphereHoldDuration;
-            }
+
+            RaiseAtmospherePressure(GetMemoryAtmosphereIntensity(feedback), memoryAtmosphereHoldDuration);
+        }
+
+        private void RaiseAtmospherePressure(float pressure, float holdDuration)
+        {
+            targetStealthAtmosphereIntensity = Mathf.Clamp01(pressure);
+            stealthAtmosphereHoldUntilTime = targetStealthAtmosphereIntensity <= 0f
+                ? 0f
+                : Time.unscaledTime + holdDuration;
 
             if (targetStealthAtmosphereIntensity > currentStealthAtmosphereIntensity)
             {
@@ -225,7 +243,7 @@ namespace Neighbor.Main.Features.Environment
 
         private void UpdateStealthAtmosphere(float deltaTime)
         {
-            if (!respondToStealthLoop)
+            if (!respondToStealthLoop && !respondToNeighborMemory)
             {
                 targetStealthAtmosphereIntensity = 0f;
             }
@@ -258,6 +276,23 @@ namespace Neighbor.Main.Features.Environment
                 PlayerFeedbackEvents.StealthLoopPhase.Curious => Mathf.Max(0.22f, Mathf.Min(0.42f, feedbackPressure)),
                 _ => 0f
             };
+        }
+
+        private float GetMemoryAtmosphereIntensity(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
+        {
+            float stackPressure = Mathf.Clamp01(feedback.TotalMemoryCount / 4f);
+            float kindFloor = feedback.Kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => 0.68f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => 0.6f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => 0.5f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => 0.44f,
+                _ => memoryAtmosphereIntensity
+            };
+            float pressure = Mathf.Max(
+                Mathf.Max(memoryAtmosphereIntensity, kindFloor),
+                feedback.Suspicion + stackPressure * stackedMemoryAtmosphereBoost);
+            return Mathf.Clamp01(pressure);
         }
 
         private int CountAnchors(AtmosphereDressingAnchor.DressingKind kind)

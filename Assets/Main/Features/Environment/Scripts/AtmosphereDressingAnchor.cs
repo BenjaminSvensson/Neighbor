@@ -21,6 +21,11 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField, Min(0f)] private float dangerHoldDuration = 2.6f;
         [SerializeField, Min(0f)] private float dangerFadeSpeed = 1.8f;
         [SerializeField, Range(0f, 0.08f)] private float propScalePulse = 0.025f;
+        [Header("Memory Response")]
+        [SerializeField] private bool respondToNeighborMemory = true;
+        [SerializeField, Range(0f, 1f)] private float memoryDressingPressure = 0.38f;
+        [SerializeField, Range(0f, 1f)] private float stackedMemoryDressingBoost = 0.14f;
+        [SerializeField, Min(0f)] private float memoryHoldDuration = 3.8f;
 
         private Renderer targetRenderer;
         private MaterialPropertyBlock propertyBlock;
@@ -46,12 +51,15 @@ namespace Neighbor.Main.Features.Environment
             CaptureBaseVisualState();
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
             PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
+            PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NeighborMemoryChanged += HandleNeighborMemoryChanged;
             ApplyDressingVisuals();
         }
 
         private void OnDisable()
         {
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
             RestoreDressingVisuals();
         }
 
@@ -95,15 +103,25 @@ namespace Neighbor.Main.Features.Environment
                 return;
             }
 
-            targetStealthPressure = GetStealthPressure(feedback);
-            if (targetStealthPressure <= 0f)
+            RaiseStealthPressure(GetStealthPressure(feedback), dangerHoldDuration);
+        }
+
+        private void HandleNeighborMemoryChanged(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
+        {
+            if (!respondToNeighborMemory)
             {
-                stealthPressureHoldUntilTime = 0f;
+                return;
             }
-            else
-            {
-                stealthPressureHoldUntilTime = Time.unscaledTime + dangerHoldDuration;
-            }
+
+            RaiseStealthPressure(GetMemoryPressure(feedback), memoryHoldDuration);
+        }
+
+        private void RaiseStealthPressure(float pressure, float holdDuration)
+        {
+            targetStealthPressure = Mathf.Clamp01(pressure);
+            stealthPressureHoldUntilTime = targetStealthPressure <= 0f
+                ? 0f
+                : Time.unscaledTime + holdDuration;
 
             if (targetStealthPressure > currentStealthPressure)
             {
@@ -115,7 +133,7 @@ namespace Neighbor.Main.Features.Environment
 
         private void UpdateStealthDressing(float deltaTime)
         {
-            if (!respondToStealthLoop)
+            if (!respondToStealthLoop && !respondToNeighborMemory)
             {
                 targetStealthPressure = 0f;
             }
@@ -214,6 +232,21 @@ namespace Neighbor.Main.Features.Environment
                 PlayerFeedbackEvents.StealthLoopPhase.Curious => Mathf.Max(0.18f, pressure * 0.65f),
                 _ => 0f
             };
+        }
+
+        private float GetMemoryPressure(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
+        {
+            float stackPressure = Mathf.Clamp01(feedback.TotalMemoryCount / 4f);
+            float kindFloor = feedback.Kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => 0.66f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => 0.6f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => 0.48f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => 0.4f,
+                _ => memoryDressingPressure
+            };
+            return Mathf.Clamp01(Mathf.Max(memoryDressingPressure, Mathf.Max(kindFloor, feedback.Suspicion))
+                + stackPressure * stackedMemoryDressingBoost);
         }
     }
 }

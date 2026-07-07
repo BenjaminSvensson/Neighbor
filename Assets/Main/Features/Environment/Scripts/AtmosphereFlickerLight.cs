@@ -20,6 +20,11 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField, Range(0f, 1f)] private float dangerIntensityDip = 0.18f;
         [SerializeField, Min(0f)] private float dangerFlickerHoldDuration = 2.2f;
         [SerializeField, Min(0f)] private float dangerFlickerFadeSpeed = 2.4f;
+        [Header("Memory Response")]
+        [SerializeField] private bool respondToNeighborMemory = true;
+        [SerializeField, Range(0f, 1f)] private float memoryFlickerPressure = 0.36f;
+        [SerializeField, Range(0f, 1f)] private float stackedMemoryFlickerBoost = 0.12f;
+        [SerializeField, Min(0f)] private float memoryFlickerHoldDuration = 3.4f;
 
         private float noiseSeed;
         private float currentStealthPressure;
@@ -46,11 +51,14 @@ namespace Neighbor.Main.Features.Environment
             CaptureBaseIntensity();
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
             PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
+            PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NeighborMemoryChanged += HandleNeighborMemoryChanged;
         }
 
         private void OnDisable()
         {
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
         }
 
         private void Update()
@@ -110,15 +118,25 @@ namespace Neighbor.Main.Features.Environment
                 return;
             }
 
-            targetStealthPressure = GetStealthPressure(feedback);
-            if (targetStealthPressure <= 0f)
+            RaiseStealthPressure(GetStealthPressure(feedback), dangerFlickerHoldDuration);
+        }
+
+        private void HandleNeighborMemoryChanged(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
+        {
+            if (!respondToNeighborMemory)
             {
-                stealthPressureHoldUntilTime = 0f;
+                return;
             }
-            else
-            {
-                stealthPressureHoldUntilTime = Time.unscaledTime + dangerFlickerHoldDuration;
-            }
+
+            RaiseStealthPressure(GetMemoryPressure(feedback), memoryFlickerHoldDuration);
+        }
+
+        private void RaiseStealthPressure(float pressure, float holdDuration)
+        {
+            targetStealthPressure = Mathf.Clamp01(pressure);
+            stealthPressureHoldUntilTime = targetStealthPressure <= 0f
+                ? 0f
+                : Time.unscaledTime + holdDuration;
 
             if (targetStealthPressure > currentStealthPressure)
             {
@@ -130,7 +148,7 @@ namespace Neighbor.Main.Features.Environment
 
         private void UpdateStealthPressure(float deltaTime)
         {
-            if (!respondToStealthLoop)
+            if (!respondToStealthLoop && !respondToNeighborMemory)
             {
                 targetStealthPressure = 0f;
             }
@@ -167,6 +185,21 @@ namespace Neighbor.Main.Features.Environment
                 PlayerFeedbackEvents.StealthLoopPhase.Curious => Mathf.Max(0.16f, pressure * 0.7f),
                 _ => 0f
             };
+        }
+
+        private float GetMemoryPressure(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
+        {
+            float stackPressure = Mathf.Clamp01(feedback.TotalMemoryCount / 4f);
+            float kindFloor = feedback.Kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => 0.64f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => 0.58f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => 0.46f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => 0.38f,
+                _ => memoryFlickerPressure
+            };
+            return Mathf.Clamp01(Mathf.Max(memoryFlickerPressure, Mathf.Max(kindFloor, feedback.Suspicion))
+                + stackPressure * stackedMemoryFlickerBoost);
         }
     }
 }
