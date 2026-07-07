@@ -748,6 +748,16 @@ namespace Neighbor.Main.Tests
                 GameplaySmokeTestReflection.Invoke(cameraController, "UpdateStealthCameraPressure", 0.05f);
 
                 Assert.That(cameraController.CurrentStealthCameraPressure, Is.LessThan(0.08f));
+
+                cameraController.SyncAfterRespawn();
+                PlayerFeedbackEvents.ReportNeighborMemory(
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
+                    "Basement Key",
+                    Vector3.zero,
+                    0.7f,
+                    3);
+
+                Assert.That(cameraController.CurrentStealthCameraPressure, Is.GreaterThan(0.9f));
             }
             finally
             {

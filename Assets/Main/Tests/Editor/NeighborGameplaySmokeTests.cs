@@ -2971,6 +2971,16 @@ namespace Neighbor.Main.Tests
                     true);
 
                 Assert.That(audioController.CurrentStealthBreathStress01, Is.InRange(0.11f, 0.13f));
+
+                GameplaySmokeTestReflection.SetField(audioController, "currentStealthBreathStress", 0f);
+                PlayerFeedbackEvents.ReportNeighborMemory(
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
+                    "Basement Key",
+                    Vector3.zero,
+                    0.7f,
+                    3);
+
+                Assert.That(audioController.CurrentStealthBreathStress01, Is.GreaterThan(0.9f));
             }
             finally
             {
