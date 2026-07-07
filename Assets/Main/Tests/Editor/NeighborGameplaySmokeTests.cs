@@ -192,6 +192,19 @@ namespace Neighbor.Main.Tests
                 hud,
                 "HandleNeighborInvestigationChanged",
                 new PlayerFeedbackEvents.NeighborInvestigationFeedback(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.CheckingHideSpot,
+                    Vector3.zero,
+                    "known hiding spot",
+                    1f,
+                    1f,
+                    true));
+
+            Assert.That(warningText.text, Is.EqualTo("HE KNOWS YOUR HIDING SPOT"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleNeighborInvestigationChanged",
+                new PlayerFeedbackEvents.NeighborInvestigationFeedback(
                     PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning,
                     Vector3.zero,
                     "Broken Window",
@@ -1211,6 +1224,59 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void HuntMode_KnownHideSpotReportsImmediateDangerFeedback()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            ClosetHideSpot hideSpot = context.CreateObject("WitnessedCloset").AddComponent<ClosetHideSpot>();
+            List<PlayerFeedbackEvents.NeighborInvestigationFeedback> investigationFeedback = new();
+            PlayerFeedbackEvents.StealthLoopFeedback stealthFeedback = default;
+            bool receivedStealthLoop = false;
+            PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
+            PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
+
+            try
+            {
+                GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.HuntMode);
+                GameplaySmokeTestReflection.SetField(brain, "currentHideSpot", hideSpot);
+                GameplaySmokeTestReflection.SetField(brain, "currentHideSpotKnownOccupied", true);
+                GameplaySmokeTestReflection.SetField(brain, "suspicion", 1f);
+
+                GameplaySmokeTestReflection.Invoke(brain, "ReportHuntSweepSearchIfNeeded");
+                GameplaySmokeTestReflection.Invoke(brain, "ReportHuntSweepSearchIfNeeded");
+
+                Assert.That(investigationFeedback, Has.Count.EqualTo(1));
+                Assert.That(
+                    investigationFeedback[0].Kind,
+                    Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.CheckingHideSpot));
+                Assert.That(investigationFeedback[0].IsTrailRelated, Is.True);
+                Assert.That(investigationFeedback[0].SourceName, Is.EqualTo("known hiding spot"));
+                Assert.That(investigationFeedback[0].Suspicion, Is.EqualTo(1f).Within(0.001f));
+                Assert.That(investigationFeedback[0].Urgency, Is.EqualTo(1f).Within(0.001f));
+                Assert.That(brain.HasReportedCurrentHuntSweepSearch, Is.True);
+                Assert.That(receivedStealthLoop, Is.True);
+                Assert.That(stealthFeedback.Phase, Is.EqualTo(PlayerFeedbackEvents.StealthLoopPhase.PostChase));
+                Assert.That(stealthFeedback.Suspicion, Is.EqualTo(1f).Within(0.001f));
+                Assert.That(stealthFeedback.Message, Is.EqualTo("He knows your hiding spot."));
+            }
+            finally
+            {
+                PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
+                PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            }
+
+            void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback item)
+            {
+                investigationFeedback.Add(item);
+            }
+
+            void HandleStealthLoopChanged(PlayerFeedbackEvents.StealthLoopFeedback item)
+            {
+                stealthFeedback = item;
+                receivedStealthLoop = true;
+            }
+        }
+
+        [Test]
         public void NeighborMemory_MovedObjectTrailSearchReportsObjectClue()
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
@@ -1436,8 +1502,10 @@ namespace Neighbor.Main.Tests
                 GameplaySmokeTestReflection.Invoke(brain, "ReportHuntSweepSearchIfNeeded");
 
                 Assert.That(received, Is.True);
-                Assert.That(feedback.Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching));
-                Assert.That(feedback.IsTrailRelated, Is.False);
+                Assert.That(
+                    feedback.Kind,
+                    Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.CheckingHideSpot));
+                Assert.That(feedback.IsTrailRelated, Is.True);
                 Assert.That(feedback.Position, Is.EqualTo(hideSpot.SearchPosition));
                 Assert.That(feedback.SourceName, Is.EqualTo("known hiding spot"));
                 Assert.That(feedback.Urgency, Is.EqualTo(1f).Within(0.001f));

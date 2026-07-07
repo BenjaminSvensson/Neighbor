@@ -3554,6 +3554,11 @@ namespace Neighbor.Main.Features.Neighbor
             float rememberedClueTension,
             float noise)
         {
+            if (currentState == BehaviorState.HuntMode && currentHideSpotKnownOccupied)
+            {
+                return "He knows your hiding spot.";
+            }
+
             if (currentHuntMemoryClueActive)
             {
                 return GetMemoryClueStealthLoopMessage(currentHuntMemoryClueKind, phase);
@@ -3698,13 +3703,17 @@ namespace Neighbor.Main.Features.Neighbor
             float urgency = currentHideSpotKnownOccupied
                 ? 1f
                 : currentHideSpot != null ? 0.8f : 0.65f;
+            PlayerFeedbackEvents.NeighborInvestigationFeedbackKind feedbackKind = currentHideSpotKnownOccupied
+                ? PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.CheckingHideSpot
+                : PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching;
 
             PlayerFeedbackEvents.ReportNeighborInvestigation(
-                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching,
+                feedbackKind,
                 searchPosition,
                 sourceName,
                 Mathf.Max(suspicion, postChaseSuspicionFloor),
-                urgency);
+                urgency,
+                currentHideSpotKnownOccupied);
             ReportStealthLoopIfNeeded(true);
         }
 

@@ -773,6 +773,7 @@ namespace Neighbor.Main.Features.Player
                 {
                     PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail => "HE IS FOLLOWING YOUR TRAIL",
                     PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching => "SEARCHING YOUR TRAIL",
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.CheckingHideSpot => "HE KNOWS YOUR HIDING SPOT",
                     PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning => "TRAIL CLEARED",
                     PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned => "NEIGHBOR LOST THE TRAIL",
                     _ => "NEIGHBOR ON YOUR TRAIL"
@@ -784,6 +785,7 @@ namespace Neighbor.Main.Features.Player
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started => "NEIGHBOR HEARD SOMETHING",
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail => "HE IS FOLLOWING YOUR TRAIL",
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching => "NEIGHBOR SEARCHING",
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.CheckingHideSpot => "HE KNOWS YOUR HIDING SPOT",
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning => "NEIGHBOR RETURNING",
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned => "NEIGHBOR LOST THE TRAIL",
                 _ => "NEIGHBOR ALERTED"
@@ -850,6 +852,7 @@ namespace Neighbor.Main.Features.Player
                     new Color(1f, 0.28f, 0.08f, 1f),
                     pressure),
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching => new Color(1f, 0.66f, 0.16f, 1f),
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.CheckingHideSpot => new Color(1f, 0.16f, 0.05f, 1f),
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning => new Color(0.76f, 0.84f, 0.94f, 0.95f),
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned => new Color(0.92f, 0.78f, 0.48f, 0.96f),
                 _ => Color.Lerp(
