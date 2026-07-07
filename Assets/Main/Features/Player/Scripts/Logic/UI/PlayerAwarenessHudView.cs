@@ -30,6 +30,7 @@ namespace Neighbor.Main.Features.Player
         private float lastStealthLoopSuspicion;
         private float lastStealthLoopNoise;
         private float lastStealthLoopTension;
+        private bool lastStealthLoopIsCalming;
         private float stealthLoopStatusUntil;
         private int lastNeighborMemoryCount;
         private float lastNeighborMemorySuspicion;
@@ -261,8 +262,9 @@ namespace Neighbor.Main.Features.Player
             float memoryPressure = GetDisplayedMemoryPressure();
             tension = Mathf.Max(tension, memoryPressure);
             float noise = Mathf.Max(GetDisplayedNoiseLevel(), hasRecentLoopStatus ? lastStealthLoopNoise : 0f);
-            stealthStatusText.text = BuildStealthStatusText(phase, suspicion, noise, tension, memoryPressure);
-            stealthStatusText.color = GetStealthStatusColor(phase, suspicion, noise, tension, memoryPressure);
+            bool isCalming = hasRecentLoopStatus && lastStealthLoopIsCalming;
+            stealthStatusText.text = BuildStealthStatusText(phase, suspicion, noise, tension, memoryPressure, isCalming);
+            stealthStatusText.color = GetStealthStatusColor(phase, suspicion, noise, tension, memoryPressure, isCalming);
         }
 
         private void UpdateNoise()
@@ -696,6 +698,7 @@ namespace Neighbor.Main.Features.Player
             lastStealthLoopSuspicion = feedback.Suspicion;
             lastStealthLoopNoise = feedback.Noise;
             lastStealthLoopTension = feedback.Tension;
+            lastStealthLoopIsCalming = feedback.IsCalming;
             stealthLoopStatusUntil = Time.unscaledTime + Mathf.Lerp(
                 2.2f,
                 6f,
@@ -1276,7 +1279,8 @@ namespace Neighbor.Main.Features.Player
             float suspicion,
             float noise,
             float tension,
-            float memoryPressure)
+            float memoryPressure,
+            bool isCalming)
         {
             string memoryStatusLabel = BuildMemoryStatusLabel(false);
             string trailStatusLabel = BuildMemoryStatusLabel(true);
@@ -1302,6 +1306,11 @@ namespace Neighbor.Main.Features.Player
                 case PlayerFeedbackEvents.StealthLoopPhase.Chased:
                     return "CHASE / DANGER";
                 case PlayerFeedbackEvents.StealthLoopPhase.Hiding:
+                    if (isCalming)
+                    {
+                        return "HIDDEN / BREATH STEADY";
+                    }
+
                     if (hidingState != null && hidingState.IsCompromised)
                     {
                         return "HIDDEN / FOUND";
@@ -1314,6 +1323,13 @@ namespace Neighbor.Main.Features.Player
 
                     return tension >= 0.7f ? "HIDDEN / BREATH HIGH" : "HIDDEN / STEADY";
                 case PlayerFeedbackEvents.StealthLoopPhase.PostChase:
+                    if (isCalming)
+                    {
+                        return memoryPressure >= 0.55f
+                            ? $"RECOVERY / {trailStatusLabel}"
+                            : "RECOVERY / STAY QUIET";
+                    }
+
                     if (IsTrailInvestigationActive())
                     {
                         return TryGetDisplayedMemoryClueKind(out _)
@@ -1350,19 +1366,20 @@ namespace Neighbor.Main.Features.Player
             float suspicion,
             float noise,
             float tension,
-            float memoryPressure)
+            float memoryPressure,
+            bool isCalming)
         {
             float intensity = Mathf.Max(suspicion, noise, tension, memoryPressure);
             return phase switch
             {
                 PlayerFeedbackEvents.StealthLoopPhase.Chased => new Color(1f, 0.12f, 0.06f, 1f),
                 PlayerFeedbackEvents.StealthLoopPhase.Hiding => Color.Lerp(
-                    new Color(0.62f, 0.9f, 1f, 0.9f),
-                    new Color(1f, 0.58f, 0.14f, 1f),
+                    isCalming ? new Color(0.54f, 0.95f, 1f, 0.94f) : new Color(0.62f, 0.9f, 1f, 0.9f),
+                    isCalming ? new Color(0.9f, 0.9f, 0.66f, 0.96f) : new Color(1f, 0.58f, 0.14f, 1f),
                     tension),
                 PlayerFeedbackEvents.StealthLoopPhase.PostChase => Color.Lerp(
-                    new Color(1f, 0.76f, 0.28f, 0.95f),
-                    new Color(1f, 0.38f, 0.1f, 1f),
+                    isCalming ? new Color(0.6f, 0.86f, 1f, 0.92f) : new Color(1f, 0.76f, 0.28f, 0.95f),
+                    isCalming ? new Color(1f, 0.72f, 0.26f, 0.98f) : new Color(1f, 0.38f, 0.1f, 1f),
                     tension),
                 PlayerFeedbackEvents.StealthLoopPhase.Searching => new Color(1f, 0.66f, 0.16f, 0.98f),
                 PlayerFeedbackEvents.StealthLoopPhase.Certain => Color.Lerp(

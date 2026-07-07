@@ -782,6 +782,44 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AwarenessHud_StealthStatusShowsCalmingRecoveryStates()
+        {
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleStealthLoopChanged",
+                new PlayerFeedbackEvents.StealthLoopFeedback(
+                    PlayerFeedbackEvents.StealthLoopPhase.Hiding,
+                    0.08f,
+                    0f,
+                    0.12f,
+                    "Breathing under control.",
+                    true));
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateStealthStatus");
+
+            Text stealthStatusText = GameplaySmokeTestReflection.GetField<Text>(hud, "stealthStatusText");
+            Assert.That(stealthStatusText.text, Is.EqualTo("HIDDEN / BREATH STEADY"));
+            Assert.That(stealthStatusText.color.b, Is.GreaterThan(stealthStatusText.color.r));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleStealthLoopChanged",
+                new PlayerFeedbackEvents.StealthLoopFeedback(
+                    PlayerFeedbackEvents.StealthLoopPhase.PostChase,
+                    0.18f,
+                    0f,
+                    0.18f,
+                    "He lost your trail. Stay quiet.",
+                    true));
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateStealthStatus");
+
+            Assert.That(stealthStatusText.text, Is.EqualTo("RECOVERY / STAY QUIET"));
+            Assert.That(stealthStatusText.color.b, Is.GreaterThan(stealthStatusText.color.r));
+        }
+
+        [Test]
         public void AwarenessHud_ShowsNoisyBreathWarning()
         {
             PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
