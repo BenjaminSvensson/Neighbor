@@ -30,6 +30,9 @@ namespace Neighbor.Main.Features.Player
         private float lastStealthLoopNoise;
         private float lastStealthLoopTension;
         private float stealthLoopStatusUntil;
+        private int lastNeighborMemoryCount;
+        private float lastNeighborMemorySuspicion;
+        private float neighborMemoryStatusUntil;
         private float cameraWarningUntil;
         private float messageUntil;
         private float nextPlayerSearchTime;
@@ -173,10 +176,11 @@ namespace Neighbor.Main.Features.Player
             float suspicion = trackedNeighbor != null ? trackedNeighbor.Suspicion : 0f;
             suspicionFill.fillAmount = suspicion;
             suspicionFill.color = GetAwarenessColor(suspicion);
+            float memoryPressure = GetDisplayedMemoryPressure();
 
             if (trackedNeighbor == null)
             {
-                awarenessText.text = "UNNOTICED";
+                awarenessText.text = memoryPressure >= 0.35f ? "MEMORY" : "UNNOTICED";
                 return;
             }
 
@@ -196,6 +200,12 @@ namespace Neighbor.Main.Features.Player
             if (trackedNeighbor.PostChaseTension01 >= 0.05f)
             {
                 awarenessText.text = "TENSION";
+                return;
+            }
+
+            if (memoryPressure >= 0.35f)
+            {
+                awarenessText.text = trackedNeighbor.TotalRememberedClueCount >= 3 ? "TRAIL" : "MEMORY";
                 return;
             }
 
@@ -222,10 +232,14 @@ namespace Neighbor.Main.Features.Player
                 : hasRecentLoopStatus ? lastStealthLoopSuspicion : 0f;
             float tension = Mathf.Max(
                 trackedNeighbor != null ? trackedNeighbor.PostChaseTension01 : 0f,
-                hidingState != null ? hidingState.BreathTension01 : hasRecentLoopStatus ? lastStealthLoopTension : 0f);
+                Mathf.Max(
+                    hidingState != null ? hidingState.BreathTension01 : 0f,
+                    hasRecentLoopStatus ? lastStealthLoopTension : 0f));
+            float memoryPressure = GetDisplayedMemoryPressure();
+            tension = Mathf.Max(tension, memoryPressure);
             float noise = Mathf.Max(noiseLevel, hasRecentLoopStatus ? lastStealthLoopNoise : 0f);
-            stealthStatusText.text = BuildStealthStatusText(phase, suspicion, noise, tension);
-            stealthStatusText.color = GetStealthStatusColor(phase, suspicion, noise, tension);
+            stealthStatusText.text = BuildStealthStatusText(phase, suspicion, noise, tension, memoryPressure);
+            stealthStatusText.color = GetStealthStatusColor(phase, suspicion, noise, tension, memoryPressure);
         }
 
         private void UpdateNoise()
@@ -246,7 +260,7 @@ namespace Neighbor.Main.Features.Player
 
             float postChaseTension = trackedNeighbor != null ? trackedNeighbor.PostChaseTension01 : 0f;
             float breathTension = hidingState != null ? hidingState.BreathTension01 : 0f;
-            float tension = Mathf.Max(postChaseTension, breathTension);
+            float tension = Mathf.Max(postChaseTension, breathTension, GetDisplayedMemoryPressure());
             tensionFill.fillAmount = tension;
             tensionFill.color = Color.Lerp(
                 new Color(0.36f, 0.4f, 0.72f, 0.8f),
@@ -384,6 +398,17 @@ namespace Neighbor.Main.Features.Player
             {
                 warningText.text = "HE IS STILL SEARCHING";
                 warningText.color = new Color(1f, 0.64f, 0.18f, 0.96f);
+                return;
+            }
+
+            float memoryPressure = GetDisplayedMemoryPressure();
+            if (memoryPressure >= 0.55f)
+            {
+                warningText.text = lastNeighborMemoryCount >= 3 ? "HE IS FOLLOWING YOUR TRAIL" : "HE REMEMBERS";
+                warningText.color = Color.Lerp(
+                    new Color(0.9f, 0.82f, 0.62f, 0.95f),
+                    new Color(1f, 0.36f, 0.12f, 1f),
+                    memoryPressure);
                 return;
             }
 
@@ -589,6 +614,12 @@ namespace Neighbor.Main.Features.Player
 
         private void HandleNeighborMemoryChanged(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
         {
+            lastNeighborMemoryCount = feedback.TotalMemoryCount;
+            lastNeighborMemorySuspicion = feedback.Suspicion;
+            neighborMemoryStatusUntil = Time.unscaledTime + Mathf.Lerp(
+                4f,
+                9f,
+                Mathf.Max(feedback.Suspicion, Mathf.Clamp01(feedback.TotalMemoryCount / 4f)));
             warningText.text = feedback.Kind switch
             {
                 PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => "HE REMEMBERS THAT DOOR",
@@ -847,12 +878,33 @@ namespace Neighbor.Main.Features.Player
             };
         }
 
+        private float GetDisplayedMemoryPressure()
+        {
+            float trackedPressure = trackedNeighbor != null ? trackedNeighbor.RememberedClueTension01 : 0f;
+            float recentPressure = Time.unscaledTime < neighborMemoryStatusUntil ? lastNeighborMemorySuspicion : 0f;
+            return Mathf.Max(trackedPressure, recentPressure);
+        }
+
         private string BuildStealthStatusText(
             PlayerFeedbackEvents.StealthLoopPhase phase,
             float suspicion,
             float noise,
-            float tension)
+            float tension,
+            float memoryPressure)
         {
+            if (memoryPressure >= 0.55f
+                && phase != PlayerFeedbackEvents.StealthLoopPhase.Chased
+                && phase != PlayerFeedbackEvents.StealthLoopPhase.Hiding
+                && phase != PlayerFeedbackEvents.StealthLoopPhase.PostChase)
+            {
+                return memoryPressure >= 0.75f ? "SUSPICIOUS / YOUR TRAIL" : "SUSPICIOUS / MEMORY";
+            }
+
+            if (memoryPressure >= 0.3f && phase == PlayerFeedbackEvents.StealthLoopPhase.Curious)
+            {
+                return "CURIOUS / MEMORY";
+            }
+
             switch (phase)
             {
                 case PlayerFeedbackEvents.StealthLoopPhase.Chased:
@@ -886,9 +938,10 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.StealthLoopPhase phase,
             float suspicion,
             float noise,
-            float tension)
+            float tension,
+            float memoryPressure)
         {
-            float intensity = Mathf.Max(suspicion, noise, tension);
+            float intensity = Mathf.Max(suspicion, noise, tension, memoryPressure);
             return phase switch
             {
                 PlayerFeedbackEvents.StealthLoopPhase.Chased => new Color(1f, 0.12f, 0.06f, 1f),
@@ -904,11 +957,11 @@ namespace Neighbor.Main.Features.Player
                 PlayerFeedbackEvents.StealthLoopPhase.Suspicious => Color.Lerp(
                     new Color(1f, 0.58f, 0.16f, 0.96f),
                     new Color(1f, 0.18f, 0.08f, 1f),
-                    suspicion),
+                    Mathf.Max(suspicion, memoryPressure)),
                 PlayerFeedbackEvents.StealthLoopPhase.Curious => Color.Lerp(
                     new Color(0.78f, 0.86f, 0.96f, 0.9f),
                     new Color(1f, 0.72f, 0.18f, 0.98f),
-                    Mathf.Max(noise, suspicion)),
+                    Mathf.Max(noise, suspicion, memoryPressure)),
                 _ => Color.Lerp(
                     new Color(0.64f, 0.76f, 0.9f, 0.72f),
                     new Color(1f, 0.72f, 0.18f, 0.9f),

@@ -198,6 +198,34 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AwarenessHud_MemoryPressureFeedsStealthStatusAndTension()
+        {
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleNeighborMemoryChanged",
+                new PlayerFeedbackEvents.NeighborMemoryFeedback(
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
+                    "Basement Key",
+                    Vector3.zero,
+                    0.82f,
+                    3));
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateAwareness");
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateStealthStatus");
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateTension");
+
+            Text awarenessText = GameplaySmokeTestReflection.GetField<Text>(hud, "awarenessText");
+            Text stealthStatusText = GameplaySmokeTestReflection.GetField<Text>(hud, "stealthStatusText");
+            Image tensionFill = GameplaySmokeTestReflection.GetField<Image>(hud, "tensionFill");
+
+            Assert.That(awarenessText.text, Is.EqualTo("MEMORY"));
+            Assert.That(stealthStatusText.text, Is.EqualTo("SUSPICIOUS / YOUR TRAIL"));
+            Assert.That(tensionFill.fillAmount, Is.GreaterThan(0.8f));
+        }
+
+        [Test]
         public void AwarenessHud_ShowsPersistentStealthStatusAndLoudNoiseWarning()
         {
             GameObject playerObject = context.CreateObject("Player");
@@ -383,7 +411,10 @@ namespace Neighbor.Main.Tests
             GlassShatter glass = context.AddInitializedComponent<GlassShatter>(glassObject);
             PlayerFeedbackEvents.NeighborMemoryFeedback feedback = default;
             bool received = false;
+            PlayerFeedbackEvents.StealthLoopFeedback stealthFeedback = default;
+            bool receivedStealthLoop = false;
             PlayerFeedbackEvents.NeighborMemoryChanged += HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
 
             try
             {
@@ -398,6 +429,8 @@ namespace Neighbor.Main.Tests
                 Assert.That(brain.TotalRememberedClueCount, Is.EqualTo(1));
                 Assert.That(brain.Suspicion, Is.EqualTo(0.26f).Within(0.001f));
                 Assert.That(brain.IsPostEncounterVigilant, Is.False);
+                Assert.That(brain.RememberedClueTension01, Is.GreaterThan(0.2f));
+                receivedStealthLoop = false;
 
                 GameplaySmokeTestReflection.Invoke(
                     brain,
@@ -417,16 +450,29 @@ namespace Neighbor.Main.Tests
                 Assert.That(feedback.Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken));
                 Assert.That(feedback.TotalMemoryCount, Is.EqualTo(2));
                 Assert.That(feedback.Suspicion, Is.GreaterThan(0.56f));
+                Assert.That(receivedStealthLoop, Is.True);
+                Assert.That(stealthFeedback.Phase, Is.EqualTo(PlayerFeedbackEvents.StealthLoopPhase.Suspicious));
+                Assert.That(stealthFeedback.Tension, Is.GreaterThan(0.5f));
+                Assert.That(
+                    stealthFeedback.Message.Contains("remembers") || stealthFeedback.Message.Contains("trail"),
+                    Is.True);
             }
             finally
             {
                 PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
+                PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
             }
 
             void HandleNeighborMemoryChanged(PlayerFeedbackEvents.NeighborMemoryFeedback item)
             {
                 feedback = item;
                 received = true;
+            }
+
+            void HandleStealthLoopChanged(PlayerFeedbackEvents.StealthLoopFeedback item)
+            {
+                stealthFeedback = item;
+                receivedStealthLoop = true;
             }
         }
 

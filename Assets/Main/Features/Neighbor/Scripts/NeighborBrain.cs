@@ -129,6 +129,8 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Range(0f, 1f)] private float stackedMemorySuspicionBoost = 0.07f;
         [SerializeField, Range(0f, 1f)] private float maximumStackedMemorySuspicionBoost = 0.24f;
         [SerializeField, Min(0f)] private float stackedMemoryVigilanceDuration = 14f;
+        [SerializeField, Min(0f)] private float rememberedClueTensionDuration = 8f;
+        [SerializeField, Range(0f, 1f)] private float rememberedClueTensionFloor = 0.24f;
 
         [Header("Post-Encounter Vigilance")]
         [SerializeField, Min(0f)] private float postEncounterTaskCooldown = 25f;
@@ -264,6 +266,8 @@ namespace Neighbor.Main.Features.Neighbor
         private PlayerFeedbackEvents.NeighborMemoryClueKind lastRememberedClueKind;
         private string lastRememberedClueName;
         private Vector3 lastRememberedCluePosition;
+        private float lastRememberedClueSuspicion;
+        private float rememberedClueTensionUntilTime;
         private bool hasPendingMemoryClueFollowUp;
         private PlayerFeedbackEvents.NeighborMemoryClueKind pendingMemoryClueKind;
         private GameObject pendingMemoryClueSource;
@@ -367,6 +371,7 @@ namespace Neighbor.Main.Features.Neighbor
         public PlayerFeedbackEvents.NeighborMemoryClueKind LastRememberedClueKind => lastRememberedClueKind;
         public string LastRememberedClueName => lastRememberedClueName;
         public Vector3 LastRememberedCluePosition => lastRememberedCluePosition;
+        public float RememberedClueTension01 => GetRememberedClueTension01();
         public bool HasPendingMemoryClueFollowUp => hasPendingMemoryClueFollowUp;
         public PlayerFeedbackEvents.NeighborMemoryClueKind PendingMemoryClueKind => pendingMemoryClueKind;
         public GameObject PendingMemoryClueSource => pendingMemoryClueSource;
@@ -934,6 +939,8 @@ namespace Neighbor.Main.Features.Neighbor
             lastReportedStealthNoise = -1f;
             recentHeardNoise = 0f;
             recentHeardNoiseUntilTime = 0f;
+            lastRememberedClueSuspicion = 0f;
+            rememberedClueTensionUntilTime = 0f;
             hasChaseDestination = false;
             interruptedTaskLocation = null;
             currentInvestigationSource = null;
@@ -3266,7 +3273,8 @@ namespace Neighbor.Main.Features.Neighbor
         private void ReportStealthLoopIfNeeded(bool force)
         {
             PlayerFeedbackEvents.StealthLoopPhase phase = GetStealthLoopPhase();
-            float tension = PostChaseTension01;
+            float rememberedClueTension = GetRememberedClueTension01();
+            float tension = Mathf.Max(PostChaseTension01, rememberedClueTension);
             float noise = GetRecentHeardNoise01();
             bool changed = force
                 || !hasReportedStealthLoopPhase
@@ -3289,7 +3297,7 @@ namespace Neighbor.Main.Features.Neighbor
                 suspicion,
                 noise,
                 tension,
-                GetStealthLoopMessage(phase));
+                GetStealthLoopMessage(phase, rememberedClueTension));
         }
 
         private void RegisterHeardNoiseFeedback(float loudness)
@@ -3333,6 +3341,17 @@ namespace Neighbor.Main.Features.Neighbor
                 return PlayerFeedbackEvents.StealthLoopPhase.Searching;
             }
 
+            float rememberedClueTension = GetRememberedClueTension01();
+            if (rememberedClueTension >= suspiciousThreshold)
+            {
+                return PlayerFeedbackEvents.StealthLoopPhase.Suspicious;
+            }
+
+            if (rememberedClueTension >= curiousThreshold)
+            {
+                return PlayerFeedbackEvents.StealthLoopPhase.Curious;
+            }
+
             SuspicionLevel level = CurrentSuspicionLevel;
             if (level == SuspicionLevel.Certain || level == SuspicionLevel.Suspicious)
             {
@@ -3344,8 +3363,18 @@ namespace Neighbor.Main.Features.Neighbor
                 : PlayerFeedbackEvents.StealthLoopPhase.Quiet;
         }
 
-        private static string GetStealthLoopMessage(PlayerFeedbackEvents.StealthLoopPhase phase)
+        private string GetStealthLoopMessage(PlayerFeedbackEvents.StealthLoopPhase phase, float rememberedClueTension)
         {
+            if (rememberedClueTension >= 0.35f
+                && (phase == PlayerFeedbackEvents.StealthLoopPhase.Searching
+                    || phase == PlayerFeedbackEvents.StealthLoopPhase.Suspicious
+                    || phase == PlayerFeedbackEvents.StealthLoopPhase.Curious))
+            {
+                return TotalRememberedClueCount >= 3
+                    ? "He is following your trail."
+                    : "He remembers something is off.";
+            }
+
             return phase switch
             {
                 PlayerFeedbackEvents.StealthLoopPhase.Chased => "Run or hide",
@@ -3571,6 +3600,7 @@ namespace Neighbor.Main.Features.Neighbor
             lastRememberedClueKind = kind;
             lastRememberedClueName = clue.name;
             lastRememberedCluePosition = position;
+            lastRememberedClueSuspicion = Mathf.Max(lastRememberedClueSuspicion, pressureSuspicion);
             QueueMemoryClueFollowUp(kind, clue, position, pressureSuspicion);
             PlayerFeedbackEvents.ReportNeighborMemory(
                 kind,
@@ -3578,6 +3608,7 @@ namespace Neighbor.Main.Features.Neighbor
                 position,
                 Mathf.Max(suspicion, pressureSuspicion),
                 TotalRememberedClueCount);
+            ReportStealthLoopIfNeeded(true);
         }
 
         private void QueueMemoryClueFollowUp(
@@ -3657,12 +3688,14 @@ namespace Neighbor.Main.Features.Neighbor
             pendingMemoryClueSource = candidate.Source;
             pendingMemoryCluePosition = candidate.Position;
             pendingMemoryClueSuspicion = ApplyRememberedCluePressure(candidate.Suspicion);
+            lastRememberedClueSuspicion = Mathf.Max(lastRememberedClueSuspicion, pendingMemoryClueSuspicion);
             PlayerFeedbackEvents.ReportNeighborMemory(
                 candidate.Kind,
                 candidate.Source.name,
                 candidate.Position,
                 pendingMemoryClueSuspicion,
                 TotalRememberedClueCount);
+            ReportStealthLoopIfNeeded(true);
         }
 
         private float ApplyRememberedCluePressure(float clueSuspicion)
@@ -3672,6 +3705,7 @@ namespace Neighbor.Main.Features.Neighbor
             int stackedClueCount = Mathf.Max(0, TotalRememberedClueCount - 1);
             if (stackedClueCount <= 0)
             {
+                PulseRememberedClueTension(suspicion);
                 return suspicion;
             }
 
@@ -3686,7 +3720,49 @@ namespace Neighbor.Main.Features.Neighbor
                     Time.time + stackedMemoryVigilanceDuration);
             }
 
+            PulseRememberedClueTension(suspicion);
             return suspicion;
+        }
+
+        private void PulseRememberedClueTension(float pressure)
+        {
+            lastRememberedClueSuspicion = Mathf.Max(lastRememberedClueSuspicion, Mathf.Clamp01(pressure));
+            float duration = Mathf.Max(rememberedClueTensionDuration, TotalRememberedClueCount > 1 ? stackedMemoryVigilanceDuration : 0f);
+            if (duration > 0f)
+            {
+                rememberedClueTensionUntilTime = Mathf.Max(rememberedClueTensionUntilTime, Time.time + duration);
+            }
+        }
+
+        private float GetRememberedClueTension01()
+        {
+            int rememberedClues = TotalRememberedClueCount;
+            if (rememberedClues <= 0)
+            {
+                return 0f;
+            }
+
+            bool tensionActive = hasPendingMemoryClueFollowUp
+                || IsPostEncounterVigilant
+                || Time.time < rememberedClueTensionUntilTime;
+            if (!tensionActive)
+            {
+                return 0f;
+            }
+
+            float strongestSuspicion = Mathf.Max(lastRememberedClueSuspicion, pendingMemoryClueSuspicion);
+            if (TryGetStrongestRememberedClue(out RememberedClueFollowUpCandidate candidate))
+            {
+                strongestSuspicion = Mathf.Max(strongestSuspicion, candidate.Suspicion);
+            }
+
+            float stackedPressure = Mathf.Clamp01((rememberedClues - 1) * 0.16f);
+            float countFloor = rememberedClues >= 3
+                ? 0.46f
+                : rememberedClues == 2
+                    ? 0.34f
+                    : rememberedClueTensionFloor;
+            return Mathf.Clamp01(Mathf.Max(countFloor, strongestSuspicion * 0.72f + stackedPressure));
         }
 
         private bool TryGetStrongestRememberedClue(out RememberedClueFollowUpCandidate candidate)
