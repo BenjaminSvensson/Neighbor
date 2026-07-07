@@ -1446,6 +1446,83 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void StealthLoop_HuntMemoryClueReportsSpecificTrailMessage()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            GameObject keyObject = context.CreateObject("BasementKey");
+            PlayerFeedbackEvents.StealthLoopFeedback feedback = default;
+            bool received = false;
+            PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
+
+            try
+            {
+                GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.HuntMode);
+                GameplaySmokeTestReflection.SetField(brain, "currentHuntMemoryClueActive", true);
+                GameplaySmokeTestReflection.SetField(
+                    brain,
+                    "currentHuntMemoryClueKind",
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen);
+                GameplaySmokeTestReflection.SetField(brain, "currentHuntMemoryClueSource", keyObject);
+                GameplaySmokeTestReflection.SetField(brain, "suspicion", 0.76f);
+
+                GameplaySmokeTestReflection.Invoke(brain, "ReportStealthLoopIfNeeded", true);
+
+                Assert.That(received, Is.True);
+                Assert.That(feedback.Phase, Is.EqualTo(PlayerFeedbackEvents.StealthLoopPhase.PostChase));
+                Assert.That(feedback.Message, Is.EqualTo("Stay hidden. He is tracking the stolen key."));
+            }
+            finally
+            {
+                PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            }
+
+            void HandleStealthLoopChanged(PlayerFeedbackEvents.StealthLoopFeedback item)
+            {
+                feedback = item;
+                received = true;
+            }
+        }
+
+        [Test]
+        public void StealthLoop_RoutineMemoryInvestigationReportsSpecificTrailMessage()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            GameObject movedObject = context.CreateObject("MovedChair");
+            PlayerFeedbackEvents.StealthLoopFeedback feedback = default;
+            bool received = false;
+            PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
+
+            try
+            {
+                GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.Investigate);
+                GameplaySmokeTestReflection.SetField(brain, "currentInvestigationSource", movedObject);
+                GameplaySmokeTestReflection.SetField(brain, "currentInvestigationTrailRelated", true);
+                GameplaySmokeTestReflection.SetField(brain, "currentInvestigationMemoryClueActive", true);
+                GameplaySmokeTestReflection.SetField(
+                    brain,
+                    "currentInvestigationMemoryClueKind",
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved);
+                GameplaySmokeTestReflection.SetField(brain, "suspicion", 0.48f);
+
+                GameplaySmokeTestReflection.Invoke(brain, "ReportStealthLoopIfNeeded", true);
+
+                Assert.That(received, Is.True);
+                Assert.That(feedback.Phase, Is.EqualTo(PlayerFeedbackEvents.StealthLoopPhase.Searching));
+                Assert.That(feedback.Message, Is.EqualTo("He is searching the moved object."));
+            }
+            finally
+            {
+                PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            }
+
+            void HandleStealthLoopChanged(PlayerFeedbackEvents.StealthLoopFeedback item)
+            {
+                feedback = item;
+                received = true;
+            }
+        }
+
+        [Test]
         public void EnvironmentalAwareness_OnlyRaisesSuspicionInsideAwarenessRadius()
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>();
