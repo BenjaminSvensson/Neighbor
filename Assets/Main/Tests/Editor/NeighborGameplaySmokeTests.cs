@@ -102,7 +102,8 @@ namespace Neighbor.Main.Tests
 
             Text warningText = GameplaySmokeTestReflection.GetField<Text>(hud, "warningText");
             Assert.That(objectiveText.text, Does.Contain("OBJECTIVE 3/5"));
-            Assert.That(warningText.text, Does.Contain(tracker.CurrentHint.ToUpperInvariant()));
+            Assert.That(warningText.text, Does.Contain("OBJECTIVE 3/5"));
+            Assert.That(warningText.text, Does.Contain("KEY FOUND"));
         }
 
         [Test]

@@ -103,6 +103,29 @@ namespace Neighbor.Main.Features.Player
             }
         }
 
+        public readonly struct ObjectiveProgressFeedback
+        {
+            public int StepIndex { get; }
+            public int TotalSteps { get; }
+            public string Message { get; }
+            public string Hint { get; }
+            public bool IsComplete { get; }
+
+            public ObjectiveProgressFeedback(
+                int stepIndex,
+                int totalSteps,
+                string message,
+                string hint,
+                bool isComplete)
+            {
+                StepIndex = Mathf.Max(1, stepIndex);
+                TotalSteps = Mathf.Max(StepIndex, totalSteps);
+                Message = string.IsNullOrWhiteSpace(message) ? string.Empty : message.Trim();
+                Hint = string.IsNullOrWhiteSpace(hint) ? string.Empty : hint.Trim();
+                IsComplete = isComplete;
+            }
+        }
+
         public enum DoorInteractionFeedbackKind
         {
             Info,
@@ -132,6 +155,7 @@ namespace Neighbor.Main.Features.Player
         public static event Action<DayPhaseFeedback> DayPhaseChanged;
         public static event Action<CheckpointFeedback> CheckpointReached;
         public static event Action<OnboardingPromptFeedback> OnboardingPrompted;
+        public static event Action<ObjectiveProgressFeedback> ObjectiveProgressed;
         public static event Action<DoorInteractionFeedback> DoorInteractionReported;
 
         public static void ReportNoise(Vector3 origin, float loudness, float radius)
@@ -203,6 +227,21 @@ namespace Neighbor.Main.Features.Player
             OnboardingPrompted?.Invoke(new OnboardingPromptFeedback(message, intensity));
         }
 
+        public static void ReportObjectiveProgress(
+            int stepIndex,
+            int totalSteps,
+            string message,
+            string hint,
+            bool isComplete)
+        {
+            if (string.IsNullOrWhiteSpace(message) && string.IsNullOrWhiteSpace(hint))
+            {
+                return;
+            }
+
+            ObjectiveProgressed?.Invoke(new ObjectiveProgressFeedback(stepIndex, totalSteps, message, hint, isComplete));
+        }
+
         public static void ReportDoorInteraction(
             string message,
             DoorInteractionFeedbackKind kind = DoorInteractionFeedbackKind.Info,
@@ -226,6 +265,7 @@ namespace Neighbor.Main.Features.Player
             DayPhaseChanged = null;
             CheckpointReached = null;
             OnboardingPrompted = null;
+            ObjectiveProgressed = null;
             DoorInteractionReported = null;
         }
     }

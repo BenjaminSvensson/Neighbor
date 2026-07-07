@@ -43,6 +43,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.DayPhaseChanged += HandleDayPhaseChanged;
             PlayerFeedbackEvents.CheckpointReached += HandleCheckpointReached;
             PlayerFeedbackEvents.OnboardingPrompted += HandleOnboardingPrompted;
+            PlayerFeedbackEvents.ObjectiveProgressed += HandleObjectiveProgressed;
             PlayerFeedbackEvents.DoorInteractionReported += HandleDoorInteractionReported;
             ResolveObjective(true);
         }
@@ -56,6 +57,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.DayPhaseChanged -= HandleDayPhaseChanged;
             PlayerFeedbackEvents.CheckpointReached -= HandleCheckpointReached;
             PlayerFeedbackEvents.OnboardingPrompted -= HandleOnboardingPrompted;
+            PlayerFeedbackEvents.ObjectiveProgressed -= HandleObjectiveProgressed;
             PlayerFeedbackEvents.DoorInteractionReported -= HandleDoorInteractionReported;
             UnsubscribeObjective();
         }
@@ -215,7 +217,7 @@ namespace Neighbor.Main.Features.Player
                 return;
             }
 
-            objectiveText.text = $"OBJECTIVE {GetObjectiveStepIndex(objectiveTracker.CurrentStep)}/5\n{hint.ToUpperInvariant()}";
+            objectiveText.text = $"OBJECTIVE {objectiveTracker.CurrentStepIndex}/{CoreLoopObjectiveTracker.TotalObjectiveSteps}\n{hint.ToUpperInvariant()}";
             objectiveText.color = new Color(0.86f, 0.9f, 0.96f, 0.92f);
         }
 
@@ -384,6 +386,25 @@ namespace Neighbor.Main.Features.Player
             messageUntil = Time.unscaledTime + Mathf.Lerp(2.4f, 3.8f, feedback.Intensity);
         }
 
+        private void HandleObjectiveProgressed(PlayerFeedbackEvents.ObjectiveProgressFeedback feedback)
+        {
+            string message = !string.IsNullOrWhiteSpace(feedback.Message)
+                ? feedback.Message
+                : feedback.Hint;
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return;
+            }
+
+            warningText.text = feedback.IsComplete
+                ? $"OBJECTIVE COMPLETE - {message}".ToUpperInvariant()
+                : $"OBJECTIVE {feedback.StepIndex}/{feedback.TotalSteps} - {message}".ToUpperInvariant();
+            warningText.color = feedback.IsComplete
+                ? new Color(0.62f, 0.95f, 1f, 0.98f)
+                : new Color(0.68f, 0.9f, 1f, 0.98f);
+            messageUntil = Time.unscaledTime + (feedback.IsComplete ? MessageDuration : 3.4f);
+        }
+
         private void HandleDoorInteractionReported(PlayerFeedbackEvents.DoorInteractionFeedback feedback)
         {
             if (string.IsNullOrWhiteSpace(feedback.Message))
@@ -515,19 +536,6 @@ namespace Neighbor.Main.Features.Player
             {
                 objectiveTracker.ProgressChanged -= HandleObjectiveProgressChanged;
             }
-        }
-
-        private static int GetObjectiveStepIndex(CoreLoopObjectiveTracker.ObjectiveStep step)
-        {
-            return step switch
-            {
-                CoreLoopObjectiveTracker.ObjectiveStep.GetInside => 1,
-                CoreLoopObjectiveTracker.ObjectiveStep.FindKey => 2,
-                CoreLoopObjectiveTracker.ObjectiveStep.UnlockDoor => 3,
-                CoreLoopObjectiveTracker.ObjectiveStep.ReachRoom => 4,
-                CoreLoopObjectiveTracker.ObjectiveStep.Escape => 5,
-                _ => 5
-            };
         }
 
         private static Color GetDoorFeedbackColor(PlayerFeedbackEvents.DoorInteractionFeedback feedback)
