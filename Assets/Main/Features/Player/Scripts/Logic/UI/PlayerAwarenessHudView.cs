@@ -593,6 +593,7 @@ namespace Neighbor.Main.Features.Player
                 PlayerFeedbackEvents.HidingFeedbackKind.Entered => $"HIDDEN IN {spotName}",
                 PlayerFeedbackEvents.HidingFeedbackKind.Exited => $"LEFT {spotName}",
                 PlayerFeedbackEvents.HidingFeedbackKind.Inspected => $"SEARCHED {spotName} - STAY STILL",
+                PlayerFeedbackEvents.HidingFeedbackKind.BreathNoisy => "BREATH TOO LOUD",
                 PlayerFeedbackEvents.HidingFeedbackKind.Found => $"FOUND IN {spotName}",
                 PlayerFeedbackEvents.HidingFeedbackKind.Recovered => "BREATH STEADY",
                 _ => spotName
@@ -602,8 +603,12 @@ namespace Neighbor.Main.Features.Player
                 PlayerFeedbackEvents.HidingFeedbackKind.Entered => new Color(0.62f, 0.9f, 1f, 0.96f),
                 PlayerFeedbackEvents.HidingFeedbackKind.Exited => new Color(0.78f, 0.84f, 0.94f, 0.94f),
                 PlayerFeedbackEvents.HidingFeedbackKind.Inspected => Color.Lerp(
-                    new Color(1f, 0.72f, 0.18f, 0.98f),
-                    new Color(1f, 0.46f, 0.12f, 1f),
+                        new Color(1f, 0.72f, 0.18f, 0.98f),
+                        new Color(1f, 0.46f, 0.12f, 1f),
+                        feedback.BreathTension),
+                PlayerFeedbackEvents.HidingFeedbackKind.BreathNoisy => Color.Lerp(
+                    new Color(1f, 0.64f, 0.16f, 0.98f),
+                    new Color(1f, 0.24f, 0.08f, 1f),
                     feedback.BreathTension),
                 PlayerFeedbackEvents.HidingFeedbackKind.Found => new Color(1f, 0.12f, 0.08f, 1f),
                 PlayerFeedbackEvents.HidingFeedbackKind.Recovered => new Color(0.62f, 0.95f, 1f, 0.96f),
@@ -611,6 +616,7 @@ namespace Neighbor.Main.Features.Player
             };
             messageUntil = Time.unscaledTime + (feedback.Kind == PlayerFeedbackEvents.HidingFeedbackKind.Found
                 ? MessageDuration
+                : feedback.Kind == PlayerFeedbackEvents.HidingFeedbackKind.BreathNoisy ? 3.2f
                 : feedback.Kind == PlayerFeedbackEvents.HidingFeedbackKind.Recovered ? 2.4f : 2.8f);
         }
 

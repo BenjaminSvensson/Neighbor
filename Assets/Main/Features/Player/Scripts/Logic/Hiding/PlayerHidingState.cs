@@ -175,6 +175,12 @@ namespace Neighbor.Main.Features.Player
             noiseObject.AddComponent<SphereCollider>();
             NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
             float loudness = Mathf.Lerp(breathNoiseLoudness * 0.55f, breathNoiseLoudness, BreathTension01);
+            ReportHidingFeedback(
+                CurrentHideSpot,
+                PlayerFeedbackEvents.HidingFeedbackKind.BreathNoisy,
+                true,
+                IsCompromised,
+                loudness);
             noiseEvent.Initialize(
                 transform.position,
                 breathNoiseRadius,
@@ -291,7 +297,8 @@ namespace Neighbor.Main.Features.Player
             ClosetHideSpot hideSpot,
             PlayerFeedbackEvents.HidingFeedbackKind kind,
             bool isHidden,
-            bool isCompromised)
+            bool isCompromised,
+            float noise = 0f)
         {
             string spotName = hideSpot != null ? hideSpot.DisplayName : "hiding spot";
             float stealthTension = isHidden && isCompromised ? 1f : BreathTension01;
@@ -301,7 +308,7 @@ namespace Neighbor.Main.Features.Player
                     ? PlayerFeedbackEvents.StealthLoopPhase.Hiding
                     : PlayerFeedbackEvents.StealthLoopPhase.Quiet,
                 isHidden && isCompromised ? 1f : BreathTension01,
-                0f,
+                noise,
                 stealthTension,
                 GetHidingStealthLoopMessage(kind, isHidden, isCompromised),
                 kind == PlayerFeedbackEvents.HidingFeedbackKind.Recovered);
@@ -316,6 +323,7 @@ namespace Neighbor.Main.Features.Player
             {
                 PlayerFeedbackEvents.HidingFeedbackKind.Found => "He found your hiding spot.",
                 PlayerFeedbackEvents.HidingFeedbackKind.Inspected => "Stay still. He is checking the hiding spot.",
+                PlayerFeedbackEvents.HidingFeedbackKind.BreathNoisy => "Your breathing is too loud.",
                 PlayerFeedbackEvents.HidingFeedbackKind.Recovered => "Breathing under control.",
                 PlayerFeedbackEvents.HidingFeedbackKind.Exited => "Back in the open.",
                 _ => isHidden && isCompromised

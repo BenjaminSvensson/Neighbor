@@ -730,6 +730,26 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AwarenessHud_ShowsNoisyBreathWarning()
+        {
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleHidingChanged",
+                new PlayerFeedbackEvents.HidingFeedback(
+                    "closet",
+                    PlayerFeedbackEvents.HidingFeedbackKind.BreathNoisy,
+                    0.92f,
+                    true,
+                    false));
+
+            Text warningText = GameplaySmokeTestReflection.GetField<Text>(hud, "warningText");
+            Assert.That(warningText.text, Is.EqualTo("BREATH TOO LOUD"));
+        }
+
+        [Test]
         public void HidingBreath_BuildsWhenNeighborSearchesNearby()
         {
             PlayerHidingState hidingState = context.AddInitializedComponent<PlayerHidingState>(
@@ -2840,8 +2860,14 @@ namespace Neighbor.Main.Tests
         public void HidingState_HighBreathTensionEmitsReadableNoise()
         {
             PlayerFeedbackEvents.NoiseFeedback received = default;
+            PlayerFeedbackEvents.HidingFeedback hidingFeedback = default;
+            PlayerFeedbackEvents.StealthLoopFeedback stealthFeedback = default;
             bool reported = false;
+            bool hidingReported = false;
+            bool stealthReported = false;
             PlayerFeedbackEvents.NoiseEmitted += HandleNoise;
+            PlayerFeedbackEvents.HidingChanged += HandleHidingChanged;
+            PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
 
             GameObject noiseObject = null;
             try
@@ -2858,6 +2884,14 @@ namespace Neighbor.Main.Tests
 
                 noiseObject = GameObject.Find("HiddenBreathNoiseEvent");
                 Assert.That(reported, Is.True);
+                Assert.That(hidingReported, Is.True);
+                Assert.That(stealthReported, Is.True);
+                Assert.That(hidingFeedback.Kind, Is.EqualTo(PlayerFeedbackEvents.HidingFeedbackKind.BreathNoisy));
+                Assert.That(hidingFeedback.BreathTension, Is.EqualTo(0.9f).Within(0.001f));
+                Assert.That(stealthFeedback.Phase, Is.EqualTo(PlayerFeedbackEvents.StealthLoopPhase.Hiding));
+                Assert.That(stealthFeedback.Message, Is.EqualTo("Your breathing is too loud."));
+                Assert.That(stealthFeedback.Noise, Is.GreaterThanOrEqualTo(0.2f));
+                Assert.That(stealthFeedback.Tension, Is.EqualTo(0.9f).Within(0.001f));
                 Assert.That(received.Radius, Is.EqualTo(6f));
                 Assert.That(received.Loudness, Is.GreaterThanOrEqualTo(0.2f));
                 Assert.That(noiseObject, Is.Not.Null);
@@ -2866,6 +2900,8 @@ namespace Neighbor.Main.Tests
             finally
             {
                 PlayerFeedbackEvents.NoiseEmitted -= HandleNoise;
+                PlayerFeedbackEvents.HidingChanged -= HandleHidingChanged;
+                PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
                 if (noiseObject != null)
                 {
                     UnityEngine.Object.DestroyImmediate(noiseObject);
@@ -2876,6 +2912,18 @@ namespace Neighbor.Main.Tests
             {
                 received = feedback;
                 reported = true;
+            }
+
+            void HandleHidingChanged(PlayerFeedbackEvents.HidingFeedback feedback)
+            {
+                hidingFeedback = feedback;
+                hidingReported = true;
+            }
+
+            void HandleStealthLoopChanged(PlayerFeedbackEvents.StealthLoopFeedback feedback)
+            {
+                stealthFeedback = feedback;
+                stealthReported = true;
             }
         }
 
