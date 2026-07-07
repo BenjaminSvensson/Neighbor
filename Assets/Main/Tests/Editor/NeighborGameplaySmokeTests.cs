@@ -166,6 +166,102 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AwarenessHud_ShowsStealthLoopAndNeighborMemoryFeedback()
+        {
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+            Text warningText = GameplaySmokeTestReflection.GetField<Text>(hud, "warningText");
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleStealthLoopChanged",
+                new PlayerFeedbackEvents.StealthLoopFeedback(
+                    PlayerFeedbackEvents.StealthLoopPhase.PostChase,
+                    0.55f,
+                    0f,
+                    0.8f,
+                    "Stay hidden. He is checking the area."));
+
+            Assert.That(warningText.text, Is.EqualTo("STAY HIDDEN. HE IS CHECKING THE AREA."));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleNeighborMemoryChanged",
+                new PlayerFeedbackEvents.NeighborMemoryFeedback(
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken,
+                    "Kitchen Window",
+                    Vector3.zero,
+                    0.72f,
+                    3));
+
+            Assert.That(warningText.text, Is.EqualTo("HE REMEMBERS THE BROKEN GLASS"));
+        }
+
+        [Test]
+        public void StealthLoop_LeavingChaseStartsPostChaseTension()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            PlayerFeedbackEvents.StealthLoopFeedback feedback = default;
+            bool received = false;
+            PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
+            try
+            {
+                GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.Chase);
+
+                GameplaySmokeTestReflection.Invoke(brain, "SetState", NeighborBrain.BehaviorState.HuntMode);
+
+                Assert.That(brain.PostChaseTensionTimeRemaining, Is.GreaterThan(0f));
+                Assert.That(brain.PostChaseTension01, Is.GreaterThan(0f));
+                Assert.That(received, Is.True);
+                Assert.That(feedback.Phase, Is.EqualTo(PlayerFeedbackEvents.StealthLoopPhase.PostChase));
+            }
+            finally
+            {
+                PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            }
+
+            void HandleStealthLoopChanged(PlayerFeedbackEvents.StealthLoopFeedback reportedFeedback)
+            {
+                feedback = reportedFeedback;
+                received = true;
+            }
+        }
+
+        [Test]
+        public void NeighborMemory_RemembersDoorObjectBrokenGlassAndStolenKeyClues()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            brain.transform.position = Vector3.zero;
+
+            Door door = context.AddInitializedComponent<Door>("RememberedDoor");
+            door.SetLocked(false, false, false);
+            Transform opener = context.CreateObject("PlayerOpener").transform;
+            opener.position = Vector3.forward;
+            Assert.That(door.TryOpenFor(opener), Is.True);
+
+            Pickupable movedObject = CreatePickupable("MovedObject", new Vector3(0.5f, 0f, 0f), false);
+            movedObject.transform.position = new Vector3(2f, 0f, 0f);
+            GameplaySmokeTestReflection.Invoke(brain, "TryNoticeObjectLocationChanges");
+
+            Pickupable stolenKey = CreatePickupable("StolenBasementKey", new Vector3(0.75f, 0f, 0f), true);
+            stolenKey.transform.position = new Vector3(2.5f, 0f, 0f);
+            GameplaySmokeTestReflection.SetField(brain, "nextObjectLocationCheckTime", float.NegativeInfinity);
+            GameplaySmokeTestReflection.Invoke(brain, "TryNoticeObjectLocationChanges");
+
+            GameObject glassObject = context.CreateObject("BrokenKitchenWindow");
+            glassObject.AddComponent<BoxCollider>();
+            GlassShatter glass = context.AddInitializedComponent<GlassShatter>(glassObject);
+            glass.ShatterFromPlayer(Vector3.zero, Vector3.right, null);
+
+            Assert.That(brain.RememberedOpenedDoorCount, Is.EqualTo(1));
+            Assert.That(brain.RememberedMovedObjectCount, Is.EqualTo(1));
+            Assert.That(brain.RememberedStolenKeyCount, Is.EqualTo(1));
+            Assert.That(brain.RememberedBrokenGlassCount, Is.EqualTo(1));
+            Assert.That(brain.TotalRememberedClueCount, Is.EqualTo(4));
+            Assert.That(brain.LastRememberedClueKind, Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken));
+        }
+
+        [Test]
         public void ReinforcementTrigger_RecognizesCameraAndTrapPreferredPlacements()
         {
             GameObject triggerObject = context.CreateObject("ReinforcementTrigger");
@@ -1822,6 +1918,20 @@ namespace Neighbor.Main.Tests
             Assert.That(
                 GameplaySmokeTestReflection.GetField<GameObject>(witnessBrain, "currentInvestigationSource"),
                 Is.SameAs(source));
+        }
+
+        private Pickupable CreatePickupable(string name, Vector3 position, bool addDoorKey)
+        {
+            GameObject pickupObject = context.CreateObject(name);
+            pickupObject.transform.position = position;
+            pickupObject.AddComponent<Rigidbody>();
+            pickupObject.AddComponent<BoxCollider>();
+            if (addDoorKey)
+            {
+                pickupObject.AddComponent<DoorKey>();
+            }
+
+            return context.AddInitializedComponent<Pickupable>(pickupObject);
         }
 
         [Test]

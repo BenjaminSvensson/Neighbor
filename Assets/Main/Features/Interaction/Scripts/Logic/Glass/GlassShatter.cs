@@ -9,6 +9,7 @@ namespace Neighbor.Main.Features.Interaction
     public sealed class GlassShatter : MonoBehaviour
     {
         private static readonly List<GlassShatter> ActiveGlass = new();
+        public static event System.Action<GlassShatter, Vector3, bool> Shattered;
 
         [Header("Shatter Trigger")]
         [SerializeField, Min(0f)] private float minimumImpactImpulse = 2.2f;
@@ -51,11 +52,13 @@ namespace Neighbor.Main.Features.Interaction
         private bool hasOpeningBounds;
         private float runReinforcementScore;
         private bool playerBrokeThisRun;
+        public bool IsShattered => isShattered;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetActiveGlass()
         {
             ActiveGlass.Clear();
+            Shattered = null;
         }
 
         private void Awake()
@@ -176,6 +179,7 @@ namespace Neighbor.Main.Features.Interaction
             isShattered = true;
             TrackPlayerBreak(causedByPlayer);
             NeighborEnvironmentalAwareness.Report(origin, 0.8f, instigator != null ? instigator : gameObject);
+            Shattered?.Invoke(this, origin, causedByPlayer);
 
             if (intactVisualRoot != null)
             {
@@ -260,7 +264,7 @@ namespace Neighbor.Main.Features.Interaction
                 DoorBlockerChair blocker = reinforcement.GetComponent<DoorBlockerChair>() ?? reinforcement.GetComponentInChildren<DoorBlockerChair>();
                 if (blocker == null)
                 {
-                    Destroy(reinforcement);
+                    DestroyGameObject(reinforcement);
                     break;
                 }
 
@@ -270,7 +274,7 @@ namespace Neighbor.Main.Features.Interaction
                 Vector3 position = GetBoardReinforcementPosition(reinforcement.transform, pickupable, rotation, placementIndex);
                 if (!blocker.TryBlockOpeningAsReinforcement(position, rotation))
                 {
-                    Destroy(reinforcement);
+                    DestroyGameObject(reinforcement);
                     break;
                 }
 
@@ -528,10 +532,10 @@ namespace Neighbor.Main.Features.Interaction
                 shardBody.AddForce((away + Vector3.up * 0.35f) * shardImpulse, ForceMode.Impulse);
                 shardBody.AddTorque(Random.onUnitSphere * shardTorque, ForceMode.Impulse);
 
-                Destroy(shard.gameObject, shardLifetime);
+                DestroyGameObject(shard.gameObject, shardLifetime);
             }
 
-            Destroy(shardRoot.gameObject);
+            DestroyGameObject(shardRoot.gameObject);
         }
 
         private void PlayShatterAudio(Vector3 origin)
@@ -557,7 +561,23 @@ namespace Neighbor.Main.Features.Interaction
             source.dopplerLevel = 0.1f;
             source.Play();
 
-            Destroy(audioObject, clip.length / Mathf.Max(0.01f, source.pitch) + 0.05f);
+            DestroyGameObject(audioObject, clip.length / Mathf.Max(0.01f, source.pitch) + 0.05f);
+        }
+
+        private static void DestroyGameObject(GameObject target, float delay = 0f)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(target, delay);
+                return;
+            }
+
+            DestroyImmediate(target);
         }
 
         private AudioClip GetShatterClip()

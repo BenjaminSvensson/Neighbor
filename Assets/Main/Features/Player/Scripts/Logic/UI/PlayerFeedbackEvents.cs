@@ -201,6 +201,71 @@ namespace Neighbor.Main.Features.Player
             Abandoned
         }
 
+        public enum StealthLoopPhase
+        {
+            Quiet,
+            Curious,
+            Suspicious,
+            Searching,
+            Chased,
+            Hiding,
+            PostChase
+        }
+
+        public readonly struct StealthLoopFeedback
+        {
+            public StealthLoopPhase Phase { get; }
+            public float Suspicion { get; }
+            public float Noise { get; }
+            public float Tension { get; }
+            public string Message { get; }
+
+            public StealthLoopFeedback(
+                StealthLoopPhase phase,
+                float suspicion,
+                float noise,
+                float tension,
+                string message)
+            {
+                Phase = phase;
+                Suspicion = Mathf.Clamp01(suspicion);
+                Noise = Mathf.Clamp01(noise);
+                Tension = Mathf.Clamp01(tension);
+                Message = string.IsNullOrWhiteSpace(message) ? string.Empty : message.Trim();
+            }
+        }
+
+        public enum NeighborMemoryClueKind
+        {
+            DoorOpened,
+            ObjectMoved,
+            GlassBroken,
+            KeyStolen
+        }
+
+        public readonly struct NeighborMemoryFeedback
+        {
+            public NeighborMemoryClueKind Kind { get; }
+            public string SourceName { get; }
+            public Vector3 Position { get; }
+            public float Suspicion { get; }
+            public int TotalMemoryCount { get; }
+
+            public NeighborMemoryFeedback(
+                NeighborMemoryClueKind kind,
+                string sourceName,
+                Vector3 position,
+                float suspicion,
+                int totalMemoryCount)
+            {
+                Kind = kind;
+                SourceName = string.IsNullOrWhiteSpace(sourceName) ? "clue" : sourceName.Trim();
+                Position = position;
+                Suspicion = Mathf.Clamp01(suspicion);
+                TotalMemoryCount = Mathf.Max(0, totalMemoryCount);
+            }
+        }
+
         public readonly struct NeighborInvestigationFeedback
         {
             public NeighborInvestigationFeedbackKind Kind { get; }
@@ -235,6 +300,8 @@ namespace Neighbor.Main.Features.Player
         public static event Action<OnboardingPromptFeedback> OnboardingPrompted;
         public static event Action<ObjectiveProgressFeedback> ObjectiveProgressed;
         public static event Action<DoorInteractionFeedback> DoorInteractionReported;
+        public static event Action<StealthLoopFeedback> StealthLoopChanged;
+        public static event Action<NeighborMemoryFeedback> NeighborMemoryChanged;
         public static event Action<NeighborInvestigationFeedback> NeighborInvestigationChanged;
 
         public static void ReportNoise(Vector3 origin, float loudness, float radius)
@@ -349,6 +416,31 @@ namespace Neighbor.Main.Features.Player
             DoorInteractionReported?.Invoke(new DoorInteractionFeedback(message, kind, intensity));
         }
 
+        public static void ReportStealthLoop(
+            StealthLoopPhase phase,
+            float suspicion,
+            float noise,
+            float tension,
+            string message)
+        {
+            StealthLoopChanged?.Invoke(new StealthLoopFeedback(phase, suspicion, noise, tension, message));
+        }
+
+        public static void ReportNeighborMemory(
+            NeighborMemoryClueKind kind,
+            string sourceName,
+            Vector3 position,
+            float suspicion,
+            int totalMemoryCount)
+        {
+            NeighborMemoryChanged?.Invoke(new NeighborMemoryFeedback(
+                kind,
+                sourceName,
+                position,
+                suspicion,
+                totalMemoryCount));
+        }
+
         public static void ReportNeighborInvestigation(
             NeighborInvestigationFeedbackKind kind,
             Vector3 position,
@@ -378,6 +470,8 @@ namespace Neighbor.Main.Features.Player
             OnboardingPrompted = null;
             ObjectiveProgressed = null;
             DoorInteractionReported = null;
+            StealthLoopChanged = null;
+            NeighborMemoryChanged = null;
             NeighborInvestigationChanged = null;
         }
     }

@@ -43,6 +43,10 @@ namespace Neighbor.Main.Tests
             Assert.That(result.CreatedDirectionalLight, Is.True);
             Assert.That(result.CreatedMoonLight, Is.True);
             Assert.That(result.CreatedDayNightCycle, Is.True);
+            Assert.That(result.CreatedAtmosphereDirector, Is.True);
+            Assert.That(result.CreatedAtmosphereVolume, Is.True);
+            Assert.That(result.CreatedFlickerLight, Is.True);
+            Assert.That(result.CreatedAtmosphereDressing, Is.True);
             Assert.That(result.AddedPauseMenu, Is.True);
             Assert.That(result.Player, Is.Not.Null);
             Assert.That(result.PlayerDeathController, Is.Not.Null);
@@ -63,6 +67,11 @@ namespace Neighbor.Main.Tests
             Assert.That(result.DirectionalLight, Is.Not.Null);
             Assert.That(result.MoonLight, Is.Not.Null);
             Assert.That(result.DayNightCycle, Is.Not.Null);
+            Assert.That(result.AtmosphereDirector, Is.Not.Null);
+            Assert.That(result.AtmosphereDirector.HasColorGradingVolume, Is.True);
+            Assert.That(result.AtmosphereDirector.FlickerLightCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(result.AtmosphereDirector.DirtyDecalAnchorCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(result.AtmosphereDirector.PropDressingAnchorCount, Is.GreaterThanOrEqualTo(2));
             Assert.That(result.StartCheckpoint.CheckpointId, Is.EqualTo("Start"));
             Assert.That(result.StartCheckpoint.GetComponent<BoxCollider>(), Is.Not.Null);
             Assert.That(result.StartCheckpoint.GetComponent<BoxCollider>().isTrigger, Is.True);
@@ -82,6 +91,9 @@ namespace Neighbor.Main.Tests
             Assert.That(CountInScene<PlayerInventoryHudView>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<EventSystem>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<DayNightCycle>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<SceneAtmosphereDirector>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<AtmosphereFlickerLight>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<AtmosphereDressingAnchor>(scene), Is.EqualTo(4));
         }
 
         [Test]
@@ -114,6 +126,10 @@ namespace Neighbor.Main.Tests
             Assert.That(secondRun.CreatedMoonLight, Is.False);
             Assert.That(secondRun.CreatedDayNightCycle, Is.False);
             Assert.That(secondRun.UpdatedDayNightCycle, Is.False);
+            Assert.That(secondRun.CreatedAtmosphereDirector, Is.False);
+            Assert.That(secondRun.CreatedAtmosphereVolume, Is.False);
+            Assert.That(secondRun.CreatedFlickerLight, Is.False);
+            Assert.That(secondRun.CreatedAtmosphereDressing, Is.False);
             Assert.That(CountInScene<PlayerController>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<PlayerDeathController>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<PlayerKeyRing>(scene), Is.EqualTo(1));
@@ -129,6 +145,9 @@ namespace Neighbor.Main.Tests
             Assert.That(CountInScene<PlayerInventoryHudView>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<EventSystem>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<DayNightCycle>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<SceneAtmosphereDirector>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<AtmosphereFlickerLight>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<AtmosphereDressingAnchor>(scene), Is.EqualTo(4));
         }
 
         private static int CountInScene<T>(Scene scene) where T : Component

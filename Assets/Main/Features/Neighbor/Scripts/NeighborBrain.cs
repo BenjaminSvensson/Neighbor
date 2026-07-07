@@ -122,6 +122,8 @@ namespace Neighbor.Main.Features.Neighbor
 
         [Header("Post-Encounter Vigilance")]
         [SerializeField, Min(0f)] private float postEncounterTaskCooldown = 25f;
+        [SerializeField, Min(0f)] private float postChaseTensionDuration = 12f;
+        [SerializeField, Range(0f, 1f)] private float postChaseSuspicionFloor = 0.32f;
         [SerializeField, Min(0f)] private float vigilancePatrolRadius = 10f;
         [SerializeField, Min(0f)] private float vigilanceWaitMinimum = 1.4f;
         [SerializeField, Min(0f)] private float vigilanceWaitMaximum = 3f;
@@ -177,6 +179,10 @@ namespace Neighbor.Main.Features.Neighbor
         private readonly Dictionary<NeighborTaskLocation, float> taskCompletionMemory = new();
         private readonly Dictionary<GameObject, float> disturbanceMemory = new();
         private readonly Dictionary<GameObject, float> falseAlarmMemory = new();
+        private readonly Dictionary<Door, float> openedDoorMemory = new();
+        private readonly Dictionary<Pickupable, float> movedObjectMemory = new();
+        private readonly Dictionary<GlassShatter, float> brokenGlassMemory = new();
+        private readonly Dictionary<DoorKey, float> stolenKeyMemory = new();
         private readonly Dictionary<Door, int> observedUnexpectedDoorOpenSequences = new();
         private readonly Dictionary<NeighborTaskLocation, float> lastTaskCompletionTimes = new();
         private readonly Dictionary<NeighborTaskLocation, float> blockedTaskUntilTimes = new();
@@ -237,6 +243,14 @@ namespace Neighbor.Main.Features.Neighbor
         private float lastSeenVerificationUntilTime;
         private bool hasChaseDestination;
         private float tasksSuppressedUntilTime;
+        private float postChaseTensionUntilTime;
+        private PlayerFeedbackEvents.StealthLoopPhase lastReportedStealthLoopPhase;
+        private float lastReportedStealthSuspicion = -1f;
+        private float lastReportedStealthTension = -1f;
+        private bool hasReportedStealthLoopPhase;
+        private PlayerFeedbackEvents.NeighborMemoryClueKind lastRememberedClueKind;
+        private string lastRememberedClueName;
+        private Vector3 lastRememberedCluePosition;
         private int adaptiveSecurityPatrolsRemaining;
         private bool adaptiveSecurityPatrolActive;
         private HouseGarageDoorMotion activeGarageDoor;
@@ -293,7 +307,23 @@ namespace Neighbor.Main.Features.Neighbor
             || adaptiveSecurityPatrolsRemaining > 0
             || adaptiveSecurityPatrolActive;
         public float PostEncounterVigilanceTimeRemaining => Mathf.Max(0f, tasksSuppressedUntilTime - Time.time);
+        public bool IsPostChaseTensionActive => Time.time < postChaseTensionUntilTime;
+        public float PostChaseTensionTimeRemaining => Mathf.Max(0f, postChaseTensionUntilTime - Time.time);
+        public float PostChaseTension01 => postChaseTensionDuration <= 0f
+            ? 0f
+            : Mathf.Clamp01(PostChaseTensionTimeRemaining / postChaseTensionDuration);
         public int AdaptiveSecurityPatrolsRemaining => adaptiveSecurityPatrolsRemaining;
+        public int RememberedOpenedDoorCount => CountLiveMemory(openedDoorMemory);
+        public int RememberedMovedObjectCount => CountLiveMemory(movedObjectMemory);
+        public int RememberedBrokenGlassCount => CountLiveMemory(brokenGlassMemory);
+        public int RememberedStolenKeyCount => CountLiveMemory(stolenKeyMemory);
+        public int TotalRememberedClueCount => RememberedOpenedDoorCount
+            + RememberedMovedObjectCount
+            + RememberedBrokenGlassCount
+            + RememberedStolenKeyCount;
+        public PlayerFeedbackEvents.NeighborMemoryClueKind LastRememberedClueKind => lastRememberedClueKind;
+        public string LastRememberedClueName => lastRememberedClueName;
+        public Vector3 LastRememberedCluePosition => lastRememberedCluePosition;
         public SuspicionLevel CurrentSuspicionLevel => GetSuspicionLevel();
         public NeighborTaskLocation ActiveTaskLocation => currentState == BehaviorState.Task
             && currentTaskAnimationPhase != NeighborTaskLocation.TaskAnimationPhase.None
@@ -352,6 +382,7 @@ namespace Neighbor.Main.Features.Neighbor
             NeighborEnvironmentalAwareness.EnvironmentChanged += HandleEnvironmentChanged;
             Door.UnexpectedlyOpened += HandleUnexpectedDoorOpened;
             Door.Disturbed += HandleDoorDisturbed;
+            GlassShatter.Shattered += HandleGlassShattered;
             if (motor != null)
             {
                 motor.DestinationAbandoned += HandleDestinationAbandoned;
@@ -369,6 +400,7 @@ namespace Neighbor.Main.Features.Neighbor
             NeighborEnvironmentalAwareness.EnvironmentChanged -= HandleEnvironmentChanged;
             Door.UnexpectedlyOpened -= HandleUnexpectedDoorOpened;
             Door.Disturbed -= HandleDoorDisturbed;
+            GlassShatter.Shattered -= HandleGlassShattered;
             if (motor != null)
             {
                 motor.DestinationAbandoned -= HandleDestinationAbandoned;
@@ -405,15 +437,18 @@ namespace Neighbor.Main.Features.Neighbor
             TryNoticeObjectLocationChanges();
             if (TryHandleGarageDoorSecurity())
             {
+                ReportStealthLoopIfNeeded(false);
                 return;
             }
 
             if (TryHandleOpenDoorSecurity())
             {
+                ReportStealthLoopIfNeeded(false);
                 return;
             }
 
             UpdateState();
+            ReportStealthLoopIfNeeded(false);
         }
 
         public void Stun(float duration)
@@ -846,6 +881,8 @@ namespace Neighbor.Main.Features.Neighbor
             isPlayerVisible = false;
             waitingAtGoal = false;
             suspicion = 0f;
+            postChaseTensionUntilTime = 0f;
+            hasReportedStealthLoopPhase = false;
             hasChaseDestination = false;
             interruptedTaskLocation = null;
             currentInvestigationSource = null;
@@ -2756,12 +2793,14 @@ namespace Neighbor.Main.Features.Neighbor
                 isVerifyingLastSeenPosition = false;
                 lastSeenVerificationUntilTime = 0f;
                 hasChaseDestination = false;
+                BeginPostChaseTension();
             }
 
             currentState = state;
             motor?.SetChasePursuitActive(state == BehaviorState.Chase);
             if (state == BehaviorState.Chase)
             {
+                postChaseTensionUntilTime = 0f;
                 hasChaseDestination = false;
                 nextChaseRepathTime = 0f;
                 AdaptiveSecurityDirector.ReportChaseStarted();
@@ -2770,6 +2809,8 @@ namespace Neighbor.Main.Features.Neighbor
                     : float.PositiveInfinity;
                 lastChaseProgressTime = Time.time;
             }
+
+            ReportStealthLoopIfNeeded(true);
         }
 
         private void BeginCurrentTaskAudio()
@@ -2925,6 +2966,7 @@ namespace Neighbor.Main.Features.Neighbor
             RememberInterruptedTask();
             AddSuspicion(suspicionAmount, pickup.gameObject);
             RememberPlayerActivity(cluePosition);
+            RememberObjectLocationClue(pickup, cluePosition, suspicionAmount);
             currentInvestigationSource = pickup.gameObject;
             currentUnexpectedOpenDoor = null;
             currentDoorRoomCheckPosition = default;
@@ -2972,6 +3014,11 @@ namespace Neighbor.Main.Features.Neighbor
             observedUnexpectedDoorOpenSequences[door] = door.OpenSequence;
             RememberInterruptedTask();
             AddSuspicion(unexpectedOpenDoorSuspicion, door.gameObject);
+            RememberMemoryClue(
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
+                door,
+                door.transform.position,
+                unexpectedOpenDoorSuspicion);
             Vector3 roomCheckPosition = door.GetPositionBeyond(openerPosition, doorRoomCheckDistance);
             RememberPlayerActivity(roomCheckPosition);
 
@@ -3005,6 +3052,21 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             SetState(BehaviorState.Investigate);
+        }
+
+        private void HandleGlassShattered(GlassShatter glass, Vector3 origin, bool causedByPlayer)
+        {
+            if (glass == null || !causedByPlayer
+                || Vector3.Distance(transform.position, origin) > environmentAwarenessRadius)
+            {
+                return;
+            }
+
+            RememberMemoryClue(
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken,
+                glass,
+                origin,
+                Mathf.Max(suspicion, 0.65f));
         }
 
         private bool TrySetDoorRoomCheckDestination(Door door, Vector3 openerPosition, Vector3 roomCheckPosition)
@@ -3071,6 +3133,15 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            if (IsPostChaseTensionActive)
+            {
+                suspicion = Mathf.MoveTowards(
+                    suspicion,
+                    Mathf.Max(curiousThreshold, postChaseSuspicionFloor),
+                    suspicionDecayPerSecond * 0.35f * deltaTime);
+                return;
+            }
+
             if (IsPostEncounterVigilant)
             {
                 suspicion = Mathf.MoveTowards(
@@ -3106,6 +3177,17 @@ namespace Neighbor.Main.Features.Neighbor
             suspicion = Mathf.Clamp01(suspicion + Mathf.Max(0f, amount + repeatedBonus - falseAlarmPenalty));
         }
 
+        private void BeginPostChaseTension()
+        {
+            if (postChaseTensionDuration <= 0f)
+            {
+                return;
+            }
+
+            postChaseTensionUntilTime = Mathf.Max(postChaseTensionUntilTime, Time.time + postChaseTensionDuration);
+            suspicion = Mathf.Max(suspicion, postChaseSuspicionFloor);
+        }
+
         private SuspicionLevel GetSuspicionLevel()
         {
             if (suspicion >= certainThreshold)
@@ -3119,6 +3201,74 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             return suspicion >= curiousThreshold ? SuspicionLevel.Curious : SuspicionLevel.Relaxed;
+        }
+
+        private void ReportStealthLoopIfNeeded(bool force)
+        {
+            PlayerFeedbackEvents.StealthLoopPhase phase = GetStealthLoopPhase();
+            float tension = PostChaseTension01;
+            bool changed = force
+                || !hasReportedStealthLoopPhase
+                || phase != lastReportedStealthLoopPhase
+                || Mathf.Abs(suspicion - lastReportedStealthSuspicion) >= 0.12f
+                || Mathf.Abs(tension - lastReportedStealthTension) >= 0.2f;
+            if (!changed)
+            {
+                return;
+            }
+
+            hasReportedStealthLoopPhase = true;
+            lastReportedStealthLoopPhase = phase;
+            lastReportedStealthSuspicion = suspicion;
+            lastReportedStealthTension = tension;
+            PlayerFeedbackEvents.ReportStealthLoop(
+                phase,
+                suspicion,
+                0f,
+                tension,
+                GetStealthLoopMessage(phase));
+        }
+
+        private PlayerFeedbackEvents.StealthLoopPhase GetStealthLoopPhase()
+        {
+            if (currentState == BehaviorState.Chase || currentState == BehaviorState.Catching)
+            {
+                return PlayerFeedbackEvents.StealthLoopPhase.Chased;
+            }
+
+            if (currentState == BehaviorState.HuntMode || IsPostChaseTensionActive)
+            {
+                return PlayerFeedbackEvents.StealthLoopPhase.PostChase;
+            }
+
+            if (currentState == BehaviorState.Investigate || currentState == BehaviorState.DoorSecurityCheck)
+            {
+                return PlayerFeedbackEvents.StealthLoopPhase.Searching;
+            }
+
+            SuspicionLevel level = CurrentSuspicionLevel;
+            if (level == SuspicionLevel.Certain || level == SuspicionLevel.Suspicious)
+            {
+                return PlayerFeedbackEvents.StealthLoopPhase.Suspicious;
+            }
+
+            return level == SuspicionLevel.Curious
+                ? PlayerFeedbackEvents.StealthLoopPhase.Curious
+                : PlayerFeedbackEvents.StealthLoopPhase.Quiet;
+        }
+
+        private static string GetStealthLoopMessage(PlayerFeedbackEvents.StealthLoopPhase phase)
+        {
+            return phase switch
+            {
+                PlayerFeedbackEvents.StealthLoopPhase.Chased => "Run or hide",
+                PlayerFeedbackEvents.StealthLoopPhase.PostChase => "Stay hidden. He is checking the area.",
+                PlayerFeedbackEvents.StealthLoopPhase.Searching => "He is investigating.",
+                PlayerFeedbackEvents.StealthLoopPhase.Suspicious => "He is suspicious.",
+                PlayerFeedbackEvents.StealthLoopPhase.Curious => "He heard something.",
+                PlayerFeedbackEvents.StealthLoopPhase.Hiding => "Stay still.",
+                _ => string.Empty
+            };
         }
 
         private void FaceSearchSweep()
@@ -3262,6 +3412,85 @@ namespace Neighbor.Main.Features.Neighbor
             }
         }
 
+        private void RememberObjectLocationClue(Pickupable pickup, Vector3 cluePosition, float suspicionAmount)
+        {
+            if (pickup == null)
+            {
+                return;
+            }
+
+            DoorKey key = pickup.GetComponentInChildren<DoorKey>(true);
+            if (key != null)
+            {
+                RememberMemoryClue(
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
+                    key,
+                    cluePosition,
+                    Mathf.Max(suspicionAmount, 0.32f));
+                return;
+            }
+
+            RememberMemoryClue(
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved,
+                pickup,
+                cluePosition,
+                suspicionAmount);
+        }
+
+        private void RememberMemoryClue(
+            PlayerFeedbackEvents.NeighborMemoryClueKind kind,
+            UnityEngine.Object clue,
+            Vector3 position,
+            float clueSuspicion)
+        {
+            if (clue == null)
+            {
+                return;
+            }
+
+            switch (kind)
+            {
+                case PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened:
+                    if (clue is Door door)
+                    {
+                        openedDoorMemory[door] = GetMemory(openedDoorMemory, door) + 1f;
+                    }
+
+                    break;
+                case PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved:
+                    if (clue is Pickupable pickup)
+                    {
+                        movedObjectMemory[pickup] = GetMemory(movedObjectMemory, pickup) + 1f;
+                    }
+
+                    break;
+                case PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken:
+                    if (clue is GlassShatter glass)
+                    {
+                        brokenGlassMemory[glass] = GetMemory(brokenGlassMemory, glass) + 1f;
+                    }
+
+                    break;
+                case PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen:
+                    if (clue is DoorKey key)
+                    {
+                        stolenKeyMemory[key] = GetMemory(stolenKeyMemory, key) + 1f;
+                    }
+
+                    break;
+            }
+
+            lastRememberedClueKind = kind;
+            lastRememberedClueName = clue.name;
+            lastRememberedCluePosition = position;
+            PlayerFeedbackEvents.ReportNeighborMemory(
+                kind,
+                clue.name,
+                position,
+                Mathf.Max(suspicion, clueSuspicion),
+                TotalRememberedClueCount);
+        }
+
         private void DecayPersistentMemory()
         {
             DecayMemory(searchPointMemory);
@@ -3269,6 +3498,10 @@ namespace Neighbor.Main.Features.Neighbor
             DecayMemory(taskCompletionMemory);
             DecayMemory(disturbanceMemory);
             DecayMemory(falseAlarmMemory);
+            DecayMemory(openedDoorMemory);
+            DecayMemory(movedObjectMemory);
+            DecayMemory(brokenGlassMemory);
+            DecayMemory(stolenKeyMemory);
         }
 
         private void DecayMemory<TKey>(Dictionary<TKey, float> memory) where TKey : UnityEngine.Object
@@ -3290,6 +3523,20 @@ namespace Neighbor.Main.Features.Neighbor
         private static float GetMemory<TKey>(Dictionary<TKey, float> memory, TKey key) where TKey : UnityEngine.Object
         {
             return key != null && memory.TryGetValue(key, out float value) ? value : 0f;
+        }
+
+        private static int CountLiveMemory<TKey>(Dictionary<TKey, float> memory) where TKey : UnityEngine.Object
+        {
+            int count = 0;
+            foreach (KeyValuePair<TKey, float> entry in memory)
+            {
+                if (entry.Key != null && entry.Value > 0.01f)
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         private float GetAdjustedWanderChance()
