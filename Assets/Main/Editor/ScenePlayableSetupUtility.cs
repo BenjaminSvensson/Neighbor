@@ -715,7 +715,6 @@ internal static class ScenePlayableSetupUtility
 
         anchor.transform.SetPositionAndRotation(position, rotation);
         anchor.transform.localScale = scale;
-        anchor.Configure(kind, kind == AtmosphereDressingAnchor.DressingKind.DirtyDecal ? 0.72f : 0.52f);
         Renderer renderer = anchor.GetComponent<Renderer>();
         if (renderer != null)
         {
@@ -723,6 +722,7 @@ internal static class ScenePlayableSetupUtility
             EditorUtility.SetDirty(renderer);
         }
 
+        anchor.Configure(kind, kind == AtmosphereDressingAnchor.DressingKind.DirtyDecal ? 0.72f : 0.52f);
         Collider collider = anchor.GetComponent<Collider>();
         if (collider != null)
         {
