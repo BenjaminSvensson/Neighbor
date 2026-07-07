@@ -56,6 +56,7 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Range(0f, 1f)] private float stackedMemoryCameraBoost = 0.12f;
         [SerializeField, Min(0f)] private float stealthCameraPressureHoldDuration = 2.4f;
         [SerializeField, Min(0f)] private float memoryCameraPressureHoldDuration = 2.8f;
+        [SerializeField, Min(1f)] private float maximumMemoryCameraPressureHoldMultiplier = 1.5f;
         [SerializeField, Min(0f)] private float stealthCameraPressureFadeSpeed = 2.1f;
 
         [Header("Lean")]
@@ -741,7 +742,7 @@ namespace Neighbor.Main.Features.Player
                 return;
             }
 
-            RaiseStealthCameraPressure(GetMemoryCameraPressure(feedback), memoryCameraPressureHoldDuration);
+            RaiseStealthCameraPressure(GetMemoryCameraPressure(feedback), GetMemoryCameraPressureHoldDuration(feedback));
         }
 
         private void RaiseStealthCameraPressure(float pressure, float holdDuration)
@@ -797,6 +798,25 @@ namespace Neighbor.Main.Features.Player
         {
             float stackPressure = Mathf.Clamp01(feedback.TotalMemoryCount / 4f) * stackedMemoryCameraBoost;
             return Mathf.Clamp01(Mathf.Max(memoryCameraPressure, feedback.Urgency) + stackPressure);
+        }
+
+        private float GetMemoryCameraPressureHoldDuration(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
+        {
+            float stackPressure = Mathf.Clamp01(Mathf.Max(0, feedback.TotalMemoryCount - 1) / 3f);
+            float commitment = Mathf.Max(GetMemoryClueSeverity(feedback.Kind), stackPressure);
+            return memoryCameraPressureHoldDuration * Mathf.Lerp(1f, maximumMemoryCameraPressureHoldMultiplier, commitment);
+        }
+
+        private static float GetMemoryClueSeverity(PlayerFeedbackEvents.NeighborMemoryClueKind kind)
+        {
+            return kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => 1f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => 0.78f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => 0.45f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => 0.16f,
+                _ => 0f
+            };
         }
 
         private float Zoom01 => Mathf.InverseLerp(maximumFieldOfView, minimumFieldOfView, currentFieldOfView);
