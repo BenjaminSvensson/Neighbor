@@ -178,6 +178,20 @@ namespace Neighbor.Main.Tests
                 hud,
                 "HandleNeighborInvestigationChanged",
                 new PlayerFeedbackEvents.NeighborInvestigationFeedback(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching,
+                    Vector3.zero,
+                    "Basement Key",
+                    0.72f,
+                    0.92f,
+                    true,
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen));
+
+            Assert.That(warningText.text, Is.EqualTo("SEARCHING THE MISSING KEY"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleNeighborInvestigationChanged",
+                new PlayerFeedbackEvents.NeighborInvestigationFeedback(
                     PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning,
                     Vector3.zero,
                     "Broken Window",
@@ -876,25 +890,51 @@ namespace Neighbor.Main.Tests
                 GameObject glassObject = context.CreateObject("BrokenKitchenWindow");
                 glassObject.transform.position = new Vector3(2f, 0f, 1f);
                 GlassShatter glass = context.AddInitializedComponent<GlassShatter>(glassObject);
+                PlayerFeedbackEvents.NeighborInvestigationFeedback investigationFeedback = default;
+                bool receivedInvestigation = false;
+                PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
 
-                GameplaySmokeTestReflection.Invoke(
-                    brain,
-                    "RememberMemoryClue",
-                    PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken,
-                    glass,
-                    glassObject.transform.position,
-                    0.65f);
+                try
+                {
+                    GameplaySmokeTestReflection.Invoke(
+                        brain,
+                        "RememberMemoryClue",
+                        PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken,
+                        glass,
+                        glassObject.transform.position,
+                        0.65f);
 
-                Assert.That(brain.HasPendingMemoryClueFollowUp, Is.True);
+                    Assert.That(brain.HasPendingMemoryClueFollowUp, Is.True);
 
-                GameplaySmokeTestReflection.Invoke(brain, "ChooseNextRoutineGoal");
+                    GameplaySmokeTestReflection.Invoke(brain, "ChooseNextRoutineGoal");
 
-                Assert.That(brain.CurrentState, Is.EqualTo(NeighborBrain.BehaviorState.Investigate));
-                Assert.That(brain.HasActiveInvestigation, Is.True);
-                Assert.That(brain.CurrentInvestigationSource, Is.SameAs(glassObject));
-                Assert.That(brain.LastKnownInvestigationPosition, Is.EqualTo(glassObject.transform.position));
-                Assert.That(brain.HasPendingMemoryClueFollowUp, Is.False);
-                Assert.That(brain.CurrentSuspicionLevel, Is.EqualTo(NeighborBrain.SuspicionLevel.Suspicious));
+                    Assert.That(brain.CurrentState, Is.EqualTo(NeighborBrain.BehaviorState.Investigate));
+                    Assert.That(brain.HasActiveInvestigation, Is.True);
+                    Assert.That(brain.CurrentInvestigationSource, Is.SameAs(glassObject));
+                    Assert.That(brain.LastKnownInvestigationPosition, Is.EqualTo(glassObject.transform.position));
+                    Assert.That(brain.HasPendingMemoryClueFollowUp, Is.False);
+                    Assert.That(brain.CurrentSuspicionLevel, Is.EqualTo(NeighborBrain.SuspicionLevel.Suspicious));
+                    Assert.That(receivedInvestigation, Is.True);
+                    Assert.That(
+                        investigationFeedback.Kind,
+                        Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail));
+                    Assert.That(investigationFeedback.IsTrailRelated, Is.True);
+                    Assert.That(investigationFeedback.HasMemoryClueKind, Is.True);
+                    Assert.That(
+                        investigationFeedback.MemoryClueKind,
+                        Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken));
+                    Assert.That(investigationFeedback.SourceName, Is.EqualTo(glassObject.name));
+                }
+                finally
+                {
+                    PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
+                }
+
+                void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback item)
+                {
+                    investigationFeedback = item;
+                    receivedInvestigation = true;
+                }
             }
             finally
             {
@@ -969,6 +1009,10 @@ namespace Neighbor.Main.Tests
                     Assert.That(receivedInvestigation, Is.True);
                     Assert.That(investigationFeedback.Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail));
                     Assert.That(investigationFeedback.IsTrailRelated, Is.True);
+                    Assert.That(investigationFeedback.HasMemoryClueKind, Is.True);
+                    Assert.That(
+                        investigationFeedback.MemoryClueKind,
+                        Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken));
                     Assert.That(investigationFeedback.SourceName, Is.EqualTo(glassObject.name));
                     Assert.That(investigationFeedback.Urgency, Is.GreaterThanOrEqualTo(0.65f));
                 }
@@ -1023,9 +1067,13 @@ namespace Neighbor.Main.Tests
                 Assert.That(feedback, Has.Count.EqualTo(1));
                 Assert.That(feedback[0].Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching));
                 Assert.That(feedback[0].IsTrailRelated, Is.True);
+                Assert.That(feedback[0].HasMemoryClueKind, Is.True);
+                Assert.That(
+                    feedback[0].MemoryClueKind,
+                    Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken));
                 Assert.That(feedback[0].Position, Is.EqualTo(cluePosition));
                 Assert.That(feedback[0].SourceName, Is.EqualTo(glassObject.name));
-                Assert.That(feedback[0].Urgency, Is.EqualTo(0.65f).Within(0.001f));
+                Assert.That(feedback[0].Urgency, Is.GreaterThanOrEqualTo(0.78f));
                 Assert.That(brain.HasReportedHuntMemoryClueSearch, Is.True);
             }
             finally
@@ -1036,6 +1084,55 @@ namespace Neighbor.Main.Tests
             void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback item)
             {
                 feedback.Add(item);
+            }
+        }
+
+        [Test]
+        public void NeighborMemory_MovedObjectTrailSearchReportsObjectClue()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            GameObject movedObject = context.CreateObject("MovedChair");
+            Vector3 cluePosition = new(1.5f, 0f, -0.75f);
+            PlayerFeedbackEvents.NeighborInvestigationFeedback feedback = default;
+            bool received = false;
+            PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
+
+            try
+            {
+                GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.HuntMode);
+                GameplaySmokeTestReflection.SetField(brain, "currentHuntMemoryClueActive", true);
+                GameplaySmokeTestReflection.SetField(
+                    brain,
+                    "currentHuntMemoryClueKind",
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved);
+                GameplaySmokeTestReflection.SetField(brain, "currentHuntMemoryClueSource", movedObject);
+                GameplaySmokeTestReflection.SetField(brain, "currentInvestigationSource", movedObject);
+                GameplaySmokeTestReflection.SetField(brain, "lastKnownInvestigationPosition", cluePosition);
+                GameplaySmokeTestReflection.SetField(brain, "investigationMoveMode", NeighborMotor.MoveMode.Walk);
+                GameplaySmokeTestReflection.SetField(brain, "suspicion", 0.24f);
+
+                GameplaySmokeTestReflection.Invoke(brain, "ReportHuntMemoryClueSearchIfNeeded");
+
+                Assert.That(received, Is.True);
+                Assert.That(feedback.Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching));
+                Assert.That(feedback.IsTrailRelated, Is.True);
+                Assert.That(feedback.HasMemoryClueKind, Is.True);
+                Assert.That(
+                    feedback.MemoryClueKind,
+                    Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved));
+                Assert.That(feedback.SourceName, Is.EqualTo(movedObject.name));
+                Assert.That(feedback.Suspicion, Is.GreaterThanOrEqualTo(0.44f));
+                Assert.That(feedback.Urgency, Is.GreaterThanOrEqualTo(0.58f));
+            }
+            finally
+            {
+                PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
+            }
+
+            void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback item)
+            {
+                feedback = item;
+                received = true;
             }
         }
 
@@ -1069,6 +1166,10 @@ namespace Neighbor.Main.Tests
                 Assert.That(received, Is.True);
                 Assert.That(feedback.Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning));
                 Assert.That(feedback.IsTrailRelated, Is.True);
+                Assert.That(feedback.HasMemoryClueKind, Is.True);
+                Assert.That(
+                    feedback.MemoryClueKind,
+                    Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken));
                 Assert.That(feedback.SourceName, Is.EqualTo(glassObject.name));
                 Assert.That(brain.IsHuntingMemoryClue, Is.False);
                 Assert.That(brain.IsCurrentInvestigationTrailRelated, Is.False);
@@ -1114,6 +1215,10 @@ namespace Neighbor.Main.Tests
                 Assert.That(received, Is.True);
                 Assert.That(feedback.Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned));
                 Assert.That(feedback.IsTrailRelated, Is.True);
+                Assert.That(feedback.HasMemoryClueKind, Is.True);
+                Assert.That(
+                    feedback.MemoryClueKind,
+                    Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken));
                 Assert.That(feedback.SourceName, Is.EqualTo(glassObject.name));
                 Assert.That(brain.IsHuntingMemoryClue, Is.False);
                 Assert.That(brain.CurrentHuntMemoryClueSource, Is.Null);
