@@ -228,6 +228,48 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void HidingBreath_RecoversWhenDangerHasPassed()
+        {
+            PlayerHidingState hidingState = context.AddInitializedComponent<PlayerHidingState>(
+                context.CreateObject("Player"));
+            hidingState.SetHidden(true);
+            hidingState.AddBreathTension(0.58f);
+            GameplaySmokeTestReflection.SetField(hidingState, "hiddenSinceTime", Time.time - 5f);
+            GameplaySmokeTestReflection.SetField(hidingState, "hiddenBreathRecoveryDelay", 0f);
+            GameplaySmokeTestReflection.SetField(hidingState, "calmHiddenBreathRecoveryRate", 0.2f);
+
+            float before = hidingState.BreathTension01;
+
+            GameplaySmokeTestReflection.Invoke(hidingState, "UpdateHiddenBreathTension", 1f);
+
+            Assert.That(hidingState.BreathTension01, Is.LessThan(before));
+        }
+
+        [Test]
+        public void HidingBreath_BuildsWhenNeighborSearchesNearby()
+        {
+            PlayerHidingState hidingState = context.AddInitializedComponent<PlayerHidingState>(
+                context.CreateObject("Player"));
+            hidingState.SetHidden(true);
+            hidingState.AddBreathTension(0.18f);
+            GameplaySmokeTestReflection.SetField(hidingState, "hiddenSinceTime", Time.time - 5f);
+            GameplaySmokeTestReflection.SetField(hidingState, "hiddenBreathGraceTime", 0f);
+            GameplaySmokeTestReflection.SetField(hidingState, "breathTensionBuildRate", 0.2f);
+
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            neighborObject.transform.position = Vector3.forward;
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.HuntMode);
+            GameplaySmokeTestReflection.SetField(hidingState, "dangerNeighbor", brain);
+
+            float before = hidingState.BreathTension01;
+
+            GameplaySmokeTestReflection.Invoke(hidingState, "UpdateHiddenBreathTension", 1f);
+
+            Assert.That(hidingState.BreathTension01, Is.GreaterThan(before));
+        }
+
+        [Test]
         public void NeighborMemory_RemembersDoorObjectBrokenGlassAndStolenKeyClues()
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
