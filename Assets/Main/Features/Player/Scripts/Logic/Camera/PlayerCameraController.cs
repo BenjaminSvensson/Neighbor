@@ -46,12 +46,16 @@ namespace Neighbor.Main.Features.Player
 
         [Header("Stealth Camera Pressure")]
         [SerializeField] private bool respondToStealthLoop = true;
+        [SerializeField] private bool respondToNeighborMemory = true;
         [SerializeField, Range(0f, 1f)] private float stealthWobbleBoost = 0.45f;
         [SerializeField, Min(0f)] private float stealthShakeAmount = 0.18f;
         [SerializeField, Min(0f)] private float stealthFieldOfViewKick = 2.4f;
         [SerializeField, Range(0f, 1f)] private float calmHidingCameraPressure = 0.08f;
         [SerializeField, Range(0f, 1f)] private float calmPostChaseCameraPressure = 0.14f;
+        [SerializeField, Range(0f, 1f)] private float memoryCameraPressure = 0.24f;
+        [SerializeField, Range(0f, 1f)] private float stackedMemoryCameraBoost = 0.12f;
         [SerializeField, Min(0f)] private float stealthCameraPressureHoldDuration = 2.4f;
+        [SerializeField, Min(0f)] private float memoryCameraPressureHoldDuration = 2.8f;
         [SerializeField, Min(0f)] private float stealthCameraPressureFadeSpeed = 2.1f;
 
         [Header("Lean")]
@@ -189,11 +193,14 @@ namespace Neighbor.Main.Features.Player
         {
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
             PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
+            PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NeighborMemoryChanged += HandleNeighborMemoryChanged;
         }
 
         private void OnDisable()
         {
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
         }
 
         private void Start()
@@ -727,6 +734,16 @@ namespace Neighbor.Main.Features.Player
             RaiseStealthCameraPressure(GetStealthCameraPressure(feedback), stealthCameraPressureHoldDuration);
         }
 
+        private void HandleNeighborMemoryChanged(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
+        {
+            if (!respondToNeighborMemory)
+            {
+                return;
+            }
+
+            RaiseStealthCameraPressure(GetMemoryCameraPressure(feedback), memoryCameraPressureHoldDuration);
+        }
+
         private void RaiseStealthCameraPressure(float pressure, float holdDuration)
         {
             targetStealthCameraPressure = Mathf.Clamp01(pressure);
@@ -742,7 +759,7 @@ namespace Neighbor.Main.Features.Player
 
         private void UpdateStealthCameraPressure(float deltaTime)
         {
-            if (!respondToStealthLoop)
+            if (!respondToStealthLoop && !respondToNeighborMemory)
             {
                 targetStealthCameraPressure = 0f;
             }
@@ -774,6 +791,12 @@ namespace Neighbor.Main.Features.Player
                 PlayerFeedbackEvents.StealthLoopPhase.Curious => Mathf.Max(0.18f, pressure * 0.65f),
                 _ => 0f
             };
+        }
+
+        private float GetMemoryCameraPressure(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
+        {
+            float stackPressure = Mathf.Clamp01(feedback.TotalMemoryCount / 4f) * stackedMemoryCameraBoost;
+            return Mathf.Clamp01(Mathf.Max(memoryCameraPressure, feedback.Urgency) + stackPressure);
         }
 
         private float Zoom01 => Mathf.InverseLerp(maximumFieldOfView, minimumFieldOfView, currentFieldOfView);

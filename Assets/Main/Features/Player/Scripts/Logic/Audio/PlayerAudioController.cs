@@ -36,11 +36,15 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Range(0f, 1f)] private float hiddenInspectionBreathStress = 0.62f;
         [SerializeField, Min(0f)] private float hiddenBreathPitchLift = 0.08f;
         [SerializeField] private bool respondToStealthLoop = true;
+        [SerializeField] private bool respondToNeighborMemory = true;
         [SerializeField, Range(0f, 1f)] private float stealthBreathVolume = 0.32f;
         [SerializeField, Min(0f)] private float stealthBreathPitchLift = 0.06f;
         [SerializeField, Range(0f, 1f)] private float calmHidingStealthBreathPressure = 0.04f;
         [SerializeField, Range(0f, 1f)] private float calmPostChaseStealthBreathPressure = 0.12f;
+        [SerializeField, Range(0f, 1f)] private float memoryStealthBreathPressure = 0.2f;
+        [SerializeField, Range(0f, 1f)] private float stackedMemoryStealthBreathBoost = 0.1f;
         [SerializeField, Min(0f)] private float stealthBreathHoldDuration = 2.6f;
+        [SerializeField, Min(0f)] private float memoryStealthBreathHoldDuration = 3f;
         [SerializeField, Min(0f)] private float stealthBreathFadeSpeed = 1.8f;
 
         [Header("Movement Actions")]
@@ -165,6 +169,8 @@ namespace Neighbor.Main.Features.Player
             SubscribeToCameraZoom();
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
             PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
+            PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NeighborMemoryChanged += HandleNeighborMemoryChanged;
         }
 
         private void Update()
@@ -466,6 +472,16 @@ namespace Neighbor.Main.Features.Player
             RaiseStealthBreathStress(GetStealthBreathStress(feedback), stealthBreathHoldDuration);
         }
 
+        private void HandleNeighborMemoryChanged(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
+        {
+            if (!respondToNeighborMemory)
+            {
+                return;
+            }
+
+            RaiseStealthBreathStress(GetMemoryBreathStress(feedback), memoryStealthBreathHoldDuration);
+        }
+
         private void RaiseStealthBreathStress(float stress, float holdDuration)
         {
             targetStealthBreathStress = Mathf.Clamp01(stress);
@@ -481,7 +497,7 @@ namespace Neighbor.Main.Features.Player
 
         private void UpdateStealthBreathStress(float deltaTime)
         {
-            if (!respondToStealthLoop)
+            if (!respondToStealthLoop && !respondToNeighborMemory)
             {
                 targetStealthBreathStress = 0f;
             }
@@ -513,6 +529,12 @@ namespace Neighbor.Main.Features.Player
                 PlayerFeedbackEvents.StealthLoopPhase.Curious => Mathf.Max(0.14f, pressure * 0.6f),
                 _ => 0f
             };
+        }
+
+        private float GetMemoryBreathStress(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
+        {
+            float stackPressure = Mathf.Clamp01(feedback.TotalMemoryCount / 4f) * stackedMemoryStealthBreathBoost;
+            return Mathf.Clamp01(Mathf.Max(memoryStealthBreathPressure, feedback.Urgency) + stackPressure);
         }
 
         private void ResolveHidingState()
@@ -566,6 +588,7 @@ namespace Neighbor.Main.Features.Player
         private void OnDisable()
         {
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
             if (cameraController != null)
             {
                 cameraController.ZoomDirectionChanged -= UpdateZoomLoop;
