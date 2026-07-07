@@ -284,15 +284,34 @@ namespace Neighbor.Main.Tests
             SetField(deathController, "groundHoldDuration", 0.01f);
             SetField(deathController, "fadeOutDuration", 0.01f);
 
+            PlayerFeedbackEvents.RespawnFeedback respawnFeedback = default;
+            bool receivedRespawnFeedback = false;
+            PlayerFeedbackEvents.PlayerRespawned += HandleRespawn;
             player.transform.position = new Vector3(8f, 0f, 0f);
-            RunCoroutine(
-                InvokeResult<IEnumerator>(deathController, "DeathAndReset", Vector3.zero),
-                "Player death reset did not finish.");
+            try
+            {
+                RunCoroutine(
+                    InvokeResult<IEnumerator>(deathController, "DeathAndReset", Vector3.zero),
+                    "Player death reset did not finish.");
+            }
+            finally
+            {
+                PlayerFeedbackEvents.PlayerRespawned -= HandleRespawn;
+            }
 
             Assert.That(deathController.IsDead, Is.False);
             Assert.That(Vector3.Distance(player.transform.position, spawnPosition), Is.LessThan(0.05f));
             Assert.That(player.enabled, Is.True);
             Assert.That(player.IsBeartrapLocked, Is.False);
+            Assert.That(receivedRespawnFeedback, Is.True);
+            Assert.That(respawnFeedback.UsedCheckpoint, Is.False);
+            Assert.That(respawnFeedback.Name, Is.EqualTo("Start"));
+
+            void HandleRespawn(PlayerFeedbackEvents.RespawnFeedback feedback)
+            {
+                respawnFeedback = feedback;
+                receivedRespawnFeedback = true;
+            }
         }
 
         [Test]
@@ -307,26 +326,54 @@ namespace Neighbor.Main.Tests
             PlayerRespawnCheckpoint checkpoint = CreateObject("BedCheckpoint").AddComponent<PlayerRespawnCheckpoint>();
             checkpoint.transform.SetPositionAndRotation(new Vector3(9f, 0f, 3f), Quaternion.Euler(0f, 135f, 0f));
             SetField(checkpoint, "checkpointId", "Bed");
+            SetField(checkpoint, "checkpointDisplayName", "Guest Bed");
             SetField(checkpoint, "persistCheckpoint", false);
 
+            Assert.That(
+                checkpoint.TryGetInteractionTooltip(
+                    null,
+                    InteractionTooltipContext.FocusedInteractable,
+                    out string checkpointAction,
+                    out _),
+                Is.True);
+            Assert.That(checkpointAction, Is.EqualTo("Save Guest Bed"));
             Assert.That(checkpoint.Activate(player), Is.True);
             Assert.That(deathController.HasCheckpoint, Is.True);
-            Assert.That(deathController.ActiveCheckpointId, Is.EqualTo("Bed"));
+            Assert.That(deathController.ActiveCheckpointId, Is.EqualTo("Guest Bed"));
 
             SetField(deathController, "fallDuration", 0.01f);
             SetField(deathController, "impactDuration", 0.01f);
             SetField(deathController, "groundHoldDuration", 0.01f);
             SetField(deathController, "fadeOutDuration", 0.01f);
 
+            PlayerFeedbackEvents.RespawnFeedback respawnFeedback = default;
+            bool receivedRespawnFeedback = false;
+            PlayerFeedbackEvents.PlayerRespawned += HandleRespawn;
             player.transform.position = new Vector3(12f, 0f, -4f);
-            RunCoroutine(
-                InvokeResult<IEnumerator>(deathController, "DeathAndReset", Vector3.zero),
-                "Player checkpoint death reset did not finish.");
+            try
+            {
+                RunCoroutine(
+                    InvokeResult<IEnumerator>(deathController, "DeathAndReset", Vector3.zero),
+                    "Player checkpoint death reset did not finish.");
+            }
+            finally
+            {
+                PlayerFeedbackEvents.PlayerRespawned -= HandleRespawn;
+            }
 
             Assert.That(deathController.IsDead, Is.False);
             Assert.That(Vector3.Distance(player.transform.position, checkpoint.RespawnPosition), Is.LessThan(0.05f));
             Assert.That(Quaternion.Angle(player.transform.rotation, checkpoint.RespawnRotation), Is.LessThan(1f));
             Assert.That(player.enabled, Is.True);
+            Assert.That(receivedRespawnFeedback, Is.True);
+            Assert.That(respawnFeedback.UsedCheckpoint, Is.True);
+            Assert.That(respawnFeedback.Name, Is.EqualTo("Guest Bed"));
+
+            void HandleRespawn(PlayerFeedbackEvents.RespawnFeedback feedback)
+            {
+                respawnFeedback = feedback;
+                receivedRespawnFeedback = true;
+            }
         }
 
         [Test]

@@ -42,6 +42,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.AmbienceZoneChanged += HandleAmbienceZoneChanged;
             PlayerFeedbackEvents.DayPhaseChanged += HandleDayPhaseChanged;
             PlayerFeedbackEvents.CheckpointReached += HandleCheckpointReached;
+            PlayerFeedbackEvents.PlayerRespawned += HandlePlayerRespawned;
             PlayerFeedbackEvents.OnboardingPrompted += HandleOnboardingPrompted;
             PlayerFeedbackEvents.ObjectiveProgressed += HandleObjectiveProgressed;
             PlayerFeedbackEvents.DoorInteractionReported += HandleDoorInteractionReported;
@@ -56,6 +57,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.AmbienceZoneChanged -= HandleAmbienceZoneChanged;
             PlayerFeedbackEvents.DayPhaseChanged -= HandleDayPhaseChanged;
             PlayerFeedbackEvents.CheckpointReached -= HandleCheckpointReached;
+            PlayerFeedbackEvents.PlayerRespawned -= HandlePlayerRespawned;
             PlayerFeedbackEvents.OnboardingPrompted -= HandleOnboardingPrompted;
             PlayerFeedbackEvents.ObjectiveProgressed -= HandleObjectiveProgressed;
             PlayerFeedbackEvents.DoorInteractionReported -= HandleDoorInteractionReported;
@@ -347,6 +349,17 @@ namespace Neighbor.Main.Features.Player
             warningText.text = $"{feedback.Name} SAVED".ToUpperInvariant();
             warningText.color = new Color(0.58f, 0.9f, 1f, 0.95f);
             messageUntil = Time.unscaledTime + 2.6f;
+        }
+
+        private void HandlePlayerRespawned(PlayerFeedbackEvents.RespawnFeedback feedback)
+        {
+            warningText.text = feedback.UsedCheckpoint
+                ? $"RESPAWNED AT {feedback.Name}".ToUpperInvariant()
+                : "RESPAWNED AT START";
+            warningText.color = feedback.UsedCheckpoint
+                ? new Color(0.58f, 0.92f, 1f, 0.96f)
+                : new Color(0.78f, 0.84f, 0.94f, 0.94f);
+            messageUntil = Time.unscaledTime + 2.8f;
         }
 
         private void HandleObjectiveProgressChanged(CoreLoopObjectiveTracker tracker)
