@@ -33,6 +33,8 @@ namespace Neighbor.Main.Features.Player
         private float stealthLoopStatusUntil;
         private int lastNeighborMemoryCount;
         private float lastNeighborMemorySuspicion;
+        private bool hasLastNeighborMemoryKind;
+        private PlayerFeedbackEvents.NeighborMemoryClueKind lastNeighborMemoryKind;
         private float neighborMemoryStatusUntil;
         private float lastNeighborTrailInvestigationPressure;
         private float neighborTrailInvestigationUntil;
@@ -186,7 +188,7 @@ namespace Neighbor.Main.Features.Player
 
             if (trackedNeighbor == null)
             {
-                awarenessText.text = memoryPressure >= 0.35f ? "MEMORY" : "UNNOTICED";
+                awarenessText.text = memoryPressure >= 0.35f ? BuildAwarenessMemoryText(false) : "UNNOTICED";
                 return;
             }
 
@@ -194,14 +196,14 @@ namespace Neighbor.Main.Features.Player
                 || trackedNeighbor.IsCurrentInvestigationTrailRelated
                 || IsTrailInvestigationActive())
             {
-                awarenessText.text = "TRAIL";
+                awarenessText.text = BuildAwarenessMemoryText(true);
                 return;
             }
 
             int memoryCount = GetDisplayedMemoryCount();
             if (trackedNeighbor.PostChaseTension01 >= 0.05f && memoryPressure >= 0.55f)
             {
-                awarenessText.text = memoryCount >= 3 ? "TRAIL" : "MEMORY";
+                awarenessText.text = BuildAwarenessMemoryText(memoryCount >= 3);
                 return;
             }
 
@@ -226,7 +228,7 @@ namespace Neighbor.Main.Features.Player
 
             if (memoryPressure >= 0.35f)
             {
-                awarenessText.text = memoryCount >= 3 ? "TRAIL" : "MEMORY";
+                awarenessText.text = BuildAwarenessMemoryText(memoryCount >= 3);
                 return;
             }
 
@@ -450,7 +452,7 @@ namespace Neighbor.Main.Features.Player
             {
                 if (trackedNeighbor.IsHuntingMemoryClue || IsTrailInvestigationActive() || memoryPressure >= 0.55f)
                 {
-                    warningText.text = memoryCount >= 3 ? "HE IS FOLLOWING YOUR TRAIL" : "HE REMEMBERS";
+                    warningText.text = BuildPersistentMemoryWarningText(memoryCount >= 3 || IsTrailInvestigationActive());
                     warningText.color = Color.Lerp(
                         new Color(1f, 0.62f, 0.16f, 0.96f),
                         new Color(1f, 0.28f, 0.08f, 1f),
@@ -483,7 +485,7 @@ namespace Neighbor.Main.Features.Player
 
             if (memoryPressure >= 0.55f)
             {
-                warningText.text = memoryCount >= 3 ? "HE IS FOLLOWING YOUR TRAIL" : "HE REMEMBERS";
+                warningText.text = BuildPersistentMemoryWarningText(memoryCount >= 3);
                 warningText.color = Color.Lerp(
                     new Color(0.9f, 0.82f, 0.62f, 0.95f),
                     new Color(1f, 0.36f, 0.12f, 1f),
@@ -719,6 +721,8 @@ namespace Neighbor.Main.Features.Player
         {
             lastNeighborMemoryCount = feedback.TotalMemoryCount;
             lastNeighborMemorySuspicion = feedback.Urgency;
+            hasLastNeighborMemoryKind = true;
+            lastNeighborMemoryKind = feedback.Kind;
             neighborMemoryStatusUntil = Time.unscaledTime + Mathf.Lerp(
                 4f,
                 9f,
@@ -740,6 +744,12 @@ namespace Neighbor.Main.Features.Player
 
         private void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
         {
+            if (feedback.HasMemoryClueKind)
+            {
+                hasLastNeighborMemoryKind = true;
+                lastNeighborMemoryKind = feedback.MemoryClueKind;
+            }
+
             UpdateTrailInvestigationPulse(feedback);
             warningText.text = BuildInvestigationWarningText(feedback);
             warningText.color = GetInvestigationWarningColor(feedback);
@@ -1123,6 +1133,116 @@ namespace Neighbor.Main.Features.Player
                 && lastNeighborTrailInvestigationPressure > 0.05f;
         }
 
+        private string BuildAwarenessMemoryText(bool trailRelated)
+        {
+            if (!TryGetDisplayedMemoryClueKind(out PlayerFeedbackEvents.NeighborMemoryClueKind kind))
+            {
+                return trailRelated ? "TRAIL" : "MEMORY";
+            }
+
+            return $"{GetMemoryClueShortLabel(kind)} {(trailRelated ? "TRAIL" : "MEMORY")}";
+        }
+
+        private string BuildMemoryStatusLabel(bool trailRelated)
+        {
+            if (!TryGetDisplayedMemoryClueKind(out PlayerFeedbackEvents.NeighborMemoryClueKind kind))
+            {
+                return trailRelated ? "YOUR TRAIL" : "MEMORY";
+            }
+
+            return $"{GetMemoryClueShortLabel(kind)} {(trailRelated ? "TRAIL" : "MEMORY")}";
+        }
+
+        private string BuildPersistentMemoryWarningText(bool trailRelated)
+        {
+            if (!TryGetDisplayedMemoryClueKind(out PlayerFeedbackEvents.NeighborMemoryClueKind kind))
+            {
+                return trailRelated ? "HE IS FOLLOWING YOUR TRAIL" : "HE REMEMBERS";
+            }
+
+            return trailRelated
+                ? BuildTrackingMemoryWarningText(kind)
+                : BuildRememberedMemoryWarningText(kind);
+        }
+
+        private bool TryGetDisplayedMemoryClueKind(out PlayerFeedbackEvents.NeighborMemoryClueKind kind)
+        {
+            if (trackedNeighbor != null)
+            {
+                if (trackedNeighbor.IsHuntingMemoryClue)
+                {
+                    kind = trackedNeighbor.CurrentHuntMemoryClueKind;
+                    return true;
+                }
+
+                if (trackedNeighbor.IsCurrentInvestigationMemoryClue)
+                {
+                    kind = trackedNeighbor.CurrentInvestigationMemoryClueKind;
+                    return true;
+                }
+
+                if (trackedNeighbor.HasPendingMemoryClueFollowUp)
+                {
+                    kind = trackedNeighbor.PendingMemoryClueKind;
+                    return true;
+                }
+
+                if (trackedNeighbor.TotalRememberedClueCount > 0
+                    && trackedNeighbor.RememberedClueTension01 > 0.01f)
+                {
+                    kind = trackedNeighbor.LastRememberedClueKind;
+                    return true;
+                }
+            }
+
+            if (hasLastNeighborMemoryKind
+                && (Time.unscaledTime < neighborMemoryStatusUntil
+                    || Time.unscaledTime < neighborTrailInvestigationUntil))
+            {
+                kind = lastNeighborMemoryKind;
+                return true;
+            }
+
+            kind = default;
+            return false;
+        }
+
+        private static string GetMemoryClueShortLabel(PlayerFeedbackEvents.NeighborMemoryClueKind kind)
+        {
+            return kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => "KEY",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => "GLASS",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => "OBJECT",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => "DOOR",
+                _ => "CLUE"
+            };
+        }
+
+        private static string BuildTrackingMemoryWarningText(PlayerFeedbackEvents.NeighborMemoryClueKind kind)
+        {
+            return kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => "HE IS TRACKING THE STOLEN KEY",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => "HE IS CHECKING THE BROKEN GLASS",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => "HE IS TRACKING THE MOVED OBJECT",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => "HE IS CHECKING THAT DOOR",
+                _ => "HE IS FOLLOWING YOUR TRAIL"
+            };
+        }
+
+        private static string BuildRememberedMemoryWarningText(PlayerFeedbackEvents.NeighborMemoryClueKind kind)
+        {
+            return kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => "HE REMEMBERS THE STOLEN KEY",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => "HE REMEMBERS THE BROKEN GLASS",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => "HE REMEMBERS THE MOVED OBJECT",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => "HE REMEMBERS THAT DOOR",
+                _ => "HE REMEMBERS"
+            };
+        }
+
         private float GetDisplayedNoiseLevel()
         {
             float heardPressure = GetDisplayedHeardNoisePressure();
@@ -1158,6 +1278,8 @@ namespace Neighbor.Main.Features.Player
             float tension,
             float memoryPressure)
         {
+            string memoryStatusLabel = BuildMemoryStatusLabel(false);
+            string trailStatusLabel = BuildMemoryStatusLabel(true);
             if (memoryPressure >= 0.55f
                 && phase != PlayerFeedbackEvents.StealthLoopPhase.Chased
                 && phase != PlayerFeedbackEvents.StealthLoopPhase.Hiding
@@ -1165,12 +1287,14 @@ namespace Neighbor.Main.Features.Player
                 && phase != PlayerFeedbackEvents.StealthLoopPhase.Searching
                 && phase != PlayerFeedbackEvents.StealthLoopPhase.PostChase)
             {
-                return memoryPressure >= 0.75f ? "SUSPICIOUS / YOUR TRAIL" : "SUSPICIOUS / MEMORY";
+                return memoryPressure >= 0.75f
+                    ? $"SUSPICIOUS / {trailStatusLabel}"
+                    : $"SUSPICIOUS / {memoryStatusLabel}";
             }
 
             if (memoryPressure >= 0.3f && phase == PlayerFeedbackEvents.StealthLoopPhase.Curious)
             {
-                return "CURIOUS / MEMORY";
+                return $"CURIOUS / {memoryStatusLabel}";
             }
 
             switch (phase)
@@ -1192,19 +1316,21 @@ namespace Neighbor.Main.Features.Player
                 case PlayerFeedbackEvents.StealthLoopPhase.PostChase:
                     if (IsTrailInvestigationActive())
                     {
-                        return "RECOVERY / TRAIL SEARCH";
+                        return TryGetDisplayedMemoryClueKind(out _)
+                            ? $"RECOVERY / {trailStatusLabel}"
+                            : "RECOVERY / TRAIL SEARCH";
                     }
 
                     if (memoryPressure >= 0.55f)
                     {
-                        return "RECOVERY / TRAIL";
+                        return $"RECOVERY / {trailStatusLabel}";
                     }
 
                     return tension >= 0.45f ? "RECOVERY / SEARCHING" : "RECOVERY / QUIET DOWN";
                 case PlayerFeedbackEvents.StealthLoopPhase.Searching:
                     if (IsTrailInvestigationActive() || memoryPressure >= 0.55f)
                     {
-                        return "SEARCHING / YOUR TRAIL";
+                        return $"SEARCHING / {trailStatusLabel}";
                     }
 
                     return noise >= 0.35f ? "SEARCHING / NOISE TRACE" : "SEARCHING";

@@ -274,6 +274,30 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AwarenessHud_LabelsMemoryInvestigationWithClueKind()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.Investigate);
+            GameplaySmokeTestReflection.SetField(brain, "currentInvestigationTrailRelated", true);
+            GameplaySmokeTestReflection.SetField(brain, "currentInvestigationMemoryClueActive", true);
+            GameplaySmokeTestReflection.SetField(
+                brain,
+                "currentInvestigationMemoryClueKind",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken);
+            GameplaySmokeTestReflection.SetField(hud, "trackedNeighbor", brain);
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateAwareness");
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateStealthStatus");
+
+            Text awarenessText = GameplaySmokeTestReflection.GetField<Text>(hud, "awarenessText");
+            Text stealthStatusText = GameplaySmokeTestReflection.GetField<Text>(hud, "stealthStatusText");
+            Assert.That(awarenessText.text, Is.EqualTo("GLASS TRAIL"));
+            Assert.That(stealthStatusText.text, Is.EqualTo("SEARCHING / GLASS TRAIL"));
+        }
+
+        [Test]
         public void AwarenessHud_LabelsActiveMemoryHuntAsTrail()
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
@@ -282,6 +306,10 @@ namespace Neighbor.Main.Tests
 
             GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.HuntMode);
             GameplaySmokeTestReflection.SetField(brain, "currentHuntMemoryClueActive", true);
+            GameplaySmokeTestReflection.SetField(
+                brain,
+                "currentHuntMemoryClueKind",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen);
             GameplaySmokeTestReflection.SetField(hud, "trackedNeighbor", brain);
             GameplaySmokeTestReflection.Invoke(hud, "UpdateAwareness");
             GameplaySmokeTestReflection.Invoke(
@@ -297,8 +325,8 @@ namespace Neighbor.Main.Tests
 
             Text awarenessText = GameplaySmokeTestReflection.GetField<Text>(hud, "awarenessText");
             Text stealthStatusText = GameplaySmokeTestReflection.GetField<Text>(hud, "stealthStatusText");
-            Assert.That(awarenessText.text, Is.EqualTo("TRAIL"));
-            Assert.That(stealthStatusText.text, Is.EqualTo("RECOVERY / TRAIL SEARCH"));
+            Assert.That(awarenessText.text, Is.EqualTo("KEY TRAIL"));
+            Assert.That(stealthStatusText.text, Is.EqualTo("RECOVERY / KEY TRAIL"));
         }
 
         [Test]
@@ -363,8 +391,8 @@ namespace Neighbor.Main.Tests
             Text stealthStatusText = GameplaySmokeTestReflection.GetField<Text>(hud, "stealthStatusText");
             Image tensionFill = GameplaySmokeTestReflection.GetField<Image>(hud, "tensionFill");
 
-            Assert.That(awarenessText.text, Is.EqualTo("MEMORY"));
-            Assert.That(stealthStatusText.text, Is.EqualTo("SUSPICIOUS / YOUR TRAIL"));
+            Assert.That(awarenessText.text, Is.EqualTo("KEY MEMORY"));
+            Assert.That(stealthStatusText.text, Is.EqualTo("SUSPICIOUS / KEY TRAIL"));
             Assert.That(tensionFill.fillAmount, Is.GreaterThan(0.8f));
         }
 
@@ -398,9 +426,9 @@ namespace Neighbor.Main.Tests
             Text stealthStatusText = GameplaySmokeTestReflection.GetField<Text>(hud, "stealthStatusText");
             Text warningText = GameplaySmokeTestReflection.GetField<Text>(hud, "warningText");
 
-            Assert.That(awarenessText.text, Is.EqualTo("TRAIL"));
-            Assert.That(stealthStatusText.text, Is.EqualTo("RECOVERY / TRAIL"));
-            Assert.That(warningText.text, Is.EqualTo("HE IS FOLLOWING YOUR TRAIL"));
+            Assert.That(awarenessText.text, Is.EqualTo("KEY TRAIL"));
+            Assert.That(stealthStatusText.text, Is.EqualTo("RECOVERY / KEY TRAIL"));
+            Assert.That(warningText.text, Is.EqualTo("HE IS TRACKING THE STOLEN KEY"));
         }
 
         [Test]
@@ -449,7 +477,7 @@ namespace Neighbor.Main.Tests
             Image tensionFill = GameplaySmokeTestReflection.GetField<Image>(hud, "tensionFill");
 
             Assert.That(warningText.text, Is.EqualTo("HE KNOWS A KEY IS GONE"));
-            Assert.That(stealthStatusText.text, Is.EqualTo("SUSPICIOUS / YOUR TRAIL"));
+            Assert.That(stealthStatusText.text, Is.EqualTo("SUSPICIOUS / KEY TRAIL"));
             Assert.That(tensionFill.fillAmount, Is.GreaterThan(0.85f));
         }
 
