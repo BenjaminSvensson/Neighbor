@@ -262,6 +262,85 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NeighborMemory_StolenInventoryKeyQueuesFollowUpAtHome()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            brain.transform.position = Vector3.zero;
+            Pickupable stolenKey = CreatePickupable("StolenBasementKey", new Vector3(0.75f, 0f, 0f), true);
+            GameObject inventory = context.CreateObject("PlayerInventory");
+
+            stolenKey.StoreInInventory(inventory.transform);
+            GameplaySmokeTestReflection.Invoke(brain, "TryNoticeObjectLocationChanges");
+
+            Assert.That(brain.RememberedStolenKeyCount, Is.EqualTo(1));
+            Assert.That(brain.LastRememberedClueKind, Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen));
+            Assert.That(brain.HasPendingMemoryClueFollowUp, Is.True);
+            Assert.That(brain.PendingMemoryClueKind, Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen));
+            Assert.That(brain.PendingMemoryClueSource, Is.SameAs(stolenKey.gameObject));
+            Assert.That(brain.PendingMemoryCluePosition, Is.EqualTo(stolenKey.HomePosition));
+        }
+
+        [Test]
+        public void NeighborMemory_RememberedGlassStartsFollowUpInvestigation()
+        {
+            GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            NavMeshSurface surface = null;
+            try
+            {
+                ground.name = "TemporaryMemoryFollowUpNavMeshGround";
+                ground.transform.position = new Vector3(0f, -0.1f, 0f);
+                ground.transform.localScale = new Vector3(10f, 0.2f, 10f);
+                surface = ground.AddComponent<NavMeshSurface>();
+                surface.collectObjects = CollectObjects.All;
+                surface.useGeometry = NavMeshCollectGeometry.RenderMeshes;
+                surface.layerMask = ~0;
+                surface.defaultArea = 0;
+                surface.BuildNavMesh();
+
+                GameObject neighborObject = context.CreateObject("Neighbor");
+                neighborObject.transform.position = Vector3.zero;
+                NavMeshAgent agent = neighborObject.AddComponent<NavMeshAgent>();
+                agent.radius = 0.3f;
+                agent.height = 2f;
+                agent.stoppingDistance = 0.1f;
+                context.AddInitializedComponent<NeighborMotor>(neighborObject);
+                NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+
+                GameObject glassObject = context.CreateObject("BrokenKitchenWindow");
+                glassObject.transform.position = new Vector3(2f, 0f, 1f);
+                GlassShatter glass = context.AddInitializedComponent<GlassShatter>(glassObject);
+
+                GameplaySmokeTestReflection.Invoke(
+                    brain,
+                    "RememberMemoryClue",
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken,
+                    glass,
+                    glassObject.transform.position,
+                    0.65f);
+
+                Assert.That(brain.HasPendingMemoryClueFollowUp, Is.True);
+
+                GameplaySmokeTestReflection.Invoke(brain, "ChooseNextRoutineGoal");
+
+                Assert.That(brain.CurrentState, Is.EqualTo(NeighborBrain.BehaviorState.Investigate));
+                Assert.That(brain.HasActiveInvestigation, Is.True);
+                Assert.That(brain.CurrentInvestigationSource, Is.SameAs(glassObject));
+                Assert.That(brain.LastKnownInvestigationPosition, Is.EqualTo(glassObject.transform.position));
+                Assert.That(brain.HasPendingMemoryClueFollowUp, Is.False);
+                Assert.That(brain.CurrentSuspicionLevel, Is.EqualTo(NeighborBrain.SuspicionLevel.Suspicious));
+            }
+            finally
+            {
+                if (surface != null)
+                {
+                    surface.RemoveData();
+                }
+
+                UnityEngine.Object.DestroyImmediate(ground);
+            }
+        }
+
+        [Test]
         public void ReinforcementTrigger_RecognizesCameraAndTrapPreferredPlacements()
         {
             GameObject triggerObject = context.CreateObject("ReinforcementTrigger");

@@ -120,6 +120,12 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Range(0f, 1f)] private float resumeInterruptedTaskChance = 0.72f;
         [SerializeField, Min(0f)] private float blockedTaskRetryDelay = 18f;
 
+        [Header("Memory Follow-Up")]
+        [SerializeField] private bool followUpRememberedClues = true;
+        [SerializeField, Min(0f)] private float memoryFollowUpWaitTime = 1.6f;
+        [SerializeField, Min(0f)] private float memoryFollowUpCooldown = 8f;
+        [SerializeField, Range(0f, 1f)] private float memoryFollowUpMinimumSuspicion = 0.22f;
+
         [Header("Post-Encounter Vigilance")]
         [SerializeField, Min(0f)] private float postEncounterTaskCooldown = 25f;
         [SerializeField, Min(0f)] private float postChaseTensionDuration = 12f;
@@ -251,6 +257,12 @@ namespace Neighbor.Main.Features.Neighbor
         private PlayerFeedbackEvents.NeighborMemoryClueKind lastRememberedClueKind;
         private string lastRememberedClueName;
         private Vector3 lastRememberedCluePosition;
+        private bool hasPendingMemoryClueFollowUp;
+        private PlayerFeedbackEvents.NeighborMemoryClueKind pendingMemoryClueKind;
+        private GameObject pendingMemoryClueSource;
+        private Vector3 pendingMemoryCluePosition;
+        private float pendingMemoryClueSuspicion;
+        private float nextMemoryFollowUpTime;
         private int adaptiveSecurityPatrolsRemaining;
         private bool adaptiveSecurityPatrolActive;
         private HouseGarageDoorMotion activeGarageDoor;
@@ -324,6 +336,10 @@ namespace Neighbor.Main.Features.Neighbor
         public PlayerFeedbackEvents.NeighborMemoryClueKind LastRememberedClueKind => lastRememberedClueKind;
         public string LastRememberedClueName => lastRememberedClueName;
         public Vector3 LastRememberedCluePosition => lastRememberedCluePosition;
+        public bool HasPendingMemoryClueFollowUp => hasPendingMemoryClueFollowUp;
+        public PlayerFeedbackEvents.NeighborMemoryClueKind PendingMemoryClueKind => pendingMemoryClueKind;
+        public GameObject PendingMemoryClueSource => pendingMemoryClueSource;
+        public Vector3 PendingMemoryCluePosition => pendingMemoryCluePosition;
         public SuspicionLevel CurrentSuspicionLevel => GetSuspicionLevel();
         public NeighborTaskLocation ActiveTaskLocation => currentState == BehaviorState.Task
             && currentTaskAnimationPhase != NeighborTaskLocation.TaskAnimationPhase.None
@@ -888,6 +904,7 @@ namespace Neighbor.Main.Features.Neighbor
             currentInvestigationSource = null;
             currentUnexpectedOpenDoor = null;
             currentDoorRoomCheckPosition = default;
+            ClearMemoryClueFollowUp();
             isVerifyingLastSeenPosition = false;
             lastSeenVerificationUntilTime = 0f;
             tasksSuppressedUntilTime = 0f;
@@ -1479,6 +1496,11 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 currentTaskLocation = null;
                 SetState(BehaviorState.Idle);
+                return;
+            }
+
+            if (TryStartMemoryClueFollowUp())
+            {
                 return;
             }
 
@@ -3483,12 +3505,86 @@ namespace Neighbor.Main.Features.Neighbor
             lastRememberedClueKind = kind;
             lastRememberedClueName = clue.name;
             lastRememberedCluePosition = position;
+            QueueMemoryClueFollowUp(kind, clue, position, clueSuspicion);
             PlayerFeedbackEvents.ReportNeighborMemory(
                 kind,
                 clue.name,
                 position,
                 Mathf.Max(suspicion, clueSuspicion),
                 TotalRememberedClueCount);
+        }
+
+        private void QueueMemoryClueFollowUp(
+            PlayerFeedbackEvents.NeighborMemoryClueKind kind,
+            UnityEngine.Object clue,
+            Vector3 position,
+            float clueSuspicion)
+        {
+            if (!followUpRememberedClues)
+            {
+                return;
+            }
+
+            hasPendingMemoryClueFollowUp = true;
+            pendingMemoryClueKind = kind;
+            pendingMemoryClueSource = ResolveMemoryClueSource(clue);
+            pendingMemoryCluePosition = position;
+            pendingMemoryClueSuspicion = Mathf.Clamp01(clueSuspicion);
+        }
+
+        private bool TryStartMemoryClueFollowUp()
+        {
+            if (!followUpRememberedClues
+                || !hasPendingMemoryClueFollowUp
+                || Time.time < nextMemoryFollowUpTime
+                || currentState == BehaviorState.Chase
+                || currentState == BehaviorState.Catching
+                || currentState == BehaviorState.HuntMode
+                || currentState == BehaviorState.Investigate
+                || currentState == BehaviorState.GarageDoorUse
+                || currentState == BehaviorState.DoorSecurityCheck)
+            {
+                return false;
+            }
+
+            Vector3 cluePosition = pendingMemoryCluePosition;
+            GameObject clueSource = pendingMemoryClueSource;
+            float clueSuspicion = Mathf.Max(memoryFollowUpMinimumSuspicion, pendingMemoryClueSuspicion);
+            NeighborMotor.MoveMode moveMode = clueSuspicion >= certainThreshold
+                ? NeighborMotor.MoveMode.Run
+                : clueSuspicion >= suspiciousThreshold
+                    ? NeighborMotor.MoveMode.Cautious
+                    : NeighborMotor.MoveMode.Walk;
+
+            hasPendingMemoryClueFollowUp = false;
+            pendingMemoryClueSource = null;
+            nextMemoryFollowUpTime = Time.time + memoryFollowUpCooldown;
+            suspicion = Mathf.Max(suspicion, clueSuspicion);
+            BeginInvestigation(
+                cluePosition,
+                clueSource,
+                memoryFollowUpWaitTime,
+                moveMode,
+                true);
+            return true;
+        }
+
+        private void ClearMemoryClueFollowUp()
+        {
+            hasPendingMemoryClueFollowUp = false;
+            pendingMemoryClueSource = null;
+            pendingMemoryCluePosition = default;
+            pendingMemoryClueSuspicion = 0f;
+        }
+
+        private static GameObject ResolveMemoryClueSource(UnityEngine.Object clue)
+        {
+            return clue switch
+            {
+                GameObject gameObject => gameObject,
+                Component component => component.gameObject,
+                _ => null
+            };
         }
 
         private void DecayPersistentMemory()
