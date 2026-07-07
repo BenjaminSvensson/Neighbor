@@ -37,6 +37,7 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField] private bool respondToStealthLoop = true;
         [SerializeField, Range(0f, 1f)] private float searchingAtmosphereIntensity = 0.52f;
         [SerializeField, Range(0f, 1f)] private float postChaseAtmosphereIntensity = 0.64f;
+        [SerializeField, Range(0f, 1f)] private float calmPostChaseAtmosphereIntensity = 0.18f;
         [SerializeField, Range(0f, 1f)] private float hidingAtmosphereIntensity = 0.42f;
         [SerializeField, Range(0f, 1f)] private float calmHidingAtmosphereIntensity = 0.14f;
         [SerializeField, Min(0f)] private float stealthAtmosphereHoldDuration = 2.8f;
@@ -354,7 +355,9 @@ namespace Neighbor.Main.Features.Environment
             {
                 PlayerFeedbackEvents.StealthLoopPhase.Chased => 1f,
                 PlayerFeedbackEvents.StealthLoopPhase.Searching => Mathf.Max(searchingAtmosphereIntensity, feedbackPressure),
-                PlayerFeedbackEvents.StealthLoopPhase.PostChase => Mathf.Max(postChaseAtmosphereIntensity, feedbackPressure),
+                PlayerFeedbackEvents.StealthLoopPhase.PostChase => feedback.IsCalming
+                    ? Mathf.Max(calmPostChaseAtmosphereIntensity, feedback.Tension)
+                    : Mathf.Max(postChaseAtmosphereIntensity, feedbackPressure),
                 PlayerFeedbackEvents.StealthLoopPhase.Hiding => feedback.IsCalming
                     ? Mathf.Max(calmHidingAtmosphereIntensity, feedback.Tension)
                     : Mathf.Max(hidingAtmosphereIntensity, feedback.Tension),

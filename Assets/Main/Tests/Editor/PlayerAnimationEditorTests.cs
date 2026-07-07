@@ -721,6 +721,17 @@ namespace Neighbor.Main.Tests
 
                 cameraController.SyncAfterRespawn();
                 PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.PostChase,
+                    0.9f,
+                    0f,
+                    0.1f,
+                    "He lost your trail. Stay quiet.",
+                    true);
+
+                Assert.That(cameraController.CurrentStealthCameraPressure, Is.InRange(0.13f, 0.15f));
+
+                cameraController.SyncAfterRespawn();
+                PlayerFeedbackEvents.ReportStealthLoop(
                     PlayerFeedbackEvents.StealthLoopPhase.Hiding,
                     0.04f,
                     0f,
