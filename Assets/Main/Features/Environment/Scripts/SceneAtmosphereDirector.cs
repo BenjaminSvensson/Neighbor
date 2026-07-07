@@ -314,7 +314,7 @@ namespace Neighbor.Main.Features.Environment
             {
                 PlayerFeedbackEvents.StealthLoopPhase.Chased => 1f,
                 PlayerFeedbackEvents.StealthLoopPhase.Searching => Mathf.Max(searchingAtmosphereIntensity, feedbackPressure),
-                PlayerFeedbackEvents.StealthLoopPhase.PostChase => Mathf.Max(postChaseAtmosphereIntensity, feedback.Tension),
+                PlayerFeedbackEvents.StealthLoopPhase.PostChase => Mathf.Max(postChaseAtmosphereIntensity, feedbackPressure),
                 PlayerFeedbackEvents.StealthLoopPhase.Hiding => feedback.IsCalming
                     ? Mathf.Max(calmHidingAtmosphereIntensity, feedback.Tension)
                     : Mathf.Max(hidingAtmosphereIntensity, feedback.Tension),
