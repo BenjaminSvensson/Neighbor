@@ -8,7 +8,7 @@ using UnityEngine.Serialization;
 
 namespace Neighbor.Main.Features.Interaction
 {
-    public sealed class Door : MonoBehaviour, IInteractable
+    public sealed class Door : MonoBehaviour, IInteractable, IInteractionTooltipProvider
     {
         private static readonly List<Door> ActiveDoors = new();
         public static event System.Action<Door, Vector3> UnexpectedlyOpened;
@@ -32,6 +32,7 @@ namespace Neighbor.Main.Features.Interaction
         [Header("Lock")]
         [SerializeField] private bool startsLocked = true;
         [SerializeField] private string requiredKeyId = "test_key";
+        [SerializeField] private string requiredKeyDisplayName;
         [SerializeField] private bool neighborCanUnlock = true;
         [SerializeField, Min(0f)] private float lockedNudgeAngle = 6f;
         [SerializeField, Min(0.01f)] private float lockedNudgeDuration = 0.12f;
@@ -116,6 +117,7 @@ namespace Neighbor.Main.Features.Interaction
             }
         }
         public string RequiredKeyId => requiredKeyId;
+        public string RequiredKeyDisplayName => GetRequiredKeyDisplayName();
         public Vector3 DefaultOpeningSideNormal => -transform.forward * Mathf.Sign(openAngle == 0f ? 1f : openAngle);
         public static IReadOnlyList<Door> Doors => ActiveDoors;
 
@@ -176,6 +178,24 @@ namespace Neighbor.Main.Features.Interaction
             return true;
         }
 
+        public bool TryGetInteractionTooltip(
+            PlayerInteractor interactor,
+            InteractionTooltipContext context,
+            out string actionText,
+            out string keyText)
+        {
+            actionText = null;
+            keyText = null;
+            if (context != InteractionTooltipContext.FocusedInteractable)
+            {
+                return false;
+            }
+
+            actionText = GetFocusedTooltipAction(interactor);
+            keyText = "E";
+            return !string.IsNullOrWhiteSpace(actionText);
+        }
+
         public void Interact(PlayerInteractor interactor)
         {
             if (IsBlocked)
@@ -191,7 +211,7 @@ namespace Neighbor.Main.Features.Interaction
 
             if (isLocked)
             {
-                if (HasMatchingHeldKey(interactor) || PlayerOwnsRequiredKey(interactor))
+                if (PlayerCanUnlock(interactor))
                 {
                     Unlock();
                     ReportDoorFeedback(
@@ -537,6 +557,32 @@ namespace Neighbor.Main.Features.Interaction
             return keyRing != null && keyRing.HasKey(requiredKeyId);
         }
 
+        private bool PlayerCanUnlock(PlayerInteractor interactor)
+        {
+            return HasMatchingHeldKey(interactor) || PlayerOwnsRequiredKey(interactor);
+        }
+
+        private string GetFocusedTooltipAction(PlayerInteractor interactor)
+        {
+            if (IsBlocked)
+            {
+                return blockedDoorFeedback;
+            }
+
+            if (isLocked)
+            {
+                if (!PlayerCanUnlock(interactor))
+                {
+                    return BuildMissingKeyFeedbackMessage();
+                }
+
+                string keyName = GetRequiredKeyDisplayName();
+                return string.IsNullOrWhiteSpace(keyName) ? "Unlock" : $"Unlock with {keyName}";
+            }
+
+            return isOpen ? "Close" : "Open";
+        }
+
         private void ReportDoorFeedback(
             string message,
             PlayerFeedbackEvents.DoorInteractionFeedbackKind kind,
@@ -552,7 +598,7 @@ namespace Neighbor.Main.Features.Interaction
 
         private string BuildMissingKeyFeedbackMessage()
         {
-            string keyName = FormatKeyIdForFeedback(requiredKeyId);
+            string keyName = GetRequiredKeyDisplayName();
             if (string.IsNullOrWhiteSpace(keyName))
             {
                 return lockedDoorFeedback;
@@ -568,26 +614,9 @@ namespace Neighbor.Main.Features.Interaction
                 : $"{missingKeyFeedbackFormat} {keyName}";
         }
 
-        private static string FormatKeyIdForFeedback(string keyId)
+        private string GetRequiredKeyDisplayName()
         {
-            if (string.IsNullOrWhiteSpace(keyId))
-            {
-                return string.Empty;
-            }
-
-            string[] words = keyId.Trim()
-                .Replace('_', ' ')
-                .Replace('-', ' ')
-                .Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
-            for (int i = 0; i < words.Length; i++)
-            {
-                string lower = words[i].ToLowerInvariant();
-                words[i] = lower.Length > 1
-                    ? char.ToUpperInvariant(lower[0]) + lower.Substring(1)
-                    : lower.ToUpperInvariant();
-            }
-
-            return string.Join(" ", words);
+            return DoorKey.GetDisplayName(requiredKeyId, requiredKeyDisplayName);
         }
 
         public void Close()

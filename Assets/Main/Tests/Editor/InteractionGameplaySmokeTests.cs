@@ -44,6 +44,101 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void DoorKey_UsesReadableDisplayNameInFocusedTooltip()
+        {
+            DoorKey key = context.AddInitializedComponent<DoorKey>("BasementKey");
+            GameplaySmokeTestReflection.SetField(key, "keyId", "basement_key");
+
+            Assert.That(key.DisplayName, Is.EqualTo("Basement Key"));
+            Assert.That(
+                key.TryGetInteractionTooltip(
+                    null,
+                    InteractionTooltipContext.FocusedInteractable,
+                    out string fallbackAction,
+                    out string fallbackKey),
+                Is.True);
+            Assert.That(fallbackAction, Is.EqualTo("Pick up Basement Key"));
+            Assert.That(fallbackKey, Is.Not.Empty);
+
+            GameplaySmokeTestReflection.SetField(key, "displayName", "Rusty Basement Key");
+
+            Assert.That(key.DisplayName, Is.EqualTo("Rusty Basement Key"));
+            Assert.That(
+                key.TryGetInteractionTooltip(
+                    null,
+                    InteractionTooltipContext.FocusedInteractable,
+                    out string namedAction,
+                    out _),
+                Is.True);
+            Assert.That(namedAction, Is.EqualTo("Pick up Rusty Basement Key"));
+        }
+
+        [Test]
+        public void Door_TooltipAndFeedbackUseNamedRequiredKey()
+        {
+            Door door = context.AddInitializedComponent<Door>();
+            GameplaySmokeTestReflection.SetField(door, "requiredKeyDisplayName", "Brass Basement Key");
+
+            Assert.That(door.RequiredKeyDisplayName, Is.EqualTo("Brass Basement Key"));
+            Assert.That(
+                door.TryGetInteractionTooltip(
+                    null,
+                    InteractionTooltipContext.FocusedInteractable,
+                    out string missingAction,
+                    out string missingKey),
+                Is.True);
+            Assert.That(missingAction, Is.EqualTo("Need Brass Basement Key"));
+            Assert.That(missingKey, Is.Not.Empty);
+
+            PlayerFeedbackEvents.DoorInteractionFeedback feedback = default;
+            bool receivedFeedback = false;
+            PlayerFeedbackEvents.DoorInteractionReported += HandleFeedback;
+            try
+            {
+                door.Interact(null);
+            }
+            finally
+            {
+                PlayerFeedbackEvents.DoorInteractionReported -= HandleFeedback;
+            }
+
+            Assert.That(receivedFeedback, Is.True);
+            Assert.That(feedback.Kind, Is.EqualTo(PlayerFeedbackEvents.DoorInteractionFeedbackKind.Locked));
+            Assert.That(feedback.Message, Is.EqualTo("Need Brass Basement Key"));
+
+            GameObject playerObject = context.CreateObject("KeyOwner");
+            PlayerKeyRing keyRing = playerObject.AddComponent<PlayerKeyRing>();
+            keyRing.AddKey(door.RequiredKeyId);
+            PlayerInteractor interactor = playerObject.AddComponent<PlayerInteractor>();
+
+            Assert.That(
+                door.TryGetInteractionTooltip(
+                    interactor,
+                    InteractionTooltipContext.FocusedInteractable,
+                    out string unlockAction,
+                    out _),
+                Is.True);
+            Assert.That(unlockAction, Is.EqualTo("Unlock with Brass Basement Key"));
+
+            door.Unlock();
+
+            Assert.That(
+                door.TryGetInteractionTooltip(
+                    interactor,
+                    InteractionTooltipContext.FocusedInteractable,
+                    out string openAction,
+                    out _),
+                Is.True);
+            Assert.That(openAction, Is.EqualTo("Open"));
+
+            void HandleFeedback(PlayerFeedbackEvents.DoorInteractionFeedback doorFeedback)
+            {
+                feedback = doorFeedback;
+                receivedFeedback = true;
+            }
+        }
+
+        [Test]
         public void NeighborDoorInteractor_DoesNotCloseDoorWithoutConfirmedPassage()
         {
             Door door = context.AddInitializedComponent<Door>();
