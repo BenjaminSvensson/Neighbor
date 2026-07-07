@@ -2937,6 +2937,10 @@ namespace Neighbor.Main.Tests
                         .Or.EqualTo(PlayerFeedbackEvents.StealthLoopPhase.Suspicious));
                 Assert.That(feedback.Noise, Is.GreaterThan(0.65f));
                 Assert.That(
+                    feedback.Message,
+                    Is.EqualTo("He is tracing that noise.")
+                        .Or.EqualTo("He heard that noise."));
+                Assert.That(
                     GameplaySmokeTestReflection.GetField<float>(brain, "recentHeardNoise"),
                     Is.EqualTo(0.74f).Within(0.001f));
             }
