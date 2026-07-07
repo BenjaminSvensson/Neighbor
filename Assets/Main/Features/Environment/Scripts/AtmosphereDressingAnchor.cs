@@ -294,7 +294,9 @@ namespace Neighbor.Main.Features.Environment
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail =>
                     Mathf.Max(trailInvestigationDressingPressure, feedbackPressure),
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching =>
-                    Mathf.Max(searchingInvestigationDressingPressure, feedbackPressure * 0.8f),
+                    feedback.IsTrailRelated
+                        ? Mathf.Max(trailInvestigationDressingPressure, feedbackPressure)
+                        : Mathf.Max(searchingInvestigationDressingPressure, feedbackPressure * 0.8f),
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started =>
                     Mathf.Max(0.34f, feedbackPressure * 0.7f),
                 _ => 0f

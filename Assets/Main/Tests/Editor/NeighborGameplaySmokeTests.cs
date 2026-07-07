@@ -160,6 +160,32 @@ namespace Neighbor.Main.Tests
                     0.8f));
 
             Assert.That(warningText.text, Is.EqualTo("NEIGHBOR SEARCHING"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleNeighborInvestigationChanged",
+                new PlayerFeedbackEvents.NeighborInvestigationFeedback(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching,
+                    Vector3.zero,
+                    "Broken Window",
+                    0.7f,
+                    0.9f,
+                    true));
+
+            Assert.That(warningText.text, Is.EqualTo("SEARCHING YOUR TRAIL"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleNeighborInvestigationChanged",
+                new PlayerFeedbackEvents.NeighborInvestigationFeedback(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning,
+                    Vector3.zero,
+                    "Broken Window",
+                    0.35f,
+                    0.65f,
+                    true));
+
+            Assert.That(warningText.text, Is.EqualTo("TRAIL CLEARED"));
         }
 
         [Test]
@@ -202,7 +228,7 @@ namespace Neighbor.Main.Tests
             Text awarenessText = GameplaySmokeTestReflection.GetField<Text>(hud, "awarenessText");
             Text stealthStatusText = GameplaySmokeTestReflection.GetField<Text>(hud, "stealthStatusText");
             Assert.That(awarenessText.text, Is.EqualTo("TRAIL"));
-            Assert.That(stealthStatusText.text, Is.EqualTo("RECOVERY / TRAIL"));
+            Assert.That(stealthStatusText.text, Is.EqualTo("RECOVERY / TRAIL SEARCH"));
         }
 
         [Test]
@@ -923,6 +949,7 @@ namespace Neighbor.Main.Tests
                     Assert.That(Vector3.Distance(brain.CurrentGoal, glassObject.transform.position), Is.LessThan(1.6f));
                     Assert.That(receivedInvestigation, Is.True);
                     Assert.That(investigationFeedback.Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail));
+                    Assert.That(investigationFeedback.IsTrailRelated, Is.True);
                     Assert.That(investigationFeedback.SourceName, Is.EqualTo(glassObject.name));
                     Assert.That(investigationFeedback.Urgency, Is.GreaterThanOrEqualTo(0.65f));
                 }
@@ -976,6 +1003,7 @@ namespace Neighbor.Main.Tests
 
                 Assert.That(feedback, Has.Count.EqualTo(1));
                 Assert.That(feedback[0].Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching));
+                Assert.That(feedback[0].IsTrailRelated, Is.True);
                 Assert.That(feedback[0].Position, Is.EqualTo(cluePosition));
                 Assert.That(feedback[0].SourceName, Is.EqualTo(glassObject.name));
                 Assert.That(feedback[0].Urgency, Is.EqualTo(0.65f).Within(0.001f));
@@ -1020,6 +1048,7 @@ namespace Neighbor.Main.Tests
 
                 Assert.That(received, Is.True);
                 Assert.That(feedback.Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned));
+                Assert.That(feedback.IsTrailRelated, Is.True);
                 Assert.That(feedback.SourceName, Is.EqualTo(glassObject.name));
                 Assert.That(brain.IsHuntingMemoryClue, Is.False);
                 Assert.That(brain.CurrentHuntMemoryClueSource, Is.Null);
@@ -1036,6 +1065,23 @@ namespace Neighbor.Main.Tests
                 feedback = item;
                 received = true;
             }
+        }
+
+        [Test]
+        public void NeighborMemory_HuntTrailSearchSweepFacesRememberedClueDirection()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            Vector3 clueDirection = new(3f, 0f, 0.5f);
+
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.HuntMode);
+            GameplaySmokeTestReflection.SetField(brain, "currentHuntMemoryClueActive", true);
+            GameplaySmokeTestReflection.SetField(brain, "investigationSearchLookDirection", clueDirection);
+
+            Vector3 sweepDirection = GameplaySmokeTestReflection.InvokeResult<Vector3>(
+                brain,
+                "GetSearchSweepBaseDirection");
+
+            Assert.That(Vector3.Dot(sweepDirection, clueDirection.normalized), Is.GreaterThan(0.99f));
         }
 
         [Test]

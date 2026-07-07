@@ -325,19 +325,22 @@ namespace Neighbor.Main.Features.Player
             public string SourceName { get; }
             public float Suspicion { get; }
             public float Urgency { get; }
+            public bool IsTrailRelated { get; }
 
             public NeighborInvestigationFeedback(
                 NeighborInvestigationFeedbackKind kind,
                 Vector3 position,
                 string sourceName,
                 float suspicion,
-                float urgency)
+                float urgency,
+                bool isTrailRelated = false)
             {
                 Kind = kind;
                 Position = position;
                 SourceName = string.IsNullOrWhiteSpace(sourceName) ? "disturbance" : sourceName.Trim();
                 Suspicion = Mathf.Clamp01(suspicion);
                 Urgency = Mathf.Clamp01(urgency);
+                IsTrailRelated = isTrailRelated || kind == NeighborInvestigationFeedbackKind.FollowingTrail;
             }
         }
 
@@ -517,14 +520,16 @@ namespace Neighbor.Main.Features.Player
             Vector3 position,
             string sourceName,
             float suspicion,
-            float urgency)
+            float urgency,
+            bool isTrailRelated = false)
         {
             NeighborInvestigationChanged?.Invoke(new NeighborInvestigationFeedback(
                 kind,
                 position,
                 sourceName,
                 suspicion,
-                urgency));
+                urgency,
+                isTrailRelated));
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
