@@ -284,6 +284,30 @@ namespace Neighbor.Main.Features.Neighbor
         private float nextOpenDoorSecurityCloseTime;
         private float nextObjectLocationCheckTime;
 
+        private readonly struct RememberedClueFollowUpCandidate
+        {
+            public RememberedClueFollowUpCandidate(
+                PlayerFeedbackEvents.NeighborMemoryClueKind kind,
+                GameObject source,
+                Vector3 position,
+                float suspicion,
+                float score)
+            {
+                Kind = kind;
+                Source = source;
+                Position = position;
+                Suspicion = Mathf.Clamp01(suspicion);
+                Score = score;
+            }
+
+            public PlayerFeedbackEvents.NeighborMemoryClueKind Kind { get; }
+            public GameObject Source { get; }
+            public Vector3 Position { get; }
+            public float Suspicion { get; }
+            public float Score { get; }
+            public bool IsValid => Source != null && Score > 0f;
+        }
+
         public BehaviorState CurrentState => currentState;
         public Transform Player => player;
         public Vector3 CurrentGoal => currentGoal;
@@ -921,6 +945,7 @@ namespace Neighbor.Main.Features.Neighbor
                 maximumAdaptiveSecurityPatrols);
             adaptiveSecurityPatrolActive = false;
             DecayPersistentMemory();
+            RequeueStrongestRememberedClueFollowUp();
             ChooseNextRoutineGoal();
         }
 
@@ -3611,6 +3636,157 @@ namespace Neighbor.Main.Features.Neighbor
             pendingMemoryClueSource = null;
             pendingMemoryCluePosition = default;
             pendingMemoryClueSuspicion = 0f;
+        }
+
+        private void RequeueStrongestRememberedClueFollowUp()
+        {
+            if (!followUpRememberedClues
+                || TotalRememberedClueCount <= 0
+                || !TryGetStrongestRememberedClue(out RememberedClueFollowUpCandidate candidate))
+            {
+                return;
+            }
+
+            hasPendingMemoryClueFollowUp = true;
+            pendingMemoryClueKind = candidate.Kind;
+            pendingMemoryClueSource = candidate.Source;
+            pendingMemoryCluePosition = candidate.Position;
+            pendingMemoryClueSuspicion = candidate.Suspicion;
+            PlayerFeedbackEvents.ReportNeighborMemory(
+                candidate.Kind,
+                candidate.Source.name,
+                candidate.Position,
+                candidate.Suspicion,
+                TotalRememberedClueCount);
+        }
+
+        private bool TryGetStrongestRememberedClue(out RememberedClueFollowUpCandidate candidate)
+        {
+            candidate = default;
+            TryPromoteBestRememberedDoor(ref candidate);
+            TryPromoteBestRememberedMovedObject(ref candidate);
+            TryPromoteBestRememberedBrokenGlass(ref candidate);
+            TryPromoteBestRememberedStolenKey(ref candidate);
+            return candidate.IsValid;
+        }
+
+        private void TryPromoteBestRememberedDoor(ref RememberedClueFollowUpCandidate best)
+        {
+            foreach (KeyValuePair<Door, float> entry in openedDoorMemory)
+            {
+                Door door = entry.Key;
+                if (door == null || entry.Value <= 0.01f)
+                {
+                    continue;
+                }
+
+                TryPromoteRememberedClue(
+                    ref best,
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
+                    door.gameObject,
+                    door.transform.position,
+                    entry.Value,
+                    0.26f,
+                    1f);
+            }
+        }
+
+        private void TryPromoteBestRememberedMovedObject(ref RememberedClueFollowUpCandidate best)
+        {
+            foreach (KeyValuePair<Pickupable, float> entry in movedObjectMemory)
+            {
+                Pickupable pickup = entry.Key;
+                if (pickup == null || entry.Value <= 0.01f)
+                {
+                    continue;
+                }
+
+                Vector3 position = pickup.TracksHomeLocation ? pickup.HomePosition : pickup.transform.position;
+                TryPromoteRememberedClue(
+                    ref best,
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved,
+                    pickup.gameObject,
+                    position,
+                    entry.Value,
+                    0.34f,
+                    1.15f);
+            }
+        }
+
+        private void TryPromoteBestRememberedBrokenGlass(ref RememberedClueFollowUpCandidate best)
+        {
+            foreach (KeyValuePair<GlassShatter, float> entry in brokenGlassMemory)
+            {
+                GlassShatter glass = entry.Key;
+                if (glass == null || entry.Value <= 0.01f)
+                {
+                    continue;
+                }
+
+                TryPromoteRememberedClue(
+                    ref best,
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken,
+                    glass.gameObject,
+                    glass.transform.position,
+                    entry.Value,
+                    0.56f,
+                    1.35f);
+            }
+        }
+
+        private void TryPromoteBestRememberedStolenKey(ref RememberedClueFollowUpCandidate best)
+        {
+            foreach (KeyValuePair<DoorKey, float> entry in stolenKeyMemory)
+            {
+                DoorKey key = entry.Key;
+                if (key == null || entry.Value <= 0.01f)
+                {
+                    continue;
+                }
+
+                Pickupable pickup = key.GetComponentInParent<Pickupable>();
+                GameObject source = pickup != null ? pickup.gameObject : key.gameObject;
+                Vector3 position = pickup != null && pickup.TracksHomeLocation
+                    ? pickup.HomePosition
+                    : key.transform.position;
+                TryPromoteRememberedClue(
+                    ref best,
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
+                    source,
+                    position,
+                    entry.Value,
+                    0.66f,
+                    1.6f);
+            }
+        }
+
+        private void TryPromoteRememberedClue(
+            ref RememberedClueFollowUpCandidate best,
+            PlayerFeedbackEvents.NeighborMemoryClueKind kind,
+            GameObject source,
+            Vector3 position,
+            float memoryStrength,
+            float baseSuspicion,
+            float priority)
+        {
+            if (source == null)
+            {
+                return;
+            }
+
+            float memory01 = Mathf.Clamp01(memoryStrength);
+            float suspicionBoost = Mathf.Min(
+                0.18f,
+                Mathf.Max(0, TotalRememberedClueCount - 1) * 0.06f);
+            float suspicionAmount = Mathf.Clamp01(
+                Mathf.Lerp(memoryFollowUpMinimumSuspicion, baseSuspicion, memory01) + suspicionBoost);
+            float score = memoryStrength * priority + suspicionAmount;
+            if (best.IsValid && score <= best.Score)
+            {
+                return;
+            }
+
+            best = new RememberedClueFollowUpCandidate(kind, source, position, suspicionAmount, score);
         }
 
         private static GameObject ResolveMemoryClueSource(UnityEngine.Object clue)
