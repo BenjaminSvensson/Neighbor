@@ -43,6 +43,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.DayPhaseChanged += HandleDayPhaseChanged;
             PlayerFeedbackEvents.CheckpointReached += HandleCheckpointReached;
             PlayerFeedbackEvents.PlayerRespawned += HandlePlayerRespawned;
+            PlayerFeedbackEvents.HidingChanged += HandleHidingChanged;
             PlayerFeedbackEvents.OnboardingPrompted += HandleOnboardingPrompted;
             PlayerFeedbackEvents.ObjectiveProgressed += HandleObjectiveProgressed;
             PlayerFeedbackEvents.DoorInteractionReported += HandleDoorInteractionReported;
@@ -58,6 +59,7 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.DayPhaseChanged -= HandleDayPhaseChanged;
             PlayerFeedbackEvents.CheckpointReached -= HandleCheckpointReached;
             PlayerFeedbackEvents.PlayerRespawned -= HandlePlayerRespawned;
+            PlayerFeedbackEvents.HidingChanged -= HandleHidingChanged;
             PlayerFeedbackEvents.OnboardingPrompted -= HandleOnboardingPrompted;
             PlayerFeedbackEvents.ObjectiveProgressed -= HandleObjectiveProgressed;
             PlayerFeedbackEvents.DoorInteractionReported -= HandleDoorInteractionReported;
@@ -360,6 +362,31 @@ namespace Neighbor.Main.Features.Player
                 ? new Color(0.58f, 0.92f, 1f, 0.96f)
                 : new Color(0.78f, 0.84f, 0.94f, 0.94f);
             messageUntil = Time.unscaledTime + 2.8f;
+        }
+
+        private void HandleHidingChanged(PlayerFeedbackEvents.HidingFeedback feedback)
+        {
+            string spotName = feedback.SpotName.ToUpperInvariant();
+            warningText.text = feedback.Kind switch
+            {
+                PlayerFeedbackEvents.HidingFeedbackKind.Entered => $"HIDDEN IN {spotName}",
+                PlayerFeedbackEvents.HidingFeedbackKind.Exited => $"LEFT {spotName}",
+                PlayerFeedbackEvents.HidingFeedbackKind.Inspected => $"SEARCHED {spotName} - STAY STILL",
+                PlayerFeedbackEvents.HidingFeedbackKind.Found => $"FOUND IN {spotName}",
+                _ => spotName
+            };
+            warningText.color = feedback.Kind switch
+            {
+                PlayerFeedbackEvents.HidingFeedbackKind.Entered => new Color(0.62f, 0.9f, 1f, 0.96f),
+                PlayerFeedbackEvents.HidingFeedbackKind.Exited => new Color(0.78f, 0.84f, 0.94f, 0.94f),
+                PlayerFeedbackEvents.HidingFeedbackKind.Inspected => Color.Lerp(
+                    new Color(1f, 0.72f, 0.18f, 0.98f),
+                    new Color(1f, 0.46f, 0.12f, 1f),
+                    feedback.BreathTension),
+                PlayerFeedbackEvents.HidingFeedbackKind.Found => new Color(1f, 0.12f, 0.08f, 1f),
+                _ => new Color(0.82f, 0.86f, 0.92f, 0.95f)
+            };
+            messageUntil = Time.unscaledTime + (feedback.Kind == PlayerFeedbackEvents.HidingFeedbackKind.Found ? MessageDuration : 2.8f);
         }
 
         private void HandleObjectiveProgressChanged(CoreLoopObjectiveTracker tracker)
