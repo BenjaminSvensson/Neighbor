@@ -670,6 +670,9 @@ namespace Neighbor.Main.Tests
             Assert.That(reported, Is.True);
             Assert.That(received.Loudness, Is.EqualTo(0.75f));
             Assert.That(received.Radius, Is.EqualTo(12f));
+            Assert.That(received.Urgency, Is.EqualTo(1f));
+            Assert.That(received.HeardByNeighbor, Is.False);
+            Assert.That(received.NeighborListenerCount, Is.Zero);
 
             void HandleNoise(PlayerFeedbackEvents.NoiseFeedback feedback)
             {

@@ -33,6 +33,8 @@ namespace Neighbor.Main.Features.Player
         private int lastNeighborMemoryCount;
         private float lastNeighborMemorySuspicion;
         private float neighborMemoryStatusUntil;
+        private float lastNeighborHeardNoise;
+        private float neighborHeardNoiseUntil;
         private float cameraWarningUntil;
         private float messageUntil;
         private float nextPlayerSearchTime;
@@ -381,6 +383,16 @@ namespace Neighbor.Main.Features.Player
                 return;
             }
 
+            if (Time.unscaledTime < neighborHeardNoiseUntil && noiseLevel >= 0.45f)
+            {
+                warningText.text = "HE HEARD THAT";
+                warningText.color = Color.Lerp(
+                    new Color(1f, 0.72f, 0.18f, 0.98f),
+                    new Color(1f, 0.26f, 0.08f, 1f),
+                    lastNeighborHeardNoise);
+                return;
+            }
+
             if (noiseLevel >= 0.72f)
             {
                 warningText.text = "LOUD NOISE";
@@ -458,6 +470,11 @@ namespace Neighbor.Main.Features.Player
             }
 
             noiseLevel = Mathf.Max(noiseLevel, feedback.Loudness);
+            if (feedback.HeardByNeighbor)
+            {
+                lastNeighborHeardNoise = Mathf.Max(feedback.Loudness, feedback.Urgency);
+                neighborHeardNoiseUntil = Time.unscaledTime + Mathf.Lerp(1.8f, 3.4f, lastNeighborHeardNoise);
+            }
         }
 
         private void HandleCameraDetection()
