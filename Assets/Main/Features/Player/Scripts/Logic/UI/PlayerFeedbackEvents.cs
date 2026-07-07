@@ -196,6 +196,7 @@ namespace Neighbor.Main.Features.Player
         public enum NeighborInvestigationFeedbackKind
         {
             Started,
+            FollowingTrail,
             Searching,
             Returning,
             Abandoned

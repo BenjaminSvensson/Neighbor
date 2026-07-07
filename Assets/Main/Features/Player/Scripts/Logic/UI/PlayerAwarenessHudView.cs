@@ -184,6 +184,12 @@ namespace Neighbor.Main.Features.Player
                 return;
             }
 
+            if (trackedNeighbor.IsHuntingMemoryClue)
+            {
+                awarenessText.text = "TRAIL";
+                return;
+            }
+
             string activeStateText = trackedNeighbor.CurrentState switch
             {
                 NeighborBrain.BehaviorState.Chase => "CHASE",
@@ -398,6 +404,13 @@ namespace Neighbor.Main.Features.Player
 
             if (trackedNeighbor != null && trackedNeighbor.PostChaseTension01 >= 0.35f)
             {
+                if (trackedNeighbor.IsHuntingMemoryClue)
+                {
+                    warningText.text = "HE IS FOLLOWING YOUR TRAIL";
+                    warningText.color = new Color(1f, 0.42f, 0.1f, 1f);
+                    return;
+                }
+
                 warningText.text = "HE IS STILL SEARCHING";
                 warningText.color = new Color(1f, 0.64f, 0.18f, 0.96f);
                 return;
@@ -659,6 +672,7 @@ namespace Neighbor.Main.Features.Player
             warningText.text = feedback.Kind switch
             {
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started => "NEIGHBOR HEARD SOMETHING",
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail => "HE IS FOLLOWING YOUR TRAIL",
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching => "NEIGHBOR SEARCHING",
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning => "NEIGHBOR RETURNING",
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned => "NEIGHBOR LOST THE TRAIL",
@@ -667,6 +681,10 @@ namespace Neighbor.Main.Features.Player
 
             warningText.color = feedback.Kind switch
             {
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail => Color.Lerp(
+                    new Color(1f, 0.72f, 0.18f, 0.98f),
+                    new Color(1f, 0.28f, 0.08f, 1f),
+                    Mathf.Max(feedback.Suspicion, feedback.Urgency)),
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching => new Color(1f, 0.66f, 0.16f, 1f),
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning => new Color(0.76f, 0.84f, 0.94f, 0.95f),
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned => new Color(0.92f, 0.78f, 0.48f, 0.96f),
@@ -951,6 +969,11 @@ namespace Neighbor.Main.Features.Player
 
                     return tension >= 0.7f ? "HIDDEN / BREATH HIGH" : "HIDDEN / STEADY";
                 case PlayerFeedbackEvents.StealthLoopPhase.PostChase:
+                    if (memoryPressure >= 0.55f)
+                    {
+                        return "RECOVERY / TRAIL";
+                    }
+
                     return tension >= 0.45f ? "RECOVERY / SEARCHING" : "RECOVERY / QUIET DOWN";
                 case PlayerFeedbackEvents.StealthLoopPhase.Searching:
                     return noise >= 0.35f ? "SEARCHING / NOISE TRACE" : "SEARCHING";

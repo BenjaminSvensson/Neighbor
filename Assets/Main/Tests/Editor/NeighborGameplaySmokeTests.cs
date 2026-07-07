@@ -141,6 +141,18 @@ namespace Neighbor.Main.Tests
                 hud,
                 "HandleNeighborInvestigationChanged",
                 new PlayerFeedbackEvents.NeighborInvestigationFeedback(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail,
+                    Vector3.zero,
+                    "Broken Window",
+                    0.72f,
+                    0.8f));
+
+            Assert.That(warningText.text, Is.EqualTo("HE IS FOLLOWING YOUR TRAIL"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleNeighborInvestigationChanged",
+                new PlayerFeedbackEvents.NeighborInvestigationFeedback(
                     PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching,
                     Vector3.zero,
                     "Noise Source",
@@ -163,6 +175,34 @@ namespace Neighbor.Main.Tests
 
             Text awarenessText = GameplaySmokeTestReflection.GetField<Text>(hud, "awarenessText");
             Assert.That(awarenessText.text, Is.EqualTo("SEARCHING"));
+        }
+
+        [Test]
+        public void AwarenessHud_LabelsActiveMemoryHuntAsTrail()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.HuntMode);
+            GameplaySmokeTestReflection.SetField(brain, "currentHuntMemoryClueActive", true);
+            GameplaySmokeTestReflection.SetField(hud, "trackedNeighbor", brain);
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateAwareness");
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleNeighborMemoryChanged",
+                new PlayerFeedbackEvents.NeighborMemoryFeedback(
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
+                    "Basement Key",
+                    Vector3.zero,
+                    0.82f,
+                    3));
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateStealthStatus");
+
+            Text awarenessText = GameplaySmokeTestReflection.GetField<Text>(hud, "awarenessText");
+            Text stealthStatusText = GameplaySmokeTestReflection.GetField<Text>(hud, "stealthStatusText");
+            Assert.That(awarenessText.text, Is.EqualTo("TRAIL"));
+            Assert.That(stealthStatusText.text, Is.EqualTo("RECOVERY / TRAIL"));
         }
 
         [Test]
@@ -667,7 +707,7 @@ namespace Neighbor.Main.Tests
                     Assert.That(brain.HasPendingMemoryClueFollowUp, Is.False);
                     Assert.That(Vector3.Distance(brain.CurrentGoal, glassObject.transform.position), Is.LessThan(1.6f));
                     Assert.That(receivedInvestigation, Is.True);
-                    Assert.That(investigationFeedback.Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started));
+                    Assert.That(investigationFeedback.Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail));
                     Assert.That(investigationFeedback.SourceName, Is.EqualTo(glassObject.name));
                     Assert.That(investigationFeedback.Urgency, Is.GreaterThanOrEqualTo(0.65f));
                 }

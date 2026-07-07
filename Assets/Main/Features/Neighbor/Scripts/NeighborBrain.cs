@@ -265,6 +265,8 @@ namespace Neighbor.Main.Features.Neighbor
         private float lastReportedStealthTension = -1f;
         private float lastReportedStealthNoise = -1f;
         private bool hasReportedStealthLoopPhase;
+        private PlayerFeedbackEvents.NeighborInvestigationFeedbackKind nextInvestigationStartedFeedbackKind =
+            PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started;
         private float recentHeardNoise;
         private float recentHeardNoiseUntilTime;
         private PlayerFeedbackEvents.NeighborMemoryClueKind lastRememberedClueKind;
@@ -1305,7 +1307,9 @@ namespace Neighbor.Main.Features.Neighbor
             currentTaskLocation = null;
             StopActiveTaskAudio();
             investigationMoveMode = moveMode;
-            ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started);
+            PlayerFeedbackEvents.NeighborInvestigationFeedbackKind startedFeedbackKind = nextInvestigationStartedFeedbackKind;
+            nextInvestigationStartedFeedbackKind = PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started;
+            ReportInvestigationFeedback(startedFeedbackKind);
 
             if (motor == null)
             {
@@ -2716,7 +2720,7 @@ namespace Neighbor.Main.Features.Neighbor
             suspicion = Mathf.Max(suspicion, clueSuspicion);
             investigationMoveMode = moveMode;
             motor.SetMoveMode(moveMode);
-            ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started, true);
+            ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail, true);
             ReportStealthLoopIfNeeded(true);
             return true;
         }
@@ -3753,6 +3757,7 @@ namespace Neighbor.Main.Features.Neighbor
             GameObject clueSource = pendingMemoryClueSource;
             float clueSuspicion = Mathf.Max(memoryFollowUpMinimumSuspicion, pendingMemoryClueSuspicion);
             NeighborMotor.MoveMode moveMode = GetMemoryFollowUpMoveMode(clueSuspicion);
+            nextInvestigationStartedFeedbackKind = PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail;
 
             hasPendingMemoryClueFollowUp = false;
             pendingMemoryClueSource = null;
