@@ -11,6 +11,7 @@ namespace Neighbor.Main.Features.Environment
         private const string MoonName = "Runtime Atmosphere Moon";
         private const string VolumeName = "Runtime Atmosphere Color Grade Volume";
         private const string FlickerName = "Flicker Practical Light";
+        private const int DressingTextureSize = 32;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void InitializeLoadedScenes()
@@ -263,12 +264,69 @@ namespace Neighbor.Main.Features.Environment
                 material.SetFloat("_Smoothness", 0.22f);
             }
 
+            Texture2D texture = CreateRuntimeDressingTexture(name, kind, color);
+            SetTexture(material, "_BaseMap", texture);
+            SetTexture(material, "_MainTex", texture);
+
             if (kind == AtmosphereDressingAnchor.DressingKind.DirtyDecal)
             {
                 ConfigureTransparentMaterial(material);
             }
 
             return material;
+        }
+
+        private static Texture2D CreateRuntimeDressingTexture(
+            string name,
+            AtmosphereDressingAnchor.DressingKind kind,
+            Color color)
+        {
+            Texture2D texture = new(DressingTextureSize, DressingTextureSize, TextureFormat.RGBA32, true)
+            {
+                name = $"{name} Runtime Texture",
+                hideFlags = HideFlags.DontSave,
+                wrapMode = TextureWrapMode.Repeat,
+                filterMode = FilterMode.Bilinear
+            };
+
+            Color[] pixels = new Color[DressingTextureSize * DressingTextureSize];
+            for (int y = 0; y < DressingTextureSize; y++)
+            {
+                for (int x = 0; x < DressingTextureSize; x++)
+                {
+                    float horizontal = (float)x / (DressingTextureSize - 1);
+                    float vertical = (float)y / (DressingTextureSize - 1);
+                    float noise = Mathf.PerlinNoise(horizontal * 8.7f + 0.11f, vertical * 7.3f + 0.37f);
+                    Color pixel = kind == AtmosphereDressingAnchor.DressingKind.DirtyDecal
+                        ? CreateDirtyDecalPixel(color, horizontal, vertical, noise)
+                        : CreatePropDressingPixel(color, horizontal, vertical, noise);
+                    pixels[y * DressingTextureSize + x] = pixel;
+                }
+            }
+
+            texture.SetPixels(pixels);
+            texture.Apply(true, false);
+            return texture;
+        }
+
+        private static Color CreateDirtyDecalPixel(Color color, float horizontal, float vertical, float noise)
+        {
+            float smear = Mathf.Abs(Mathf.Sin((horizontal + noise * 0.16f) * Mathf.PI * 5.5f));
+            float footfall = Mathf.PerlinNoise(horizontal * 2.1f + 2.4f, vertical * 11.8f + 0.5f);
+            float alpha = color.a * Mathf.Clamp01(0.2f + noise * 0.65f + smear * 0.22f + footfall * 0.18f);
+            Color pixel = Color.Lerp(color * 0.55f, color * 1.25f, Mathf.Clamp01(noise * 0.85f + smear * 0.25f));
+            pixel.a = alpha;
+            return pixel;
+        }
+
+        private static Color CreatePropDressingPixel(Color color, float horizontal, float vertical, float noise)
+        {
+            float grain = Mathf.Abs(Mathf.Sin((horizontal * 18f + vertical * 5f + noise * 2f) * Mathf.PI));
+            float knots = Mathf.PerlinNoise(horizontal * 18f + 4.2f, vertical * 18f + 1.7f);
+            float shade = Mathf.Clamp01(noise * 0.5f + grain * 0.36f + knots * 0.22f);
+            Color pixel = Color.Lerp(color * 0.62f, color * 1.28f, shade);
+            pixel.a = color.a;
+            return pixel;
         }
 
         private static void ConfigureTransparentMaterial(Material material)
@@ -301,6 +359,14 @@ namespace Neighbor.Main.Features.Environment
             material.SetOverrideTag("RenderType", "Transparent");
             material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
             material.renderQueue = (int)RenderQueue.Transparent;
+        }
+
+        private static void SetTexture(Material material, string propertyName, Texture texture)
+        {
+            if (material != null && texture != null && material.HasProperty(propertyName))
+            {
+                material.SetTexture(propertyName, texture);
+            }
         }
 
         private static Vector3 FindSceneGroundCenter(Scene scene)

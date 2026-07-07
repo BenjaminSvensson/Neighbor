@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Neighbor.Main.Features.Audio;
 using Neighbor.Main.Features.Environment;
 using Neighbor.Main.Features.Interaction;
@@ -165,6 +166,47 @@ namespace Neighbor.Main.Tests
             Assert.That(CountInScene<VegetationMaterialGuard>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<AtmosphereFlickerLight>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<AtmosphereDressingAnchor>(scene), Is.EqualTo(4));
+        }
+
+        [Test]
+        public void SceneAtmosphereBootstrapper_DressingMaterialsUseProceduralSurfaceTextures()
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            GameObject floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            floor.name = "Atmosphere Texture Floor";
+            floor.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            floor.transform.localScale = new Vector3(8f, 0.2f, 8f);
+            SceneManager.MoveGameObjectToScene(floor, scene);
+
+            SceneAtmosphereBootstrapper.EnsureAtmosphereForScene(scene, true);
+
+            AtmosphereDressingAnchor[] anchors = FindDressingAnchorsInScene(scene);
+            Assert.That(anchors, Has.Length.EqualTo(4));
+
+            bool sawDirtyDecalTexture = false;
+            bool sawPropTexture = false;
+            for (int i = 0; i < anchors.Length; i++)
+            {
+                Renderer renderer = anchors[i].GetComponent<Renderer>();
+                Assert.That(renderer, Is.Not.Null);
+                Material material = renderer.sharedMaterial;
+                Texture texture = GetMainTexture(material);
+                Assert.That(texture, Is.Not.Null);
+
+                if (anchors[i].Kind == AtmosphereDressingAnchor.DressingKind.DirtyDecal)
+                {
+                    sawDirtyDecalTexture = true;
+                    Assert.That(TextureHasAlphaVariation(texture), Is.True);
+                }
+                else if (anchors[i].Kind == AtmosphereDressingAnchor.DressingKind.PropDressing)
+                {
+                    sawPropTexture = true;
+                    Assert.That(TextureHasColorVariation(texture), Is.True);
+                }
+            }
+
+            Assert.That(sawDirtyDecalTexture, Is.True);
+            Assert.That(sawPropTexture, Is.True);
         }
 
         [Test]
@@ -1351,6 +1393,92 @@ namespace Neighbor.Main.Tests
             }
 
             return count;
+        }
+
+        private static AtmosphereDressingAnchor[] FindDressingAnchorsInScene(Scene scene)
+        {
+            AtmosphereDressingAnchor[] components =
+                Object.FindObjectsByType<AtmosphereDressingAnchor>(FindObjectsInactive.Include);
+            List<AtmosphereDressingAnchor> anchors = new();
+            for (int i = 0; i < components.Length; i++)
+            {
+                if (components[i] != null && components[i].gameObject.scene == scene)
+                {
+                    anchors.Add(components[i]);
+                }
+            }
+
+            return anchors.ToArray();
+        }
+
+        private static Texture GetMainTexture(Material material)
+        {
+            if (material == null)
+            {
+                return null;
+            }
+
+            if (material.HasProperty("_BaseMap") && material.GetTexture("_BaseMap") != null)
+            {
+                return material.GetTexture("_BaseMap");
+            }
+
+            if (material.HasProperty("_MainTex") && material.GetTexture("_MainTex") != null)
+            {
+                return material.GetTexture("_MainTex");
+            }
+
+            return material.mainTexture;
+        }
+
+        private static bool TextureHasAlphaVariation(Texture texture)
+        {
+            if (texture is not Texture2D texture2D)
+            {
+                return false;
+            }
+
+            Color[] pixels = texture2D.GetPixels();
+            bool hasLowAlpha = false;
+            bool hasHighAlpha = false;
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                hasLowAlpha |= pixels[i].a < 0.35f;
+                hasHighAlpha |= pixels[i].a > 0.55f;
+                if (hasLowAlpha && hasHighAlpha)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool TextureHasColorVariation(Texture texture)
+        {
+            if (texture is not Texture2D texture2D)
+            {
+                return false;
+            }
+
+            Color[] pixels = texture2D.GetPixels();
+            if (pixels.Length == 0)
+            {
+                return false;
+            }
+
+            Color first = pixels[0];
+            for (int i = 1; i < pixels.Length; i++)
+            {
+                if (Mathf.Abs(pixels[i].r - first.r) > 0.03f
+                    || Mathf.Abs(pixels[i].g - first.g) > 0.03f
+                    || Mathf.Abs(pixels[i].b - first.b) > 0.03f)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static Material CreateTestMaterial(Color color)
