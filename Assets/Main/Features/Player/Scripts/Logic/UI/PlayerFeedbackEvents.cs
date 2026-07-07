@@ -10,12 +10,29 @@ namespace Neighbor.Main.Features.Player
             public Vector3 Origin { get; }
             public float Loudness { get; }
             public float Radius { get; }
+            public float Urgency { get; }
+            public bool HeardByNeighbor { get; }
+            public int NeighborListenerCount { get; }
 
             public NoiseFeedback(Vector3 origin, float loudness, float radius)
+                : this(origin, loudness, radius, loudness, false, 0)
+            {
+            }
+
+            public NoiseFeedback(
+                Vector3 origin,
+                float loudness,
+                float radius,
+                float urgency,
+                bool heardByNeighbor,
+                int neighborListenerCount)
             {
                 Origin = origin;
                 Loudness = Mathf.Clamp01(loudness);
                 Radius = Mathf.Max(0f, radius);
+                Urgency = Mathf.Clamp01(urgency);
+                HeardByNeighbor = heardByNeighbor;
+                NeighborListenerCount = Mathf.Max(0, neighborListenerCount);
             }
         }
 
@@ -328,6 +345,23 @@ namespace Neighbor.Main.Features.Player
         public static void ReportNoise(Vector3 origin, float loudness, float radius)
         {
             NoiseEmitted?.Invoke(new NoiseFeedback(origin, loudness, radius));
+        }
+
+        public static void ReportNoise(
+            Vector3 origin,
+            float loudness,
+            float radius,
+            float urgency,
+            bool heardByNeighbor,
+            int neighborListenerCount)
+        {
+            NoiseEmitted?.Invoke(new NoiseFeedback(
+                origin,
+                loudness,
+                radius,
+                urgency,
+                heardByNeighbor,
+                neighborListenerCount));
         }
 
         public static void ReportCameraDetection()

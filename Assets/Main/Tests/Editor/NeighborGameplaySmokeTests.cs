@@ -357,6 +357,30 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AwarenessHud_ShowsNeighborHeardNoiseWarningFromNoiseFeedback()
+        {
+            GameObject playerObject = context.CreateObject("Player");
+            context.AddInitializedComponent<PlayerController>(playerObject);
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleNoise",
+                new PlayerFeedbackEvents.NoiseFeedback(
+                    Vector3.zero,
+                    0.58f,
+                    6f,
+                    0.9f,
+                    true,
+                    1));
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateWarning");
+
+            Text warningText = GameplaySmokeTestReflection.GetField<Text>(hud, "warningText");
+            Assert.That(warningText.text, Is.EqualTo("HE HEARD THAT"));
+        }
+
+        [Test]
         public void AwarenessHud_HidingStatusShowsBreathPressure()
         {
             PlayerHidingState hidingState = context.AddInitializedComponent<PlayerHidingState>(
@@ -2376,6 +2400,8 @@ namespace Neighbor.Main.Tests
                 Assert.That(feedbackReceived, Is.True);
                 Assert.That(feedback.Loudness, Is.EqualTo(0.72f).Within(0.001f));
                 Assert.That(feedback.Radius, Is.EqualTo(8f).Within(0.001f));
+                Assert.That(feedback.HeardByNeighbor, Is.True);
+                Assert.That(feedback.NeighborListenerCount, Is.EqualTo(1));
                 Assert.That(brain.HasActiveInvestigation, Is.True);
                 Assert.That(brain.LastKnownInvestigationPosition, Is.EqualTo(playerObject.transform.position));
                 Assert.That(

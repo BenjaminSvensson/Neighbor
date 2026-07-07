@@ -63,16 +63,16 @@ namespace Neighbor.Main.Features.Neighbor
             TryHear(other);
         }
 
-        public void TryHear(NoiseEvent noiseEvent)
+        public bool TryHear(NoiseEvent noiseEvent)
         {
             if (noiseEvent == null || IsNoiseInstigatedByThisNeighbor(noiseEvent.InstigatorObject))
             {
-                return;
+                return false;
             }
 
             if (Time.time - lastHeardTime < hearingCooldown || noiseEvent.Loudness01 < minimumLoudness)
             {
-                return;
+                return false;
             }
 
             lastHeardTime = Time.time;
@@ -86,6 +86,7 @@ namespace Neighbor.Main.Features.Neighbor
                 noiseEvent.Urgency01,
                 noiseEvent.Radius,
                 noiseEvent.SourceObject));
+            return true;
         }
 
         private bool IsNoiseInstigatedByThisNeighbor(GameObject instigatorObject)

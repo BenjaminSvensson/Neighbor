@@ -56,14 +56,19 @@ namespace Neighbor.Main.Features.Interaction
             noiseTrigger.isTrigger = true;
             noiseTrigger.radius = Radius;
 
+            int heardListenerCount = NotifyListenersInRange();
             if (!IsNeighborObject(InstigatorObject)
                 && (sourceObject == null || sourceObject.GetComponentInParent<SecurityCamera>() == null))
             {
-                PlayerFeedbackEvents.ReportNoise(origin, Loudness01, Radius);
+                PlayerFeedbackEvents.ReportNoise(
+                    origin,
+                    Loudness01,
+                    Radius,
+                    Urgency01,
+                    heardListenerCount > 0,
+                    heardListenerCount);
                 AdaptiveSecurityDirector.ReportDisturbance(Loudness01);
             }
-
-            NotifyListenersInRange();
         }
 
         private static bool IsNeighborObject(GameObject candidate)
@@ -71,8 +76,9 @@ namespace Neighbor.Main.Features.Interaction
             return candidate != null && candidate.GetComponentInParent<NeighborBrain>() != null;
         }
 
-        private void NotifyListenersInRange()
+        private int NotifyListenersInRange()
         {
+            int heardListenerCount = 0;
             float radiusSqr = Radius * Radius;
             IReadOnlyList<NeighborHearing> listeners = NeighborHearing.Listeners;
 
@@ -86,9 +92,14 @@ namespace Neighbor.Main.Features.Interaction
 
                 if ((listener.transform.position - Origin).sqrMagnitude <= radiusSqr)
                 {
-                    listener.TryHear(this);
+                    if (listener.TryHear(this))
+                    {
+                        heardListenerCount++;
+                    }
                 }
             }
+
+            return heardListenerCount;
         }
     }
 }
