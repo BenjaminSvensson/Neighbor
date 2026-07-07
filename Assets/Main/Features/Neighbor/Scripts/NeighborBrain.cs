@@ -73,6 +73,7 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Range(0f, 1f)] private float minimumUrgencyToRunToNoise = 0.65f;
         [SerializeField, Min(0f)] private float noiseDestinationSampleRadius = 4f;
         [SerializeField, Min(0f)] private float investigationWaitTime = 2.2f;
+        [SerializeField, Min(0f)] private float heardNoiseFeedbackDuration = 1.6f;
         [SerializeField, Min(0.1f)] private float televisionShutoffDistance = 2.2f;
         [SerializeField, Range(0f, 1f)] private float unexpectedOpenDoorSuspicion = 0.36f;
         [SerializeField, Min(0.1f)] private float doorRoomCheckDistance = 2.4f;
@@ -253,7 +254,10 @@ namespace Neighbor.Main.Features.Neighbor
         private PlayerFeedbackEvents.StealthLoopPhase lastReportedStealthLoopPhase;
         private float lastReportedStealthSuspicion = -1f;
         private float lastReportedStealthTension = -1f;
+        private float lastReportedStealthNoise = -1f;
         private bool hasReportedStealthLoopPhase;
+        private float recentHeardNoise;
+        private float recentHeardNoiseUntilTime;
         private PlayerFeedbackEvents.NeighborMemoryClueKind lastRememberedClueKind;
         private string lastRememberedClueName;
         private Vector3 lastRememberedCluePosition;
@@ -899,6 +903,9 @@ namespace Neighbor.Main.Features.Neighbor
             suspicion = 0f;
             postChaseTensionUntilTime = 0f;
             hasReportedStealthLoopPhase = false;
+            lastReportedStealthNoise = -1f;
+            recentHeardNoise = 0f;
+            recentHeardNoiseUntilTime = 0f;
             hasChaseDestination = false;
             interruptedTaskLocation = null;
             currentInvestigationSource = null;
@@ -1208,6 +1215,7 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            RegisterHeardNoiseFeedback(stimulus.Loudness01);
             AddSuspicion(stimulus.Loudness01 * Mathf.Lerp(0.35f, 0.75f, stimulus.Urgency01), stimulus.SourceObject);
             investigationMoveMode = stimulus.Urgency01 >= minimumUrgencyToRunToNoise || CurrentSuspicionLevel == SuspicionLevel.Certain
                 ? NeighborMotor.MoveMode.Run
@@ -1221,6 +1229,7 @@ namespace Neighbor.Main.Features.Neighbor
                 investigationWaitTime,
                 investigationMoveMode,
                 true);
+            ReportStealthLoopIfNeeded(true);
         }
 
         private void BeginInvestigation(
@@ -3229,11 +3238,13 @@ namespace Neighbor.Main.Features.Neighbor
         {
             PlayerFeedbackEvents.StealthLoopPhase phase = GetStealthLoopPhase();
             float tension = PostChaseTension01;
+            float noise = GetRecentHeardNoise01();
             bool changed = force
                 || !hasReportedStealthLoopPhase
                 || phase != lastReportedStealthLoopPhase
                 || Mathf.Abs(suspicion - lastReportedStealthSuspicion) >= 0.12f
-                || Mathf.Abs(tension - lastReportedStealthTension) >= 0.2f;
+                || Mathf.Abs(tension - lastReportedStealthTension) >= 0.2f
+                || Mathf.Abs(noise - lastReportedStealthNoise) >= 0.18f;
             if (!changed)
             {
                 return;
@@ -3243,12 +3254,37 @@ namespace Neighbor.Main.Features.Neighbor
             lastReportedStealthLoopPhase = phase;
             lastReportedStealthSuspicion = suspicion;
             lastReportedStealthTension = tension;
+            lastReportedStealthNoise = noise;
             PlayerFeedbackEvents.ReportStealthLoop(
                 phase,
                 suspicion,
-                0f,
+                noise,
                 tension,
                 GetStealthLoopMessage(phase));
+        }
+
+        private void RegisterHeardNoiseFeedback(float loudness)
+        {
+            if (heardNoiseFeedbackDuration <= 0f)
+            {
+                return;
+            }
+
+            recentHeardNoise = Mathf.Max(recentHeardNoise, Mathf.Clamp01(loudness));
+            recentHeardNoiseUntilTime = Time.time + heardNoiseFeedbackDuration;
+        }
+
+        private float GetRecentHeardNoise01()
+        {
+            if (Time.time >= recentHeardNoiseUntilTime)
+            {
+                recentHeardNoise = 0f;
+                return 0f;
+            }
+
+            float duration = Mathf.Max(0.01f, heardNoiseFeedbackDuration);
+            float remaining01 = Mathf.Clamp01((recentHeardNoiseUntilTime - Time.time) / duration);
+            return recentHeardNoise * remaining01;
         }
 
         private PlayerFeedbackEvents.StealthLoopPhase GetStealthLoopPhase()

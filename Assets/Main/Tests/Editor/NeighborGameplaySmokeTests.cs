@@ -1842,6 +1842,47 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void HeardNoise_ReportsStealthLoopNoisePulse()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            context.AddInitializedComponent<NeighborHearing>(neighborObject);
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            GameObject source = context.CreateObject("NoiseSource");
+            GameObject noiseObject = context.CreateObject("NoiseEvent");
+            noiseObject.AddComponent<SphereCollider>();
+            NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
+            PlayerFeedbackEvents.StealthLoopFeedback feedback = default;
+            bool received = false;
+            PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
+
+            try
+            {
+                noiseEvent.Initialize(neighborObject.transform.position, 5f, 0.74f, source, 1f, 1f);
+
+                Assert.That(brain.HasActiveInvestigation, Is.True);
+                Assert.That(received, Is.True);
+                Assert.That(
+                    feedback.Phase,
+                    Is.EqualTo(PlayerFeedbackEvents.StealthLoopPhase.Searching)
+                        .Or.EqualTo(PlayerFeedbackEvents.StealthLoopPhase.Suspicious));
+                Assert.That(feedback.Noise, Is.GreaterThan(0.65f));
+                Assert.That(
+                    GameplaySmokeTestReflection.GetField<float>(brain, "recentHeardNoise"),
+                    Is.EqualTo(0.74f).Within(0.001f));
+            }
+            finally
+            {
+                PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            }
+
+            void HandleStealthLoopChanged(PlayerFeedbackEvents.StealthLoopFeedback item)
+            {
+                feedback = item;
+                received = true;
+            }
+        }
+
+        [Test]
         public void PlayerMovementNoise_PrimesNeighborInvestigation()
         {
             GameObject neighborObject = context.CreateObject("Neighbor");
