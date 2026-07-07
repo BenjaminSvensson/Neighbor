@@ -51,6 +51,10 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField, Range(0f, 1f)] private float memoryAtmosphereIntensity = 0.42f;
         [SerializeField, Range(0f, 1f)] private float stackedMemoryAtmosphereBoost = 0.16f;
         [SerializeField, Min(0f)] private float memoryAtmosphereHoldDuration = 4.2f;
+        [Header("Noise Atmosphere Response")]
+        [SerializeField] private bool respondToNoiseFeedback = true;
+        [SerializeField, Range(0f, 1f)] private float heardNoiseAtmosphereIntensity = 0.5f;
+        [SerializeField, Min(0f)] private float heardNoiseAtmosphereHoldDuration = 2.4f;
 
         private float currentStealthAtmosphereIntensity;
         private float targetStealthAtmosphereIntensity;
@@ -79,6 +83,8 @@ namespace Neighbor.Main.Features.Environment
             PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged += HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NoiseEmitted -= HandleNoiseEmitted;
+            PlayerFeedbackEvents.NoiseEmitted += HandleNoiseEmitted;
             ApplyAtmosphere();
         }
 
@@ -86,6 +92,7 @@ namespace Neighbor.Main.Features.Environment
         {
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NoiseEmitted -= HandleNoiseEmitted;
         }
 
         private void Update()
@@ -226,6 +233,16 @@ namespace Neighbor.Main.Features.Environment
             RaiseAtmospherePressure(GetMemoryAtmosphereIntensity(feedback), memoryAtmosphereHoldDuration);
         }
 
+        private void HandleNoiseEmitted(PlayerFeedbackEvents.NoiseFeedback feedback)
+        {
+            if (!respondToNoiseFeedback || !feedback.HeardByNeighbor)
+            {
+                return;
+            }
+
+            RaiseAtmospherePressure(GetNoiseAtmosphereIntensity(feedback), heardNoiseAtmosphereHoldDuration);
+        }
+
         private void RaiseAtmospherePressure(float pressure, float holdDuration)
         {
             targetStealthAtmosphereIntensity = Mathf.Clamp01(pressure);
@@ -243,7 +260,7 @@ namespace Neighbor.Main.Features.Environment
 
         private void UpdateStealthAtmosphere(float deltaTime)
         {
-            if (!respondToStealthLoop && !respondToNeighborMemory)
+            if (!respondToStealthLoop && !respondToNeighborMemory && !respondToNoiseFeedback)
             {
                 targetStealthAtmosphereIntensity = 0f;
             }
@@ -283,6 +300,11 @@ namespace Neighbor.Main.Features.Environment
             float stackPressure = Mathf.Clamp01(feedback.TotalMemoryCount / 4f) * stackedMemoryAtmosphereBoost;
             float pressure = Mathf.Max(memoryAtmosphereIntensity, feedback.Urgency) + stackPressure;
             return Mathf.Clamp01(pressure);
+        }
+
+        private float GetNoiseAtmosphereIntensity(PlayerFeedbackEvents.NoiseFeedback feedback)
+        {
+            return Mathf.Clamp01(Mathf.Max(heardNoiseAtmosphereIntensity, Mathf.Max(feedback.Loudness, feedback.Urgency)));
         }
 
         private int CountAnchors(AtmosphereDressingAnchor.DressingKind kind)
