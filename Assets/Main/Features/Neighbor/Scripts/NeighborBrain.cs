@@ -3460,7 +3460,12 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             SuspicionLevel level = CurrentSuspicionLevel;
-            if (level == SuspicionLevel.Certain || level == SuspicionLevel.Suspicious)
+            if (level == SuspicionLevel.Certain)
+            {
+                return PlayerFeedbackEvents.StealthLoopPhase.Certain;
+            }
+
+            if (level == SuspicionLevel.Suspicious)
             {
                 return PlayerFeedbackEvents.StealthLoopPhase.Suspicious;
             }
@@ -3487,6 +3492,7 @@ namespace Neighbor.Main.Features.Neighbor
                 PlayerFeedbackEvents.StealthLoopPhase.Chased => "Run or hide",
                 PlayerFeedbackEvents.StealthLoopPhase.PostChase => "Stay hidden. He is checking the area.",
                 PlayerFeedbackEvents.StealthLoopPhase.Searching => "He is investigating.",
+                PlayerFeedbackEvents.StealthLoopPhase.Certain => "He is locking on.",
                 PlayerFeedbackEvents.StealthLoopPhase.Suspicious => "He is suspicious.",
                 PlayerFeedbackEvents.StealthLoopPhase.Curious => "He heard something.",
                 PlayerFeedbackEvents.StealthLoopPhase.Hiding => "Stay still.",

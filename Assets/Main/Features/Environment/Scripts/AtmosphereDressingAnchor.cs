@@ -270,6 +270,7 @@ namespace Neighbor.Main.Features.Environment
                 PlayerFeedbackEvents.StealthLoopPhase.Chased => 1f,
                 PlayerFeedbackEvents.StealthLoopPhase.PostChase => Mathf.Max(0.62f, pressure),
                 PlayerFeedbackEvents.StealthLoopPhase.Searching => Mathf.Max(0.52f, pressure),
+                PlayerFeedbackEvents.StealthLoopPhase.Certain => Mathf.Max(0.74f, pressure),
                 PlayerFeedbackEvents.StealthLoopPhase.Suspicious => Mathf.Max(0.42f, pressure),
                 PlayerFeedbackEvents.StealthLoopPhase.Hiding => feedback.IsCalming
                     ? Mathf.Max(calmHidingDressingPressure, feedback.Tension)

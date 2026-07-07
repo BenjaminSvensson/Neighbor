@@ -389,6 +389,30 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AwarenessHud_ShowsCertainSuspicionAsAlmostSeen()
+        {
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleStealthLoopChanged",
+                new PlayerFeedbackEvents.StealthLoopFeedback(
+                    PlayerFeedbackEvents.StealthLoopPhase.Certain,
+                    0.88f,
+                    0f,
+                    0.2f,
+                    "He is locking on."));
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateStealthStatus");
+
+            Text warningText = GameplaySmokeTestReflection.GetField<Text>(hud, "warningText");
+            Text stealthStatusText = GameplaySmokeTestReflection.GetField<Text>(hud, "stealthStatusText");
+
+            Assert.That(warningText.text, Is.EqualTo("HE IS LOCKING ON."));
+            Assert.That(stealthStatusText.text, Is.EqualTo("CERTAIN / ALMOST SEEN"));
+        }
+
+        [Test]
         public void AwarenessHud_HidingStatusShowsBreathPressure()
         {
             PlayerHidingState hidingState = context.AddInitializedComponent<PlayerHidingState>(
@@ -1005,6 +1029,36 @@ namespace Neighbor.Main.Tests
             GameplaySmokeTestReflection.Invoke(brain, "UpdateSuspicion", 1f);
 
             Assert.That(brain.Suspicion, Is.LessThan(beforeDecay));
+        }
+
+        [Test]
+        public void StealthLoop_CertainSuspicionReportsDistinctPhase()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>();
+            PlayerFeedbackEvents.StealthLoopFeedback feedback = default;
+            bool received = false;
+            PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
+
+            try
+            {
+                GameplaySmokeTestReflection.SetField(brain, "suspicion", 0.86f);
+                GameplaySmokeTestReflection.Invoke(brain, "ReportStealthLoopIfNeeded", true);
+
+                Assert.That(received, Is.True);
+                Assert.That(feedback.Phase, Is.EqualTo(PlayerFeedbackEvents.StealthLoopPhase.Certain));
+                Assert.That(feedback.Suspicion, Is.EqualTo(0.86f).Within(0.001f));
+                Assert.That(feedback.Message, Is.EqualTo("He is locking on."));
+            }
+            finally
+            {
+                PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            }
+
+            void HandleStealthLoopChanged(PlayerFeedbackEvents.StealthLoopFeedback item)
+            {
+                feedback = item;
+                received = true;
+            }
         }
 
         [Test]

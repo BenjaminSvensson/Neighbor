@@ -452,6 +452,7 @@ namespace Neighbor.Main.Features.Player
                     PlayerFeedbackEvents.StealthLoopPhase.PostChase => "POST-CHASE TENSION",
                     PlayerFeedbackEvents.StealthLoopPhase.Hiding => "HOLD YOUR BREATH",
                     PlayerFeedbackEvents.StealthLoopPhase.Chased => "DANGER CLOSE",
+                    PlayerFeedbackEvents.StealthLoopPhase.Certain => "ALMOST SEEN",
                     _ => "TENSION HIGH"
                 };
                 warningText.color = Color.Lerp(
@@ -907,6 +908,8 @@ namespace Neighbor.Main.Features.Player
             {
                 case PlayerFeedbackEvents.StealthLoopPhase.Chased:
                     return new Color(1f, 0.1f, 0.06f, 1f);
+                case PlayerFeedbackEvents.StealthLoopPhase.Certain:
+                    return new Color(1f, 0.24f, 0.08f, 1f);
                 case PlayerFeedbackEvents.StealthLoopPhase.PostChase:
                     return new Color(1f, 0.58f, 0.16f, 1f);
                 case PlayerFeedbackEvents.StealthLoopPhase.Searching:
@@ -953,7 +956,7 @@ namespace Neighbor.Main.Features.Player
         {
             return level switch
             {
-                NeighborBrain.SuspicionLevel.Certain => PlayerFeedbackEvents.StealthLoopPhase.Suspicious,
+                NeighborBrain.SuspicionLevel.Certain => PlayerFeedbackEvents.StealthLoopPhase.Certain,
                 NeighborBrain.SuspicionLevel.Suspicious => PlayerFeedbackEvents.StealthLoopPhase.Suspicious,
                 NeighborBrain.SuspicionLevel.Curious => PlayerFeedbackEvents.StealthLoopPhase.Curious,
                 _ => PlayerFeedbackEvents.StealthLoopPhase.Quiet
@@ -993,6 +996,7 @@ namespace Neighbor.Main.Features.Player
             if (memoryPressure >= 0.55f
                 && phase != PlayerFeedbackEvents.StealthLoopPhase.Chased
                 && phase != PlayerFeedbackEvents.StealthLoopPhase.Hiding
+                && phase != PlayerFeedbackEvents.StealthLoopPhase.Certain
                 && phase != PlayerFeedbackEvents.StealthLoopPhase.PostChase)
             {
                 return memoryPressure >= 0.75f ? "SUSPICIOUS / YOUR TRAIL" : "SUSPICIOUS / MEMORY";
@@ -1028,6 +1032,8 @@ namespace Neighbor.Main.Features.Player
                     return tension >= 0.45f ? "RECOVERY / SEARCHING" : "RECOVERY / QUIET DOWN";
                 case PlayerFeedbackEvents.StealthLoopPhase.Searching:
                     return noise >= 0.35f ? "SEARCHING / NOISE TRACE" : "SEARCHING";
+                case PlayerFeedbackEvents.StealthLoopPhase.Certain:
+                    return "CERTAIN / ALMOST SEEN";
                 case PlayerFeedbackEvents.StealthLoopPhase.Suspicious:
                     return suspicion >= 0.75f ? "SUSPICIOUS / ALMOST SEEN" : "SUSPICIOUS";
                 case PlayerFeedbackEvents.StealthLoopPhase.Curious:
@@ -1057,6 +1063,10 @@ namespace Neighbor.Main.Features.Player
                     new Color(1f, 0.38f, 0.1f, 1f),
                     tension),
                 PlayerFeedbackEvents.StealthLoopPhase.Searching => new Color(1f, 0.66f, 0.16f, 0.98f),
+                PlayerFeedbackEvents.StealthLoopPhase.Certain => Color.Lerp(
+                    new Color(1f, 0.42f, 0.12f, 0.98f),
+                    new Color(1f, 0.08f, 0.04f, 1f),
+                    Mathf.Max(suspicion, memoryPressure)),
                 PlayerFeedbackEvents.StealthLoopPhase.Suspicious => Color.Lerp(
                     new Color(1f, 0.58f, 0.16f, 0.96f),
                     new Color(1f, 0.18f, 0.08f, 1f),
