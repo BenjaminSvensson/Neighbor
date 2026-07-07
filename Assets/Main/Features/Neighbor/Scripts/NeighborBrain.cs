@@ -1153,7 +1153,7 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (currentHuntMemoryClueActive)
             {
-                ClearHuntMemoryClueTarget();
+                FinishHuntMemoryClueSearch();
             }
 
             if (currentHideSpot != null)
@@ -2781,6 +2781,18 @@ namespace Neighbor.Main.Features.Neighbor
             currentHuntMemoryClueKind = default;
             currentHuntMemoryClueSource = null;
             currentInvestigationTrailRelated = false;
+        }
+
+        private void FinishHuntMemoryClueSearch()
+        {
+            if (!currentHuntMemoryClueActive)
+            {
+                return;
+            }
+
+            ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning, true, true);
+            ClearHuntMemoryClueTarget();
+            ReportStealthLoopIfNeeded(true);
         }
 
         private bool HasCompletedRequiredSearchPoints()

@@ -415,6 +415,19 @@ namespace Neighbor.Main.Tests
                 Assert.That(RenderSettings.fogDensity, Is.GreaterThan(baseFogDensity));
                 Assert.That(colorAdjustments.postExposure.value, Is.LessThan(baseExposure));
                 Assert.That(vignette.intensity.value, Is.GreaterThan(baseVignette));
+
+                float trailIntensity = director.CurrentStealthAtmosphereIntensity;
+                PlayerFeedbackEvents.ReportNeighborInvestigation(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning,
+                    Vector3.zero,
+                    "Basement Key Trail",
+                    0.28f,
+                    0.45f,
+                    true);
+                GameplaySmokeTestReflection.Invoke(director, "UpdateStealthAtmosphere", 0.75f);
+
+                Assert.That(director.TargetStealthAtmosphereIntensity, Is.LessThan(0.25f));
+                Assert.That(director.CurrentStealthAtmosphereIntensity, Is.LessThan(trailIntensity));
             }
             finally
             {
@@ -646,6 +659,19 @@ namespace Neighbor.Main.Tests
                 Assert.That(flicker.EffectiveFlickerAmount, Is.GreaterThan(0.48f));
                 Assert.That(flicker.EffectiveFlickerSpeed, Is.GreaterThan(8f));
                 Assert.That(light.intensity, Is.LessThan(1f));
+
+                float trailPressure = flicker.CurrentStealthPressure;
+                PlayerFeedbackEvents.ReportNeighborInvestigation(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned,
+                    Vector3.zero,
+                    "Basement Key Trail",
+                    0.28f,
+                    0.45f,
+                    true);
+                GameplaySmokeTestReflection.Invoke(flicker, "UpdateStealthPressure", 0.75f);
+
+                Assert.That(flicker.CurrentStealthPressure, Is.LessThan(trailPressure));
+                Assert.That(flicker.CurrentStealthPressure, Is.LessThan(0.2f));
             }
             finally
             {
@@ -1041,6 +1067,23 @@ namespace Neighbor.Main.Tests
                 Assert.That(trailDecal.a, Is.GreaterThan(calmDecal.a));
                 Assert.That(trailDecal.r, Is.LessThan(calmDecal.r));
                 Assert.That(propObject.transform.localScale.x, Is.GreaterThan(calmPropScale.x));
+
+                float trailDecalPressure = decal.CurrentStealthPressure;
+                float trailPropPressure = prop.CurrentStealthPressure;
+                PlayerFeedbackEvents.ReportNeighborInvestigation(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning,
+                    Vector3.zero,
+                    "Basement Key Trail",
+                    0.28f,
+                    0.45f,
+                    true);
+                GameplaySmokeTestReflection.Invoke(decal, "UpdateStealthDressing", 0.75f);
+                GameplaySmokeTestReflection.Invoke(prop, "UpdateStealthDressing", 0.75f);
+
+                Assert.That(decal.CurrentStealthPressure, Is.LessThan(trailDecalPressure));
+                Assert.That(prop.CurrentStealthPressure, Is.LessThan(trailPropPressure));
+                Assert.That(decal.CurrentStealthPressure, Is.LessThan(0.2f));
+                Assert.That(prop.CurrentStealthPressure, Is.LessThan(0.2f));
             }
             finally
             {

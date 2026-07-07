@@ -56,6 +56,7 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField] private bool respondToNeighborInvestigation = true;
         [SerializeField, Range(0f, 1f)] private float trailInvestigationAtmosphereIntensity = 0.72f;
         [SerializeField, Range(0f, 1f)] private float searchingInvestigationAtmosphereIntensity = 0.5f;
+        [SerializeField, Range(0f, 1f)] private float resolvedTrailAtmosphereIntensity = 0.16f;
         [SerializeField, Min(0f)] private float investigationAtmosphereHoldDuration = 3.2f;
         [Header("Noise Atmosphere Response")]
         [SerializeField] private bool respondToNoiseFeedback = true;
@@ -344,6 +345,10 @@ namespace Neighbor.Main.Features.Environment
                         : Mathf.Max(searchingInvestigationAtmosphereIntensity, feedbackPressure * 0.85f),
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started =>
                     Mathf.Max(0.38f, feedbackPressure * 0.75f),
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning when feedback.IsTrailRelated =>
+                    resolvedTrailAtmosphereIntensity,
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned when feedback.IsTrailRelated =>
+                    resolvedTrailAtmosphereIntensity,
                 _ => 0f
             };
         }

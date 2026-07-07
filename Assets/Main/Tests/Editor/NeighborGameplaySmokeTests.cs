@@ -204,6 +204,25 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AwarenessHud_LabelsTrailInvestigationAsTrail()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.Investigate);
+            GameplaySmokeTestReflection.SetField(brain, "currentInvestigationTrailRelated", true);
+            GameplaySmokeTestReflection.SetField(hud, "trackedNeighbor", brain);
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateAwareness");
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateStealthStatus");
+
+            Text awarenessText = GameplaySmokeTestReflection.GetField<Text>(hud, "awarenessText");
+            Text stealthStatusText = GameplaySmokeTestReflection.GetField<Text>(hud, "stealthStatusText");
+            Assert.That(awarenessText.text, Is.EqualTo("TRAIL"));
+            Assert.That(stealthStatusText.text, Is.EqualTo("SEARCHING / YOUR TRAIL"));
+        }
+
+        [Test]
         public void AwarenessHud_LabelsActiveMemoryHuntAsTrail()
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
@@ -1017,6 +1036,52 @@ namespace Neighbor.Main.Tests
             void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback item)
             {
                 feedback.Add(item);
+            }
+        }
+
+        [Test]
+        public void NeighborMemory_FinishedTrailSweepReportsTrailCleared()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            GameObject glassObject = context.CreateObject("BrokenKitchenWindow");
+            Vector3 cluePosition = new(2f, 0f, 1f);
+            PlayerFeedbackEvents.NeighborInvestigationFeedback feedback = default;
+            bool received = false;
+            PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
+
+            try
+            {
+                GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.HuntMode);
+                GameplaySmokeTestReflection.SetField(brain, "currentHuntMemoryClueActive", true);
+                GameplaySmokeTestReflection.SetField(
+                    brain,
+                    "currentHuntMemoryClueKind",
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken);
+                GameplaySmokeTestReflection.SetField(brain, "currentHuntMemoryClueSource", glassObject);
+                GameplaySmokeTestReflection.SetField(brain, "currentInvestigationSource", glassObject);
+                GameplaySmokeTestReflection.SetField(brain, "currentInvestigationTrailRelated", true);
+                GameplaySmokeTestReflection.SetField(brain, "lastKnownInvestigationPosition", cluePosition);
+                GameplaySmokeTestReflection.SetField(brain, "investigationMoveMode", NeighborMotor.MoveMode.Cautious);
+                GameplaySmokeTestReflection.SetField(brain, "suspicion", 0.66f);
+
+                GameplaySmokeTestReflection.Invoke(brain, "FinishHuntMemoryClueSearch");
+
+                Assert.That(received, Is.True);
+                Assert.That(feedback.Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning));
+                Assert.That(feedback.IsTrailRelated, Is.True);
+                Assert.That(feedback.SourceName, Is.EqualTo(glassObject.name));
+                Assert.That(brain.IsHuntingMemoryClue, Is.False);
+                Assert.That(brain.IsCurrentInvestigationTrailRelated, Is.False);
+            }
+            finally
+            {
+                PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
+            }
+
+            void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback item)
+            {
+                feedback = item;
+                received = true;
             }
         }
 
