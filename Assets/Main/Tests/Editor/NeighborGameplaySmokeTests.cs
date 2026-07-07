@@ -608,6 +608,92 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NeighborMemory_PostChaseHuntUsesPendingClueAsTrailWaypoint()
+        {
+            GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            NavMeshSurface surface = null;
+            try
+            {
+                ground.name = "TemporaryMemoryHuntNavMeshGround";
+                ground.transform.position = new Vector3(0f, -0.1f, 0f);
+                ground.transform.localScale = new Vector3(10f, 0.2f, 10f);
+                surface = ground.AddComponent<NavMeshSurface>();
+                surface.collectObjects = CollectObjects.All;
+                surface.useGeometry = NavMeshCollectGeometry.RenderMeshes;
+                surface.layerMask = ~0;
+                surface.defaultArea = 0;
+                surface.BuildNavMesh();
+
+                GameObject neighborObject = context.CreateObject("Neighbor");
+                neighborObject.transform.position = Vector3.zero;
+                NavMeshAgent agent = neighborObject.AddComponent<NavMeshAgent>();
+                agent.radius = 0.3f;
+                agent.height = 2f;
+                agent.stoppingDistance = 0.1f;
+                Assert.That(NavMesh.SamplePosition(Vector3.zero, out NavMeshHit startHit, 2f, NavMesh.AllAreas), Is.True);
+                neighborObject.transform.position = startHit.position;
+                context.AddInitializedComponent<NeighborMotor>(neighborObject);
+                NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+
+                GameObject glassObject = context.CreateObject("BrokenKitchenWindow");
+                glassObject.transform.position = new Vector3(2f, 0f, 1f);
+                GlassShatter glass = context.AddInitializedComponent<GlassShatter>(glassObject);
+                PlayerFeedbackEvents.NeighborInvestigationFeedback investigationFeedback = default;
+                bool receivedInvestigation = false;
+                PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
+
+                try
+                {
+                    GameplaySmokeTestReflection.Invoke(
+                        brain,
+                        "RememberMemoryClue",
+                        PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken,
+                        glass,
+                        glassObject.transform.position,
+                        0.65f);
+
+                    Assert.That(brain.HasPendingMemoryClueFollowUp, Is.True);
+
+                    GameplaySmokeTestReflection.Invoke(
+                        brain,
+                        "BeginHuntMode",
+                        new Vector3(0.4f, 0f, 0.2f));
+
+                    Assert.That(brain.CurrentState, Is.EqualTo(NeighborBrain.BehaviorState.HuntMode));
+                    Assert.That(brain.IsHuntingMemoryClue, Is.True);
+                    Assert.That(brain.CurrentHuntMemoryClueKind, Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken));
+                    Assert.That(brain.CurrentHuntMemoryClueSource, Is.SameAs(glassObject));
+                    Assert.That(brain.CurrentInvestigationSource, Is.SameAs(glassObject));
+                    Assert.That(brain.HasPendingMemoryClueFollowUp, Is.False);
+                    Assert.That(Vector3.Distance(brain.CurrentGoal, glassObject.transform.position), Is.LessThan(1.6f));
+                    Assert.That(receivedInvestigation, Is.True);
+                    Assert.That(investigationFeedback.Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started));
+                    Assert.That(investigationFeedback.SourceName, Is.EqualTo(glassObject.name));
+                    Assert.That(investigationFeedback.Urgency, Is.GreaterThanOrEqualTo(0.65f));
+                }
+                finally
+                {
+                    PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
+                }
+
+                void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback item)
+                {
+                    investigationFeedback = item;
+                    receivedInvestigation = true;
+                }
+            }
+            finally
+            {
+                if (surface != null)
+                {
+                    surface.RemoveData();
+                }
+
+                UnityEngine.Object.DestroyImmediate(ground);
+            }
+        }
+
+        [Test]
         public void ReinforcementTrigger_RecognizesCameraAndTrapPreferredPlacements()
         {
             GameObject triggerObject = context.CreateObject("ReinforcementTrigger");

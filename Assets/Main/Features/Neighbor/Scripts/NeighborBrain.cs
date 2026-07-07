@@ -3,6 +3,7 @@ using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.HouseBuilder;
 using Neighbor.Main.Features.Player;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace Neighbor.Main.Features.Neighbor
 {
@@ -226,6 +227,9 @@ namespace Neighbor.Main.Features.Neighbor
         private bool isPlayerVisible;
         private bool waitingAtGoal;
         private bool currentHideSpotKnownOccupied;
+        private bool currentHuntMemoryClueActive;
+        private PlayerFeedbackEvents.NeighborMemoryClueKind currentHuntMemoryClueKind;
+        private GameObject currentHuntMemoryClueSource;
         private NeighborTaskLocation.TaskAnimationPhase currentTaskAnimationPhase;
         private NeighborTaskLocation currentTaskLocation;
         private NeighborTaskLocation activeTaskAudioLocation;
@@ -394,6 +398,9 @@ namespace Neighbor.Main.Features.Neighbor
             && waitingAtGoal
             && motor != null
             && motor.HasArrived;
+        public bool IsHuntingMemoryClue => currentState == BehaviorState.HuntMode && currentHuntMemoryClueActive;
+        public PlayerFeedbackEvents.NeighborMemoryClueKind CurrentHuntMemoryClueKind => currentHuntMemoryClueKind;
+        public GameObject CurrentHuntMemoryClueSource => currentHuntMemoryClueSource;
         public bool IsWaitingDuringWander => currentState == BehaviorState.Wander
             && waitingAtGoal
             && motor != null
@@ -1109,7 +1116,7 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            if (currentSearchPoint == null && currentHideSpot == null)
+            if (currentSearchPoint == null && currentHideSpot == null && !currentHuntMemoryClueActive)
             {
                 if (!TrySetNextHuntDestination())
                 {
@@ -1128,6 +1135,11 @@ namespace Neighbor.Main.Features.Neighbor
             {
                 FaceSearchSweep();
                 return;
+            }
+
+            if (currentHuntMemoryClueActive)
+            {
+                ClearHuntMemoryClueTarget();
             }
 
             if (currentHideSpot != null)
@@ -2556,6 +2568,7 @@ namespace Neighbor.Main.Features.Neighbor
             currentSearchPoint = null;
             currentHideSpot = null;
             currentHideSpotKnownOccupied = false;
+            ClearHuntMemoryClueTarget();
             StopActiveTaskAudio();
             visitedSearchPoints.Clear();
             searchedHideSpots.Clear();
@@ -2588,6 +2601,11 @@ namespace Neighbor.Main.Features.Neighbor
             if (motor == null || Time.time >= huntUntilTime && HasCompletedRequiredSearchPoints())
             {
                 return false;
+            }
+
+            if (Time.time < huntUntilTime && TrySetRememberedClueHuntDestination())
+            {
+                return true;
             }
 
             if (Time.time < huntUntilTime && TrySetNextHideSpotSearch())
@@ -2654,6 +2672,87 @@ namespace Neighbor.Main.Features.Neighbor
 
             currentSearchPoint = null;
             return false;
+        }
+
+        private bool TrySetRememberedClueHuntDestination()
+        {
+            if (!followUpRememberedClues
+                || !hasPendingMemoryClueFollowUp
+                || pendingMemoryClueSource == null
+                || motor == null)
+            {
+                return false;
+            }
+
+            Vector3 cluePosition = pendingMemoryCluePosition;
+            GameObject clueSource = pendingMemoryClueSource;
+            float clueSuspicion = Mathf.Max(memoryFollowUpMinimumSuspicion, pendingMemoryClueSuspicion);
+            NeighborMotor.MoveMode moveMode = GetMemoryFollowUpMoveMode(clueSuspicion);
+
+            if (!TryResolveRememberedClueHuntPosition(cluePosition, out Vector3 huntPosition))
+            {
+                return false;
+            }
+
+            currentHuntMemoryClueActive = true;
+            currentHuntMemoryClueKind = pendingMemoryClueKind;
+            currentHuntMemoryClueSource = clueSource;
+            currentSearchPoint = null;
+            currentHideSpot = null;
+            currentHideSpotKnownOccupied = false;
+            currentGoal = huntPosition;
+            lastKnownInvestigationPosition = cluePosition;
+            investigationSearchLookDirection = cluePosition - transform.position;
+            investigationSearchLookDirection.y = 0f;
+            currentInvestigationSource = clueSource;
+            goalWaitDuration = Mathf.Max(closetSearchWaitTime, memoryFollowUpWaitTime);
+            waitingAtGoal = false;
+            hasPendingMemoryClueFollowUp = false;
+            pendingMemoryClueKind = default;
+            pendingMemoryClueSource = null;
+            pendingMemoryCluePosition = default;
+            pendingMemoryClueSuspicion = 0f;
+            nextMemoryFollowUpTime = Time.time + memoryFollowUpCooldown;
+            suspicion = Mathf.Max(suspicion, clueSuspicion);
+            investigationMoveMode = moveMode;
+            motor.SetMoveMode(moveMode);
+            ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started, true);
+            ReportStealthLoopIfNeeded(true);
+            return true;
+        }
+
+        private bool TryResolveRememberedClueHuntPosition(Vector3 cluePosition, out Vector3 huntPosition)
+        {
+            if (motor.TrySetDestinationNear(cluePosition, noiseDestinationSampleRadius, out huntPosition))
+            {
+                return true;
+            }
+
+            if (!Application.isPlaying
+                && NavMesh.SamplePosition(
+                    cluePosition,
+                    out NavMeshHit hit,
+                    Mathf.Max(0.5f, noiseDestinationSampleRadius),
+                    NavMesh.AllAreas))
+            {
+                huntPosition = hit.position;
+                return true;
+            }
+
+            huntPosition = cluePosition;
+            return false;
+        }
+
+        private void ClearHuntMemoryClueTarget()
+        {
+            if (currentInvestigationSource == currentHuntMemoryClueSource)
+            {
+                currentInvestigationSource = null;
+            }
+
+            currentHuntMemoryClueActive = false;
+            currentHuntMemoryClueKind = default;
+            currentHuntMemoryClueSource = null;
         }
 
         private bool HasCompletedRequiredSearchPoints()
@@ -2804,6 +2903,7 @@ namespace Neighbor.Main.Features.Neighbor
             currentSearchPoint = null;
             currentHideSpot = null;
             currentHideSpotKnownOccupied = false;
+            ClearHuntMemoryClueTarget();
             witnessedPlayerHideSpot = null;
             visitedSearchPoints.Clear();
             searchedHideSpots.Clear();
@@ -2818,6 +2918,11 @@ namespace Neighbor.Main.Features.Neighbor
             if (currentState == state)
             {
                 return;
+            }
+
+            if (state != BehaviorState.HuntMode)
+            {
+                ClearHuntMemoryClueTarget();
             }
 
             if (currentState == BehaviorState.Investigate
@@ -3421,9 +3526,9 @@ namespace Neighbor.Main.Features.Neighbor
             ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching);
         }
 
-        private void ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind kind)
+        private void ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind kind, bool force = false)
         {
-            if (!hasActiveInvestigation)
+            if (!force && !hasActiveInvestigation)
             {
                 return;
             }
@@ -3647,11 +3752,7 @@ namespace Neighbor.Main.Features.Neighbor
             Vector3 cluePosition = pendingMemoryCluePosition;
             GameObject clueSource = pendingMemoryClueSource;
             float clueSuspicion = Mathf.Max(memoryFollowUpMinimumSuspicion, pendingMemoryClueSuspicion);
-            NeighborMotor.MoveMode moveMode = clueSuspicion >= certainThreshold
-                ? NeighborMotor.MoveMode.Run
-                : clueSuspicion >= suspiciousThreshold
-                    ? NeighborMotor.MoveMode.Cautious
-                    : NeighborMotor.MoveMode.Walk;
+            NeighborMotor.MoveMode moveMode = GetMemoryFollowUpMoveMode(clueSuspicion);
 
             hasPendingMemoryClueFollowUp = false;
             pendingMemoryClueSource = null;
@@ -3664,6 +3765,18 @@ namespace Neighbor.Main.Features.Neighbor
                 moveMode,
                 true);
             return true;
+        }
+
+        private NeighborMotor.MoveMode GetMemoryFollowUpMoveMode(float clueSuspicion)
+        {
+            if (clueSuspicion >= certainThreshold)
+            {
+                return NeighborMotor.MoveMode.Run;
+            }
+
+            return clueSuspicion >= suspiciousThreshold
+                ? NeighborMotor.MoveMode.Cautious
+                : NeighborMotor.MoveMode.Walk;
         }
 
         private void ClearMemoryClueFollowUp()
