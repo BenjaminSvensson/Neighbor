@@ -7,6 +7,8 @@ namespace Neighbor.Main.Features.Audio
 {
     public sealed class AmbienceManager : MonoBehaviour
     {
+        private const float NeutralLowPassCutoff = 21999f;
+
         [Header("References")]
         [Tooltip("Usually the player camera or AudioListener. Automatically resolved when empty.")]
         [SerializeField] private Transform listener;
@@ -49,6 +51,7 @@ namespace Neighbor.Main.Features.Audio
         private void OnDisable()
         {
             StopAllPlaybacks();
+            ClearListenerZoneFeel();
         }
 
         private void Update()
@@ -67,7 +70,7 @@ namespace Neighbor.Main.Features.Audio
 
             DesiredAmbienceState desiredState = GetDesiredState();
             CurrentZoneLocation = desiredState.ZoneLocation;
-            ApplyListenerZoneFeel(desiredState.Profile);
+            ApplyListenerZoneFeel(desiredState);
             ApplyZoneAcoustics(desiredState);
             ReportZoneChange(desiredState);
             if (desiredState.Profile != targetProfile)
@@ -183,7 +186,7 @@ namespace Neighbor.Main.Features.Audio
             return new DesiredAmbienceState(defaultProfile, AmbienceZoneLocation.Outside);
         }
 
-        private void ApplyListenerZoneFeel(AmbienceProfile profile)
+        private void ApplyListenerZoneFeel(DesiredAmbienceState desiredState)
         {
             ReleaseStaleListenerFilters();
 
@@ -192,11 +195,14 @@ namespace Neighbor.Main.Features.Audio
                 return;
             }
 
-            float cutoff = profile != null ? profile.ListenerLowPassCutoff : 22000f;
-            AudioReverbPreset reverbPreset = profile != null ? profile.ListenerReverbPreset : AudioReverbPreset.Off;
+            float cutoff = GetEffectiveListenerLowPassCutoff(desiredState.Profile, desiredState.ZoneLocation);
+            AudioReverbPreset reverbPreset = GetEffectiveListenerReverbPreset(
+                desiredState.Profile,
+                desiredState.ZoneLocation);
 
-            if (cutoff < 21999f || listenerLowPassFilter != null)
+            if (cutoff < NeutralLowPassCutoff || listenerLowPassFilter != null)
             {
+                bool createdFilter = false;
                 if (listenerLowPassFilter == null)
                 {
                     listenerLowPassFilter = listener.GetComponent<AudioLowPassFilter>();
@@ -205,13 +211,16 @@ namespace Neighbor.Main.Features.Audio
                 if (listenerLowPassFilter == null)
                 {
                     listenerLowPassFilter = listener.gameObject.AddComponent<AudioLowPassFilter>();
+                    createdFilter = true;
                 }
 
-                listenerLowPassFilter.enabled = cutoff < 21999f;
-                listenerLowPassFilter.cutoffFrequency = Mathf.MoveTowards(
-                    listenerLowPassFilter.cutoffFrequency,
-                    cutoff,
-                    Time.unscaledDeltaTime * 12000f);
+                listenerLowPassFilter.enabled = cutoff < NeutralLowPassCutoff;
+                listenerLowPassFilter.cutoffFrequency = createdFilter
+                    ? cutoff
+                    : Mathf.MoveTowards(
+                        listenerLowPassFilter.cutoffFrequency,
+                        cutoff,
+                        Time.unscaledDeltaTime * 12000f);
             }
 
             if (reverbPreset != AudioReverbPreset.Off || listenerReverbFilter != null)
@@ -228,6 +237,21 @@ namespace Neighbor.Main.Features.Audio
 
                 listenerReverbFilter.reverbPreset = reverbPreset;
                 listenerReverbFilter.enabled = reverbPreset != AudioReverbPreset.Off;
+            }
+        }
+
+        private void ClearListenerZoneFeel()
+        {
+            if (listenerLowPassFilter != null)
+            {
+                listenerLowPassFilter.enabled = false;
+                listenerLowPassFilter = null;
+            }
+
+            if (listenerReverbFilter != null)
+            {
+                listenerReverbFilter.enabled = false;
+                listenerReverbFilter = null;
             }
         }
 
@@ -269,6 +293,30 @@ namespace Neighbor.Main.Features.Audio
         {
             return candidate != null
                 && (candidate.GetComponent<AudioListener>() != null || candidate.GetComponent<AudioSource>() != null);
+        }
+
+        private static float GetEffectiveListenerLowPassCutoff(
+            AmbienceProfile profile,
+            AmbienceZoneLocation zoneLocation)
+        {
+            if (profile != null && profile.ListenerLowPassCutoff < NeutralLowPassCutoff)
+            {
+                return profile.ListenerLowPassCutoff;
+            }
+
+            return GetDefaultZoneLowPassCutoff(zoneLocation);
+        }
+
+        private static AudioReverbPreset GetEffectiveListenerReverbPreset(
+            AmbienceProfile profile,
+            AmbienceZoneLocation zoneLocation)
+        {
+            if (profile != null && profile.ListenerReverbPreset != AudioReverbPreset.Off)
+            {
+                return profile.ListenerReverbPreset;
+            }
+
+            return GetDefaultZoneReverbPreset(zoneLocation);
         }
 
         private void ReportZoneChange(DesiredAmbienceState desiredState)
@@ -319,6 +367,28 @@ namespace Neighbor.Main.Features.Audio
                 AmbienceZoneLocation.Basement => 0.72f,
                 AmbienceZoneLocation.Garage => 0.45f,
                 _ => 0f
+            };
+        }
+
+        private static float GetDefaultZoneLowPassCutoff(AmbienceZoneLocation zoneLocation)
+        {
+            return zoneLocation switch
+            {
+                AmbienceZoneLocation.Inside => 16000f,
+                AmbienceZoneLocation.Basement => 2600f,
+                AmbienceZoneLocation.Garage => 8500f,
+                _ => 22000f
+            };
+        }
+
+        private static AudioReverbPreset GetDefaultZoneReverbPreset(AmbienceZoneLocation zoneLocation)
+        {
+            return zoneLocation switch
+            {
+                AmbienceZoneLocation.Inside => AudioReverbPreset.Room,
+                AmbienceZoneLocation.Basement => AudioReverbPreset.Cave,
+                AmbienceZoneLocation.Garage => AudioReverbPreset.ParkingLot,
+                _ => AudioReverbPreset.Off
             };
         }
 

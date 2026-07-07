@@ -189,6 +189,125 @@ namespace Neighbor.Main.Tests
             }
         }
 
+        [TestCase(AmbienceZoneLocation.Inside, AudioReverbPreset.Room, 16000f, false)]
+        [TestCase(AmbienceZoneLocation.Basement, AudioReverbPreset.Cave, 2600f, true)]
+        [TestCase(AmbienceZoneLocation.Garage, AudioReverbPreset.ParkingLot, 8500f, true)]
+        [TestCase(AmbienceZoneLocation.Outside, AudioReverbPreset.Off, 22000f, false)]
+        public void AmbienceManager_ZoneLocationProvidesFallbackListenerFeel(
+            AmbienceZoneLocation zoneLocation,
+            AudioReverbPreset expectedReverb,
+            float expectedLowPass,
+            bool expectWarning)
+        {
+            GameObject managerObject = new("Ambience Manager Test");
+            GameObject listenerObject = new("Listener Test");
+            GameObject areaObject = new("Area Test");
+            AmbienceProfile profile = ScriptableObject.CreateInstance<AmbienceProfile>();
+            bool receivedWarning = false;
+
+            void HandleZoneWarning(PlayerFeedbackEvents.AmbienceZoneFeedback _)
+            {
+                receivedWarning = true;
+            }
+
+            try
+            {
+                listenerObject.AddComponent<AudioListener>();
+                AmbienceManager manager = managerObject.AddComponent<AmbienceManager>();
+                GameplaySmokeTestReflection.SetField(manager, "listener", listenerObject.transform);
+                GameplaySmokeTestReflection.SetField<PlayerController>(manager, "player", null);
+
+                AmbienceArea area = CreateArea(areaObject, profile, false, Vector3.zero, zoneLocation);
+                GameplaySmokeTestReflection.InvokeIfPresent(area, "OnEnable");
+                listenerObject.transform.position = new Vector3(0f, 1.5f, 0f);
+                Physics.SyncTransforms();
+
+                PlayerFeedbackEvents.AmbienceZoneChanged += HandleZoneWarning;
+                GameplaySmokeTestReflection.Invoke(manager, "Update");
+
+                AudioLowPassFilter lowPassFilter = listenerObject.GetComponent<AudioLowPassFilter>();
+                if (expectedLowPass < 21999f)
+                {
+                    Assert.That(lowPassFilter, Is.Not.Null);
+                    Assert.That(lowPassFilter.enabled, Is.True);
+                    Assert.That(lowPassFilter.cutoffFrequency, Is.EqualTo(expectedLowPass).Within(0.001f));
+                }
+                else
+                {
+                    Assert.That(lowPassFilter == null || !lowPassFilter.enabled, Is.True);
+                }
+
+                AudioReverbFilter reverbFilter = listenerObject.GetComponent<AudioReverbFilter>();
+                if (expectedReverb != AudioReverbPreset.Off)
+                {
+                    Assert.That(reverbFilter, Is.Not.Null);
+                    Assert.That(reverbFilter.enabled, Is.True);
+                    Assert.That(reverbFilter.reverbPreset, Is.EqualTo(expectedReverb));
+                }
+                else
+                {
+                    Assert.That(reverbFilter == null || !reverbFilter.enabled, Is.True);
+                }
+
+                Assert.That(receivedWarning, Is.EqualTo(expectWarning));
+
+                GameplaySmokeTestReflection.InvokeIfPresent(area, "OnDisable");
+            }
+            finally
+            {
+                PlayerFeedbackEvents.AmbienceZoneChanged -= HandleZoneWarning;
+                Object.DestroyImmediate(profile);
+                Object.DestroyImmediate(managerObject);
+                Object.DestroyImmediate(listenerObject);
+                Object.DestroyImmediate(areaObject);
+            }
+        }
+
+        [Test]
+        public void AmbienceManager_DisableClearsZoneFiltersAndNoiseModifiers()
+        {
+            GameObject managerObject = new("Ambience Manager Test");
+            GameObject listenerObject = new("Listener Test");
+            GameObject areaObject = new("Basement Area Test");
+            AmbienceProfile profile = ScriptableObject.CreateInstance<AmbienceProfile>();
+
+            try
+            {
+                listenerObject.AddComponent<AudioListener>();
+                AmbienceManager manager = managerObject.AddComponent<AmbienceManager>();
+                GameplaySmokeTestReflection.SetField(manager, "listener", listenerObject.transform);
+                GameplaySmokeTestReflection.SetField<PlayerController>(manager, "player", null);
+
+                AmbienceArea area = CreateArea(areaObject, profile, false, Vector3.zero, AmbienceZoneLocation.Basement);
+                GameplaySmokeTestReflection.InvokeIfPresent(area, "OnEnable");
+                listenerObject.transform.position = new Vector3(0f, 1.5f, 0f);
+                Physics.SyncTransforms();
+
+                GameplaySmokeTestReflection.Invoke(manager, "Update");
+
+                Assert.That(listenerObject.GetComponent<AudioLowPassFilter>().enabled, Is.True);
+                Assert.That(listenerObject.GetComponent<AudioReverbFilter>().enabled, Is.True);
+                Assert.That(AmbienceManager.ActiveNoiseLoudnessMultiplier, Is.GreaterThan(1f));
+
+                GameplaySmokeTestReflection.InvokeIfPresent(manager, "OnDisable");
+
+                Assert.That(listenerObject.GetComponent<AudioLowPassFilter>().enabled, Is.False);
+                Assert.That(listenerObject.GetComponent<AudioReverbFilter>().enabled, Is.False);
+                Assert.That(AmbienceManager.ActiveNoiseLoudnessMultiplier, Is.EqualTo(1f).Within(0.001f));
+                Assert.That(AmbienceManager.ActiveNoiseRadiusMultiplier, Is.EqualTo(1f).Within(0.001f));
+
+                GameplaySmokeTestReflection.InvokeIfPresent(area, "OnDisable");
+            }
+            finally
+            {
+                AmbienceManager.ResetNoiseAcousticModifiers();
+                Object.DestroyImmediate(profile);
+                Object.DestroyImmediate(managerObject);
+                Object.DestroyImmediate(listenerObject);
+                Object.DestroyImmediate(areaObject);
+            }
+        }
+
         [Test]
         public void AmbienceManager_GarageZoneAmplifiesNoiseEvents()
         {
