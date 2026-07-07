@@ -229,6 +229,7 @@ namespace Neighbor.Main.Features.Neighbor
         private NeighborTaskLocation preInvestigationTaskLocation;
         private bool hasPreInvestigationRoutine;
         private bool hasActiveInvestigation;
+        private bool hasReportedInvestigationSearch;
         private Vector3 cachedPredictionDirection;
         private float nextPredictionDecisionTime;
         private bool isVerifyingLastSeenPosition;
@@ -274,6 +275,7 @@ namespace Neighbor.Main.Features.Neighbor
         public Vector3 CurrentDoorRoomCheckPosition => currentDoorRoomCheckPosition;
         public Vector3 LastKnownInvestigationPosition => lastKnownInvestigationPosition;
         public bool HasActiveInvestigation => hasActiveInvestigation;
+        public bool HasReportedInvestigationSearch => hasReportedInvestigationSearch;
         public bool IsSearchingInvestigationArea => currentState == BehaviorState.Investigate
             && waitingAtGoal
             && motor != null
@@ -983,6 +985,7 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (!GoalWaitComplete())
             {
+                ReportInvestigationSearchIfNeeded();
                 FaceSearchSweep();
                 return;
             }
@@ -1181,6 +1184,7 @@ namespace Neighbor.Main.Features.Neighbor
             investigationSearchLookDirection = position - transform.position;
             investigationSearchLookDirection.y = 0f;
             hasActiveInvestigation = true;
+            hasReportedInvestigationSearch = false;
             currentInvestigationSource = source;
             currentUnexpectedOpenDoor = null;
             currentDoorRoomCheckPosition = default;
@@ -1190,6 +1194,7 @@ namespace Neighbor.Main.Features.Neighbor
             currentTaskLocation = null;
             StopActiveTaskAudio();
             investigationMoveMode = moveMode;
+            ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started);
 
             if (motor == null)
             {
@@ -1228,6 +1233,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void FinishInvestigationAndReturnToRoutine()
         {
+            ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning);
             RememberFalseAlarm();
             ClearInvestigationState();
 
@@ -1246,6 +1252,7 @@ namespace Neighbor.Main.Features.Neighbor
             currentDoorRoomCheckPosition = default;
             investigationSearchLookDirection = default;
             hasActiveInvestigation = false;
+            hasReportedInvestigationSearch = false;
         }
 
         private void ClearPreInvestigationRoutine()
@@ -1371,6 +1378,7 @@ namespace Neighbor.Main.Features.Neighbor
 
                     return;
                 case BehaviorState.Investigate:
+                    ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned);
                     RememberFalseAlarm();
                     ClearInvestigationState();
                     suspicion = Mathf.Max(0f, suspicion - 0.08f);
@@ -3134,6 +3142,49 @@ namespace Neighbor.Main.Features.Neighbor
             float sweepAngle = Mathf.Sin(Time.time * searchLookSpeed) * searchLookAngle;
             Vector3 lookDirection = Quaternion.AngleAxis(sweepAngle, Vector3.up) * baseDirection.normalized;
             motor.FaceTowards(transform.position + lookDirection * 3f, 7f);
+        }
+
+        private void ReportInvestigationSearchIfNeeded()
+        {
+            if (!hasActiveInvestigation || hasReportedInvestigationSearch)
+            {
+                return;
+            }
+
+            hasReportedInvestigationSearch = true;
+            ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching);
+        }
+
+        private void ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind kind)
+        {
+            if (!hasActiveInvestigation)
+            {
+                return;
+            }
+
+            PlayerFeedbackEvents.ReportNeighborInvestigation(
+                kind,
+                lastKnownInvestigationPosition,
+                GetInvestigationSourceName(currentInvestigationSource),
+                suspicion,
+                GetInvestigationUrgency(investigationMoveMode));
+        }
+
+        private static string GetInvestigationSourceName(GameObject source)
+        {
+            return source != null && !string.IsNullOrWhiteSpace(source.name)
+                ? source.name
+                : "disturbance";
+        }
+
+        private static float GetInvestigationUrgency(NeighborMotor.MoveMode moveMode)
+        {
+            return moveMode switch
+            {
+                NeighborMotor.MoveMode.Run => 1f,
+                NeighborMotor.MoveMode.Cautious => 0.65f,
+                _ => 0.35f
+            };
         }
 
         private Vector3 GetPredictedChasePosition()
