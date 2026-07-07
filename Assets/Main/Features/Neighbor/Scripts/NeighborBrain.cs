@@ -3474,7 +3474,7 @@ namespace Neighbor.Main.Features.Neighbor
                 suspicion,
                 noise,
                 tension,
-                GetStealthLoopMessage(phase, rememberedClueTension));
+                GetStealthLoopMessage(phase, rememberedClueTension, noise));
         }
 
         private void RegisterHeardNoiseFeedback(float loudness)
@@ -3545,7 +3545,10 @@ namespace Neighbor.Main.Features.Neighbor
                 : PlayerFeedbackEvents.StealthLoopPhase.Quiet;
         }
 
-        private string GetStealthLoopMessage(PlayerFeedbackEvents.StealthLoopPhase phase, float rememberedClueTension)
+        private string GetStealthLoopMessage(
+            PlayerFeedbackEvents.StealthLoopPhase phase,
+            float rememberedClueTension,
+            float noise)
         {
             if (currentHuntMemoryClueActive)
             {
@@ -3555,6 +3558,20 @@ namespace Neighbor.Main.Features.Neighbor
             if (currentInvestigationTrailRelated && currentInvestigationMemoryClueActive)
             {
                 return GetMemoryClueStealthLoopMessage(currentInvestigationMemoryClueKind, phase);
+            }
+
+            if (noise >= 0.35f
+                && (phase == PlayerFeedbackEvents.StealthLoopPhase.Searching
+                    || phase == PlayerFeedbackEvents.StealthLoopPhase.Suspicious
+                    || phase == PlayerFeedbackEvents.StealthLoopPhase.Curious))
+            {
+                return phase switch
+                {
+                    PlayerFeedbackEvents.StealthLoopPhase.Searching => "He is tracing that noise.",
+                    PlayerFeedbackEvents.StealthLoopPhase.Suspicious => "He heard that noise.",
+                    PlayerFeedbackEvents.StealthLoopPhase.Curious => "He heard something nearby.",
+                    _ => "He heard something nearby."
+                };
             }
 
             if (rememberedClueTension >= 0.35f
