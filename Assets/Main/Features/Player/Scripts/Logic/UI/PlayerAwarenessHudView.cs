@@ -37,6 +37,7 @@ namespace Neighbor.Main.Features.Player
         private float lastNeighborTrailInvestigationPressure;
         private float neighborTrailInvestigationUntil;
         private float lastNeighborHeardNoise;
+        private float neighborHeardNoiseDuration;
         private float neighborHeardNoiseUntil;
         private float cameraWarningUntil;
         private float messageUntil;
@@ -258,13 +259,14 @@ namespace Neighbor.Main.Features.Player
         private void UpdateNoise()
         {
             float displayedNoise = GetDisplayedNoiseLevel();
-            bool heardByNeighbor = Time.unscaledTime < neighborHeardNoiseUntil && lastNeighborHeardNoise > 0.05f;
+            float heardNoisePressure = GetDisplayedHeardNoisePressure();
+            bool heardByNeighbor = heardNoisePressure > 0.05f;
             noiseFill.fillAmount = displayedNoise;
             noiseFill.color = heardByNeighbor
                 ? Color.Lerp(
                     new Color(1f, 0.68f, 0.18f, 0.96f),
                     new Color(1f, 0.16f, 0.06f, 1f),
-                    lastNeighborHeardNoise)
+                    heardNoisePressure)
                 : Color.Lerp(
                     new Color(0.35f, 0.72f, 1f, 0.85f),
                     new Color(1f, 0.34f, 0.12f, 0.95f),
@@ -403,13 +405,14 @@ namespace Neighbor.Main.Features.Player
                 return;
             }
 
-            if (Time.unscaledTime < neighborHeardNoiseUntil && noiseLevel >= 0.45f)
+            float heardNoisePressure = GetDisplayedHeardNoisePressure();
+            if (heardNoisePressure >= 0.35f)
             {
                 warningText.text = "HE HEARD THAT";
                 warningText.color = Color.Lerp(
                     new Color(1f, 0.72f, 0.18f, 0.98f),
                     new Color(1f, 0.26f, 0.08f, 1f),
-                    lastNeighborHeardNoise);
+                    heardNoisePressure);
                 return;
             }
 
@@ -502,7 +505,8 @@ namespace Neighbor.Main.Features.Player
                 }
 
                 lastNeighborHeardNoise = Mathf.Max(lastNeighborHeardNoise, feedbackNoise);
-                neighborHeardNoiseUntil = Time.unscaledTime + Mathf.Lerp(1.8f, 3.4f, lastNeighborHeardNoise);
+                neighborHeardNoiseDuration = Mathf.Lerp(1.8f, 3.4f, lastNeighborHeardNoise);
+                neighborHeardNoiseUntil = Time.unscaledTime + neighborHeardNoiseDuration;
             }
         }
 
@@ -1089,8 +1093,20 @@ namespace Neighbor.Main.Features.Player
 
         private float GetDisplayedNoiseLevel()
         {
-            float heardPressure = Time.unscaledTime < neighborHeardNoiseUntil ? lastNeighborHeardNoise : 0f;
+            float heardPressure = GetDisplayedHeardNoisePressure();
             return Mathf.Clamp01(Mathf.Max(noiseLevel, heardPressure));
+        }
+
+        private float GetDisplayedHeardNoisePressure()
+        {
+            if (Time.unscaledTime >= neighborHeardNoiseUntil || lastNeighborHeardNoise <= 0.05f)
+            {
+                return 0f;
+            }
+
+            float duration = Mathf.Max(0.01f, neighborHeardNoiseDuration);
+            float remaining01 = Mathf.Clamp01((neighborHeardNoiseUntil - Time.unscaledTime) / duration);
+            return Mathf.Clamp01(lastNeighborHeardNoise * Mathf.SmoothStep(0f, 1f, remaining01));
         }
 
         private bool HasRecentStealthLoopStatus()

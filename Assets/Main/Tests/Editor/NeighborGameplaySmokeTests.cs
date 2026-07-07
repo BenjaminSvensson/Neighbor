@@ -448,6 +448,43 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AwarenessHud_FadesNeighborHeardNoisePressureWhileWarningStaysReadable()
+        {
+            GameObject playerObject = context.CreateObject("Player");
+            context.AddInitializedComponent<PlayerController>(playerObject);
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleNoise",
+                new PlayerFeedbackEvents.NoiseFeedback(
+                    Vector3.zero,
+                    0.58f,
+                    6f,
+                    0.9f,
+                    true,
+                    1));
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateNoise");
+
+            Text noiseLabel = GameplaySmokeTestReflection.GetField<Text>(hud, "noiseLabel");
+            Image noiseFill = GameplaySmokeTestReflection.GetField<Image>(hud, "noiseFill");
+            float initialFill = noiseFill.fillAmount;
+
+            GameplaySmokeTestReflection.SetField(hud, "noiseLevel", 0f);
+            GameplaySmokeTestReflection.SetField(hud, "neighborHeardNoiseDuration", 3.4f);
+            GameplaySmokeTestReflection.SetField(hud, "neighborHeardNoiseUntil", Time.unscaledTime + 1.7f);
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateNoise");
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateWarning");
+
+            Text warningText = GameplaySmokeTestReflection.GetField<Text>(hud, "warningText");
+            Assert.That(noiseLabel.text, Is.EqualTo("HEARD"));
+            Assert.That(noiseFill.fillAmount, Is.LessThan(initialFill - 0.2f));
+            Assert.That(noiseFill.fillAmount, Is.GreaterThan(0.35f));
+            Assert.That(warningText.text, Is.EqualTo("HE HEARD THAT"));
+        }
+
+        [Test]
         public void AwarenessHud_ShowsCertainSuspicionAsAlmostSeen()
         {
             PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
