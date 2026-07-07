@@ -225,6 +225,7 @@ namespace Neighbor.Main.Features.Player
             Quiet,
             Curious,
             Suspicious,
+            Certain,
             Searching,
             Chased,
             Hiding,

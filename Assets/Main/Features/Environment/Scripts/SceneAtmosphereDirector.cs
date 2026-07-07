@@ -317,6 +317,7 @@ namespace Neighbor.Main.Features.Environment
                 PlayerFeedbackEvents.StealthLoopPhase.Hiding => feedback.IsCalming
                     ? Mathf.Max(calmHidingAtmosphereIntensity, feedback.Tension)
                     : Mathf.Max(hidingAtmosphereIntensity, feedback.Tension),
+                PlayerFeedbackEvents.StealthLoopPhase.Certain => Mathf.Max(0.78f, feedbackPressure),
                 PlayerFeedbackEvents.StealthLoopPhase.Suspicious => Mathf.Max(0.48f, feedbackPressure),
                 PlayerFeedbackEvents.StealthLoopPhase.Curious => Mathf.Max(0.22f, Mathf.Min(0.42f, feedbackPressure)),
                 _ => 0f
