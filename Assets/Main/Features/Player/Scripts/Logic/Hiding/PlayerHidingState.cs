@@ -1,4 +1,5 @@
 using Neighbor.Main.Features.Interaction;
+using Neighbor.Main.Features.Neighbor;
 using UnityEngine;
 
 namespace Neighbor.Main.Features.Player
@@ -9,9 +10,13 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float hiddenBreathGraceTime = 1.5f;
         [SerializeField, Min(0f)] private float breathTensionBuildRate = 0.035f;
         [SerializeField, Min(0f)] private float breathTensionRecoveryRate = 0.3f;
+        [SerializeField, Min(0f)] private float hiddenBreathRecoveryDelay = 1.2f;
+        [SerializeField, Min(0f)] private float calmHiddenBreathRecoveryRate = 0.16f;
         [SerializeField, Range(0f, 1f)] private float inspectionTensionIncrease = 0.42f;
         [SerializeField, Range(0f, 1f)] private float compromisedTensionThreshold = 0.94f;
         [SerializeField, Range(0f, 1f)] private float exposedVisibilityThreshold = 0.78f;
+        [SerializeField, Min(0f)] private float hidingDangerNeighborRadius = 9f;
+        [SerializeField, Min(0.05f)] private float neighborSearchInterval = 0.5f;
 
         [Header("Breath Noise")]
         [SerializeField] private bool emitBreathNoise = true;
@@ -28,6 +33,8 @@ namespace Neighbor.Main.Features.Player
         private float hiddenSinceTime;
         private float lastInspectionTime = float.NegativeInfinity;
         private float nextBreathNoiseTime = float.NegativeInfinity;
+        private float nextNeighborSearchTime;
+        private NeighborBrain dangerNeighbor;
 
         public bool IsHidden { get; private set; }
         public ClosetHideSpot CurrentHideSpot { get; private set; }
@@ -59,11 +66,7 @@ namespace Neighbor.Main.Features.Player
                 0f,
                 peekExposureRecoveryRate * Time.deltaTime);
 
-            if (HiddenDuration > hiddenBreathGraceTime)
-            {
-                BreathTension01 = Mathf.Clamp01(BreathTension01 + breathTensionBuildRate * Time.deltaTime);
-            }
-
+            UpdateHiddenBreathTension(Time.deltaTime);
             TryEmitBreathNoise();
         }
 
@@ -171,6 +174,90 @@ namespace Neighbor.Main.Features.Player
                 breathNoiseLifetime,
                 BreathTension01,
                 gameObject);
+        }
+
+        private void UpdateHiddenBreathTension(float deltaTime)
+        {
+            if (deltaTime <= 0f)
+            {
+                return;
+            }
+
+            float danger01 = GetHidingDanger01();
+            if (danger01 > 0.05f && HiddenDuration > hiddenBreathGraceTime)
+            {
+                float dangerBuildMultiplier = Mathf.Lerp(0.35f, 1f, danger01);
+                BreathTension01 = Mathf.Clamp01(BreathTension01 + breathTensionBuildRate * dangerBuildMultiplier * deltaTime);
+                if (BreathTension01 >= compromisedTensionThreshold)
+                {
+                    IsCompromised = true;
+                }
+
+                return;
+            }
+
+            if (HiddenDuration > hiddenBreathRecoveryDelay)
+            {
+                BreathTension01 = Mathf.MoveTowards(
+                    BreathTension01,
+                    0f,
+                    calmHiddenBreathRecoveryRate * deltaTime);
+            }
+        }
+
+        private float GetHidingDanger01()
+        {
+            ResolveDangerNeighbor();
+            if (dangerNeighbor == null)
+            {
+                return 0f;
+            }
+
+            float stateDanger = dangerNeighbor.CurrentState switch
+            {
+                NeighborBrain.BehaviorState.Chase => 1f,
+                NeighborBrain.BehaviorState.Catching => 1f,
+                NeighborBrain.BehaviorState.HuntMode => 0.9f,
+                NeighborBrain.BehaviorState.Investigate => 0.7f,
+                NeighborBrain.BehaviorState.DoorSecurityCheck => 0.45f,
+                _ => dangerNeighbor.CurrentSuspicionLevel >= NeighborBrain.SuspicionLevel.Suspicious ? 0.25f : 0f
+            };
+
+            if (dangerNeighbor.IsPostChaseTensionActive)
+            {
+                stateDanger = Mathf.Max(stateDanger, dangerNeighbor.PostChaseTension01 * 0.55f);
+            }
+
+            if (stateDanger <= 0f)
+            {
+                return 0f;
+            }
+
+            float dangerRadius = Mathf.Max(0.01f, hidingDangerNeighborRadius);
+            float distance = Vector3.Distance(transform.position, dangerNeighbor.transform.position);
+            if (distance > dangerRadius)
+            {
+                return 0f;
+            }
+
+            float proximity = Mathf.Clamp01(1f - distance / dangerRadius);
+            return Mathf.Clamp01(stateDanger * Mathf.Lerp(0.35f, 1f, proximity));
+        }
+
+        private void ResolveDangerNeighbor()
+        {
+            if (dangerNeighbor != null)
+            {
+                return;
+            }
+
+            if (Time.time < nextNeighborSearchTime)
+            {
+                return;
+            }
+
+            dangerNeighbor = FindAnyObjectByType<NeighborBrain>();
+            nextNeighborSearchTime = Time.time + neighborSearchInterval;
         }
 
         private void ReportHidingFeedback(
