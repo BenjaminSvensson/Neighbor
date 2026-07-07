@@ -26,6 +26,11 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField, Range(0f, 1f)] private float memoryFlickerPressure = 0.36f;
         [SerializeField, Range(0f, 1f)] private float stackedMemoryFlickerBoost = 0.12f;
         [SerializeField, Min(0f)] private float memoryFlickerHoldDuration = 3.4f;
+        [Header("Investigation Response")]
+        [SerializeField] private bool respondToNeighborInvestigation = true;
+        [SerializeField, Range(0f, 1f)] private float trailInvestigationFlickerPressure = 0.58f;
+        [SerializeField, Range(0f, 1f)] private float searchingInvestigationFlickerPressure = 0.44f;
+        [SerializeField, Min(0f)] private float investigationFlickerHoldDuration = 2.8f;
         [Header("Noise Response")]
         [SerializeField] private bool respondToNoiseFeedback = true;
         [SerializeField, Range(0f, 1f)] private float heardNoiseFlickerPressure = 0.46f;
@@ -58,6 +63,8 @@ namespace Neighbor.Main.Features.Environment
             PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged += HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
+            PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
             PlayerFeedbackEvents.NoiseEmitted -= HandleNoiseEmitted;
             PlayerFeedbackEvents.NoiseEmitted += HandleNoiseEmitted;
         }
@@ -66,6 +73,7 @@ namespace Neighbor.Main.Features.Environment
         {
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
             PlayerFeedbackEvents.NoiseEmitted -= HandleNoiseEmitted;
         }
 
@@ -139,6 +147,20 @@ namespace Neighbor.Main.Features.Environment
             RaiseStealthPressure(GetMemoryPressure(feedback), memoryFlickerHoldDuration);
         }
 
+        private void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
+        {
+            if (!respondToNeighborInvestigation)
+            {
+                return;
+            }
+
+            float pressure = GetInvestigationPressure(feedback);
+            if (pressure > 0f)
+            {
+                RaiseStealthPressure(pressure, investigationFlickerHoldDuration);
+            }
+        }
+
         private void HandleNoiseEmitted(PlayerFeedbackEvents.NoiseFeedback feedback)
         {
             if (!respondToNoiseFeedback || !feedback.HeardByNeighbor)
@@ -166,7 +188,10 @@ namespace Neighbor.Main.Features.Environment
 
         private void UpdateStealthPressure(float deltaTime)
         {
-            if (!respondToStealthLoop && !respondToNeighborMemory && !respondToNoiseFeedback)
+            if (!respondToStealthLoop
+                && !respondToNeighborMemory
+                && !respondToNeighborInvestigation
+                && !respondToNoiseFeedback)
             {
                 targetStealthPressure = 0f;
             }
@@ -211,6 +236,21 @@ namespace Neighbor.Main.Features.Environment
         {
             float stackPressure = Mathf.Clamp01(feedback.TotalMemoryCount / 4f) * stackedMemoryFlickerBoost;
             return Mathf.Clamp01(Mathf.Max(memoryFlickerPressure, feedback.Urgency) + stackPressure);
+        }
+
+        private float GetInvestigationPressure(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
+        {
+            float feedbackPressure = Mathf.Max(feedback.Suspicion, feedback.Urgency);
+            return feedback.Kind switch
+            {
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail =>
+                    Mathf.Max(trailInvestigationFlickerPressure, feedbackPressure),
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching =>
+                    Mathf.Max(searchingInvestigationFlickerPressure, feedbackPressure * 0.8f),
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started =>
+                    Mathf.Max(0.32f, feedbackPressure * 0.7f),
+                _ => 0f
+            };
         }
 
         private float GetNoisePressure(PlayerFeedbackEvents.NoiseFeedback feedback)

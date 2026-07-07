@@ -52,6 +52,11 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField, Range(0f, 1f)] private float memoryAtmosphereIntensity = 0.42f;
         [SerializeField, Range(0f, 1f)] private float stackedMemoryAtmosphereBoost = 0.16f;
         [SerializeField, Min(0f)] private float memoryAtmosphereHoldDuration = 4.2f;
+        [Header("Investigation Atmosphere Response")]
+        [SerializeField] private bool respondToNeighborInvestigation = true;
+        [SerializeField, Range(0f, 1f)] private float trailInvestigationAtmosphereIntensity = 0.72f;
+        [SerializeField, Range(0f, 1f)] private float searchingInvestigationAtmosphereIntensity = 0.5f;
+        [SerializeField, Min(0f)] private float investigationAtmosphereHoldDuration = 3.2f;
         [Header("Noise Atmosphere Response")]
         [SerializeField] private bool respondToNoiseFeedback = true;
         [SerializeField, Range(0f, 1f)] private float heardNoiseAtmosphereIntensity = 0.5f;
@@ -84,6 +89,8 @@ namespace Neighbor.Main.Features.Environment
             PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged += HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
+            PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
             PlayerFeedbackEvents.NoiseEmitted -= HandleNoiseEmitted;
             PlayerFeedbackEvents.NoiseEmitted += HandleNoiseEmitted;
             ApplyAtmosphere();
@@ -93,6 +100,7 @@ namespace Neighbor.Main.Features.Environment
         {
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
             PlayerFeedbackEvents.NoiseEmitted -= HandleNoiseEmitted;
         }
 
@@ -234,6 +242,20 @@ namespace Neighbor.Main.Features.Environment
             RaiseAtmospherePressure(GetMemoryAtmosphereIntensity(feedback), memoryAtmosphereHoldDuration);
         }
 
+        private void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
+        {
+            if (!respondToNeighborInvestigation)
+            {
+                return;
+            }
+
+            float pressure = GetInvestigationAtmosphereIntensity(feedback);
+            if (pressure > 0f)
+            {
+                RaiseAtmospherePressure(pressure, investigationAtmosphereHoldDuration);
+            }
+        }
+
         private void HandleNoiseEmitted(PlayerFeedbackEvents.NoiseFeedback feedback)
         {
             if (!respondToNoiseFeedback || !feedback.HeardByNeighbor)
@@ -261,7 +283,10 @@ namespace Neighbor.Main.Features.Environment
 
         private void UpdateStealthAtmosphere(float deltaTime)
         {
-            if (!respondToStealthLoop && !respondToNeighborMemory && !respondToNoiseFeedback)
+            if (!respondToStealthLoop
+                && !respondToNeighborMemory
+                && !respondToNeighborInvestigation
+                && !respondToNoiseFeedback)
             {
                 targetStealthAtmosphereIntensity = 0f;
             }
@@ -303,6 +328,21 @@ namespace Neighbor.Main.Features.Environment
             float stackPressure = Mathf.Clamp01(feedback.TotalMemoryCount / 4f) * stackedMemoryAtmosphereBoost;
             float pressure = Mathf.Max(memoryAtmosphereIntensity, feedback.Urgency) + stackPressure;
             return Mathf.Clamp01(pressure);
+        }
+
+        private float GetInvestigationAtmosphereIntensity(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
+        {
+            float feedbackPressure = Mathf.Max(feedback.Suspicion, feedback.Urgency);
+            return feedback.Kind switch
+            {
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail =>
+                    Mathf.Max(trailInvestigationAtmosphereIntensity, feedbackPressure),
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching =>
+                    Mathf.Max(searchingInvestigationAtmosphereIntensity, feedbackPressure * 0.85f),
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started =>
+                    Mathf.Max(0.38f, feedbackPressure * 0.75f),
+                _ => 0f
+            };
         }
 
         private float GetNoiseAtmosphereIntensity(PlayerFeedbackEvents.NoiseFeedback feedback)
