@@ -949,6 +949,96 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NeighborMemory_HuntReportsTrailSearchWhenArrivingAtClue()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            GameObject glassObject = context.CreateObject("BrokenKitchenWindow");
+            Vector3 cluePosition = new(2f, 0f, 1f);
+            List<PlayerFeedbackEvents.NeighborInvestigationFeedback> feedback = new();
+            PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
+
+            try
+            {
+                GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.HuntMode);
+                GameplaySmokeTestReflection.SetField(brain, "currentHuntMemoryClueActive", true);
+                GameplaySmokeTestReflection.SetField(
+                    brain,
+                    "currentHuntMemoryClueKind",
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken);
+                GameplaySmokeTestReflection.SetField(brain, "currentHuntMemoryClueSource", glassObject);
+                GameplaySmokeTestReflection.SetField(brain, "currentInvestigationSource", glassObject);
+                GameplaySmokeTestReflection.SetField(brain, "lastKnownInvestigationPosition", cluePosition);
+                GameplaySmokeTestReflection.SetField(brain, "investigationMoveMode", NeighborMotor.MoveMode.Cautious);
+                GameplaySmokeTestReflection.SetField(brain, "suspicion", 0.66f);
+
+                GameplaySmokeTestReflection.Invoke(brain, "ReportHuntMemoryClueSearchIfNeeded");
+                GameplaySmokeTestReflection.Invoke(brain, "ReportHuntMemoryClueSearchIfNeeded");
+
+                Assert.That(feedback, Has.Count.EqualTo(1));
+                Assert.That(feedback[0].Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching));
+                Assert.That(feedback[0].Position, Is.EqualTo(cluePosition));
+                Assert.That(feedback[0].SourceName, Is.EqualTo(glassObject.name));
+                Assert.That(feedback[0].Urgency, Is.EqualTo(0.65f).Within(0.001f));
+                Assert.That(brain.HasReportedHuntMemoryClueSearch, Is.True);
+            }
+            finally
+            {
+                PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
+            }
+
+            void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback item)
+            {
+                feedback.Add(item);
+            }
+        }
+
+        [Test]
+        public void NeighborMemory_AbandonedTrailClearsMemoryHuntFeedback()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            GameObject glassObject = context.CreateObject("BrokenKitchenWindow");
+            Vector3 cluePosition = new(2f, 0f, 1f);
+            PlayerFeedbackEvents.NeighborInvestigationFeedback feedback = default;
+            bool received = false;
+            PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
+
+            try
+            {
+                GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.HuntMode);
+                GameplaySmokeTestReflection.SetField(brain, "currentHuntMemoryClueActive", true);
+                GameplaySmokeTestReflection.SetField(
+                    brain,
+                    "currentHuntMemoryClueKind",
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken);
+                GameplaySmokeTestReflection.SetField(brain, "currentHuntMemoryClueSource", glassObject);
+                GameplaySmokeTestReflection.SetField(brain, "currentInvestigationSource", glassObject);
+                GameplaySmokeTestReflection.SetField(brain, "lastKnownInvestigationPosition", cluePosition);
+                GameplaySmokeTestReflection.SetField(brain, "investigationMoveMode", NeighborMotor.MoveMode.Cautious);
+                GameplaySmokeTestReflection.SetField(brain, "suspicion", 0.66f);
+
+                GameplaySmokeTestReflection.Invoke(brain, "HandleDestinationAbandoned", cluePosition);
+
+                Assert.That(received, Is.True);
+                Assert.That(feedback.Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned));
+                Assert.That(feedback.SourceName, Is.EqualTo(glassObject.name));
+                Assert.That(brain.IsHuntingMemoryClue, Is.False);
+                Assert.That(brain.CurrentHuntMemoryClueSource, Is.Null);
+                Assert.That(brain.CurrentInvestigationSource, Is.Null);
+                Assert.That(brain.HasReportedHuntMemoryClueSearch, Is.False);
+            }
+            finally
+            {
+                PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
+            }
+
+            void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback item)
+            {
+                feedback = item;
+                received = true;
+            }
+        }
+
+        [Test]
         public void ReinforcementTrigger_RecognizesCameraAndTrapPreferredPlacements()
         {
             GameObject triggerObject = context.CreateObject("ReinforcementTrigger");

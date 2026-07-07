@@ -228,6 +228,7 @@ namespace Neighbor.Main.Features.Neighbor
         private bool waitingAtGoal;
         private bool currentHideSpotKnownOccupied;
         private bool currentHuntMemoryClueActive;
+        private bool hasReportedHuntMemoryClueSearch;
         private PlayerFeedbackEvents.NeighborMemoryClueKind currentHuntMemoryClueKind;
         private GameObject currentHuntMemoryClueSource;
         private NeighborTaskLocation.TaskAnimationPhase currentTaskAnimationPhase;
@@ -403,6 +404,7 @@ namespace Neighbor.Main.Features.Neighbor
             && motor != null
             && motor.HasArrived;
         public bool IsHuntingMemoryClue => currentState == BehaviorState.HuntMode && currentHuntMemoryClueActive;
+        public bool HasReportedHuntMemoryClueSearch => hasReportedHuntMemoryClueSearch;
         public PlayerFeedbackEvents.NeighborMemoryClueKind CurrentHuntMemoryClueKind => currentHuntMemoryClueKind;
         public GameObject CurrentHuntMemoryClueSource => currentHuntMemoryClueSource;
         public bool IsWaitingDuringWander => currentState == BehaviorState.Wander
@@ -1137,6 +1139,11 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (!GoalWaitComplete())
             {
+                if (currentHuntMemoryClueActive)
+                {
+                    ReportHuntMemoryClueSearchIfNeeded();
+                }
+
                 FaceSearchSweep();
                 return;
             }
@@ -1475,6 +1482,13 @@ namespace Neighbor.Main.Features.Neighbor
 
                     return;
                 case BehaviorState.HuntMode:
+                    if (currentHuntMemoryClueActive)
+                    {
+                        ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned, true);
+                        ClearHuntMemoryClueTarget();
+                        ReportStealthLoopIfNeeded(true);
+                    }
+
                     if (currentSearchPoint != null)
                     {
                         visitedSearchPoints.Add(currentSearchPoint);
@@ -2701,6 +2715,7 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             currentHuntMemoryClueActive = true;
+            hasReportedHuntMemoryClueSearch = false;
             currentHuntMemoryClueKind = pendingMemoryClueKind;
             currentHuntMemoryClueSource = clueSource;
             currentSearchPoint = null;
@@ -2753,6 +2768,7 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             currentHuntMemoryClueActive = false;
+            hasReportedHuntMemoryClueSearch = false;
             currentHuntMemoryClueKind = default;
             currentHuntMemoryClueSource = null;
         }
@@ -3532,6 +3548,18 @@ namespace Neighbor.Main.Features.Neighbor
 
             hasReportedInvestigationSearch = true;
             ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching);
+        }
+
+        private void ReportHuntMemoryClueSearchIfNeeded()
+        {
+            if (!currentHuntMemoryClueActive || hasReportedHuntMemoryClueSearch)
+            {
+                return;
+            }
+
+            hasReportedHuntMemoryClueSearch = true;
+            ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching, true);
+            ReportStealthLoopIfNeeded(true);
         }
 
         private void ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind kind, bool force = false)
