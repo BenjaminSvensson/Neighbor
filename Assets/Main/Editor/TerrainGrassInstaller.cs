@@ -18,6 +18,11 @@ internal static class TerrainGrassInstaller
     private const string BasicTreeMeshPath = "Assets/Main/Art/Models/TreeObjects/BasicTreeTerrainMesh.asset";
     private const string BasicTreeBarkMaterialPath = "Assets/Main/Art/Models/TreeObjects/bark02.mat";
     private const string BasicTreeLeafMaterialPath = "Assets/Main/Art/Models/TreeObjects/leaf.mat";
+    private const string BasicTreeBarkAlbedoTexturePath = "Assets/Main/Art/Models/TreeObjects/GangstaTree/bark02.png";
+    private const string BasicTreeBarkNormalTexturePath = "Assets/Main/Art/Models/TreeObjects/GangstaTree/bark02_normal.png";
+    private const string BasicTreeLeafAlbedoTexturePath = "Assets/Main/Art/Models/TreeObjects/GangstaTree/leaf maple.png";
+    private const string BasicTreeLeafNormalTexturePath = "Assets/Main/Art/Models/TreeObjects/GangstaTree/leaf maple_normal.png";
+    private const string BasicTreeLeafTransmissionTexturePath = "Assets/Main/Art/Models/TreeObjects/GangstaTree/leaf maple_transmission.png";
     private const string TerrainTreeBarkShaderName = "Nature/Soft Occlusion Bark";
     private const string TerrainTreeLeafShaderName = "Nature/Soft Occlusion Leaves";
     private const int TextureSize = 256;
@@ -588,7 +593,13 @@ internal static class TerrainGrassInstaller
     {
         string materialPath = AssetDatabase.GetAssetPath(material);
         return (materialPath == BasicTreeBarkMaterialPath || materialPath == BasicTreeLeafMaterialPath)
-            && UsesTerrainTreeShader(material);
+            && UsesTerrainTreeShader(material)
+            && HasTerrainTreeAlbedoTexture(material);
+    }
+
+    internal static bool HasTerrainTreeAlbedoTexture(Material material)
+    {
+        return GetMainTexture(material) != null;
     }
 
     internal static bool UsesTerrainTreeShader(Material material)
@@ -776,7 +787,7 @@ internal static class TerrainGrassInstaller
         if (material == null)
             return;
 
-        Texture mainTexture = GetMainTexture(material);
+        Texture mainTexture = GetMainTexture(material) ?? LoadTreeTexture(isLeaf ? BasicTreeLeafAlbedoTexturePath : BasicTreeBarkAlbedoTexturePath);
         Shader treeShader = Shader.Find(isLeaf ? TerrainTreeLeafShaderName : TerrainTreeBarkShaderName);
         if (treeShader == null)
         {
@@ -784,29 +795,44 @@ internal static class TerrainGrassInstaller
             return;
         }
 
+        bool changed = false;
         if (material.shader != treeShader)
-            material.shader = treeShader;
-
-        if (mainTexture != null && material.HasProperty("_MainTex"))
-            material.SetTexture("_MainTex", mainTexture);
-
-        if (material.HasProperty("_Color"))
-            material.SetColor("_Color", Color.white);
-
-        if (material.HasProperty("_Cutoff"))
-            material.SetFloat("_Cutoff", isLeaf ? 0.35f : 0.5f);
-
-        if (material.HasProperty("_TranslucencyColor"))
         {
-            material.SetColor(
-                "_TranslucencyColor",
-                isLeaf ? new Color(0.52f, 0.72f, 0.38f, 1f) : new Color(0.28f, 0.2f, 0.13f, 1f));
+            material.shader = treeShader;
+            changed = true;
         }
 
-        if (material.HasProperty("_ShadowStrength"))
-            material.SetFloat("_ShadowStrength", isLeaf ? 0.65f : 0.8f);
+        changed |= SetTexture(material, "_MainTex", mainTexture);
+        changed |= SetTexture(material, "_BaseMap", mainTexture);
+        changed |= SetTexture(
+            material,
+            "_BumpMap",
+            LoadTreeTexture(isLeaf ? BasicTreeLeafNormalTexturePath : BasicTreeBarkNormalTexturePath));
 
-        EditorUtility.SetDirty(material);
+        if (isLeaf)
+        {
+            changed |= SetTexture(material, "_TranslucencyMap", LoadTreeTexture(BasicTreeLeafTransmissionTexturePath));
+            changed |= SetFloat(material, "_AlphaClip", 1f);
+            changed |= SetFloat(material, "_AlphaToMask", 1f);
+        }
+
+        changed |= SetColor(material, "_Color", Color.white);
+        changed |= SetColor(material, "_BaseColor", Color.white);
+
+        changed |= SetFloat(material, "_Cutoff", isLeaf ? 0.35f : 0.5f);
+        changed |= SetFloat(material, "_BumpScale", isLeaf ? 0.72f : 0.85f);
+        changed |= SetFloat(material, "_Smoothness", isLeaf ? 0.08f : 0.18f);
+        changed |= SetFloat(material, "_Metallic", 0f);
+
+        changed |= SetColor(
+            material,
+            "_TranslucencyColor",
+            isLeaf ? new Color(0.52f, 0.72f, 0.38f, 1f) : new Color(0.28f, 0.2f, 0.13f, 1f));
+
+        changed |= SetFloat(material, "_ShadowStrength", isLeaf ? 0.65f : 0.8f);
+
+        if (changed)
+            EditorUtility.SetDirty(material);
     }
 
     private static Texture GetMainTexture(Material material)
@@ -820,7 +846,48 @@ internal static class TerrainGrassInstaller
         if (material.HasProperty("_BaseMap"))
             return material.GetTexture("_BaseMap");
 
-        return null;
+        return material.mainTexture;
+    }
+
+    private static Texture2D LoadTreeTexture(string path)
+    {
+        return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+    }
+
+    private static bool SetTexture(Material material, string propertyName, Texture texture)
+    {
+        if (material == null || texture == null || !material.HasProperty(propertyName))
+            return false;
+
+        if (material.GetTexture(propertyName) == texture)
+            return false;
+
+        material.SetTexture(propertyName, texture);
+        return true;
+    }
+
+    private static bool SetColor(Material material, string propertyName, Color color)
+    {
+        if (material == null || !material.HasProperty(propertyName))
+            return false;
+
+        if (material.GetColor(propertyName) == color)
+            return false;
+
+        material.SetColor(propertyName, color);
+        return true;
+    }
+
+    private static bool SetFloat(Material material, string propertyName, float value)
+    {
+        if (material == null || !material.HasProperty(propertyName))
+            return false;
+
+        if (Mathf.Approximately(material.GetFloat(propertyName), value))
+            return false;
+
+        material.SetFloat(propertyName, value);
+        return true;
     }
 
     private static bool IsLeafMaterial(Material material)
