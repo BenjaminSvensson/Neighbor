@@ -90,6 +90,43 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void CoreLoop_ReportsReadableObjectiveProgressFeedback()
+        {
+            CoreLoopObjectiveTracker tracker = CreateObject("Objective").AddComponent<CoreLoopObjectiveTracker>();
+            PlayerController player = CreatePlayer("Player", Vector3.zero, out _);
+            List<PlayerFeedbackEvents.ObjectiveProgressFeedback> feedback = new();
+            PlayerFeedbackEvents.ObjectiveProgressed += HandleProgress;
+
+            try
+            {
+                Assert.That(tracker.RegisterEnteredHouse(player), Is.True);
+
+                Assert.That(feedback, Has.Count.EqualTo(1));
+                Assert.That(feedback[0].StepIndex, Is.EqualTo(2));
+                Assert.That(feedback[0].TotalSteps, Is.EqualTo(CoreLoopObjectiveTracker.TotalObjectiveSteps));
+                Assert.That(feedback[0].Message, Is.EqualTo("Inside. Find the key."));
+                Assert.That(feedback[0].Hint, Is.EqualTo(tracker.CurrentHint));
+                Assert.That(feedback[0].IsComplete, Is.False);
+
+                Assert.That(tracker.RegisterKeyCollected(tracker.RequiredKeyId), Is.True);
+
+                Assert.That(feedback, Has.Count.EqualTo(2));
+                Assert.That(feedback[1].StepIndex, Is.EqualTo(3));
+                Assert.That(feedback[1].Message, Is.EqualTo("Key found. Unlock the door."));
+                Assert.That(feedback[1].Hint, Is.EqualTo(tracker.CurrentHint));
+            }
+            finally
+            {
+                PlayerFeedbackEvents.ObjectiveProgressed -= HandleProgress;
+            }
+
+            void HandleProgress(PlayerFeedbackEvents.ObjectiveProgressFeedback progressFeedback)
+            {
+                feedback.Add(progressFeedback);
+            }
+        }
+
+        [Test]
         public void LockedDoor_WrongHeldKeyReportsReadableFeedbackAndStaysLocked()
         {
             CreatePlayer("Player", Vector3.zero, out PlayerInteractor interactor);

@@ -8,6 +8,8 @@ namespace Neighbor.Main.Features.Progression
     [DisallowMultipleComponent]
     public sealed class CoreLoopObjectiveTracker : MonoBehaviour
     {
+        public const int TotalObjectiveSteps = 5;
+
         public enum ObjectiveStep
         {
             GetInside,
@@ -30,10 +32,18 @@ namespace Neighbor.Main.Features.Progression
         [SerializeField] private string escapeHint = "Escape the house.";
         [SerializeField] private string completeHint = "Escaped.";
 
+        [Header("Progress Feedback")]
+        [SerializeField] private string enteredHouseFeedback = "Inside. Find the key.";
+        [SerializeField] private string keyCollectedFeedback = "Key found. Unlock the door.";
+        [SerializeField] private string doorUnlockedFeedback = "Door unlocked. Reach the room.";
+        [SerializeField] private string roomReachedFeedback = "Room reached. Get out.";
+        [SerializeField] private string escapedFeedback = "Escaped.";
+
         public event Action<CoreLoopObjectiveTracker> ProgressChanged;
 
         public ObjectiveStep CurrentStep { get; private set; } = ObjectiveStep.GetInside;
         public string RequiredKeyId => requiredKeyId;
+        public int CurrentStepIndex => GetStepIndex(CurrentStep);
         public bool HasEnteredHouse { get; private set; }
         public bool HasKey { get; private set; }
         public bool HasUnlockedDoor { get; private set; }
@@ -50,6 +60,7 @@ namespace Neighbor.Main.Features.Progression
             ObjectiveStep.Complete => completeHint,
             _ => string.Empty
         };
+        public string CurrentProgressMessage => GetProgressMessage(CurrentStep);
 
         private void Awake()
         {
@@ -165,6 +176,41 @@ namespace Neighbor.Main.Features.Progression
 
             CurrentStep = step;
             ProgressChanged?.Invoke(this);
+            if (!force)
+            {
+                PlayerFeedbackEvents.ReportObjectiveProgress(
+                    CurrentStepIndex,
+                    TotalObjectiveSteps,
+                    CurrentProgressMessage,
+                    CurrentHint,
+                    IsComplete);
+            }
+        }
+
+        public static int GetStepIndex(ObjectiveStep step)
+        {
+            return step switch
+            {
+                ObjectiveStep.GetInside => 1,
+                ObjectiveStep.FindKey => 2,
+                ObjectiveStep.UnlockDoor => 3,
+                ObjectiveStep.ReachRoom => 4,
+                ObjectiveStep.Escape => 5,
+                _ => TotalObjectiveSteps
+            };
+        }
+
+        private string GetProgressMessage(ObjectiveStep step)
+        {
+            return step switch
+            {
+                ObjectiveStep.FindKey => enteredHouseFeedback,
+                ObjectiveStep.UnlockDoor => keyCollectedFeedback,
+                ObjectiveStep.ReachRoom => doorUnlockedFeedback,
+                ObjectiveStep.Escape => roomReachedFeedback,
+                ObjectiveStep.Complete => escapedFeedback,
+                _ => CurrentHint
+            };
         }
     }
 }
