@@ -296,6 +296,7 @@ namespace Neighbor.Main.Tests
             const string FieldOfViewKey = "Neighbor.FieldOfView";
             const string InvertYKey = "Neighbor.InvertLookY";
             const string FullscreenKey = "Neighbor.Fullscreen";
+            const string FrameRateLimitKey = "Neighbor.FrameRateLimit";
 
             try
             {
@@ -316,7 +317,8 @@ namespace Neighbor.Main.Tests
                         80f,
                         true,
                         false,
-                        PlayerPerformanceProfile.Quality
+                        PlayerPerformanceProfile.Quality,
+                        PlayerFrameRateLimit.Fps120
                     });
 
                 Assert.That(PlayerPrefs.GetFloat(SensitivityKey), Is.EqualTo(0.11f).Within(0.001f));
@@ -325,6 +327,7 @@ namespace Neighbor.Main.Tests
                 Assert.That(PlayerPrefs.GetInt(InvertYKey), Is.EqualTo(1));
                 Assert.That(PlayerPrefs.GetInt(FullscreenKey), Is.EqualTo(0));
                 Assert.That(PlayerPerformanceSettings.LoadProfile(), Is.EqualTo(PlayerPerformanceProfile.Quality));
+                Assert.That(PlayerPerformanceSettings.LoadFrameRateLimit(), Is.EqualTo(PlayerFrameRateLimit.Fps120));
                 Assert.That(PlayerInputBindings.GetBoundKey(PlayerInputBindingAction.Forward), Is.EqualTo(Key.UpArrow));
             }
             finally
@@ -335,6 +338,7 @@ namespace Neighbor.Main.Tests
                 PlayerPrefs.DeleteKey(InvertYKey);
                 PlayerPrefs.DeleteKey(FullscreenKey);
                 PlayerPrefs.DeleteKey(PlayerPerformanceSettings.PreferenceKey);
+                PlayerPrefs.DeleteKey(FrameRateLimitKey);
                 PlayerInputBindings.ResetToDefaults();
                 PlayerPrefs.Save();
             }
@@ -348,11 +352,13 @@ namespace Neighbor.Main.Tests
             const string FieldOfViewKey = "Neighbor.FieldOfView";
             const string InvertYKey = "Neighbor.InvertLookY";
             const string FullscreenKey = "Neighbor.Fullscreen";
+            const string FrameRateLimitKey = "Neighbor.FrameRateLimit";
 
             QualityRuntimeSnapshot qualitySnapshot = QualityRuntimeSnapshot.Capture();
             UrpRuntimeSnapshot urpSnapshot = UrpRuntimeSnapshot.Capture();
             TerrainRuntimeSnapshot[] terrainSnapshots = TerrainRuntimeSnapshot.CaptureAll();
             PlayerPerformanceProfile originalPerformanceProfile = PlayerPerformanceSettings.CurrentProfile;
+            PlayerFrameRateLimit originalFrameRateLimit = PlayerPerformanceSettings.CurrentFrameRateLimit;
             float originalVolume = AudioListener.volume;
             bool originalFullscreen = Screen.fullScreen;
             GameObject root = new("PauseMenuSettingsSmokePlayer");
@@ -365,6 +371,7 @@ namespace Neighbor.Main.Tests
                 PlayerPrefs.SetInt(InvertYKey, 1);
                 PlayerPrefs.SetInt(FullscreenKey, 0);
                 PlayerPrefs.SetInt(PlayerPerformanceSettings.PreferenceKey, (int)PlayerPerformanceProfile.Quality);
+                PlayerPrefs.SetInt(PlayerPerformanceSettings.FrameRateLimitPreferenceKey, (int)PlayerFrameRateLimit.Fps120);
                 PlayerPrefs.Save();
 
                 PlayerController playerController = root.AddComponent<PlayerController>();
@@ -387,6 +394,7 @@ namespace Neighbor.Main.Tests
                 Assert.That(cameraController.RuntimeInvertLookY, Is.True);
                 Assert.That(playerCamera.fieldOfView, Is.EqualTo(82f).Within(0.001f));
                 Assert.That(AudioListener.volume, Is.EqualTo(0.37f).Within(0.001f));
+                Assert.That(Application.targetFrameRate, Is.EqualTo(120));
 
                 Assert.That(
                     GameplaySmokeTestReflection.GetField<Text>(pauseMenu, "sensitivityValueText").text,
@@ -406,6 +414,9 @@ namespace Neighbor.Main.Tests
                 Assert.That(
                     GameplaySmokeTestReflection.GetField<Text>(pauseMenu, "performanceProfileValueText").text,
                     Is.EqualTo("QUALITY"));
+                Assert.That(
+                    GameplaySmokeTestReflection.GetField<Text>(pauseMenu, "frameRateLimitValueText").text,
+                    Is.EqualTo("120 FPS"));
             }
             finally
             {
@@ -416,7 +427,9 @@ namespace Neighbor.Main.Tests
                 PlayerPrefs.DeleteKey(InvertYKey);
                 PlayerPrefs.DeleteKey(FullscreenKey);
                 PlayerPrefs.DeleteKey(PlayerPerformanceSettings.PreferenceKey);
+                PlayerPrefs.DeleteKey(FrameRateLimitKey);
                 PlayerPrefs.Save();
+                PlayerPerformanceSettings.ApplyFrameRateLimit(originalFrameRateLimit);
                 PlayerPerformanceSettings.ApplyProfile(originalPerformanceProfile);
                 AudioListener.volume = originalVolume;
                 Screen.fullScreen = originalFullscreen;
@@ -438,6 +451,15 @@ namespace Neighbor.Main.Tests
             Assert.That(
                 PlayerPerformanceSettings.GetPreviousProfile(PlayerPerformanceProfile.Performance),
                 Is.EqualTo(PlayerPerformanceProfile.Quality));
+            Assert.That(
+                PlayerPerformanceSettings.GetNextFrameRateLimit(PlayerFrameRateLimit.Profile),
+                Is.EqualTo(PlayerFrameRateLimit.Fps30));
+            Assert.That(
+                PlayerPerformanceSettings.GetPreviousFrameRateLimit(PlayerFrameRateLimit.Profile),
+                Is.EqualTo(PlayerFrameRateLimit.Unlocked));
+            Assert.That(
+                PlayerPerformanceSettings.GetFrameRateLimitDisplayName(PlayerFrameRateLimit.Fps120),
+                Is.EqualTo("120 FPS"));
         }
 
         [Test]
@@ -459,9 +481,11 @@ namespace Neighbor.Main.Tests
             UrpRuntimeSnapshot urpSnapshot = UrpRuntimeSnapshot.Capture();
             TerrainRuntimeSnapshot[] terrainSnapshots = TerrainRuntimeSnapshot.CaptureAll();
             PlayerPerformanceProfile originalPerformanceProfile = PlayerPerformanceSettings.CurrentProfile;
+            PlayerFrameRateLimit originalFrameRateLimit = PlayerPerformanceSettings.CurrentFrameRateLimit;
 
             try
             {
+                PlayerPerformanceSettings.ApplyFrameRateLimit(PlayerFrameRateLimit.Profile);
                 PlayerPerformanceSettings.ApplyProfile(PlayerPerformanceProfile.Performance);
 
                 Assert.That(Application.targetFrameRate, Is.EqualTo(60));
@@ -501,6 +525,39 @@ namespace Neighbor.Main.Tests
             }
             finally
             {
+                PlayerPerformanceSettings.ApplyFrameRateLimit(originalFrameRateLimit);
+                PlayerPerformanceSettings.ApplyProfile(originalPerformanceProfile);
+                qualitySnapshot.Restore();
+                urpSnapshot.Restore();
+                TerrainRuntimeSnapshot.RestoreAll(terrainSnapshots);
+            }
+        }
+
+        [Test]
+        public void PlayerPerformanceFrameRateLimit_OverridesProfileTarget()
+        {
+            QualityRuntimeSnapshot qualitySnapshot = QualityRuntimeSnapshot.Capture();
+            UrpRuntimeSnapshot urpSnapshot = UrpRuntimeSnapshot.Capture();
+            TerrainRuntimeSnapshot[] terrainSnapshots = TerrainRuntimeSnapshot.CaptureAll();
+            PlayerPerformanceProfile originalPerformanceProfile = PlayerPerformanceSettings.CurrentProfile;
+            PlayerFrameRateLimit originalFrameRateLimit = PlayerPerformanceSettings.CurrentFrameRateLimit;
+
+            try
+            {
+                PlayerPerformanceSettings.ApplyFrameRateLimit(PlayerFrameRateLimit.Fps120);
+                PlayerPerformanceSettings.ApplyProfile(PlayerPerformanceProfile.Performance);
+
+                Assert.That(PlayerPerformanceSettings.CurrentFrameRateLimit, Is.EqualTo(PlayerFrameRateLimit.Fps120));
+                Assert.That(Application.targetFrameRate, Is.EqualTo(120));
+
+                PlayerPerformanceSettings.ApplyFrameRateLimit(PlayerFrameRateLimit.Unlocked);
+
+                Assert.That(PlayerPerformanceSettings.CurrentFrameRateLimit, Is.EqualTo(PlayerFrameRateLimit.Unlocked));
+                Assert.That(Application.targetFrameRate, Is.EqualTo(-1));
+            }
+            finally
+            {
+                PlayerPerformanceSettings.ApplyFrameRateLimit(originalFrameRateLimit);
                 PlayerPerformanceSettings.ApplyProfile(originalPerformanceProfile);
                 qualitySnapshot.Restore();
                 urpSnapshot.Restore();
@@ -515,24 +572,29 @@ namespace Neighbor.Main.Tests
             UrpRuntimeSnapshot urpSnapshot = UrpRuntimeSnapshot.Capture();
             TerrainRuntimeSnapshot[] terrainSnapshots = TerrainRuntimeSnapshot.CaptureAll();
             PlayerPerformanceProfile originalPerformanceProfile = PlayerPerformanceSettings.CurrentProfile;
+            PlayerFrameRateLimit originalFrameRateLimit = PlayerPerformanceSettings.CurrentFrameRateLimit;
             GameObject cameraObject = new("LatePerformanceCamera");
 
             try
             {
+                PlayerPerformanceSettings.ApplyFrameRateLimit(PlayerFrameRateLimit.Profile);
                 PlayerPerformanceSettings.ApplyProfile(PlayerPerformanceProfile.Performance);
                 Camera camera = cameraObject.AddComponent<Camera>();
                 camera.allowHDR = true;
                 camera.allowMSAA = true;
+                camera.useOcclusionCulling = false;
 
                 PlayerPerformanceSettings.ApplyCurrentProfileToCamera(camera);
 
                 Assert.That(PlayerPerformanceSettings.CurrentProfile, Is.EqualTo(PlayerPerformanceProfile.Performance));
                 Assert.That(camera.allowHDR, Is.False);
                 Assert.That(camera.allowMSAA, Is.False);
+                Assert.That(camera.useOcclusionCulling, Is.True);
             }
             finally
             {
                 Object.DestroyImmediate(cameraObject);
+                PlayerPerformanceSettings.ApplyFrameRateLimit(originalFrameRateLimit);
                 PlayerPerformanceSettings.ApplyProfile(originalPerformanceProfile);
                 qualitySnapshot.Restore();
                 urpSnapshot.Restore();
