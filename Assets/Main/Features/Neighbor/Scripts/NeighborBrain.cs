@@ -125,6 +125,8 @@ namespace Neighbor.Main.Features.Neighbor
         [Header("Memory Follow-Up")]
         [SerializeField] private bool followUpRememberedClues = true;
         [SerializeField, Min(0f)] private float memoryFollowUpWaitTime = 1.6f;
+        [SerializeField, Min(1f)] private float maximumMemoryFollowUpWaitMultiplier = 1.85f;
+        [SerializeField, Range(0f, 1f)] private float stackedMemorySearchCommitmentBoost = 0.18f;
         [SerializeField, Min(0f)] private float memoryFollowUpCooldown = 8f;
         [SerializeField, Range(0f, 1f)] private float memoryFollowUpMinimumSuspicion = 0.22f;
         [SerializeField, Range(0f, 1f)] private float stackedMemorySuspicionBoost = 0.07f;
@@ -2739,7 +2741,9 @@ namespace Neighbor.Main.Features.Neighbor
 
             Vector3 cluePosition = pendingMemoryCluePosition;
             GameObject clueSource = pendingMemoryClueSource;
+            PlayerFeedbackEvents.NeighborMemoryClueKind clueKind = pendingMemoryClueKind;
             float clueSuspicion = Mathf.Max(memoryFollowUpMinimumSuspicion, pendingMemoryClueSuspicion);
+            float searchDuration = GetMemoryFollowUpSearchDuration(clueKind, clueSuspicion);
             NeighborMotor.MoveMode moveMode = GetMemoryFollowUpMoveMode(clueSuspicion);
 
             if (!TryResolveRememberedClueHuntPosition(cluePosition, out Vector3 huntPosition))
@@ -2750,7 +2754,7 @@ namespace Neighbor.Main.Features.Neighbor
             currentHuntMemoryClueActive = true;
             hasReportedHuntMemoryClueSearch = false;
             hasReportedCurrentHuntSweepSearch = false;
-            currentHuntMemoryClueKind = pendingMemoryClueKind;
+            currentHuntMemoryClueKind = clueKind;
             currentHuntMemoryClueSource = clueSource;
             currentSearchPoint = null;
             currentHideSpot = null;
@@ -2761,7 +2765,7 @@ namespace Neighbor.Main.Features.Neighbor
             investigationSearchLookDirection.y = 0f;
             currentInvestigationSource = clueSource;
             currentInvestigationTrailRelated = true;
-            goalWaitDuration = Mathf.Max(closetSearchWaitTime, memoryFollowUpWaitTime);
+            goalWaitDuration = Mathf.Max(closetSearchWaitTime, searchDuration);
             waitingAtGoal = false;
             ClearMemoryClueFollowUp();
             nextMemoryFollowUpTime = Time.time + memoryFollowUpCooldown;
@@ -3987,6 +3991,7 @@ namespace Neighbor.Main.Features.Neighbor
             GameObject clueSource = pendingMemoryClueSource;
             PlayerFeedbackEvents.NeighborMemoryClueKind clueKind = pendingMemoryClueKind;
             float clueSuspicion = Mathf.Max(memoryFollowUpMinimumSuspicion, pendingMemoryClueSuspicion);
+            float searchDuration = GetMemoryFollowUpSearchDuration(clueKind, clueSuspicion);
             NeighborMotor.MoveMode moveMode = GetMemoryFollowUpMoveMode(clueSuspicion);
             nextInvestigationStartedFeedbackKind = PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail;
             nextInvestigationMemoryClueActive = true;
@@ -3998,10 +4003,34 @@ namespace Neighbor.Main.Features.Neighbor
             BeginInvestigation(
                 cluePosition,
                 clueSource,
-                memoryFollowUpWaitTime,
+                searchDuration,
                 moveMode,
                 true);
             return true;
+        }
+
+        private float GetMemoryFollowUpSearchDuration(PlayerFeedbackEvents.NeighborMemoryClueKind kind, float clueSuspicion)
+        {
+            if (memoryFollowUpWaitTime <= 0f)
+            {
+                return 0f;
+            }
+
+            float suspicionCommitment = Mathf.InverseLerp(
+                memoryFollowUpMinimumSuspicion,
+                certainThreshold,
+                Mathf.Clamp01(clueSuspicion));
+            float kindCommitment = kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => 1f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => 0.78f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => 0.48f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => 0.24f,
+                _ => 0.18f
+            };
+            float stackedCommitment = Mathf.Max(0, TotalRememberedClueCount - 1) * stackedMemorySearchCommitmentBoost;
+            float commitment = Mathf.Clamp01(Mathf.Max(suspicionCommitment, kindCommitment) + stackedCommitment);
+            return memoryFollowUpWaitTime * Mathf.Lerp(1f, maximumMemoryFollowUpWaitMultiplier, commitment);
         }
 
         private NeighborMotor.MoveMode GetMemoryFollowUpMoveMode(float clueSuspicion)
