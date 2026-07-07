@@ -792,8 +792,8 @@ namespace Neighbor.Main.Features.Player
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail => "HE IS FOLLOWING YOUR TRAIL",
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching => "NEIGHBOR SEARCHING",
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.CheckingHideSpot => "HE KNOWS YOUR HIDING SPOT",
-                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning => "NEIGHBOR RETURNING",
-                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned => "NEIGHBOR LOST THE TRAIL",
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning => "NOISE CLEARED",
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned => "LOST THE NOISE",
                 _ => "NEIGHBOR ALERTED"
             };
         }

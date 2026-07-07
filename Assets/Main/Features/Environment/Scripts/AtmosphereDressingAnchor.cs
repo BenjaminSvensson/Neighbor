@@ -33,6 +33,7 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField, Range(0f, 1f)] private float trailInvestigationDressingPressure = 0.6f;
         [SerializeField, Range(0f, 1f)] private float searchingInvestigationDressingPressure = 0.46f;
         [SerializeField, Range(0f, 1f)] private float resolvedTrailDressingPressure = 0.12f;
+        [SerializeField, Range(0f, 1f)] private float resolvedInvestigationDressingPressure = 0.08f;
         [SerializeField, Min(0f)] private float investigationHoldDuration = 3f;
         [Header("Noise Response")]
         [SerializeField] private bool respondToNoiseFeedback = true;
@@ -309,6 +310,10 @@ namespace Neighbor.Main.Features.Environment
                     resolvedTrailDressingPressure,
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned when feedback.IsTrailRelated =>
                     resolvedTrailDressingPressure,
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning =>
+                    resolvedInvestigationDressingPressure,
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned =>
+                    resolvedInvestigationDressingPressure,
                 _ => 0f
             };
         }
