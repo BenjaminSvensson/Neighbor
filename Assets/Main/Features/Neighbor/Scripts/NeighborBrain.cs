@@ -279,6 +279,7 @@ namespace Neighbor.Main.Features.Neighbor
         private GameObject pendingMemoryClueSource;
         private Vector3 pendingMemoryCluePosition;
         private float pendingMemoryClueSuspicion;
+        private float pendingMemoryClueScore;
         private float nextMemoryFollowUpTime;
         private int adaptiveSecurityPatrolsRemaining;
         private bool adaptiveSecurityPatrolActive;
@@ -383,6 +384,7 @@ namespace Neighbor.Main.Features.Neighbor
         public GameObject PendingMemoryClueSource => pendingMemoryClueSource;
         public Vector3 PendingMemoryCluePosition => pendingMemoryCluePosition;
         public float PendingMemoryClueSuspicion => pendingMemoryClueSuspicion;
+        public float PendingMemoryClueScore => pendingMemoryClueScore;
         public SuspicionLevel CurrentSuspicionLevel => GetSuspicionLevel();
         public NeighborTaskLocation ActiveTaskLocation => currentState == BehaviorState.Task
             && currentTaskAnimationPhase != NeighborTaskLocation.TaskAnimationPhase.None
@@ -2711,11 +2713,7 @@ namespace Neighbor.Main.Features.Neighbor
             currentInvestigationSource = clueSource;
             goalWaitDuration = Mathf.Max(closetSearchWaitTime, memoryFollowUpWaitTime);
             waitingAtGoal = false;
-            hasPendingMemoryClueFollowUp = false;
-            pendingMemoryClueKind = default;
-            pendingMemoryClueSource = null;
-            pendingMemoryCluePosition = default;
-            pendingMemoryClueSuspicion = 0f;
+            ClearMemoryClueFollowUp();
             nextMemoryFollowUpTime = Time.time + memoryFollowUpCooldown;
             suspicion = Mathf.Max(suspicion, clueSuspicion);
             investigationMoveMode = moveMode;
@@ -3731,11 +3729,27 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            GameObject clueSource = ResolveMemoryClueSource(clue);
+            if (clueSource == null)
+            {
+                return;
+            }
+
+            float followUpScore = CalculateMemoryClueFollowUpScore(kind, clueSuspicion);
+            if (hasPendingMemoryClueFollowUp
+                && pendingMemoryClueSource != null
+                && pendingMemoryClueSource != clueSource
+                && followUpScore < pendingMemoryClueScore)
+            {
+                return;
+            }
+
             hasPendingMemoryClueFollowUp = true;
             pendingMemoryClueKind = kind;
-            pendingMemoryClueSource = ResolveMemoryClueSource(clue);
+            pendingMemoryClueSource = clueSource;
             pendingMemoryCluePosition = position;
             pendingMemoryClueSuspicion = Mathf.Clamp01(clueSuspicion);
+            pendingMemoryClueScore = followUpScore;
         }
 
         private bool TryStartMemoryClueFollowUp()
@@ -3759,8 +3773,7 @@ namespace Neighbor.Main.Features.Neighbor
             NeighborMotor.MoveMode moveMode = GetMemoryFollowUpMoveMode(clueSuspicion);
             nextInvestigationStartedFeedbackKind = PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail;
 
-            hasPendingMemoryClueFollowUp = false;
-            pendingMemoryClueSource = null;
+            ClearMemoryClueFollowUp();
             nextMemoryFollowUpTime = Time.time + memoryFollowUpCooldown;
             suspicion = Mathf.Max(suspicion, clueSuspicion);
             BeginInvestigation(
@@ -3790,6 +3803,7 @@ namespace Neighbor.Main.Features.Neighbor
             pendingMemoryClueSource = null;
             pendingMemoryCluePosition = default;
             pendingMemoryClueSuspicion = 0f;
+            pendingMemoryClueScore = 0f;
         }
 
         private void RequeueStrongestRememberedClueFollowUp()
@@ -3806,6 +3820,7 @@ namespace Neighbor.Main.Features.Neighbor
             pendingMemoryClueSource = candidate.Source;
             pendingMemoryCluePosition = candidate.Position;
             pendingMemoryClueSuspicion = ApplyRememberedCluePressure(candidate.Suspicion);
+            pendingMemoryClueScore = candidate.Score;
             lastRememberedClueSuspicion = Mathf.Max(lastRememberedClueSuspicion, pendingMemoryClueSuspicion);
             PlayerFeedbackEvents.ReportNeighborMemory(
                 candidate.Kind,
@@ -4020,6 +4035,22 @@ namespace Neighbor.Main.Features.Neighbor
                 Component component => component.gameObject,
                 _ => null
             };
+        }
+
+        private static float CalculateMemoryClueFollowUpScore(
+            PlayerFeedbackEvents.NeighborMemoryClueKind kind,
+            float suspicionAmount)
+        {
+            float kindPriority = kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => 0.85f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => 0.64f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => 0.48f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => 0.32f,
+                _ => 0f
+            };
+
+            return kindPriority + Mathf.Clamp01(suspicionAmount);
         }
 
         private void DecayPersistentMemory()

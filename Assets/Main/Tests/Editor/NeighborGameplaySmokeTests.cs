@@ -594,6 +594,44 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NeighborMemory_StrongerPendingTrailSurvivesWeakerLaterClue()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            Pickupable stolenKey = CreatePickupable("StolenBasementKey", new Vector3(0.75f, 0f, 0f), true);
+            DoorKey key = stolenKey.GetComponent<DoorKey>();
+            Door door = context.AddInitializedComponent<Door>("LaterOpenedSideDoor");
+            door.SetLocked(false, false, false);
+            door.transform.position = new Vector3(3f, 0f, 0f);
+
+            GameplaySmokeTestReflection.Invoke(
+                brain,
+                "RememberMemoryClue",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
+                key,
+                stolenKey.HomePosition,
+                0.66f);
+
+            float keyTrailScore = brain.PendingMemoryClueScore;
+
+            GameplaySmokeTestReflection.Invoke(
+                brain,
+                "RememberMemoryClue",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
+                door,
+                door.transform.position,
+                0.26f);
+
+            Assert.That(brain.RememberedStolenKeyCount, Is.EqualTo(1));
+            Assert.That(brain.RememberedOpenedDoorCount, Is.EqualTo(1));
+            Assert.That(brain.LastRememberedClueKind, Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened));
+            Assert.That(brain.HasPendingMemoryClueFollowUp, Is.True);
+            Assert.That(brain.PendingMemoryClueKind, Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen));
+            Assert.That(brain.PendingMemoryClueSource, Is.SameAs(stolenKey.gameObject));
+            Assert.That(brain.PendingMemoryCluePosition, Is.EqualTo(stolenKey.HomePosition));
+            Assert.That(brain.PendingMemoryClueScore, Is.EqualTo(keyTrailScore).Within(0.001f));
+        }
+
+        [Test]
         public void NeighborMemory_StackedDifferentCluesRaiseVigilancePressure()
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
