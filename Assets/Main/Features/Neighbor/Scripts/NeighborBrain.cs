@@ -356,6 +356,8 @@ namespace Neighbor.Main.Features.Neighbor
         public bool HasActiveInvestigation => hasActiveInvestigation;
         public bool HasReportedInvestigationSearch => hasReportedInvestigationSearch;
         public bool IsCurrentInvestigationTrailRelated => currentInvestigationTrailRelated;
+        public bool IsCurrentInvestigationMemoryClue => currentInvestigationTrailRelated && currentInvestigationMemoryClueActive;
+        public PlayerFeedbackEvents.NeighborMemoryClueKind CurrentInvestigationMemoryClueKind => currentInvestigationMemoryClueKind;
         public bool IsSearchingInvestigationArea => currentState == BehaviorState.Investigate
             && waitingAtGoal
             && motor != null
