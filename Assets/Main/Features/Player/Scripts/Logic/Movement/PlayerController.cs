@@ -86,6 +86,9 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float movementNoiseMinimumRadius = 3.5f;
         [SerializeField, Min(0f)] private float movementNoiseMaximumRadius = 13f;
         [SerializeField, Min(0.05f)] private float movementNoiseInterval = 0.36f;
+        [SerializeField] private bool emitMovementNoiseEvents = true;
+        [SerializeField, Min(0.02f)] private float movementNoiseLifetime = 0.28f;
+        [SerializeField, Range(0f, 1f)] private float movementNoiseMinimumUrgency = 0.25f;
 
         [Header("Input")]
         [SerializeField, Min(0f)] private float mouseSensitivity = 0.08f;
@@ -508,7 +511,25 @@ namespace Neighbor.Main.Features.Player
                 return;
             }
 
-            PlayerFeedbackEvents.ReportNoise(transform.position, loudness, radius);
+            if (!emitMovementNoiseEvents)
+            {
+                PlayerFeedbackEvents.ReportNoise(transform.position, loudness, radius);
+                return;
+            }
+
+            GameObject noiseObject = new("PlayerMovementNoiseEvent");
+            noiseObject.transform.position = transform.position;
+            noiseObject.AddComponent<SphereCollider>();
+
+            NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
+            noiseEvent.Initialize(
+                transform.position,
+                radius,
+                loudness,
+                gameObject,
+                movementNoiseLifetime,
+                Mathf.Max(movementNoiseMinimumUrgency, loudness),
+                gameObject);
         }
 
         private void HandleLanding(float previousVerticalVelocity)

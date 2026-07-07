@@ -18,6 +18,8 @@ internal static class TerrainGrassInstaller
     private const string BasicTreeMeshPath = "Assets/Main/Art/Models/TreeObjects/BasicTreeTerrainMesh.asset";
     private const string BasicTreeBarkMaterialPath = "Assets/Main/Art/Models/TreeObjects/bark02.mat";
     private const string BasicTreeLeafMaterialPath = "Assets/Main/Art/Models/TreeObjects/leaf.mat";
+    private const string TerrainTreeBarkShaderName = "Nature/Soft Occlusion Bark";
+    private const string TerrainTreeLeafShaderName = "Nature/Soft Occlusion Leaves";
     private const int TextureSize = 256;
 
     [InitializeOnLoadMethod]
@@ -44,6 +46,22 @@ internal static class TerrainGrassInstaller
     {
         InstallBasicTreePrototypeOnAllTerrainData();
         AssetDatabase.SaveAssets();
+    }
+
+    public static void RepairBasicTreeTerrainFromCommandLine()
+    {
+        GameObject prefab = EnsureTerrainCompatibleBasicTreePrefab();
+        AssetDatabase.SaveAssets();
+
+        if (prefab == null || !HasTerrainCompatibleTreeRenderer(prefab))
+        {
+            Debug.LogError("BasicTreeTerrain repair failed.");
+            EditorApplication.Exit(1);
+            return;
+        }
+
+        Debug.Log("BasicTreeTerrain repair completed.");
+        EditorApplication.Exit(0);
     }
 
     [MenuItem(MenuRoot + "Add Grass Detail to Selected Terrain")]
@@ -569,11 +587,21 @@ internal static class TerrainGrassInstaller
     internal static bool IsRenderableTerrainTreeMaterial(Material material)
     {
         string materialPath = AssetDatabase.GetAssetPath(material);
-        return materialPath == BasicTreeBarkMaterialPath || materialPath == BasicTreeLeafMaterialPath;
+        return (materialPath == BasicTreeBarkMaterialPath || materialPath == BasicTreeLeafMaterialPath)
+            && UsesTerrainTreeShader(material);
+    }
+
+    internal static bool UsesTerrainTreeShader(Material material)
+    {
+        return material != null
+            && material.shader != null
+            && material.shader.name.StartsWith("Nature/Soft Occlusion", StringComparison.Ordinal);
     }
 
     private static GameObject EnsureTerrainCompatibleBasicTreePrefab()
     {
+        ConfigureBasicTreeTerrainMaterials();
+
         GameObject terrainPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(BasicTreePrefabPath);
         if (HasTerrainCompatibleTreeRenderer(terrainPrefab))
             return terrainPrefab;
@@ -721,6 +749,7 @@ internal static class TerrainGrassInstaller
 
     private static Material[] EnsureTerrainTreeMaterials(Material[] sourceMaterials)
     {
+        ConfigureBasicTreeTerrainMaterials();
         Material barkMaterial = AssetDatabase.LoadAssetAtPath<Material>(BasicTreeBarkMaterialPath);
         Material leafMaterial = AssetDatabase.LoadAssetAtPath<Material>(BasicTreeLeafMaterialPath);
 
@@ -734,6 +763,64 @@ internal static class TerrainGrassInstaller
         }
 
         return terrainMaterials;
+    }
+
+    private static void ConfigureBasicTreeTerrainMaterials()
+    {
+        ConfigureTerrainTreeMaterial(AssetDatabase.LoadAssetAtPath<Material>(BasicTreeBarkMaterialPath), false);
+        ConfigureTerrainTreeMaterial(AssetDatabase.LoadAssetAtPath<Material>(BasicTreeLeafMaterialPath), true);
+    }
+
+    private static void ConfigureTerrainTreeMaterial(Material material, bool isLeaf)
+    {
+        if (material == null)
+            return;
+
+        Texture mainTexture = GetMainTexture(material);
+        Shader treeShader = Shader.Find(isLeaf ? TerrainTreeLeafShaderName : TerrainTreeBarkShaderName);
+        if (treeShader == null)
+        {
+            Debug.LogError($"Required terrain tree shader is missing: {(isLeaf ? TerrainTreeLeafShaderName : TerrainTreeBarkShaderName)}");
+            return;
+        }
+
+        if (material.shader != treeShader)
+            material.shader = treeShader;
+
+        if (mainTexture != null && material.HasProperty("_MainTex"))
+            material.SetTexture("_MainTex", mainTexture);
+
+        if (material.HasProperty("_Color"))
+            material.SetColor("_Color", Color.white);
+
+        if (material.HasProperty("_Cutoff"))
+            material.SetFloat("_Cutoff", isLeaf ? 0.35f : 0.5f);
+
+        if (material.HasProperty("_TranslucencyColor"))
+        {
+            material.SetColor(
+                "_TranslucencyColor",
+                isLeaf ? new Color(0.52f, 0.72f, 0.38f, 1f) : new Color(0.28f, 0.2f, 0.13f, 1f));
+        }
+
+        if (material.HasProperty("_ShadowStrength"))
+            material.SetFloat("_ShadowStrength", isLeaf ? 0.65f : 0.8f);
+
+        EditorUtility.SetDirty(material);
+    }
+
+    private static Texture GetMainTexture(Material material)
+    {
+        if (material == null)
+            return null;
+
+        if (material.HasProperty("_MainTex") && material.GetTexture("_MainTex") != null)
+            return material.GetTexture("_MainTex");
+
+        if (material.HasProperty("_BaseMap"))
+            return material.GetTexture("_BaseMap");
+
+        return null;
     }
 
     private static bool IsLeafMaterial(Material material)

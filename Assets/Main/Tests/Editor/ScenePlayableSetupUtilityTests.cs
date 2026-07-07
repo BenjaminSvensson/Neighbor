@@ -97,6 +97,30 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void ApplyAtmosphereToActiveScene_CreatesVisualAtmosphereOnly()
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            ScenePlayableSetupResult result = ScenePlayableSetupUtility.ApplyAtmosphereToActiveScene();
+
+            Assert.That(result.CreatedDirectionalLight, Is.True);
+            Assert.That(result.CreatedMoonLight, Is.True);
+            Assert.That(result.CreatedDayNightCycle, Is.True);
+            Assert.That(result.CreatedAtmosphereDirector, Is.True);
+            Assert.That(result.CreatedAtmosphereVolume, Is.True);
+            Assert.That(result.CreatedFlickerLight, Is.True);
+            Assert.That(result.CreatedAtmosphereDressing, Is.True);
+            Assert.That(result.Player, Is.Null);
+            Assert.That(result.Neighbor, Is.Null);
+
+            Assert.That(CountInScene<PlayerController>(scene), Is.Zero);
+            Assert.That(CountInScene<NeighborBrain>(scene), Is.Zero);
+            Assert.That(CountInScene<SceneAtmosphereDirector>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<AtmosphereFlickerLight>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<AtmosphereDressingAnchor>(scene), Is.EqualTo(4));
+        }
+
+        [Test]
         public void MakeActiveScenePlayable_IsIdempotent()
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);

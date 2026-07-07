@@ -1721,6 +1721,55 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void PlayerMovementNoise_PrimesNeighborInvestigation()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            neighborObject.transform.position = Vector3.zero;
+            NeighborHearing hearing = context.AddInitializedComponent<NeighborHearing>(neighborObject);
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+
+            GameObject playerObject = context.CreateObject("Player");
+            playerObject.transform.position = Vector3.right;
+            PlayerController player = context.AddInitializedComponent<PlayerController>(playerObject);
+
+            PlayerFeedbackEvents.NoiseFeedback feedback = default;
+            bool feedbackReceived = false;
+            PlayerFeedbackEvents.NoiseEmitted += HandleNoise;
+
+            try
+            {
+                GameplaySmokeTestReflection.Invoke(player, "EmitNoise", 0.72f, 8f);
+
+                Assert.That(feedbackReceived, Is.True);
+                Assert.That(feedback.Loudness, Is.EqualTo(0.72f).Within(0.001f));
+                Assert.That(feedback.Radius, Is.EqualTo(8f).Within(0.001f));
+                Assert.That(brain.HasActiveInvestigation, Is.True);
+                Assert.That(brain.LastKnownInvestigationPosition, Is.EqualTo(playerObject.transform.position));
+                Assert.That(
+                    GameplaySmokeTestReflection.GetField<GameObject>(brain, "currentInvestigationSource"),
+                    Is.SameAs(playerObject));
+                Assert.That(hearing.LastHeardSource, Is.SameAs(playerObject));
+            }
+            finally
+            {
+                PlayerFeedbackEvents.NoiseEmitted -= HandleNoise;
+                foreach (NoiseEvent noiseEvent in UnityEngine.Object.FindObjectsByType<NoiseEvent>(FindObjectsInactive.Include))
+                {
+                    if (noiseEvent != null && noiseEvent.name == "PlayerMovementNoiseEvent")
+                    {
+                        UnityEngine.Object.DestroyImmediate(noiseEvent.gameObject);
+                    }
+                }
+            }
+
+            void HandleNoise(PlayerFeedbackEvents.NoiseFeedback item)
+            {
+                feedback = item;
+                feedbackReceived = true;
+            }
+        }
+
+        [Test]
         public void NoiseInvestigation_CapturesInterruptedRoutineAndLastKnownPosition()
         {
             GameObject neighborObject = context.CreateObject("Neighbor");
