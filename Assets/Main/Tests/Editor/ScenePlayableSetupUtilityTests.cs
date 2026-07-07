@@ -329,6 +329,54 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void SceneAtmosphereDirector_NeighborTrailInvestigationIntensifiesFogAndGrade()
+        {
+            RenderSettingsSnapshot snapshot = RenderSettingsSnapshot.Capture();
+            GameObject directorObject = new("Trail Atmosphere Director Test");
+            GameObject volumeObject = new("Trail Atmosphere Volume Test");
+
+            try
+            {
+                Volume volume = volumeObject.AddComponent<Volume>();
+                SceneAtmosphereDirector director = directorObject.AddComponent<SceneAtmosphereDirector>();
+                director.Configure(
+                    null,
+                    null,
+                    volume,
+                    new AtmosphereFlickerLight[0],
+                    new AtmosphereDressingAnchor[0]);
+
+                Assert.That(volume.profile, Is.Not.Null);
+                Assert.That(volume.profile.TryGet(out ColorAdjustments colorAdjustments), Is.True);
+                Assert.That(volume.profile.TryGet(out Vignette vignette), Is.True);
+
+                float baseFogDensity = RenderSettings.fogDensity;
+                float baseExposure = colorAdjustments.postExposure.value;
+                float baseVignette = vignette.intensity.value;
+
+                PlayerFeedbackEvents.ReportNeighborInvestigation(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail,
+                    Vector3.zero,
+                    "Basement Key Trail",
+                    0.66f,
+                    0.9f);
+
+                Assert.That(director.CurrentStealthAtmosphereIntensity, Is.GreaterThan(0.85f));
+                Assert.That(director.TargetStealthAtmosphereIntensity, Is.GreaterThan(0.85f));
+                Assert.That(RenderSettings.fogDensity, Is.GreaterThan(baseFogDensity));
+                Assert.That(colorAdjustments.postExposure.value, Is.LessThan(baseExposure));
+                Assert.That(vignette.intensity.value, Is.GreaterThan(baseVignette));
+            }
+            finally
+            {
+                snapshot.Restore();
+                GameplaySmokeTestReflection.InvokeIfPresent(directorObject.GetComponent<SceneAtmosphereDirector>(), "OnDisable");
+                Object.DestroyImmediate(directorObject);
+                Object.DestroyImmediate(volumeObject);
+            }
+        }
+
+        [Test]
         public void SceneAtmosphereDirector_HeardNoiseIntensifiesFogAndGrade()
         {
             RenderSettingsSnapshot snapshot = RenderSettingsSnapshot.Capture();
@@ -482,6 +530,38 @@ namespace Neighbor.Main.Tests
                 Assert.That(flicker.CurrentStealthPressure, Is.GreaterThan(0.75f));
                 Assert.That(flicker.EffectiveFlickerAmount, Is.GreaterThan(0.45f));
                 Assert.That(flicker.EffectiveFlickerSpeed, Is.GreaterThan(7.5f));
+                Assert.That(light.intensity, Is.LessThan(1f));
+            }
+            finally
+            {
+                GameplaySmokeTestReflection.InvokeIfPresent(
+                    lightObject.GetComponent<AtmosphereFlickerLight>(),
+                    "OnDisable");
+                Object.DestroyImmediate(lightObject);
+            }
+        }
+
+        [Test]
+        public void AtmosphereFlickerLight_NeighborTrailInvestigationAddsUnstableLight()
+        {
+            GameObject lightObject = new("Trail Flicker Light Test");
+
+            try
+            {
+                Light light = lightObject.AddComponent<Light>();
+                AtmosphereFlickerLight flicker = lightObject.AddComponent<AtmosphereFlickerLight>();
+                flicker.Configure(1f, 0.2f, 4f);
+
+                PlayerFeedbackEvents.ReportNeighborInvestigation(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail,
+                    Vector3.zero,
+                    "Basement Key Trail",
+                    0.66f,
+                    0.9f);
+
+                Assert.That(flicker.CurrentStealthPressure, Is.GreaterThan(0.85f));
+                Assert.That(flicker.EffectiveFlickerAmount, Is.GreaterThan(0.48f));
+                Assert.That(flicker.EffectiveFlickerSpeed, Is.GreaterThan(8f));
                 Assert.That(light.intensity, Is.LessThan(1f));
             }
             finally
@@ -753,6 +833,67 @@ namespace Neighbor.Main.Tests
                 Assert.That(decal.EffectiveIntensity, Is.GreaterThan(0.58f));
                 Assert.That(memoryDecal.a, Is.GreaterThan(calmDecal.a));
                 Assert.That(memoryDecal.r, Is.LessThan(calmDecal.r));
+                Assert.That(propObject.transform.localScale.x, Is.GreaterThan(calmPropScale.x));
+            }
+            finally
+            {
+                GameplaySmokeTestReflection.InvokeIfPresent(
+                    decalObject.GetComponent<AtmosphereDressingAnchor>(),
+                    "OnDisable");
+                GameplaySmokeTestReflection.InvokeIfPresent(
+                    propObject.GetComponent<AtmosphereDressingAnchor>(),
+                    "OnDisable");
+                Object.DestroyImmediate(decalObject);
+                Object.DestroyImmediate(propObject);
+                Object.DestroyImmediate(decalMaterial);
+                Object.DestroyImmediate(propMaterial);
+            }
+        }
+
+        [Test]
+        public void AtmosphereDressingAnchor_NeighborTrailInvestigationPressurizesDecalsAndProps()
+        {
+            GameObject decalObject = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            GameObject propObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Material decalMaterial = CreateTestMaterial(new Color(0.18f, 0.14f, 0.09f, 0.3f));
+            Material propMaterial = CreateTestMaterial(new Color(0.34f, 0.23f, 0.14f, 1f));
+
+            try
+            {
+                decalObject.name = "Trail Dirty Decal Dressing Test";
+                propObject.name = "Trail Prop Dressing Test";
+                propObject.transform.localScale = new Vector3(1.1f, 0.25f, 0.45f);
+
+                Renderer decalRenderer = decalObject.GetComponent<Renderer>();
+                Renderer propRenderer = propObject.GetComponent<Renderer>();
+                decalRenderer.sharedMaterial = decalMaterial;
+                propRenderer.sharedMaterial = propMaterial;
+
+                AtmosphereDressingAnchor decal = decalObject.AddComponent<AtmosphereDressingAnchor>();
+                AtmosphereDressingAnchor prop = propObject.AddComponent<AtmosphereDressingAnchor>();
+                decal.Configure(AtmosphereDressingAnchor.DressingKind.DirtyDecal, 0.4f);
+                prop.Configure(AtmosphereDressingAnchor.DressingKind.PropDressing, 0.48f);
+
+                MaterialPropertyBlock block = new();
+                decalRenderer.GetPropertyBlock(block);
+                Color calmDecal = block.GetColor("_BaseColor");
+                Vector3 calmPropScale = propObject.transform.localScale;
+
+                PlayerFeedbackEvents.ReportNeighborInvestigation(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail,
+                    Vector3.zero,
+                    "Basement Key Trail",
+                    0.66f,
+                    0.9f);
+
+                decalRenderer.GetPropertyBlock(block);
+                Color trailDecal = block.GetColor("_BaseColor");
+
+                Assert.That(decal.CurrentStealthPressure, Is.GreaterThan(0.85f));
+                Assert.That(prop.CurrentStealthPressure, Is.GreaterThan(0.85f));
+                Assert.That(decal.EffectiveIntensity, Is.GreaterThan(0.58f));
+                Assert.That(trailDecal.a, Is.GreaterThan(calmDecal.a));
+                Assert.That(trailDecal.r, Is.LessThan(calmDecal.r));
                 Assert.That(propObject.transform.localScale.x, Is.GreaterThan(calmPropScale.x));
             }
             finally
