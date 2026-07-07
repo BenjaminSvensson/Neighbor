@@ -374,6 +374,63 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NeighborMemory_StackedDifferentCluesRaiseVigilancePressure()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            Door door = context.AddInitializedComponent<Door>("RememberedDoor");
+            door.SetLocked(false, false, false);
+            GameObject glassObject = context.CreateObject("BrokenKitchenWindow");
+            GlassShatter glass = context.AddInitializedComponent<GlassShatter>(glassObject);
+            PlayerFeedbackEvents.NeighborMemoryFeedback feedback = default;
+            bool received = false;
+            PlayerFeedbackEvents.NeighborMemoryChanged += HandleNeighborMemoryChanged;
+
+            try
+            {
+                GameplaySmokeTestReflection.Invoke(
+                    brain,
+                    "RememberMemoryClue",
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
+                    door,
+                    door.transform.position,
+                    0.26f);
+
+                Assert.That(brain.TotalRememberedClueCount, Is.EqualTo(1));
+                Assert.That(brain.Suspicion, Is.EqualTo(0.26f).Within(0.001f));
+                Assert.That(brain.IsPostEncounterVigilant, Is.False);
+
+                GameplaySmokeTestReflection.Invoke(
+                    brain,
+                    "RememberMemoryClue",
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken,
+                    glass,
+                    glass.transform.position,
+                    0.56f);
+
+                Assert.That(brain.TotalRememberedClueCount, Is.EqualTo(2));
+                Assert.That(brain.Suspicion, Is.GreaterThan(0.56f));
+                Assert.That(brain.CurrentSuspicionLevel, Is.EqualTo(NeighborBrain.SuspicionLevel.Suspicious));
+                Assert.That(brain.IsPostEncounterVigilant, Is.True);
+                Assert.That(brain.PostEncounterVigilanceTimeRemaining, Is.GreaterThan(0f));
+                Assert.That(brain.PendingMemoryClueSuspicion, Is.GreaterThan(0.56f));
+                Assert.That(received, Is.True);
+                Assert.That(feedback.Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken));
+                Assert.That(feedback.TotalMemoryCount, Is.EqualTo(2));
+                Assert.That(feedback.Suspicion, Is.GreaterThan(0.56f));
+            }
+            finally
+            {
+                PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
+            }
+
+            void HandleNeighborMemoryChanged(PlayerFeedbackEvents.NeighborMemoryFeedback item)
+            {
+                feedback = item;
+                received = true;
+            }
+        }
+
+        [Test]
         public void NeighborMemory_RespawnRequeuesStrongestRememberedClue()
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
