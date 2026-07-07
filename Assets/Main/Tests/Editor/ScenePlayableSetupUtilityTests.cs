@@ -560,6 +560,94 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AtmosphereResponders_SevereMemoryCluesLingerLongerThanDoorClues()
+        {
+            GameObject directorObject = new("Memory Hold Director Test");
+            GameObject flickerObject = new("Memory Hold Flicker Test");
+            GameObject dressingObject = new("Memory Hold Dressing Test");
+
+            try
+            {
+                SceneAtmosphereDirector director = directorObject.AddComponent<SceneAtmosphereDirector>();
+                flickerObject.AddComponent<Light>();
+                AtmosphereFlickerLight flicker = flickerObject.AddComponent<AtmosphereFlickerLight>();
+                AtmosphereDressingAnchor dressing = dressingObject.AddComponent<AtmosphereDressingAnchor>();
+
+                PlayerFeedbackEvents.NeighborMemoryFeedback openedDoor = new(
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
+                    "Front Door",
+                    Vector3.zero,
+                    0.38f,
+                    1);
+                PlayerFeedbackEvents.NeighborMemoryFeedback stolenKey = new(
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
+                    "Basement Key",
+                    Vector3.zero,
+                    0.38f,
+                    1);
+                PlayerFeedbackEvents.NeighborMemoryFeedback stackedDoor = new(
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
+                    "Front Door",
+                    Vector3.zero,
+                    0.38f,
+                    4);
+
+                float directorDoorHold = GameplaySmokeTestReflection.InvokeResult<float>(
+                    director,
+                    "GetMemoryAtmosphereHoldDuration",
+                    openedDoor);
+                float directorKeyHold = GameplaySmokeTestReflection.InvokeResult<float>(
+                    director,
+                    "GetMemoryAtmosphereHoldDuration",
+                    stolenKey);
+                float directorStackedHold = GameplaySmokeTestReflection.InvokeResult<float>(
+                    director,
+                    "GetMemoryAtmosphereHoldDuration",
+                    stackedDoor);
+
+                Assert.That(directorKeyHold, Is.GreaterThan(directorDoorHold));
+                Assert.That(directorStackedHold, Is.GreaterThan(directorDoorHold));
+
+                float flickerDoorHold = GameplaySmokeTestReflection.InvokeResult<float>(
+                    flicker,
+                    "GetMemoryFlickerHoldDuration",
+                    openedDoor);
+                float flickerKeyHold = GameplaySmokeTestReflection.InvokeResult<float>(
+                    flicker,
+                    "GetMemoryFlickerHoldDuration",
+                    stolenKey);
+
+                Assert.That(flickerKeyHold, Is.GreaterThan(flickerDoorHold));
+
+                float dressingDoorHold = GameplaySmokeTestReflection.InvokeResult<float>(
+                    dressing,
+                    "GetMemoryHoldDuration",
+                    openedDoor);
+                float dressingKeyHold = GameplaySmokeTestReflection.InvokeResult<float>(
+                    dressing,
+                    "GetMemoryHoldDuration",
+                    stolenKey);
+
+                Assert.That(dressingKeyHold, Is.GreaterThan(dressingDoorHold));
+            }
+            finally
+            {
+                GameplaySmokeTestReflection.InvokeIfPresent(
+                    directorObject.GetComponent<SceneAtmosphereDirector>(),
+                    "OnDisable");
+                GameplaySmokeTestReflection.InvokeIfPresent(
+                    flickerObject.GetComponent<AtmosphereFlickerLight>(),
+                    "OnDisable");
+                GameplaySmokeTestReflection.InvokeIfPresent(
+                    dressingObject.GetComponent<AtmosphereDressingAnchor>(),
+                    "OnDisable");
+                Object.DestroyImmediate(directorObject);
+                Object.DestroyImmediate(flickerObject);
+                Object.DestroyImmediate(dressingObject);
+            }
+        }
+
+        [Test]
         public void SceneAtmosphereDirector_StealthPressureDipsSunAndBoostsMoon()
         {
             RenderSettingsSnapshot snapshot = RenderSettingsSnapshot.Capture();

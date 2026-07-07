@@ -55,6 +55,7 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField, Range(0f, 1f)] private float memoryAtmosphereIntensity = 0.42f;
         [SerializeField, Range(0f, 1f)] private float stackedMemoryAtmosphereBoost = 0.16f;
         [SerializeField, Min(0f)] private float memoryAtmosphereHoldDuration = 4.2f;
+        [SerializeField, Min(1f)] private float maximumMemoryAtmosphereHoldMultiplier = 1.55f;
         [Header("Investigation Atmosphere Response")]
         [SerializeField] private bool respondToNeighborInvestigation = true;
         [SerializeField, Range(0f, 1f)] private float trailInvestigationAtmosphereIntensity = 0.72f;
@@ -282,7 +283,7 @@ namespace Neighbor.Main.Features.Environment
                 return;
             }
 
-            RaiseAtmospherePressure(GetMemoryAtmosphereIntensity(feedback), memoryAtmosphereHoldDuration);
+            RaiseAtmospherePressure(GetMemoryAtmosphereIntensity(feedback), GetMemoryAtmosphereHoldDuration(feedback));
         }
 
         private void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
@@ -374,6 +375,25 @@ namespace Neighbor.Main.Features.Environment
             float stackPressure = Mathf.Clamp01(feedback.TotalMemoryCount / 4f) * stackedMemoryAtmosphereBoost;
             float pressure = Mathf.Max(memoryAtmosphereIntensity, feedback.Urgency) + stackPressure;
             return Mathf.Clamp01(pressure);
+        }
+
+        private float GetMemoryAtmosphereHoldDuration(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
+        {
+            float stackPressure = Mathf.Clamp01(Mathf.Max(0, feedback.TotalMemoryCount - 1) / 3f);
+            float commitment = Mathf.Max(GetMemoryClueSeverity(feedback.Kind), stackPressure);
+            return memoryAtmosphereHoldDuration * Mathf.Lerp(1f, maximumMemoryAtmosphereHoldMultiplier, commitment);
+        }
+
+        private static float GetMemoryClueSeverity(PlayerFeedbackEvents.NeighborMemoryClueKind kind)
+        {
+            return kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => 1f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => 0.78f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => 0.45f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => 0.16f,
+                _ => 0f
+            };
         }
 
         private float GetInvestigationAtmosphereIntensity(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
