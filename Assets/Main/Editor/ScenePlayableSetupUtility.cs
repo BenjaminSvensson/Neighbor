@@ -100,6 +100,7 @@ internal static class ScenePlayableSetupUtility
         Light moonLight = EnsureMoonLight(scene, result);
         DayNightCycle dayNightCycle = EnsureDayNightCycle(scene, directionalLight, moonLight, result);
         SceneAtmosphereDirector atmosphereDirector = EnsureAtmosphereDirector(scene, directionalLight, moonLight, result);
+        VegetationMaterialGuard vegetationMaterialGuard = EnsureVegetationMaterialGuard(scene, result);
 
         result.Player = player;
         result.Neighbor = neighbor;
@@ -114,6 +115,7 @@ internal static class ScenePlayableSetupUtility
         result.MoonLight = moonLight;
         result.DayNightCycle = dayNightCycle;
         result.AtmosphereDirector = atmosphereDirector;
+        result.VegetationMaterialGuard = vegetationMaterialGuard;
 
         if (bakeNavMesh && navMeshSurface != null)
         {
@@ -147,11 +149,13 @@ internal static class ScenePlayableSetupUtility
         Light moonLight = EnsureMoonLight(scene, result);
         DayNightCycle dayNightCycle = EnsureDayNightCycle(scene, directionalLight, moonLight, result);
         SceneAtmosphereDirector atmosphereDirector = EnsureAtmosphereDirector(scene, directionalLight, moonLight, result);
+        VegetationMaterialGuard vegetationMaterialGuard = EnsureVegetationMaterialGuard(scene, result);
 
         result.DirectionalLight = directionalLight;
         result.MoonLight = moonLight;
         result.DayNightCycle = dayNightCycle;
         result.AtmosphereDirector = atmosphereDirector;
+        result.VegetationMaterialGuard = vegetationMaterialGuard;
 
         if (result.HasChanges)
         {
@@ -570,6 +574,28 @@ internal static class ScenePlayableSetupUtility
             anchors);
         EditorUtility.SetDirty(director);
         return director;
+    }
+
+    private static VegetationMaterialGuard EnsureVegetationMaterialGuard(Scene scene, ScenePlayableSetupResult result)
+    {
+        VegetationMaterialGuard guard = FindInScene<VegetationMaterialGuard>(scene);
+        bool created = false;
+        if (guard == null)
+        {
+            GameObject guardObject = CreateSceneObject(scene, "Vegetation Material Guard");
+            guard = guardObject.AddComponent<VegetationMaterialGuard>();
+            result.CreatedObjectCount++;
+            result.CreatedVegetationMaterialGuard = true;
+            created = true;
+        }
+
+        if (!created || guard.LastTotalRepairs == 0)
+        {
+            guard.RepairSceneVegetationMaterials(scene);
+        }
+
+        EditorUtility.SetDirty(guard);
+        return guard;
     }
 
     private static Volume EnsureAtmosphereVolume(Scene scene, ScenePlayableSetupResult result)
@@ -1064,6 +1090,7 @@ internal sealed class ScenePlayableSetupResult
     public Light MoonLight { get; set; }
     public DayNightCycle DayNightCycle { get; set; }
     public SceneAtmosphereDirector AtmosphereDirector { get; set; }
+    public VegetationMaterialGuard VegetationMaterialGuard { get; set; }
     public int CreatedObjectCount { get; set; }
     public int AddedComponentCount { get; set; }
     public bool CreatedPlayer { get; set; }
@@ -1091,6 +1118,7 @@ internal sealed class ScenePlayableSetupResult
     public bool CreatedAtmosphereVolume { get; set; }
     public bool CreatedFlickerLight { get; set; }
     public bool CreatedAtmosphereDressing { get; set; }
+    public bool CreatedVegetationMaterialGuard { get; set; }
     public bool BakedNavMesh { get; set; }
     public bool HasChanges =>
         CreatedObjectCount > 0
@@ -1103,6 +1131,7 @@ internal sealed class ScenePlayableSetupResult
         || CreatedAtmosphereVolume
         || CreatedFlickerLight
         || CreatedAtmosphereDressing
+        || CreatedVegetationMaterialGuard
         || BakedNavMesh;
 
     public string GetSummary()

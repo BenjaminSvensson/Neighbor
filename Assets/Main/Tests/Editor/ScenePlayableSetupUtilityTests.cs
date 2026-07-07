@@ -47,6 +47,7 @@ namespace Neighbor.Main.Tests
             Assert.That(result.CreatedAtmosphereVolume, Is.True);
             Assert.That(result.CreatedFlickerLight, Is.True);
             Assert.That(result.CreatedAtmosphereDressing, Is.True);
+            Assert.That(result.CreatedVegetationMaterialGuard, Is.True);
             Assert.That(result.AddedPauseMenu, Is.True);
             Assert.That(result.Player, Is.Not.Null);
             Assert.That(result.PlayerDeathController, Is.Not.Null);
@@ -68,6 +69,7 @@ namespace Neighbor.Main.Tests
             Assert.That(result.MoonLight, Is.Not.Null);
             Assert.That(result.DayNightCycle, Is.Not.Null);
             Assert.That(result.AtmosphereDirector, Is.Not.Null);
+            Assert.That(result.VegetationMaterialGuard, Is.Not.Null);
             Assert.That(result.AtmosphereDirector.HasColorGradingVolume, Is.True);
             Assert.That(result.AtmosphereDirector.FlickerLightCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(result.AtmosphereDirector.DirtyDecalAnchorCount, Is.GreaterThanOrEqualTo(2));
@@ -92,6 +94,7 @@ namespace Neighbor.Main.Tests
             Assert.That(CountInScene<EventSystem>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<DayNightCycle>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<SceneAtmosphereDirector>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<VegetationMaterialGuard>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<AtmosphereFlickerLight>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<AtmosphereDressingAnchor>(scene), Is.EqualTo(4));
         }
@@ -110,12 +113,15 @@ namespace Neighbor.Main.Tests
             Assert.That(result.CreatedAtmosphereVolume, Is.True);
             Assert.That(result.CreatedFlickerLight, Is.True);
             Assert.That(result.CreatedAtmosphereDressing, Is.True);
+            Assert.That(result.CreatedVegetationMaterialGuard, Is.True);
             Assert.That(result.Player, Is.Null);
             Assert.That(result.Neighbor, Is.Null);
+            Assert.That(result.VegetationMaterialGuard, Is.Not.Null);
 
             Assert.That(CountInScene<PlayerController>(scene), Is.Zero);
             Assert.That(CountInScene<NeighborBrain>(scene), Is.Zero);
             Assert.That(CountInScene<SceneAtmosphereDirector>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<VegetationMaterialGuard>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<AtmosphereFlickerLight>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<AtmosphereDressingAnchor>(scene), Is.EqualTo(4));
         }
@@ -129,6 +135,7 @@ namespace Neighbor.Main.Tests
 
             Assert.That(director, Is.Null);
             Assert.That(CountInScene<SceneAtmosphereDirector>(scene), Is.Zero);
+            Assert.That(CountInScene<VegetationMaterialGuard>(scene), Is.Zero);
             Assert.That(CountInScene<AtmosphereFlickerLight>(scene), Is.Zero);
             Assert.That(CountInScene<AtmosphereDressingAnchor>(scene), Is.Zero);
         }
@@ -153,6 +160,7 @@ namespace Neighbor.Main.Tests
             Assert.That(director.DirtyDecalAnchorCount, Is.GreaterThanOrEqualTo(2));
             Assert.That(director.PropDressingAnchorCount, Is.GreaterThanOrEqualTo(2));
             Assert.That(CountInScene<SceneAtmosphereDirector>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<VegetationMaterialGuard>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<AtmosphereFlickerLight>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<AtmosphereDressingAnchor>(scene), Is.EqualTo(4));
         }
@@ -191,6 +199,7 @@ namespace Neighbor.Main.Tests
             Assert.That(secondRun.CreatedAtmosphereVolume, Is.False);
             Assert.That(secondRun.CreatedFlickerLight, Is.False);
             Assert.That(secondRun.CreatedAtmosphereDressing, Is.False);
+            Assert.That(secondRun.CreatedVegetationMaterialGuard, Is.False);
             Assert.That(CountInScene<PlayerController>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<PlayerDeathController>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<PlayerKeyRing>(scene), Is.EqualTo(1));
@@ -207,6 +216,7 @@ namespace Neighbor.Main.Tests
             Assert.That(CountInScene<EventSystem>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<DayNightCycle>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<SceneAtmosphereDirector>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<VegetationMaterialGuard>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<AtmosphereFlickerLight>(scene), Is.EqualTo(1));
             Assert.That(CountInScene<AtmosphereDressingAnchor>(scene), Is.EqualTo(4));
         }
