@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using Unity.AI.Navigation;
 using Neighbor.Main.Features.Interaction;
@@ -111,6 +112,30 @@ namespace Neighbor.Main.Tests
                 new PlayerFeedbackEvents.RespawnFeedback("Guest Bed", true, Vector3.one));
 
             Assert.That(warningText.text, Is.EqualTo("RESPAWNED AT GUEST BED"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleHidingChanged",
+                new PlayerFeedbackEvents.HidingFeedback(
+                    "curtain",
+                    PlayerFeedbackEvents.HidingFeedbackKind.Entered,
+                    0f,
+                    true,
+                    false));
+
+            Assert.That(warningText.text, Is.EqualTo("HIDDEN IN CURTAIN"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleHidingChanged",
+                new PlayerFeedbackEvents.HidingFeedback(
+                    "curtain",
+                    PlayerFeedbackEvents.HidingFeedbackKind.Found,
+                    1f,
+                    true,
+                    true));
+
+            Assert.That(warningText.text, Is.EqualTo("FOUND IN CURTAIN"));
         }
 
         [Test]
@@ -1220,15 +1245,36 @@ namespace Neighbor.Main.Tests
         {
             PlayerHidingState hidingState = context.CreateObject("HiddenPlayer").AddComponent<PlayerHidingState>();
             ClosetHideSpot hideSpot = context.CreateObject("HideSpot").AddComponent<ClosetHideSpot>();
+            List<PlayerFeedbackEvents.HidingFeedback> feedback = new();
+            PlayerFeedbackEvents.HidingChanged += HandleHidingFeedback;
 
-            hidingState.SetHidden(true, hideSpot);
-            hidingState.RegisterNeighborInspection(true);
+            try
+            {
+                hidingState.SetHidden(true, hideSpot);
+                hidingState.RegisterNeighborInspection(true);
+            }
+            finally
+            {
+                PlayerFeedbackEvents.HidingChanged -= HandleHidingFeedback;
+            }
 
             Assert.That(hidingState.IsHidden, Is.True);
             Assert.That(hidingState.CurrentHideSpot, Is.SameAs(hideSpot));
             Assert.That(hidingState.BreathTension01, Is.GreaterThan(0f));
             Assert.That(hidingState.WasInspectedRecently, Is.True);
             Assert.That(hidingState.IsCompromised, Is.True);
+            Assert.That(feedback, Has.Count.EqualTo(2));
+            Assert.That(feedback[0].Kind, Is.EqualTo(PlayerFeedbackEvents.HidingFeedbackKind.Entered));
+            Assert.That(feedback[0].SpotName, Is.EqualTo("closet"));
+            Assert.That(feedback[0].IsHidden, Is.True);
+            Assert.That(feedback[1].Kind, Is.EqualTo(PlayerFeedbackEvents.HidingFeedbackKind.Found));
+            Assert.That(feedback[1].IsCompromised, Is.True);
+            Assert.That(feedback[1].BreathTension, Is.GreaterThan(0f));
+
+            void HandleHidingFeedback(PlayerFeedbackEvents.HidingFeedback hidingFeedback)
+            {
+                feedback.Add(hidingFeedback);
+            }
         }
 
         [Test]

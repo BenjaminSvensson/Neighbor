@@ -76,13 +76,22 @@ namespace Neighbor.Main.Features.Player
         {
             if (!hidden)
             {
+                ClosetHideSpot previousHideSpot = CurrentHideSpot;
+                bool wasHidden = IsHidden;
+                bool wasCompromised = IsCompromised;
                 IsHidden = false;
                 CurrentHideSpot = null;
                 IsCompromised = false;
                 PeekExposure01 = 0f;
+                if (wasHidden)
+                {
+                    ReportHidingFeedback(previousHideSpot, PlayerFeedbackEvents.HidingFeedbackKind.Exited, false, wasCompromised);
+                }
+
                 return;
             }
 
+            bool enteredNewHideState = !IsHidden;
             if (!IsHidden)
             {
                 hiddenSinceTime = Time.time;
@@ -95,6 +104,10 @@ namespace Neighbor.Main.Features.Player
 
             IsHidden = true;
             CurrentHideSpot = hideSpot != null ? hideSpot : CurrentHideSpot;
+            if (enteredNewHideState)
+            {
+                ReportHidingFeedback(CurrentHideSpot, PlayerFeedbackEvents.HidingFeedbackKind.Entered, true, IsCompromised);
+            }
         }
 
         public void RegisterNeighborInspection(bool foundPlayer)
@@ -105,6 +118,14 @@ namespace Neighbor.Main.Features.Player
             {
                 IsCompromised = true;
             }
+
+            ReportHidingFeedback(
+                CurrentHideSpot,
+                foundPlayer || IsCompromised
+                    ? PlayerFeedbackEvents.HidingFeedbackKind.Found
+                    : PlayerFeedbackEvents.HidingFeedbackKind.Inspected,
+                IsHidden,
+                IsCompromised);
         }
 
         public void AddBreathTension(float amount)
@@ -150,6 +171,16 @@ namespace Neighbor.Main.Features.Player
                 breathNoiseLifetime,
                 BreathTension01,
                 gameObject);
+        }
+
+        private void ReportHidingFeedback(
+            ClosetHideSpot hideSpot,
+            PlayerFeedbackEvents.HidingFeedbackKind kind,
+            bool isHidden,
+            bool isCompromised)
+        {
+            string spotName = hideSpot != null ? hideSpot.DisplayName : "hiding spot";
+            PlayerFeedbackEvents.ReportHiding(spotName, kind, BreathTension01, isHidden, isCompromised);
         }
     }
 }

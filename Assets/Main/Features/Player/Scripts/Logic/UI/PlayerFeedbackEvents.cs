@@ -105,6 +105,37 @@ namespace Neighbor.Main.Features.Player
             }
         }
 
+        public enum HidingFeedbackKind
+        {
+            Entered,
+            Exited,
+            Inspected,
+            Found
+        }
+
+        public readonly struct HidingFeedback
+        {
+            public string SpotName { get; }
+            public HidingFeedbackKind Kind { get; }
+            public float BreathTension { get; }
+            public bool IsHidden { get; }
+            public bool IsCompromised { get; }
+
+            public HidingFeedback(
+                string spotName,
+                HidingFeedbackKind kind,
+                float breathTension,
+                bool isHidden,
+                bool isCompromised)
+            {
+                SpotName = string.IsNullOrWhiteSpace(spotName) ? "hiding spot" : spotName.Trim();
+                Kind = kind;
+                BreathTension = Mathf.Clamp01(breathTension);
+                IsHidden = isHidden;
+                IsCompromised = isCompromised;
+            }
+        }
+
         public readonly struct OnboardingPromptFeedback
         {
             public string Message { get; }
@@ -169,6 +200,7 @@ namespace Neighbor.Main.Features.Player
         public static event Action<DayPhaseFeedback> DayPhaseChanged;
         public static event Action<CheckpointFeedback> CheckpointReached;
         public static event Action<RespawnFeedback> PlayerRespawned;
+        public static event Action<HidingFeedback> HidingChanged;
         public static event Action<OnboardingPromptFeedback> OnboardingPrompted;
         public static event Action<ObjectiveProgressFeedback> ObjectiveProgressed;
         public static event Action<DoorInteractionFeedback> DoorInteractionReported;
@@ -237,6 +269,16 @@ namespace Neighbor.Main.Features.Player
             PlayerRespawned?.Invoke(new RespawnFeedback(respawnName, usedCheckpoint, position));
         }
 
+        public static void ReportHiding(
+            string spotName,
+            HidingFeedbackKind kind,
+            float breathTension,
+            bool isHidden,
+            bool isCompromised)
+        {
+            HidingChanged?.Invoke(new HidingFeedback(spotName, kind, breathTension, isHidden, isCompromised));
+        }
+
         public static void ReportOnboardingPrompt(string message, float intensity = 0.35f)
         {
             if (string.IsNullOrWhiteSpace(message))
@@ -285,6 +327,7 @@ namespace Neighbor.Main.Features.Player
             DayPhaseChanged = null;
             CheckpointReached = null;
             PlayerRespawned = null;
+            HidingChanged = null;
             OnboardingPrompted = null;
             ObjectiveProgressed = null;
             DoorInteractionReported = null;
