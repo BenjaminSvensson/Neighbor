@@ -17,6 +17,7 @@ namespace Neighbor.Main.Features.Player
         private Image tensionFill;
         private Image staminaFill;
         private Text awarenessText;
+        private Text stealthStatusText;
         private Text objectiveText;
         private Text warningText;
         private PlayerController player;
@@ -24,6 +25,11 @@ namespace Neighbor.Main.Features.Player
         private NeighborBrain trackedNeighbor;
         private CoreLoopObjectiveTracker objectiveTracker;
         private float noiseLevel;
+        private PlayerFeedbackEvents.StealthLoopPhase lastStealthLoopPhase = PlayerFeedbackEvents.StealthLoopPhase.Quiet;
+        private float lastStealthLoopSuspicion;
+        private float lastStealthLoopNoise;
+        private float lastStealthLoopTension;
+        private float stealthLoopStatusUntil;
         private float cameraWarningUntil;
         private float messageUntil;
         private float nextPlayerSearchTime;
@@ -82,6 +88,7 @@ namespace Neighbor.Main.Features.Player
             canvasGroup.alpha = inputBlocked ? 0f : 1f;
 
             UpdateAwareness();
+            UpdateStealthStatus();
             UpdateObjective();
             UpdateNoise();
             UpdateTension();
@@ -199,6 +206,26 @@ namespace Neighbor.Main.Features.Player
             }
 
             awarenessText.text = trackedNeighbor.CurrentSuspicionLevel.ToString().ToUpperInvariant();
+        }
+
+        private void UpdateStealthStatus()
+        {
+            if (stealthStatusText == null)
+            {
+                return;
+            }
+
+            PlayerFeedbackEvents.StealthLoopPhase phase = GetDisplayedStealthLoopPhase();
+            bool hasRecentLoopStatus = Time.unscaledTime < stealthLoopStatusUntil;
+            float suspicion = trackedNeighbor != null
+                ? trackedNeighbor.Suspicion
+                : hasRecentLoopStatus ? lastStealthLoopSuspicion : 0f;
+            float tension = Mathf.Max(
+                trackedNeighbor != null ? trackedNeighbor.PostChaseTension01 : 0f,
+                hidingState != null ? hidingState.BreathTension01 : hasRecentLoopStatus ? lastStealthLoopTension : 0f);
+            float noise = Mathf.Max(noiseLevel, hasRecentLoopStatus ? lastStealthLoopNoise : 0f);
+            stealthStatusText.text = BuildStealthStatusText(phase, suspicion, noise, tension);
+            stealthStatusText.color = GetStealthStatusColor(phase, suspicion, noise, tension);
         }
 
         private void UpdateNoise()
@@ -329,6 +356,27 @@ namespace Neighbor.Main.Features.Player
             {
                 warningText.text = "EXHAUSTED";
                 warningText.color = new Color(1f, 0.45f, 0.18f, 1f);
+                return;
+            }
+
+            if (noiseLevel >= 0.72f)
+            {
+                warningText.text = "LOUD NOISE";
+                warningText.color = Color.Lerp(
+                    new Color(1f, 0.68f, 0.18f, 0.96f),
+                    new Color(1f, 0.26f, 0.08f, 1f),
+                    noiseLevel);
+                return;
+            }
+
+            if (noiseLevel >= 0.45f
+                && trackedNeighbor != null
+                && (trackedNeighbor.CurrentState == NeighborBrain.BehaviorState.Investigate
+                    || trackedNeighbor.CurrentState == NeighborBrain.BehaviorState.HuntMode
+                    || trackedNeighbor.CurrentSuspicionLevel >= NeighborBrain.SuspicionLevel.Curious))
+            {
+                warningText.text = "HE HEARD THAT";
+                warningText.color = new Color(1f, 0.62f, 0.16f, 0.96f);
                 return;
             }
 
@@ -514,6 +562,15 @@ namespace Neighbor.Main.Features.Player
 
         private void HandleStealthLoopChanged(PlayerFeedbackEvents.StealthLoopFeedback feedback)
         {
+            lastStealthLoopPhase = feedback.Phase;
+            lastStealthLoopSuspicion = feedback.Suspicion;
+            lastStealthLoopNoise = feedback.Noise;
+            lastStealthLoopTension = feedback.Tension;
+            stealthLoopStatusUntil = Time.unscaledTime + Mathf.Lerp(
+                2.2f,
+                6f,
+                Mathf.Max(feedback.Suspicion, feedback.Noise, feedback.Tension));
+
             if (feedback.Noise > 0f)
             {
                 noiseLevel = Mathf.Max(noiseLevel, feedback.Noise);
@@ -627,6 +684,10 @@ namespace Neighbor.Main.Features.Player
 
             warningText = CreateText("Warning", font, 18, FontStyle.Bold, TextAnchor.MiddleCenter);
             SetRect(warningText.rectTransform, new Vector2(0.5f, 0.75f), new Vector2(0.5f, 0.75f), Vector2.zero, new Vector2(560f, 32f));
+
+            stealthStatusText = CreateText("StealthStatus", font, 12, FontStyle.Bold, TextAnchor.MiddleCenter);
+            stealthStatusText.color = new Color(0.78f, 0.86f, 0.96f, 0.82f);
+            SetRect(stealthStatusText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -84f), new Vector2(360f, 20f));
         }
 
         private Text CreateText(string objectName, Font font, int fontSize, FontStyle style, TextAnchor alignment)
@@ -748,6 +809,111 @@ namespace Neighbor.Main.Features.Player
                         new Color(1f, 0.5f, 0.14f, 1f),
                         Mathf.Max(feedback.Suspicion, feedback.Noise));
             }
+        }
+
+        private PlayerFeedbackEvents.StealthLoopPhase GetDisplayedStealthLoopPhase()
+        {
+            if (hidingState != null && hidingState.IsHidden)
+            {
+                return PlayerFeedbackEvents.StealthLoopPhase.Hiding;
+            }
+
+            if (trackedNeighbor != null)
+            {
+                return trackedNeighbor.CurrentState switch
+                {
+                    NeighborBrain.BehaviorState.Chase => PlayerFeedbackEvents.StealthLoopPhase.Chased,
+                    NeighborBrain.BehaviorState.Catching => PlayerFeedbackEvents.StealthLoopPhase.Chased,
+                    NeighborBrain.BehaviorState.HuntMode => PlayerFeedbackEvents.StealthLoopPhase.PostChase,
+                    NeighborBrain.BehaviorState.Investigate => PlayerFeedbackEvents.StealthLoopPhase.Searching,
+                    NeighborBrain.BehaviorState.DoorSecurityCheck => PlayerFeedbackEvents.StealthLoopPhase.Searching,
+                    _ => GetSuspicionPhase(trackedNeighbor.CurrentSuspicionLevel)
+                };
+            }
+
+            return Time.unscaledTime < stealthLoopStatusUntil
+                ? lastStealthLoopPhase
+                : PlayerFeedbackEvents.StealthLoopPhase.Quiet;
+        }
+
+        private static PlayerFeedbackEvents.StealthLoopPhase GetSuspicionPhase(NeighborBrain.SuspicionLevel level)
+        {
+            return level switch
+            {
+                NeighborBrain.SuspicionLevel.Certain => PlayerFeedbackEvents.StealthLoopPhase.Suspicious,
+                NeighborBrain.SuspicionLevel.Suspicious => PlayerFeedbackEvents.StealthLoopPhase.Suspicious,
+                NeighborBrain.SuspicionLevel.Curious => PlayerFeedbackEvents.StealthLoopPhase.Curious,
+                _ => PlayerFeedbackEvents.StealthLoopPhase.Quiet
+            };
+        }
+
+        private string BuildStealthStatusText(
+            PlayerFeedbackEvents.StealthLoopPhase phase,
+            float suspicion,
+            float noise,
+            float tension)
+        {
+            switch (phase)
+            {
+                case PlayerFeedbackEvents.StealthLoopPhase.Chased:
+                    return "CHASE / DANGER";
+                case PlayerFeedbackEvents.StealthLoopPhase.Hiding:
+                    if (hidingState != null && hidingState.IsCompromised)
+                    {
+                        return "HIDDEN / FOUND";
+                    }
+
+                    if (hidingState != null && hidingState.IsDangerouslyExposed)
+                    {
+                        return "HIDDEN / EXPOSED";
+                    }
+
+                    return tension >= 0.7f ? "HIDDEN / BREATH HIGH" : "HIDDEN / STEADY";
+                case PlayerFeedbackEvents.StealthLoopPhase.PostChase:
+                    return tension >= 0.45f ? "RECOVERY / SEARCHING" : "RECOVERY / QUIET DOWN";
+                case PlayerFeedbackEvents.StealthLoopPhase.Searching:
+                    return noise >= 0.35f ? "SEARCHING / NOISE TRACE" : "SEARCHING";
+                case PlayerFeedbackEvents.StealthLoopPhase.Suspicious:
+                    return suspicion >= 0.75f ? "SUSPICIOUS / ALMOST SEEN" : "SUSPICIOUS";
+                case PlayerFeedbackEvents.StealthLoopPhase.Curious:
+                    return noise >= 0.35f ? "CURIOUS / NOISE HEARD" : "CURIOUS";
+                default:
+                    return noise >= 0.35f ? "QUIET / NOISE FADING" : "QUIET";
+            }
+        }
+
+        private static Color GetStealthStatusColor(
+            PlayerFeedbackEvents.StealthLoopPhase phase,
+            float suspicion,
+            float noise,
+            float tension)
+        {
+            float intensity = Mathf.Max(suspicion, noise, tension);
+            return phase switch
+            {
+                PlayerFeedbackEvents.StealthLoopPhase.Chased => new Color(1f, 0.12f, 0.06f, 1f),
+                PlayerFeedbackEvents.StealthLoopPhase.Hiding => Color.Lerp(
+                    new Color(0.62f, 0.9f, 1f, 0.9f),
+                    new Color(1f, 0.58f, 0.14f, 1f),
+                    tension),
+                PlayerFeedbackEvents.StealthLoopPhase.PostChase => Color.Lerp(
+                    new Color(1f, 0.76f, 0.28f, 0.95f),
+                    new Color(1f, 0.38f, 0.1f, 1f),
+                    tension),
+                PlayerFeedbackEvents.StealthLoopPhase.Searching => new Color(1f, 0.66f, 0.16f, 0.98f),
+                PlayerFeedbackEvents.StealthLoopPhase.Suspicious => Color.Lerp(
+                    new Color(1f, 0.58f, 0.16f, 0.96f),
+                    new Color(1f, 0.18f, 0.08f, 1f),
+                    suspicion),
+                PlayerFeedbackEvents.StealthLoopPhase.Curious => Color.Lerp(
+                    new Color(0.78f, 0.86f, 0.96f, 0.9f),
+                    new Color(1f, 0.72f, 0.18f, 0.98f),
+                    Mathf.Max(noise, suspicion)),
+                _ => Color.Lerp(
+                    new Color(0.64f, 0.76f, 0.9f, 0.72f),
+                    new Color(1f, 0.72f, 0.18f, 0.9f),
+                    intensity)
+            };
         }
     }
 }
