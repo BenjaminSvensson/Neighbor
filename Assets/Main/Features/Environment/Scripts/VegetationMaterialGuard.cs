@@ -282,17 +282,29 @@ namespace Neighbor.Main.Features.Environment
                     float horizontal = (float)x / (FallbackTextureSize - 1);
                     float vertical = (float)y / (FallbackTextureSize - 1);
                     float noise = Mathf.PerlinNoise(horizontal * 7.4f + 0.17f, vertical * 9.2f + 0.43f);
-                    if (!leaf)
+                    Color color = Color.Lerp(low, high, noise);
+                    if (leaf)
+                    {
+                        float center = 0.5f + Mathf.Sin(vertical * Mathf.PI * 2f) * 0.08f;
+                        float width = 0.08f + Mathf.Sin(vertical * Mathf.PI) * 0.34f;
+                        float body = Mathf.Clamp01((width - Mathf.Abs(horizontal - center)) / Mathf.Max(0.001f, width * 0.28f));
+                        float stem = Mathf.Clamp01(1f - Mathf.Abs(horizontal - 0.5f) * 22f) * Mathf.Lerp(0.85f, 0.25f, vertical);
+                        float vein = Mathf.Clamp01(1f - Mathf.Abs(horizontal - center) * 18f);
+                        color = Color.Lerp(color, high, vein * 0.24f);
+                        color.a = Mathf.Clamp01(Mathf.Max(body, stem));
+                    }
+                    else
                     {
                         noise = Mathf.Clamp01(noise * 0.55f + Mathf.Abs(Mathf.Sin(horizontal * 24f)) * 0.45f);
+                        color = Color.Lerp(low, high, noise);
                     }
 
-                    pixels[y * FallbackTextureSize + x] = Color.Lerp(low, high, noise);
+                    pixels[y * FallbackTextureSize + x] = color;
                 }
             }
 
             texture.SetPixels(pixels);
-            texture.Apply(true, true);
+            texture.Apply(true, false);
             return texture;
         }
 

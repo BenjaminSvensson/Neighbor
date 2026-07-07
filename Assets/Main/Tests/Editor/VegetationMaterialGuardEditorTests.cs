@@ -75,6 +75,54 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void RepairSceneVegetationMaterials_LeafFallbackTextureUsesAlphaCutoutPattern()
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            GameObject tree = new("BasicTree");
+            GameObject leaf = new("leaf_maple_lod0");
+            Material pinkMaterial = CreatePinkMaterial();
+            try
+            {
+                leaf.transform.SetParent(tree.transform);
+                MeshRenderer renderer = leaf.AddComponent<MeshRenderer>();
+                renderer.sharedMaterial = pinkMaterial;
+                LODGroup lodGroup = tree.AddComponent<LODGroup>();
+                lodGroup.SetLODs(new[] { new LOD(0.4f, new Renderer[] { renderer }) });
+
+                VegetationMaterialGuard guard = VegetationMaterialGuard.EnsureForScene(scene);
+                Material repairedMaterial = renderer.sharedMaterial;
+                Texture2D texture = GetMainTexture(repairedMaterial) as Texture2D;
+
+                Assert.That(guard.LastTotalRepairs, Is.EqualTo(1));
+                Assert.That(texture, Is.Not.Null);
+
+                Color[] pixels = texture.GetPixels();
+                int transparentPixels = 0;
+                int opaquePixels = 0;
+                for (int i = 0; i < pixels.Length; i++)
+                {
+                    if (pixels[i].a < 0.25f)
+                    {
+                        transparentPixels++;
+                    }
+
+                    if (pixels[i].a > 0.75f)
+                    {
+                        opaquePixels++;
+                    }
+                }
+
+                Assert.That(transparentPixels, Is.GreaterThan(pixels.Length / 6));
+                Assert.That(opaquePixels, Is.GreaterThan(pixels.Length / 6));
+            }
+            finally
+            {
+                Object.DestroyImmediate(tree);
+                Object.DestroyImmediate(pinkMaterial);
+            }
+        }
+
+        [Test]
         public void RepairSceneVegetationMaterials_ReplacesTerrainTreePrototypeMaterial()
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -167,9 +215,27 @@ namespace Neighbor.Main.Tests
                 return false;
             }
 
-            return material.HasProperty("_BaseMap") && material.GetTexture("_BaseMap") != null
-                || material.HasProperty("_MainTex") && material.GetTexture("_MainTex") != null
-                || material.mainTexture != null;
+            return GetMainTexture(material) != null;
+        }
+
+        private static Texture GetMainTexture(Material material)
+        {
+            if (material == null)
+            {
+                return null;
+            }
+
+            if (material.HasProperty("_BaseMap") && material.GetTexture("_BaseMap") != null)
+            {
+                return material.GetTexture("_BaseMap");
+            }
+
+            if (material.HasProperty("_MainTex") && material.GetTexture("_MainTex") != null)
+            {
+                return material.GetTexture("_MainTex");
+            }
+
+            return material.mainTexture;
         }
     }
 }
