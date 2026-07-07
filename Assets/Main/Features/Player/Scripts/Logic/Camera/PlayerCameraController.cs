@@ -47,14 +47,18 @@ namespace Neighbor.Main.Features.Player
         [Header("Stealth Camera Pressure")]
         [SerializeField] private bool respondToStealthLoop = true;
         [SerializeField] private bool respondToNeighborMemory = true;
+        [SerializeField] private bool respondToNoiseFeedback = true;
         [SerializeField, Range(0f, 1f)] private float stealthWobbleBoost = 0.45f;
         [SerializeField, Min(0f)] private float stealthShakeAmount = 0.18f;
         [SerializeField, Min(0f)] private float stealthFieldOfViewKick = 2.4f;
         [SerializeField, Range(0f, 1f)] private float calmHidingCameraPressure = 0.08f;
         [SerializeField, Range(0f, 1f)] private float calmPostChaseCameraPressure = 0.14f;
+        [SerializeField, Range(0f, 1f)] private float heardNoiseCameraPressure = 0.34f;
+        [SerializeField, Range(0f, 1f)] private float heardNoiseListenerCameraBoost = 0.08f;
         [SerializeField, Range(0f, 1f)] private float memoryCameraPressure = 0.24f;
         [SerializeField, Range(0f, 1f)] private float stackedMemoryCameraBoost = 0.12f;
         [SerializeField, Min(0f)] private float stealthCameraPressureHoldDuration = 2.4f;
+        [SerializeField, Min(0f)] private float heardNoiseCameraPressureHoldDuration = 1.6f;
         [SerializeField, Min(0f)] private float memoryCameraPressureHoldDuration = 2.8f;
         [SerializeField, Min(1f)] private float maximumMemoryCameraPressureHoldMultiplier = 1.5f;
         [SerializeField, Min(0f)] private float stealthCameraPressureFadeSpeed = 2.1f;
@@ -196,12 +200,15 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged += HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NoiseEmitted -= HandleNoiseEmitted;
+            PlayerFeedbackEvents.NoiseEmitted += HandleNoiseEmitted;
         }
 
         private void OnDisable()
         {
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NoiseEmitted -= HandleNoiseEmitted;
         }
 
         private void Start()
@@ -745,6 +752,16 @@ namespace Neighbor.Main.Features.Player
             RaiseStealthCameraPressure(GetMemoryCameraPressure(feedback), GetMemoryCameraPressureHoldDuration(feedback));
         }
 
+        private void HandleNoiseEmitted(PlayerFeedbackEvents.NoiseFeedback feedback)
+        {
+            if (!respondToNoiseFeedback || !feedback.HeardByNeighbor)
+            {
+                return;
+            }
+
+            RaiseStealthCameraPressure(GetNoiseCameraPressure(feedback), heardNoiseCameraPressureHoldDuration);
+        }
+
         private void RaiseStealthCameraPressure(float pressure, float holdDuration)
         {
             targetStealthCameraPressure = Mathf.Clamp01(pressure);
@@ -760,7 +777,7 @@ namespace Neighbor.Main.Features.Player
 
         private void UpdateStealthCameraPressure(float deltaTime)
         {
-            if (!respondToStealthLoop && !respondToNeighborMemory)
+            if (!respondToStealthLoop && !respondToNeighborMemory && !respondToNoiseFeedback)
             {
                 targetStealthCameraPressure = 0f;
             }
@@ -792,6 +809,14 @@ namespace Neighbor.Main.Features.Player
                 PlayerFeedbackEvents.StealthLoopPhase.Curious => Mathf.Max(0.18f, pressure * 0.65f),
                 _ => 0f
             };
+        }
+
+        private float GetNoiseCameraPressure(PlayerFeedbackEvents.NoiseFeedback feedback)
+        {
+            float listenerPressure = Mathf.Clamp01(Mathf.Max(0, feedback.NeighborListenerCount - 1) / 2f)
+                * heardNoiseListenerCameraBoost;
+            return Mathf.Clamp01(Mathf.Max(heardNoiseCameraPressure, Mathf.Max(feedback.Loudness, feedback.Urgency))
+                + listenerPressure);
         }
 
         private float GetMemoryCameraPressure(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
