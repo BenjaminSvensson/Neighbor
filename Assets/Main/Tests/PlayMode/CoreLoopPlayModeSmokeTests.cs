@@ -90,6 +90,73 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void LockedDoor_WrongHeldKeyReportsReadableFeedbackAndStaysLocked()
+        {
+            CreatePlayer("Player", Vector3.zero, out PlayerInteractor interactor);
+            Pickupable wrongKey = CreateObjectiveKey("GarageKey");
+            SetField(wrongKey.GetComponent<DoorKey>(), "keyId", "garage_key");
+            Door door = CreateObjectiveDoor("BasementDoor");
+
+            PlayerFeedbackEvents.DoorInteractionFeedback feedback = default;
+            bool receivedFeedback = false;
+            PlayerFeedbackEvents.DoorInteractionReported += HandleFeedback;
+            try
+            {
+                interactor.Pickup(wrongKey);
+                door.Interact(interactor);
+            }
+            finally
+            {
+                PlayerFeedbackEvents.DoorInteractionReported -= HandleFeedback;
+            }
+
+            Assert.That(door.IsLocked, Is.True);
+            Assert.That(door.IsOpen, Is.False);
+            Assert.That(receivedFeedback, Is.True);
+            Assert.That(feedback.Kind, Is.EqualTo(PlayerFeedbackEvents.DoorInteractionFeedbackKind.Locked));
+            Assert.That(feedback.Message, Is.EqualTo("Need Test Key"));
+            Assert.That(feedback.Intensity, Is.GreaterThan(0.5f));
+
+            void HandleFeedback(PlayerFeedbackEvents.DoorInteractionFeedback reportedFeedback)
+            {
+                feedback = reportedFeedback;
+                receivedFeedback = true;
+            }
+        }
+
+        [Test]
+        public void LockedDoor_KeyRingUnlocksWithoutHoldingKeyAndReportsSuccess()
+        {
+            PlayerController player = CreatePlayer("Player", Vector3.zero, out PlayerInteractor interactor);
+            player.GetComponent<PlayerKeyRing>().AddKey("test_key");
+            Door door = CreateObjectiveDoor("BasementDoor");
+
+            PlayerFeedbackEvents.DoorInteractionFeedback feedback = default;
+            bool receivedFeedback = false;
+            PlayerFeedbackEvents.DoorInteractionReported += HandleFeedback;
+            try
+            {
+                door.Interact(interactor);
+            }
+            finally
+            {
+                PlayerFeedbackEvents.DoorInteractionReported -= HandleFeedback;
+            }
+
+            Assert.That(door.IsLocked, Is.False);
+            Assert.That(door.IsOpen, Is.True);
+            Assert.That(receivedFeedback, Is.True);
+            Assert.That(feedback.Kind, Is.EqualTo(PlayerFeedbackEvents.DoorInteractionFeedbackKind.Unlocked));
+            Assert.That(feedback.Message, Is.EqualTo("Unlocked"));
+
+            void HandleFeedback(PlayerFeedbackEvents.DoorInteractionFeedback reportedFeedback)
+            {
+                feedback = reportedFeedback;
+                receivedFeedback = true;
+            }
+        }
+
+        [Test]
         public void NeighborVision_PlayerInSight_EntersChaseState()
         {
             CreatePlayer("Player", Vector3.forward * 4f, out _);
@@ -296,6 +363,47 @@ namespace Neighbor.Main.Tests
             Assert.That(SecurityCamera.NeighborPlacedCameraCount, Is.Zero);
             Assert.That(Vector3.Distance(camera.transform.position, cameraHomePosition), Is.LessThan(0.05f));
             Assert.That(Quaternion.Angle(camera.transform.rotation, cameraHomeRotation), Is.LessThan(1f));
+        }
+
+        [Test]
+        public void PlayerDeath_RespawnReleasesHideSpotAndBeartrapConstraints()
+        {
+            PlayerController player = CreatePlayer("Player", Vector3.zero, out _);
+            PlayerDeathController deathController = player.GetComponent<PlayerDeathController>();
+            deathController.ClearCheckpoint(true);
+
+            ClosetHideSpot hideSpot = CreateObject("Closet").AddComponent<ClosetHideSpot>();
+            PlayerHidingState hiddenState = player.gameObject.AddComponent<PlayerHidingState>();
+            SetField(hideSpot, "hiddenPlayer", player);
+            SetField(hideSpot, "hiddenState", hiddenState);
+            hiddenState.SetHidden(true, hideSpot);
+            player.PrepareForHiding();
+
+            Beartrap beartrap = CreateBeartrap("Beartrap");
+            Invoke(beartrap, "Start");
+            SetField(beartrap, "stuckPlayer", player);
+            Invoke(beartrap, "SetState", GetNestedEnumValue(typeof(Beartrap), "TrapState", "Triggered"));
+            player.SetBeartrapLocked(true);
+
+            Assert.That(hideSpot.HasHiddenPlayer, Is.True);
+            Assert.That(hiddenState.IsHidden, Is.True);
+            Assert.That(player.enabled, Is.False);
+            Assert.That(player.IsBeartrapLocked, Is.True);
+
+            SetField(deathController, "fallDuration", 0.01f);
+            SetField(deathController, "impactDuration", 0.01f);
+            SetField(deathController, "groundHoldDuration", 0.01f);
+            SetField(deathController, "fadeOutDuration", 0.01f);
+
+            RunCoroutine(
+                InvokeResult<IEnumerator>(deathController, "DeathAndReset", Vector3.zero),
+                "Player death reset did not release hide spot and beartrap constraints.");
+
+            Assert.That(hideSpot.HasHiddenPlayer, Is.False);
+            Assert.That(hiddenState.IsHidden, Is.False);
+            Assert.That(player.enabled, Is.True);
+            Assert.That(player.IsBeartrapLocked, Is.False);
+            Assert.That(beartrap.IsClosed, Is.True);
         }
 
         [Test]
