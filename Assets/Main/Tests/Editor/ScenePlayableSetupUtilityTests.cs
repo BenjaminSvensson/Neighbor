@@ -233,6 +233,54 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AtmosphereFlickerLight_StealthLoopDangerAddsUnstableLight()
+        {
+            GameObject lightObject = new("Flicker Light Test");
+
+            try
+            {
+                Light light = lightObject.AddComponent<Light>();
+                AtmosphereFlickerLight flicker = lightObject.AddComponent<AtmosphereFlickerLight>();
+                flicker.Configure(1f, 0.2f, 4f);
+
+                Assert.That(flicker.CurrentStealthPressure, Is.Zero);
+                Assert.That(flicker.EffectiveFlickerAmount, Is.EqualTo(0.2f).Within(0.001f));
+                Assert.That(flicker.EffectiveFlickerSpeed, Is.EqualTo(4f).Within(0.001f));
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.Chased,
+                    1f,
+                    0.8f,
+                    0.9f,
+                    "Run or hide");
+
+                Assert.That(flicker.CurrentStealthPressure, Is.GreaterThan(0.95f));
+                Assert.That(flicker.EffectiveFlickerAmount, Is.GreaterThan(0.5f));
+                Assert.That(flicker.EffectiveFlickerSpeed, Is.GreaterThan(8f));
+                Assert.That(light.intensity, Is.LessThan(1f));
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.Quiet,
+                    0f,
+                    0f,
+                    0f,
+                    string.Empty);
+                GameplaySmokeTestReflection.Invoke(flicker, "UpdateStealthPressure", 1f);
+
+                Assert.That(flicker.CurrentStealthPressure, Is.Zero.Within(0.001f));
+                Assert.That(flicker.EffectiveFlickerAmount, Is.EqualTo(0.2f).Within(0.001f));
+                Assert.That(flicker.EffectiveFlickerSpeed, Is.EqualTo(4f).Within(0.001f));
+            }
+            finally
+            {
+                GameplaySmokeTestReflection.InvokeIfPresent(
+                    lightObject.GetComponent<AtmosphereFlickerLight>(),
+                    "OnDisable");
+                Object.DestroyImmediate(lightObject);
+            }
+        }
+
+        [Test]
         public void MakeActiveScenePlayable_IsIdempotent()
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
