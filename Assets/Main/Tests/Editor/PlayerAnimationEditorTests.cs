@@ -217,6 +217,9 @@ namespace Neighbor.Main.Tests
             Assert.That(audioSettings.FindProperty("runFootstepLoop").objectReferenceValue, Is.Not.Null);
             Assert.That(audioSettings.FindProperty("crouchFootstepLoop").objectReferenceValue, Is.Not.Null);
             Assert.That(audioSettings.FindProperty("tiredBreathLoop").objectReferenceValue, Is.Not.Null);
+            Assert.That(audioSettings.FindProperty("stealthBreathVolume").floatValue, Is.GreaterThan(0f));
+            Assert.That(audioSettings.FindProperty("stealthBreathPitchLift").floatValue, Is.GreaterThan(0f));
+            Assert.That(audioSettings.FindProperty("stealthBreathHoldDuration").floatValue, Is.GreaterThan(0f));
             foreach (AudioSource audioSource in playerPrefab.GetComponentsInChildren<AudioSource>(true))
             {
                 Assert.That(audioSource.playOnAwake, Is.False, $"{audioSource.name} should not play on awake.");

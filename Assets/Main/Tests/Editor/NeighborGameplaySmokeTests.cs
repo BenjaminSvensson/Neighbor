@@ -2878,6 +2878,59 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void PlayerAudio_StealthLoopPressureDrivesBreathLoopTarget()
+        {
+            GameObject playerObject = context.CreateObject("Player");
+            playerObject.AddComponent<CharacterController>();
+            context.AddInitializedComponent<PlayerController>(playerObject);
+            PlayerAudioController audioController = context.AddInitializedComponent<PlayerAudioController>(playerObject);
+            AudioClip breathClip = AudioClip.Create("StealthBreathLoop", 64, 1, 8000, false);
+
+            try
+            {
+                GameplaySmokeTestReflection.SetField(audioController, "tiredBreathLoop", breathClip);
+                GameplaySmokeTestReflection.SetField(audioController, "breathStartStamina", 0f);
+                GameplaySmokeTestReflection.SetField(audioController, "stealthBreathVolume", 0.5f);
+                GameplaySmokeTestReflection.SetField(audioController, "stealthBreathFadeSpeed", 1f);
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.Chased,
+                    1f,
+                    0f,
+                    1f,
+                    "Run or hide");
+                GameplaySmokeTestReflection.Invoke(audioController, "UpdateBreathing");
+
+                Assert.That(audioController.CurrentStealthBreathStress01, Is.EqualTo(1f).Within(0.001f));
+                Assert.That(audioController.CurrentBreathStress01, Is.EqualTo(1f).Within(0.001f));
+                Assert.That(audioController.CurrentBreathTargetVolume, Is.EqualTo(0.5f).Within(0.001f));
+
+                GameplaySmokeTestReflection.InvokeIfPresent(audioController, "OnDisable");
+                GameplaySmokeTestReflection.InvokeIfPresent(audioController, "OnEnable");
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.PostChase,
+                    0.32f,
+                    0f,
+                    0.64f,
+                    "Stay hidden. He is checking the area.");
+
+                Assert.That(audioController.CurrentStealthBreathStress01, Is.EqualTo(0.64f).Within(0.001f));
+
+                GameplaySmokeTestReflection.SetField(
+                    audioController,
+                    "stealthBreathHoldUntilTime",
+                    Time.unscaledTime - 0.1f);
+                GameplaySmokeTestReflection.Invoke(audioController, "UpdateStealthBreathStress", 0.25f);
+
+                Assert.That(audioController.CurrentStealthBreathStress01, Is.LessThan(0.5f));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(breathClip);
+            }
+        }
+
+        [Test]
         public void ClosetSearch_MarksHiddenPlayerAsInspected()
         {
             GameObject playerObject = context.CreateObject("Player");

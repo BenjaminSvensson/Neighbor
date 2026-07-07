@@ -35,6 +35,12 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Range(0f, 1f)] private float hiddenBreathMinimumStress = 0.18f;
         [SerializeField, Range(0f, 1f)] private float hiddenInspectionBreathStress = 0.62f;
         [SerializeField, Min(0f)] private float hiddenBreathPitchLift = 0.08f;
+        [SerializeField] private bool respondToStealthLoop = true;
+        [SerializeField, Range(0f, 1f)] private float stealthBreathVolume = 0.32f;
+        [SerializeField, Min(0f)] private float stealthBreathPitchLift = 0.06f;
+        [SerializeField, Range(0f, 1f)] private float calmHidingStealthBreathPressure = 0.04f;
+        [SerializeField, Min(0f)] private float stealthBreathHoldDuration = 2.6f;
+        [SerializeField, Min(0f)] private float stealthBreathFadeSpeed = 1.8f;
 
         [Header("Movement Actions")]
         [SerializeField] private AudioClip[] jumpClips;
@@ -80,8 +86,12 @@ namespace Neighbor.Main.Features.Player
         private AudioClip pausedZoomClip;
         private int pausedZoomSample;
         private float zoomPausedAt = float.NegativeInfinity;
+        private float currentStealthBreathStress;
+        private float targetStealthBreathStress;
+        private float stealthBreathHoldUntilTime;
 
         public float CurrentBreathStress01 { get; private set; }
+        public float CurrentStealthBreathStress01 => currentStealthBreathStress;
         public float CurrentBreathTargetVolume { get; private set; }
 
         private void Awake()
@@ -152,6 +162,8 @@ namespace Neighbor.Main.Features.Player
             }
 
             SubscribeToCameraZoom();
+            PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
         }
 
         private void Update()
@@ -354,6 +366,7 @@ namespace Neighbor.Main.Features.Player
 
         private void UpdateBreathing()
         {
+            UpdateStealthBreathStress(Time.deltaTime);
             if (breathLoopSource == null || tiredBreathLoop == null)
             {
                 CurrentBreathStress01 = 0f;
@@ -368,17 +381,20 @@ namespace Neighbor.Main.Features.Player
 
             float staminaStress = CalculateStaminaBreathStress01();
             float hidingStress = CalculateHidingBreathStress01();
-            CurrentBreathStress01 = Mathf.Max(staminaStress, hidingStress);
+            float stealthStress = currentStealthBreathStress;
+            CurrentBreathStress01 = Mathf.Max(staminaStress, Mathf.Max(hidingStress, stealthStress));
             CurrentBreathTargetVolume = Mathf.Max(
-                tiredBreathVolume * staminaStress,
-                hiddenBreathVolume * hidingStress);
+                Mathf.Max(tiredBreathVolume * staminaStress, hiddenBreathVolume * hidingStress),
+                stealthBreathVolume * stealthStress);
 
             breathLoopSource.volume = Mathf.Lerp(
                 breathLoopSource.volume,
                 CurrentBreathTargetVolume,
                 1f - Mathf.Exp(-breathLoopFadeSharpness * Time.deltaTime));
 
-            float targetPitch = 1f + hidingStress * hiddenBreathPitchLift;
+            float targetPitch = 1f + Mathf.Max(
+                hidingStress * hiddenBreathPitchLift,
+                stealthStress * stealthBreathPitchLift);
             breathLoopSource.pitch = Mathf.Lerp(
                 breathLoopSource.pitch,
                 targetPitch,
@@ -439,6 +455,63 @@ namespace Neighbor.Main.Features.Player
             return Mathf.Clamp01(hidingStress);
         }
 
+        private void HandleStealthLoopChanged(PlayerFeedbackEvents.StealthLoopFeedback feedback)
+        {
+            if (!respondToStealthLoop)
+            {
+                return;
+            }
+
+            RaiseStealthBreathStress(GetStealthBreathStress(feedback), stealthBreathHoldDuration);
+        }
+
+        private void RaiseStealthBreathStress(float stress, float holdDuration)
+        {
+            targetStealthBreathStress = Mathf.Clamp01(stress);
+            stealthBreathHoldUntilTime = targetStealthBreathStress <= 0f
+                ? 0f
+                : Time.unscaledTime + holdDuration;
+
+            if (targetStealthBreathStress > currentStealthBreathStress)
+            {
+                currentStealthBreathStress = targetStealthBreathStress;
+            }
+        }
+
+        private void UpdateStealthBreathStress(float deltaTime)
+        {
+            if (!respondToStealthLoop)
+            {
+                targetStealthBreathStress = 0f;
+            }
+
+            float desiredStress = Time.unscaledTime <= stealthBreathHoldUntilTime
+                ? targetStealthBreathStress
+                : 0f;
+            currentStealthBreathStress = Mathf.MoveTowards(
+                currentStealthBreathStress,
+                desiredStress,
+                stealthBreathFadeSpeed * Mathf.Max(0f, deltaTime));
+        }
+
+        private float GetStealthBreathStress(PlayerFeedbackEvents.StealthLoopFeedback feedback)
+        {
+            float pressure = Mathf.Max(feedback.Suspicion, feedback.Noise, feedback.Tension);
+            return feedback.Phase switch
+            {
+                PlayerFeedbackEvents.StealthLoopPhase.Chased => 1f,
+                PlayerFeedbackEvents.StealthLoopPhase.PostChase => Mathf.Max(0.58f, pressure),
+                PlayerFeedbackEvents.StealthLoopPhase.Searching => Mathf.Max(0.46f, pressure),
+                PlayerFeedbackEvents.StealthLoopPhase.Certain => Mathf.Max(0.72f, pressure),
+                PlayerFeedbackEvents.StealthLoopPhase.Suspicious => Mathf.Max(0.32f, pressure),
+                PlayerFeedbackEvents.StealthLoopPhase.Hiding => feedback.IsCalming
+                    ? Mathf.Max(calmHidingStealthBreathPressure, feedback.Tension)
+                    : Mathf.Max(0.22f, pressure),
+                PlayerFeedbackEvents.StealthLoopPhase.Curious => Mathf.Max(0.14f, pressure * 0.6f),
+                _ => 0f
+            };
+        }
+
         private void ResolveHidingState()
         {
             if (hidingState == null)
@@ -489,6 +562,7 @@ namespace Neighbor.Main.Features.Player
 
         private void OnDisable()
         {
+            PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
             if (cameraController != null)
             {
                 cameraController.ZoomDirectionChanged -= UpdateZoomLoop;
@@ -519,6 +593,9 @@ namespace Neighbor.Main.Features.Player
             pausedZoomClip = null;
             pausedZoomSample = 0;
             zoomPausedAt = float.NegativeInfinity;
+            currentStealthBreathStress = 0f;
+            targetStealthBreathStress = 0f;
+            stealthBreathHoldUntilTime = 0f;
         }
 
         private void SubscribeToCameraZoom()
