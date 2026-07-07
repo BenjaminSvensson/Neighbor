@@ -332,6 +332,41 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AwarenessHud_PostChaseMemoryPressurePrioritizesTrailFeedback()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.HuntMode);
+            GameplaySmokeTestReflection.SetField(brain, "postChaseTensionDuration", 12f);
+            GameplaySmokeTestReflection.SetField(brain, "postChaseTensionUntilTime", Time.time + 8f);
+            GameplaySmokeTestReflection.SetField(hud, "trackedNeighbor", brain);
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleNeighborMemoryChanged",
+                new PlayerFeedbackEvents.NeighborMemoryFeedback(
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
+                    "Basement Key",
+                    Vector3.zero,
+                    0.82f,
+                    3));
+            GameplaySmokeTestReflection.SetField(hud, "messageUntil", 0f);
+
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateAwareness");
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateStealthStatus");
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateWarning");
+
+            Text awarenessText = GameplaySmokeTestReflection.GetField<Text>(hud, "awarenessText");
+            Text stealthStatusText = GameplaySmokeTestReflection.GetField<Text>(hud, "stealthStatusText");
+            Text warningText = GameplaySmokeTestReflection.GetField<Text>(hud, "warningText");
+
+            Assert.That(awarenessText.text, Is.EqualTo("TRAIL"));
+            Assert.That(stealthStatusText.text, Is.EqualTo("RECOVERY / TRAIL"));
+            Assert.That(warningText.text, Is.EqualTo("HE IS FOLLOWING YOUR TRAIL"));
+        }
+
+        [Test]
         public void NeighborMemoryFeedback_UrgencyReflectsClueKindAndStackedMemory()
         {
             PlayerFeedbackEvents.NeighborMemoryFeedback openedDoor = new(

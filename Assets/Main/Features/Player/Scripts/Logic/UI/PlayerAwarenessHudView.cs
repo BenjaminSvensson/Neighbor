@@ -198,6 +198,13 @@ namespace Neighbor.Main.Features.Player
                 return;
             }
 
+            int memoryCount = GetDisplayedMemoryCount();
+            if (trackedNeighbor.PostChaseTension01 >= 0.05f && memoryPressure >= 0.55f)
+            {
+                awarenessText.text = memoryCount >= 3 ? "TRAIL" : "MEMORY";
+                return;
+            }
+
             string activeStateText = trackedNeighbor.CurrentState switch
             {
                 NeighborBrain.BehaviorState.Chase => "CHASE",
@@ -219,7 +226,7 @@ namespace Neighbor.Main.Features.Player
 
             if (memoryPressure >= 0.35f)
             {
-                awarenessText.text = trackedNeighbor.TotalRememberedClueCount >= 3 ? "TRAIL" : "MEMORY";
+                awarenessText.text = memoryCount >= 3 ? "TRAIL" : "MEMORY";
                 return;
             }
 
@@ -437,12 +444,17 @@ namespace Neighbor.Main.Features.Player
                 return;
             }
 
+            float memoryPressure = GetDisplayedMemoryPressure();
+            int memoryCount = GetDisplayedMemoryCount();
             if (trackedNeighbor != null && trackedNeighbor.PostChaseTension01 >= 0.35f)
             {
-                if (trackedNeighbor.IsHuntingMemoryClue)
+                if (trackedNeighbor.IsHuntingMemoryClue || IsTrailInvestigationActive() || memoryPressure >= 0.55f)
                 {
-                    warningText.text = "HE IS FOLLOWING YOUR TRAIL";
-                    warningText.color = new Color(1f, 0.42f, 0.1f, 1f);
+                    warningText.text = memoryCount >= 3 ? "HE IS FOLLOWING YOUR TRAIL" : "HE REMEMBERS";
+                    warningText.color = Color.Lerp(
+                        new Color(1f, 0.62f, 0.16f, 0.96f),
+                        new Color(1f, 0.28f, 0.08f, 1f),
+                        Mathf.Max(memoryPressure, trackedNeighbor.PostChaseTension01));
                     return;
                 }
 
@@ -469,10 +481,9 @@ namespace Neighbor.Main.Features.Player
                 return;
             }
 
-            float memoryPressure = GetDisplayedMemoryPressure();
             if (memoryPressure >= 0.55f)
             {
-                warningText.text = lastNeighborMemoryCount >= 3 ? "HE IS FOLLOWING YOUR TRAIL" : "HE REMEMBERS";
+                warningText.text = memoryCount >= 3 ? "HE IS FOLLOWING YOUR TRAIL" : "HE REMEMBERS";
                 warningText.color = Color.Lerp(
                     new Color(0.9f, 0.82f, 0.62f, 0.95f),
                     new Color(1f, 0.36f, 0.12f, 1f),
@@ -1077,6 +1088,13 @@ namespace Neighbor.Main.Features.Player
                 ? lastNeighborTrailInvestigationPressure
                 : 0f;
             return Mathf.Max(Mathf.Max(trackedPressure, recentPressure), trailPressure);
+        }
+
+        private int GetDisplayedMemoryCount()
+        {
+            int trackedCount = trackedNeighbor != null ? trackedNeighbor.TotalRememberedClueCount : 0;
+            int recentCount = Time.unscaledTime < neighborMemoryStatusUntil ? lastNeighborMemoryCount : 0;
+            return Mathf.Max(trackedCount, recentCount);
         }
 
         private bool IsTrailInvestigationActive()
