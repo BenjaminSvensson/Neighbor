@@ -273,6 +273,56 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NeighborMemoryFeedback_UrgencyReflectsClueKindAndStackedMemory()
+        {
+            PlayerFeedbackEvents.NeighborMemoryFeedback openedDoor = new(
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
+                "Front Door",
+                Vector3.zero,
+                0.05f,
+                1);
+            PlayerFeedbackEvents.NeighborMemoryFeedback stolenKeyTrail = new(
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
+                "Basement Key",
+                Vector3.zero,
+                0.05f,
+                4);
+
+            Assert.That(openedDoor.Suspicion, Is.EqualTo(0.05f).Within(0.001f));
+            Assert.That(openedDoor.Urgency, Is.GreaterThanOrEqualTo(0.42f));
+            Assert.That(stolenKeyTrail.Suspicion, Is.EqualTo(0.05f).Within(0.001f));
+            Assert.That(stolenKeyTrail.Urgency, Is.GreaterThan(0.85f));
+            Assert.That(stolenKeyTrail.Urgency, Is.GreaterThan(openedDoor.Urgency));
+        }
+
+        [Test]
+        public void AwarenessHud_UsesMemoryUrgencyForLowSuspicionStolenKeyTrail()
+        {
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleNeighborMemoryChanged",
+                new PlayerFeedbackEvents.NeighborMemoryFeedback(
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
+                    "Basement Key",
+                    Vector3.zero,
+                    0.05f,
+                    4));
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateStealthStatus");
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateTension");
+
+            Text warningText = GameplaySmokeTestReflection.GetField<Text>(hud, "warningText");
+            Text stealthStatusText = GameplaySmokeTestReflection.GetField<Text>(hud, "stealthStatusText");
+            Image tensionFill = GameplaySmokeTestReflection.GetField<Image>(hud, "tensionFill");
+
+            Assert.That(warningText.text, Is.EqualTo("HE KNOWS A KEY IS GONE"));
+            Assert.That(stealthStatusText.text, Is.EqualTo("SUSPICIOUS / YOUR TRAIL"));
+            Assert.That(tensionFill.fillAmount, Is.GreaterThan(0.85f));
+        }
+
+        [Test]
         public void AwarenessHud_ShowsPersistentStealthStatusAndLoudNoiseWarning()
         {
             GameObject playerObject = context.CreateObject("Player");

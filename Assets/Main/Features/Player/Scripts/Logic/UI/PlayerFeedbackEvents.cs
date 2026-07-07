@@ -251,6 +251,7 @@ namespace Neighbor.Main.Features.Player
             public Vector3 Position { get; }
             public float Suspicion { get; }
             public int TotalMemoryCount { get; }
+            public float Urgency { get; }
 
             public NeighborMemoryFeedback(
                 NeighborMemoryClueKind kind,
@@ -258,12 +259,30 @@ namespace Neighbor.Main.Features.Player
                 Vector3 position,
                 float suspicion,
                 int totalMemoryCount)
+                : this(
+                    kind,
+                    sourceName,
+                    position,
+                    suspicion,
+                    totalMemoryCount,
+                    CalculateMemoryUrgency(kind, suspicion, totalMemoryCount))
+            {
+            }
+
+            public NeighborMemoryFeedback(
+                NeighborMemoryClueKind kind,
+                string sourceName,
+                Vector3 position,
+                float suspicion,
+                int totalMemoryCount,
+                float urgency)
             {
                 Kind = kind;
                 SourceName = string.IsNullOrWhiteSpace(sourceName) ? "clue" : sourceName.Trim();
                 Position = position;
                 Suspicion = Mathf.Clamp01(suspicion);
                 TotalMemoryCount = Mathf.Max(0, totalMemoryCount);
+                Urgency = Mathf.Clamp01(urgency);
             }
         }
 
@@ -439,7 +458,8 @@ namespace Neighbor.Main.Features.Player
                 sourceName,
                 position,
                 suspicion,
-                totalMemoryCount));
+                totalMemoryCount,
+                CalculateMemoryUrgency(kind, suspicion, totalMemoryCount)));
         }
 
         public static void ReportNeighborInvestigation(
@@ -474,6 +494,23 @@ namespace Neighbor.Main.Features.Player
             StealthLoopChanged = null;
             NeighborMemoryChanged = null;
             NeighborInvestigationChanged = null;
+        }
+
+        private static float CalculateMemoryUrgency(
+            NeighborMemoryClueKind kind,
+            float suspicion,
+            int totalMemoryCount)
+        {
+            float kindFloor = kind switch
+            {
+                NeighborMemoryClueKind.KeyStolen => 0.68f,
+                NeighborMemoryClueKind.GlassBroken => 0.6f,
+                NeighborMemoryClueKind.ObjectMoved => 0.5f,
+                NeighborMemoryClueKind.DoorOpened => 0.42f,
+                _ => 0.3f
+            };
+            float stackPressure = Mathf.Clamp01(Mathf.Max(0, totalMemoryCount - 1) / 3f) * 0.22f;
+            return Mathf.Clamp01(Mathf.Max(Mathf.Clamp01(suspicion), kindFloor) + stackPressure);
         }
     }
 }
