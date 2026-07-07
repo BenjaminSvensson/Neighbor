@@ -91,6 +91,20 @@ namespace Neighbor.Main.Features.Player
             }
         }
 
+        public readonly struct RespawnFeedback
+        {
+            public string Name { get; }
+            public bool UsedCheckpoint { get; }
+            public Vector3 Position { get; }
+
+            public RespawnFeedback(string name, bool usedCheckpoint, Vector3 position)
+            {
+                Name = string.IsNullOrWhiteSpace(name) ? "Start" : name.Trim();
+                UsedCheckpoint = usedCheckpoint;
+                Position = position;
+            }
+        }
+
         public readonly struct OnboardingPromptFeedback
         {
             public string Message { get; }
@@ -154,6 +168,7 @@ namespace Neighbor.Main.Features.Player
         public static event Action<AmbienceZoneFeedback> AmbienceZoneChanged;
         public static event Action<DayPhaseFeedback> DayPhaseChanged;
         public static event Action<CheckpointFeedback> CheckpointReached;
+        public static event Action<RespawnFeedback> PlayerRespawned;
         public static event Action<OnboardingPromptFeedback> OnboardingPrompted;
         public static event Action<ObjectiveProgressFeedback> ObjectiveProgressed;
         public static event Action<DoorInteractionFeedback> DoorInteractionReported;
@@ -217,6 +232,11 @@ namespace Neighbor.Main.Features.Player
             CheckpointReached?.Invoke(new CheckpointFeedback(checkpointName));
         }
 
+        public static void ReportRespawn(string respawnName, bool usedCheckpoint, Vector3 position)
+        {
+            PlayerRespawned?.Invoke(new RespawnFeedback(respawnName, usedCheckpoint, position));
+        }
+
         public static void ReportOnboardingPrompt(string message, float intensity = 0.35f)
         {
             if (string.IsNullOrWhiteSpace(message))
@@ -264,6 +284,7 @@ namespace Neighbor.Main.Features.Player
             AmbienceZoneChanged = null;
             DayPhaseChanged = null;
             CheckpointReached = null;
+            PlayerRespawned = null;
             OnboardingPrompted = null;
             ObjectiveProgressed = null;
             DoorInteractionReported = null;

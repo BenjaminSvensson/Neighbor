@@ -43,6 +43,7 @@ namespace Neighbor.Main.Features.Player
         [SerializeField] private bool loadSavedCheckpointOnAwake = true;
         [SerializeField] private bool persistCheckpoints = true;
         [SerializeField] private string checkpointSaveKey = "Neighbor.RespawnCheckpoint";
+        [SerializeField] private string startRespawnName = "Start";
 
         [Header("Death UI")]
         [SerializeField] private string caughtMessage = "CAUGHT";
@@ -71,6 +72,9 @@ namespace Neighbor.Main.Features.Player
         public bool IsDead { get; private set; }
         public bool HasCheckpoint => hasCheckpoint;
         public string ActiveCheckpointId => checkpointId;
+        public string CurrentRespawnName => hasCheckpoint
+            ? checkpointId
+            : string.IsNullOrWhiteSpace(startRespawnName) ? "Start" : startRespawnName.Trim();
         public Vector3 CurrentRespawnPosition => hasCheckpoint ? checkpointPosition : spawnPosition;
         public Quaternion CurrentRespawnRotation => hasCheckpoint ? checkpointRotation : spawnRotation;
 
@@ -395,6 +399,7 @@ namespace Neighbor.Main.Features.Player
             }
 
             cameraController?.SyncAfterRespawn();
+            PlayerFeedbackEvents.ReportRespawn(CurrentRespawnName, hasCheckpoint, CurrentRespawnPosition);
 
             for (int i = 0; i < disabledColliders.Count; i++)
             {

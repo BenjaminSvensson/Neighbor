@@ -104,6 +104,13 @@ namespace Neighbor.Main.Tests
             Assert.That(objectiveText.text, Does.Contain("OBJECTIVE 3/5"));
             Assert.That(warningText.text, Does.Contain("OBJECTIVE 3/5"));
             Assert.That(warningText.text, Does.Contain("KEY FOUND"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandlePlayerRespawned",
+                new PlayerFeedbackEvents.RespawnFeedback("Guest Bed", true, Vector3.one));
+
+            Assert.That(warningText.text, Is.EqualTo("RESPAWNED AT GUEST BED"));
         }
 
         [Test]

@@ -9,6 +9,7 @@ namespace Neighbor.Main.Features.Player
         [Header("Checkpoint")]
         [SerializeField] private Transform respawnPoint;
         [SerializeField] private string checkpointId = "Checkpoint";
+        [SerializeField] private string checkpointDisplayName;
         [SerializeField] private bool persistCheckpoint = true;
 
         [Header("Activation")]
@@ -18,6 +19,9 @@ namespace Neighbor.Main.Features.Player
 
         public bool IsActivated { get; private set; }
         public string CheckpointId => string.IsNullOrWhiteSpace(checkpointId) ? name : checkpointId.Trim();
+        public string CheckpointName => string.IsNullOrWhiteSpace(checkpointDisplayName)
+            ? CheckpointId
+            : checkpointDisplayName.Trim();
         public Vector3 RespawnPosition => ResolveRespawnPoint().position;
         public Quaternion RespawnRotation => ResolveRespawnPoint().rotation;
 
@@ -79,7 +83,7 @@ namespace Neighbor.Main.Features.Player
             bool registered = deathController.SetCheckpoint(
                 RespawnPosition,
                 RespawnRotation,
-                CheckpointId,
+                CheckpointName,
                 persistCheckpoint);
             IsActivated = IsActivated || registered;
             return registered;
@@ -99,7 +103,7 @@ namespace Neighbor.Main.Features.Player
                 return false;
             }
 
-            actionText = activateOnce && IsActivated ? "Checkpoint saved" : "Save checkpoint";
+            actionText = activateOnce && IsActivated ? $"{CheckpointName} saved" : $"Save {CheckpointName}";
             keyText = string.Empty;
             return true;
         }
