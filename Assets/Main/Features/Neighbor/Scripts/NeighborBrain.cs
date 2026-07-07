@@ -3547,6 +3547,16 @@ namespace Neighbor.Main.Features.Neighbor
 
         private string GetStealthLoopMessage(PlayerFeedbackEvents.StealthLoopPhase phase, float rememberedClueTension)
         {
+            if (currentHuntMemoryClueActive)
+            {
+                return GetMemoryClueStealthLoopMessage(currentHuntMemoryClueKind, phase);
+            }
+
+            if (currentInvestigationTrailRelated && currentInvestigationMemoryClueActive)
+            {
+                return GetMemoryClueStealthLoopMessage(currentInvestigationMemoryClueKind, phase);
+            }
+
             if (rememberedClueTension >= 0.35f
                 && (phase == PlayerFeedbackEvents.StealthLoopPhase.Searching
                     || phase == PlayerFeedbackEvents.StealthLoopPhase.Suspicious
@@ -3567,6 +3577,29 @@ namespace Neighbor.Main.Features.Neighbor
                 PlayerFeedbackEvents.StealthLoopPhase.Curious => "He heard something.",
                 PlayerFeedbackEvents.StealthLoopPhase.Hiding => "Stay still.",
                 _ => string.Empty
+            };
+        }
+
+        private static string GetMemoryClueStealthLoopMessage(
+            PlayerFeedbackEvents.NeighborMemoryClueKind kind,
+            PlayerFeedbackEvents.StealthLoopPhase phase)
+        {
+            bool isSearching = phase == PlayerFeedbackEvents.StealthLoopPhase.Searching;
+            return kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => isSearching
+                    ? "He is searching for the missing key."
+                    : "Stay hidden. He is tracking the stolen key.",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => isSearching
+                    ? "He is searching the broken glass."
+                    : "Stay hidden. He is checking the broken glass.",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => isSearching
+                    ? "He is searching the moved object."
+                    : "Stay hidden. He is checking the moved object.",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => isSearching
+                    ? "He is searching that door."
+                    : "Stay hidden. He is checking that door.",
+                _ => isSearching ? "He is searching your trail." : "Stay hidden. He is following your trail."
             };
         }
 
