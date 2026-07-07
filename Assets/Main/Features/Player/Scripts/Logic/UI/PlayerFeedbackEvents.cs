@@ -238,6 +238,7 @@ namespace Neighbor.Main.Features.Player
             public float Noise { get; }
             public float Tension { get; }
             public string Message { get; }
+            public bool IsCalming { get; }
 
             public StealthLoopFeedback(
                 StealthLoopPhase phase,
@@ -245,12 +246,24 @@ namespace Neighbor.Main.Features.Player
                 float noise,
                 float tension,
                 string message)
+                : this(phase, suspicion, noise, tension, message, false)
+            {
+            }
+
+            public StealthLoopFeedback(
+                StealthLoopPhase phase,
+                float suspicion,
+                float noise,
+                float tension,
+                string message,
+                bool isCalming)
             {
                 Phase = phase;
                 Suspicion = Mathf.Clamp01(suspicion);
                 Noise = Mathf.Clamp01(noise);
                 Tension = Mathf.Clamp01(tension);
                 Message = string.IsNullOrWhiteSpace(message) ? string.Empty : message.Trim();
+                IsCalming = isCalming;
             }
         }
 
@@ -476,9 +489,10 @@ namespace Neighbor.Main.Features.Player
             float suspicion,
             float noise,
             float tension,
-            string message)
+            string message,
+            bool isCalming = false)
         {
-            StealthLoopChanged?.Invoke(new StealthLoopFeedback(phase, suspicion, noise, tension, message));
+            StealthLoopChanged?.Invoke(new StealthLoopFeedback(phase, suspicion, noise, tension, message, isCalming));
         }
 
         public static void ReportNeighborMemory(

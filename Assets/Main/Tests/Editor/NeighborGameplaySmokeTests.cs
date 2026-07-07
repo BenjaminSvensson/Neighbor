@@ -479,6 +479,7 @@ namespace Neighbor.Main.Tests
             Assert.That(hidingFeedback.IsHidden, Is.True);
             Assert.That(hidingFeedback.BreathTension, Is.LessThanOrEqualTo(0.25f));
             Assert.That(stealthFeedback.Phase, Is.EqualTo(PlayerFeedbackEvents.StealthLoopPhase.Hiding));
+            Assert.That(stealthFeedback.IsCalming, Is.True);
             Assert.That(stealthFeedback.Message, Is.EqualTo("Breathing under control."));
             Assert.That(stealthFeedback.Tension, Is.LessThanOrEqualTo(0.25f));
 
