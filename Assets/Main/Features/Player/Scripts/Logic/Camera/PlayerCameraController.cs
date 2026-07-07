@@ -44,6 +44,15 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float slideFieldOfViewKick = 4.6f;
         [SerializeField, Min(0f)] private float movementFieldOfViewSharpness = 9f;
 
+        [Header("Stealth Camera Pressure")]
+        [SerializeField] private bool respondToStealthLoop = true;
+        [SerializeField, Range(0f, 1f)] private float stealthWobbleBoost = 0.45f;
+        [SerializeField, Min(0f)] private float stealthShakeAmount = 0.18f;
+        [SerializeField, Min(0f)] private float stealthFieldOfViewKick = 2.4f;
+        [SerializeField, Range(0f, 1f)] private float calmHidingCameraPressure = 0.08f;
+        [SerializeField, Min(0f)] private float stealthCameraPressureHoldDuration = 2.4f;
+        [SerializeField, Min(0f)] private float stealthCameraPressureFadeSpeed = 2.1f;
+
         [Header("Lean")]
         [SerializeField, Min(0f)] private float leanDistance = 0.32f;
         [SerializeField, Min(0f)] private float leanAngle = 9f;
@@ -133,12 +142,17 @@ namespace Neighbor.Main.Features.Player
         private bool gameplayInputBlocked;
         private Transform cinematicLookTarget;
         private Vector3 cinematicLookOffset;
+        private float currentStealthCameraPressure;
+        private float targetStealthCameraPressure;
+        private float stealthCameraPressureHoldUntilTime;
         private readonly RaycastHit[] cameraCollisionHits = new RaycastHit[8];
 
         public int ZoomDirection { get; private set; }
         public float RuntimeMouseSensitivity => mouseSensitivity;
         public float RuntimeFieldOfView => maximumFieldOfView;
         public bool RuntimeInvertLookY => invertLookY;
+        public float CurrentStealthCameraPressure => currentStealthCameraPressure;
+        public float StealthFieldOfViewOffset => stealthFieldOfViewKick * currentStealthCameraPressure;
         public event System.Action<int> ZoomDirectionChanged;
 
         private void Awake()
@@ -168,6 +182,17 @@ namespace Neighbor.Main.Features.Player
             currentFieldOfView = maximumFieldOfView;
             scrolledFieldOfView = maximumFieldOfView;
             playerCamera.fieldOfView = maximumFieldOfView;
+        }
+
+        private void OnEnable()
+        {
+            PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
+        }
+
+        private void OnDisable()
+        {
+            PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
         }
 
         private void Start()
@@ -213,6 +238,7 @@ namespace Neighbor.Main.Features.Player
 
         private void LateUpdate()
         {
+            UpdateStealthCameraPressure(Time.unscaledDeltaTime);
             if (cinematicLookTarget != null)
             {
                 UpdateCinematicLook();
@@ -317,9 +343,10 @@ namespace Neighbor.Main.Features.Player
 
             UpdateMovementFieldOfViewOffset();
             float maximumProceduralFieldOfView = maximumFieldOfView
-                + Mathf.Max(walkFieldOfViewKick + sprintFieldOfViewKick, slideFieldOfViewKick);
+                + Mathf.Max(walkFieldOfViewKick + sprintFieldOfViewKick, slideFieldOfViewKick)
+                + stealthFieldOfViewKick;
             playerCamera.fieldOfView = Mathf.Clamp(
-                currentFieldOfView + impactFovOffset + movementFieldOfViewOffset,
+                currentFieldOfView + impactFovOffset + movementFieldOfViewOffset + StealthFieldOfViewOffset,
                 minimumFieldOfView,
                 maximumProceduralFieldOfView);
         }
@@ -363,7 +390,9 @@ namespace Neighbor.Main.Features.Player
             float wobbleStrength = idleWobbleAmount;
             wobbleStrength += Mathf.Lerp(0f, moveWobbleAmount, moveAmount);
             wobbleStrength += running ? runWobbleAmount : 0f;
-            wobbleStrength *= 1f + Zoom01 * zoomWobbleBoost;
+            wobbleStrength *= 1f
+                + Zoom01 * zoomWobbleBoost
+                + currentStealthCameraPressure * stealthWobbleBoost;
 
             bobTime += Time.deltaTime * Mathf.Lerp(4.5f, running ? 10.5f : 7.5f, moveAmount);
             float bobStep = moveAmount > 0.01f ? Mathf.Sin(bobTime) : 0f;
@@ -376,9 +405,11 @@ namespace Neighbor.Main.Features.Player
             float wobbleX = Noise(time, 0.13f) * wobbleStrength;
             float wobbleY = Noise(time, 3.71f) * wobbleStrength;
             float wobbleRoll = Noise(time, 8.19f) * wobbleStrength * 5f;
-            float shakeX = Noise(time * 2.4f, 14.23f) * impactShake;
-            float shakeY = Noise(time * 2.1f, 18.67f) * impactShake;
-            float shakeRoll = Noise(time * 2.7f, 22.41f) * impactShake * 12f;
+            float stealthShake = currentStealthCameraPressure * stealthShakeAmount;
+            float combinedShake = impactShake + stealthShake;
+            float shakeX = Noise(time * 2.4f, 14.23f) * combinedShake;
+            float shakeY = Noise(time * 2.1f, 18.67f) * combinedShake;
+            float shakeRoll = Noise(time * 2.7f, 22.41f) * combinedShake * 12f;
 
             Vector3 leanOffset = Vector3.right * (smoothedLean * leanDistance);
             Vector3 impactOffset = new Vector3(shakeX * 0.01f, impactVerticalOffset + climbVerticalOffset + shakeY * 0.01f, 0f);
@@ -685,6 +716,63 @@ namespace Neighbor.Main.Features.Player
             climbRollOffset = Damp(climbRollOffset, targetRoll, climbCameraSmoothing);
         }
 
+        private void HandleStealthLoopChanged(PlayerFeedbackEvents.StealthLoopFeedback feedback)
+        {
+            if (!respondToStealthLoop)
+            {
+                return;
+            }
+
+            RaiseStealthCameraPressure(GetStealthCameraPressure(feedback), stealthCameraPressureHoldDuration);
+        }
+
+        private void RaiseStealthCameraPressure(float pressure, float holdDuration)
+        {
+            targetStealthCameraPressure = Mathf.Clamp01(pressure);
+            stealthCameraPressureHoldUntilTime = targetStealthCameraPressure <= 0f
+                ? 0f
+                : Time.unscaledTime + holdDuration;
+
+            if (targetStealthCameraPressure > currentStealthCameraPressure)
+            {
+                currentStealthCameraPressure = targetStealthCameraPressure;
+            }
+        }
+
+        private void UpdateStealthCameraPressure(float deltaTime)
+        {
+            if (!respondToStealthLoop)
+            {
+                targetStealthCameraPressure = 0f;
+            }
+
+            float desiredPressure = Time.unscaledTime <= stealthCameraPressureHoldUntilTime
+                ? targetStealthCameraPressure
+                : 0f;
+            currentStealthCameraPressure = Mathf.MoveTowards(
+                currentStealthCameraPressure,
+                desiredPressure,
+                stealthCameraPressureFadeSpeed * Mathf.Max(0f, deltaTime));
+        }
+
+        private float GetStealthCameraPressure(PlayerFeedbackEvents.StealthLoopFeedback feedback)
+        {
+            float pressure = Mathf.Max(feedback.Suspicion, feedback.Noise, feedback.Tension);
+            return feedback.Phase switch
+            {
+                PlayerFeedbackEvents.StealthLoopPhase.Chased => 1f,
+                PlayerFeedbackEvents.StealthLoopPhase.PostChase => Mathf.Max(0.64f, pressure),
+                PlayerFeedbackEvents.StealthLoopPhase.Searching => Mathf.Max(0.52f, pressure),
+                PlayerFeedbackEvents.StealthLoopPhase.Certain => Mathf.Max(0.78f, pressure),
+                PlayerFeedbackEvents.StealthLoopPhase.Suspicious => Mathf.Max(0.4f, pressure),
+                PlayerFeedbackEvents.StealthLoopPhase.Hiding => feedback.IsCalming
+                    ? Mathf.Max(calmHidingCameraPressure, feedback.Tension)
+                    : Mathf.Max(0.3f, feedback.Tension),
+                PlayerFeedbackEvents.StealthLoopPhase.Curious => Mathf.Max(0.18f, pressure * 0.65f),
+                _ => 0f
+            };
+        }
+
         private float Zoom01 => Mathf.InverseLerp(maximumFieldOfView, minimumFieldOfView, currentFieldOfView);
 
         private float Noise(float time, float offset)
@@ -736,6 +824,9 @@ namespace Neighbor.Main.Features.Player
             targetImpactRollOffset = 0f;
             targetImpactFovOffset = 0f;
             targetImpactShake = 0f;
+            currentStealthCameraPressure = 0f;
+            targetStealthCameraPressure = 0f;
+            stealthCameraPressureHoldUntilTime = 0f;
             playZoomAudioThroughSmoothing = false;
             SetZoomDirection(0);
 

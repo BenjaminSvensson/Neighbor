@@ -200,6 +200,9 @@ namespace Neighbor.Main.Tests
             Assert.That(
                 cameraSettings.FindProperty("slideFieldOfViewKick").floatValue,
                 Is.GreaterThan(cameraSettings.FindProperty("walkFieldOfViewKick").floatValue));
+            Assert.That(cameraSettings.FindProperty("stealthFieldOfViewKick").floatValue, Is.GreaterThan(0f));
+            Assert.That(cameraSettings.FindProperty("stealthShakeAmount").floatValue, Is.GreaterThan(0f));
+            Assert.That(cameraSettings.FindProperty("stealthCameraPressureHoldDuration").floatValue, Is.GreaterThan(0f));
 
             SerializedObject crosshairSettings = new(crosshairFeedback);
             Assert.That(crosshairSettings.FindProperty("interactableScale").floatValue, Is.GreaterThan(1f));
@@ -671,6 +674,70 @@ namespace Neighbor.Main.Tests
             }
             finally
             {
+                Object.DestroyImmediate(cameraObject);
+                Object.DestroyImmediate(head);
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void PlayerCamera_StealthLoopPressureKicksFovAndFades()
+        {
+            GameObject root = new("StealthCameraRoot");
+            GameObject head = new("StealthCameraHead");
+            GameObject cameraObject = new("StealthCamera");
+
+            try
+            {
+                head.transform.SetParent(root.transform, false);
+                cameraObject.transform.SetParent(head.transform, false);
+
+                Camera camera = cameraObject.AddComponent<Camera>();
+                camera.fieldOfView = 60f;
+                PlayerCameraController cameraController = cameraObject.AddComponent<PlayerCameraController>();
+                GameplaySmokeTestReflection.SetField(cameraController, "stealthFieldOfViewKick", 3f);
+                GameplaySmokeTestReflection.SetField(cameraController, "stealthCameraPressureFadeSpeed", 1f);
+                GameplaySmokeTestReflection.SetField(cameraController, "stealthCameraPressureHoldDuration", 4f);
+
+                GameplaySmokeTestReflection.InvokeIfPresent(cameraController, "Awake");
+                GameplaySmokeTestReflection.InvokeIfPresent(cameraController, "OnEnable");
+                GameplaySmokeTestReflection.Invoke(cameraController, "UpdateZoom", default(PlayerFrameInput));
+                float calmFieldOfView = camera.fieldOfView;
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.Chased,
+                    1f,
+                    0f,
+                    1f,
+                    "Run or hide");
+                GameplaySmokeTestReflection.Invoke(cameraController, "UpdateZoom", default(PlayerFrameInput));
+
+                Assert.That(cameraController.CurrentStealthCameraPressure, Is.EqualTo(1f).Within(0.001f));
+                Assert.That(cameraController.StealthFieldOfViewOffset, Is.EqualTo(3f).Within(0.001f));
+                Assert.That(camera.fieldOfView, Is.GreaterThan(calmFieldOfView + 2.5f));
+
+                cameraController.SyncAfterRespawn();
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.Hiding,
+                    0.04f,
+                    0f,
+                    0.05f,
+                    "Breathing under control.",
+                    true);
+
+                Assert.That(cameraController.CurrentStealthCameraPressure, Is.InRange(0.08f, 0.16f));
+
+                GameplaySmokeTestReflection.SetField(
+                    cameraController,
+                    "stealthCameraPressureHoldUntilTime",
+                    Time.unscaledTime - 0.1f);
+                GameplaySmokeTestReflection.Invoke(cameraController, "UpdateStealthCameraPressure", 0.05f);
+
+                Assert.That(cameraController.CurrentStealthCameraPressure, Is.LessThan(0.08f));
+            }
+            finally
+            {
+                GameplaySmokeTestReflection.InvokeIfPresent(cameraObject.GetComponent<PlayerCameraController>(), "OnDisable");
                 Object.DestroyImmediate(cameraObject);
                 Object.DestroyImmediate(head);
                 Object.DestroyImmediate(root);
