@@ -127,6 +127,7 @@ namespace Neighbor.Main.Features.Player
             Entered,
             Exited,
             Inspected,
+            BreathNoisy,
             Found,
             Recovered
         }
