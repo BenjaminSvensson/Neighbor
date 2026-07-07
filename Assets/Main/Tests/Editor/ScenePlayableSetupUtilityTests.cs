@@ -121,6 +121,43 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void SceneAtmosphereBootstrapper_SkipsUntitledScenesUnlessForced()
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            SceneAtmosphereDirector director = SceneAtmosphereBootstrapper.EnsureAtmosphereForScene(scene);
+
+            Assert.That(director, Is.Null);
+            Assert.That(CountInScene<SceneAtmosphereDirector>(scene), Is.Zero);
+            Assert.That(CountInScene<AtmosphereFlickerLight>(scene), Is.Zero);
+            Assert.That(CountInScene<AtmosphereDressingAnchor>(scene), Is.Zero);
+        }
+
+        [Test]
+        public void SceneAtmosphereBootstrapper_ForcedSceneCreatesFullAtmospherePass()
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            GameObject floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            floor.name = "Atmosphere Bootstrap Floor";
+            floor.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            floor.transform.localScale = new Vector3(8f, 0.2f, 8f);
+            SceneManager.MoveGameObjectToScene(floor, scene);
+
+            SceneAtmosphereDirector director = SceneAtmosphereBootstrapper.EnsureAtmosphereForScene(scene, true);
+            SceneAtmosphereDirector secondDirector = SceneAtmosphereBootstrapper.EnsureAtmosphereForScene(scene, true);
+
+            Assert.That(director, Is.Not.Null);
+            Assert.That(secondDirector, Is.SameAs(director));
+            Assert.That(director.HasColorGradingVolume, Is.True);
+            Assert.That(director.FlickerLightCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(director.DirtyDecalAnchorCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(director.PropDressingAnchorCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(CountInScene<SceneAtmosphereDirector>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<AtmosphereFlickerLight>(scene), Is.EqualTo(1));
+            Assert.That(CountInScene<AtmosphereDressingAnchor>(scene), Is.EqualTo(4));
+        }
+
+        [Test]
         public void MakeActiveScenePlayable_IsIdempotent()
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
