@@ -165,6 +165,30 @@ namespace Neighbor.Main.Tests
                 hud,
                 "HandleNeighborInvestigationChanged",
                 new PlayerFeedbackEvents.NeighborInvestigationFeedback(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning,
+                    Vector3.zero,
+                    "Noise Source",
+                    0.22f,
+                    0.35f));
+
+            Assert.That(warningText.text, Is.EqualTo("NOISE CLEARED"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleNeighborInvestigationChanged",
+                new PlayerFeedbackEvents.NeighborInvestigationFeedback(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned,
+                    Vector3.zero,
+                    "Noise Source",
+                    0.18f,
+                    0.28f));
+
+            Assert.That(warningText.text, Is.EqualTo("LOST THE NOISE"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleNeighborInvestigationChanged",
+                new PlayerFeedbackEvents.NeighborInvestigationFeedback(
                     PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching,
                     Vector3.zero,
                     "Broken Window",

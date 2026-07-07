@@ -683,6 +683,55 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void SceneAtmosphereDirector_ResolvedNoiseInvestigationLeavesLowSettlingPulse()
+        {
+            RenderSettingsSnapshot snapshot = RenderSettingsSnapshot.Capture();
+            GameObject directorObject = new("Resolved Noise Atmosphere Director Test");
+            GameObject volumeObject = new("Resolved Noise Atmosphere Volume Test");
+
+            try
+            {
+                Volume volume = volumeObject.AddComponent<Volume>();
+                SceneAtmosphereDirector director = directorObject.AddComponent<SceneAtmosphereDirector>();
+                director.Configure(
+                    null,
+                    null,
+                    volume,
+                    new AtmosphereFlickerLight[0],
+                    new AtmosphereDressingAnchor[0]);
+
+                PlayerFeedbackEvents.ReportNeighborInvestigation(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching,
+                    Vector3.zero,
+                    "Noise Source",
+                    0.56f,
+                    0.65f,
+                    false);
+                float searchIntensity = director.CurrentStealthAtmosphereIntensity;
+
+                PlayerFeedbackEvents.ReportNeighborInvestigation(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning,
+                    Vector3.zero,
+                    "Noise Source",
+                    0.16f,
+                    0.28f,
+                    false);
+                GameplaySmokeTestReflection.Invoke(director, "UpdateStealthAtmosphere", 0.75f);
+
+                Assert.That(director.TargetStealthAtmosphereIntensity, Is.InRange(0.08f, 0.14f));
+                Assert.That(director.CurrentStealthAtmosphereIntensity, Is.LessThan(searchIntensity));
+                Assert.That(director.CurrentStealthAtmosphereIntensity, Is.LessThan(0.22f));
+            }
+            finally
+            {
+                snapshot.Restore();
+                GameplaySmokeTestReflection.InvokeIfPresent(directorObject.GetComponent<SceneAtmosphereDirector>(), "OnDisable");
+                Object.DestroyImmediate(directorObject);
+                Object.DestroyImmediate(volumeObject);
+            }
+        }
+
+        [Test]
         public void SceneAtmosphereDirector_HeardNoiseIntensifiesFogAndGrade()
         {
             RenderSettingsSnapshot snapshot = RenderSettingsSnapshot.Capture();
@@ -948,6 +997,50 @@ namespace Neighbor.Main.Tests
 
                 Assert.That(flicker.CurrentStealthPressure, Is.LessThan(trailPressure));
                 Assert.That(flicker.CurrentStealthPressure, Is.LessThan(0.2f));
+            }
+            finally
+            {
+                GameplaySmokeTestReflection.InvokeIfPresent(
+                    lightObject.GetComponent<AtmosphereFlickerLight>(),
+                    "OnDisable");
+                Object.DestroyImmediate(lightObject);
+            }
+        }
+
+        [Test]
+        public void AtmosphereFlickerLight_ResolvedNoiseInvestigationKeepsLowUneasyLight()
+        {
+            GameObject lightObject = new("Resolved Noise Flicker Light Test");
+
+            try
+            {
+                Light light = lightObject.AddComponent<Light>();
+                AtmosphereFlickerLight flicker = lightObject.AddComponent<AtmosphereFlickerLight>();
+                flicker.Configure(1f, 0.2f, 4f);
+
+                PlayerFeedbackEvents.ReportNeighborInvestigation(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching,
+                    Vector3.zero,
+                    "Noise Source",
+                    0.56f,
+                    0.65f,
+                    false);
+
+                Assert.That(flicker.CurrentStealthPressure, Is.GreaterThan(0.5f));
+                float searchPressure = flicker.CurrentStealthPressure;
+
+                PlayerFeedbackEvents.ReportNeighborInvestigation(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned,
+                    Vector3.zero,
+                    "Noise Source",
+                    0.16f,
+                    0.28f,
+                    false);
+                GameplaySmokeTestReflection.Invoke(flicker, "UpdateStealthPressure", 0.75f);
+
+                Assert.That(flicker.CurrentStealthPressure, Is.LessThan(searchPressure));
+                Assert.That(flicker.CurrentStealthPressure, Is.InRange(0.06f, 0.14f));
+                Assert.That(light.intensity, Is.GreaterThan(0f));
             }
             finally
             {
@@ -1417,6 +1510,71 @@ namespace Neighbor.Main.Tests
                 Assert.That(prop.CurrentStealthPressure, Is.LessThan(trailPropPressure));
                 Assert.That(decal.CurrentStealthPressure, Is.LessThan(0.2f));
                 Assert.That(prop.CurrentStealthPressure, Is.LessThan(0.2f));
+            }
+            finally
+            {
+                GameplaySmokeTestReflection.InvokeIfPresent(
+                    decalObject.GetComponent<AtmosphereDressingAnchor>(),
+                    "OnDisable");
+                GameplaySmokeTestReflection.InvokeIfPresent(
+                    propObject.GetComponent<AtmosphereDressingAnchor>(),
+                    "OnDisable");
+                Object.DestroyImmediate(decalObject);
+                Object.DestroyImmediate(propObject);
+                Object.DestroyImmediate(decalMaterial);
+                Object.DestroyImmediate(propMaterial);
+            }
+        }
+
+        [Test]
+        public void AtmosphereDressingAnchor_ResolvedNoiseInvestigationLeavesLowSettle()
+        {
+            GameObject decalObject = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            GameObject propObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Material decalMaterial = CreateTestMaterial(new Color(0.18f, 0.14f, 0.09f, 0.3f));
+            Material propMaterial = CreateTestMaterial(new Color(0.34f, 0.23f, 0.14f, 1f));
+
+            try
+            {
+                decalObject.name = "Resolved Noise Dirty Decal Dressing Test";
+                propObject.name = "Resolved Noise Prop Dressing Test";
+                propObject.transform.localScale = new Vector3(1.1f, 0.25f, 0.45f);
+
+                decalObject.GetComponent<Renderer>().sharedMaterial = decalMaterial;
+                propObject.GetComponent<Renderer>().sharedMaterial = propMaterial;
+
+                AtmosphereDressingAnchor decal = decalObject.AddComponent<AtmosphereDressingAnchor>();
+                AtmosphereDressingAnchor prop = propObject.AddComponent<AtmosphereDressingAnchor>();
+                decal.Configure(AtmosphereDressingAnchor.DressingKind.DirtyDecal, 0.4f);
+                prop.Configure(AtmosphereDressingAnchor.DressingKind.PropDressing, 0.48f);
+
+                PlayerFeedbackEvents.ReportNeighborInvestigation(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching,
+                    Vector3.zero,
+                    "Noise Source",
+                    0.56f,
+                    0.65f,
+                    false);
+
+                Assert.That(decal.CurrentStealthPressure, Is.GreaterThan(0.5f));
+                Assert.That(prop.CurrentStealthPressure, Is.GreaterThan(0.5f));
+                float searchDecalPressure = decal.CurrentStealthPressure;
+                float searchPropPressure = prop.CurrentStealthPressure;
+
+                PlayerFeedbackEvents.ReportNeighborInvestigation(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning,
+                    Vector3.zero,
+                    "Noise Source",
+                    0.16f,
+                    0.28f,
+                    false);
+                GameplaySmokeTestReflection.Invoke(decal, "UpdateStealthDressing", 0.75f);
+                GameplaySmokeTestReflection.Invoke(prop, "UpdateStealthDressing", 0.75f);
+
+                Assert.That(decal.CurrentStealthPressure, Is.LessThan(searchDecalPressure));
+                Assert.That(prop.CurrentStealthPressure, Is.LessThan(searchPropPressure));
+                Assert.That(decal.CurrentStealthPressure, Is.InRange(0.06f, 0.14f));
+                Assert.That(prop.CurrentStealthPressure, Is.InRange(0.06f, 0.14f));
             }
             finally
             {
