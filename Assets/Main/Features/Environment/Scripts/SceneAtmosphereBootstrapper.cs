@@ -36,6 +36,8 @@ namespace Neighbor.Main.Features.Environment
                 return null;
             }
 
+            VegetationMaterialGuard.EnsureForScene(scene);
+
             SceneAtmosphereDirector existingDirector = FindInScene<SceneAtmosphereDirector>(scene);
             if (existingDirector != null)
             {
