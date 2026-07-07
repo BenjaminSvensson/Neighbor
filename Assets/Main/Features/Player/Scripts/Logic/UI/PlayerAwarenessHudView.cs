@@ -189,7 +189,9 @@ namespace Neighbor.Main.Features.Player
                 return;
             }
 
-            if (trackedNeighbor.IsHuntingMemoryClue)
+            if (trackedNeighbor.IsHuntingMemoryClue
+                || trackedNeighbor.IsCurrentInvestigationTrailRelated
+                || IsTrailInvestigationActive())
             {
                 awarenessText.text = "TRAIL";
                 return;
