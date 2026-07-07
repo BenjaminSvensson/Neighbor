@@ -281,6 +281,80 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AtmosphereDressingAnchor_StealthLoopDangerPressurizesDecalsAndProps()
+        {
+            GameObject decalObject = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            GameObject propObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Material decalMaterial = CreateTestMaterial(new Color(0.2f, 0.16f, 0.1f, 0.35f));
+            Material propMaterial = CreateTestMaterial(new Color(0.36f, 0.24f, 0.13f, 1f));
+
+            try
+            {
+                decalObject.name = "Dirty Decal Dressing Test";
+                propObject.name = "Prop Dressing Test";
+                propObject.transform.localScale = new Vector3(1.4f, 0.3f, 0.5f);
+
+                Renderer decalRenderer = decalObject.GetComponent<Renderer>();
+                Renderer propRenderer = propObject.GetComponent<Renderer>();
+                decalRenderer.sharedMaterial = decalMaterial;
+                propRenderer.sharedMaterial = propMaterial;
+
+                AtmosphereDressingAnchor decal = decalObject.AddComponent<AtmosphereDressingAnchor>();
+                AtmosphereDressingAnchor prop = propObject.AddComponent<AtmosphereDressingAnchor>();
+                decal.Configure(AtmosphereDressingAnchor.DressingKind.DirtyDecal, 0.45f);
+                prop.Configure(AtmosphereDressingAnchor.DressingKind.PropDressing, 0.5f);
+
+                MaterialPropertyBlock block = new();
+                decalRenderer.GetPropertyBlock(block);
+                Color calmDecal = block.GetColor("_BaseColor");
+                Vector3 calmPropScale = propObject.transform.localScale;
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.Chased,
+                    1f,
+                    0.7f,
+                    0.9f,
+                    "Run or hide");
+
+                decalRenderer.GetPropertyBlock(block);
+                Color dangerDecal = block.GetColor("_BaseColor");
+
+                Assert.That(decal.CurrentStealthPressure, Is.GreaterThan(0.95f));
+                Assert.That(prop.CurrentStealthPressure, Is.GreaterThan(0.95f));
+                Assert.That(decal.EffectiveIntensity, Is.GreaterThan(0.65f));
+                Assert.That(dangerDecal.a, Is.GreaterThan(calmDecal.a));
+                Assert.That(dangerDecal.r, Is.LessThan(calmDecal.r));
+                Assert.That(propObject.transform.localScale.x, Is.GreaterThan(calmPropScale.x));
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.Quiet,
+                    0f,
+                    0f,
+                    0f,
+                    string.Empty);
+                GameplaySmokeTestReflection.Invoke(decal, "UpdateStealthDressing", 1f);
+                GameplaySmokeTestReflection.Invoke(prop, "UpdateStealthDressing", 1f);
+
+                Assert.That(decal.CurrentStealthPressure, Is.Zero.Within(0.001f));
+                Assert.That(prop.CurrentStealthPressure, Is.Zero.Within(0.001f));
+                Assert.That(propObject.transform.localScale.x, Is.EqualTo(calmPropScale.x).Within(0.001f));
+            }
+            finally
+            {
+                GameplaySmokeTestReflection.InvokeIfPresent(
+                    decalObject.GetComponent<AtmosphereDressingAnchor>(),
+                    "OnDisable");
+                GameplaySmokeTestReflection.InvokeIfPresent(
+                    propObject.GetComponent<AtmosphereDressingAnchor>(),
+                    "OnDisable");
+                Object.DestroyImmediate(decalObject);
+                Object.DestroyImmediate(propObject);
+                Object.DestroyImmediate(decalMaterial);
+                Object.DestroyImmediate(propMaterial);
+            }
+        }
+
+        [Test]
         public void MakeActiveScenePlayable_IsIdempotent()
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -349,6 +423,25 @@ namespace Neighbor.Main.Tests
             }
 
             return count;
+        }
+
+        private static Material CreateTestMaterial(Color color)
+        {
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit")
+                ?? Shader.Find("Standard")
+                ?? Shader.Find("Unlit/Color");
+            Material material = new(shader);
+            if (material.HasProperty("_BaseColor"))
+            {
+                material.SetColor("_BaseColor", color);
+            }
+
+            if (material.HasProperty("_Color"))
+            {
+                material.SetColor("_Color", color);
+            }
+
+            return material;
         }
 
         private readonly struct RenderSettingsSnapshot

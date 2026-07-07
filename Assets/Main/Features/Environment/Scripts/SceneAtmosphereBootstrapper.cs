@@ -216,13 +216,14 @@ namespace Neighbor.Main.Features.Environment
 
             anchor.transform.SetPositionAndRotation(position, rotation);
             anchor.transform.localScale = scale;
-            anchor.Configure(kind, kind == AtmosphereDressingAnchor.DressingKind.DirtyDecal ? 0.72f : 0.52f);
 
             Renderer renderer = anchor.GetComponent<Renderer>();
             if (renderer != null)
             {
                 renderer.sharedMaterial = CreateRuntimeMaterial(objectName, kind, color);
             }
+
+            anchor.Configure(kind, kind == AtmosphereDressingAnchor.DressingKind.DirtyDecal ? 0.72f : 0.52f);
 
             Collider collider = anchor.GetComponent<Collider>();
             if (collider != null)
