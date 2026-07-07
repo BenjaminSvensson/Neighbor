@@ -749,6 +749,65 @@ namespace Neighbor.Main.Tests
 
                 Assert.That(cameraController.CurrentStealthCameraPressure, Is.LessThan(0.08f));
 
+                PlayerFeedbackEvents.NoiseFeedback quietHeardNoise = new(
+                    Vector3.zero,
+                    0.2f,
+                    8f,
+                    0.28f,
+                    true,
+                    1);
+                PlayerFeedbackEvents.NoiseFeedback urgentHeardNoise = new(
+                    Vector3.zero,
+                    0.45f,
+                    8f,
+                    0.72f,
+                    true,
+                    1);
+                PlayerFeedbackEvents.NoiseFeedback multiListenerNoise = new(
+                    Vector3.zero,
+                    0.45f,
+                    8f,
+                    0.72f,
+                    true,
+                    3);
+
+                float quietNoisePressure = GameplaySmokeTestReflection.InvokeResult<float>(
+                    cameraController,
+                    "GetNoiseCameraPressure",
+                    quietHeardNoise);
+                float urgentNoisePressure = GameplaySmokeTestReflection.InvokeResult<float>(
+                    cameraController,
+                    "GetNoiseCameraPressure",
+                    urgentHeardNoise);
+                float multiListenerNoisePressure = GameplaySmokeTestReflection.InvokeResult<float>(
+                    cameraController,
+                    "GetNoiseCameraPressure",
+                    multiListenerNoise);
+
+                Assert.That(urgentNoisePressure, Is.GreaterThan(quietNoisePressure));
+                Assert.That(multiListenerNoisePressure, Is.GreaterThan(urgentNoisePressure));
+
+                cameraController.SyncAfterRespawn();
+                PlayerFeedbackEvents.ReportNoise(
+                    Vector3.zero,
+                    0.9f,
+                    12f,
+                    0.9f,
+                    false,
+                    0);
+
+                Assert.That(cameraController.CurrentStealthCameraPressure, Is.EqualTo(0f).Within(0.001f));
+
+                PlayerFeedbackEvents.ReportNoise(
+                    Vector3.zero,
+                    0.52f,
+                    12f,
+                    0.62f,
+                    true,
+                    2);
+
+                Assert.That(cameraController.CurrentStealthCameraPressure, Is.GreaterThan(0.6f));
+
                 PlayerFeedbackEvents.NeighborMemoryFeedback openedDoor = new(
                     PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
                     "Front Door",
