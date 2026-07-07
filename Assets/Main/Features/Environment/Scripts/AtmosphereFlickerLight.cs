@@ -25,6 +25,10 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField, Range(0f, 1f)] private float memoryFlickerPressure = 0.36f;
         [SerializeField, Range(0f, 1f)] private float stackedMemoryFlickerBoost = 0.12f;
         [SerializeField, Min(0f)] private float memoryFlickerHoldDuration = 3.4f;
+        [Header("Noise Response")]
+        [SerializeField] private bool respondToNoiseFeedback = true;
+        [SerializeField, Range(0f, 1f)] private float heardNoiseFlickerPressure = 0.46f;
+        [SerializeField, Min(0f)] private float heardNoiseFlickerHoldDuration = 2.2f;
 
         private float noiseSeed;
         private float currentStealthPressure;
@@ -53,12 +57,15 @@ namespace Neighbor.Main.Features.Environment
             PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged += HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NoiseEmitted -= HandleNoiseEmitted;
+            PlayerFeedbackEvents.NoiseEmitted += HandleNoiseEmitted;
         }
 
         private void OnDisable()
         {
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NoiseEmitted -= HandleNoiseEmitted;
         }
 
         private void Update()
@@ -131,6 +138,16 @@ namespace Neighbor.Main.Features.Environment
             RaiseStealthPressure(GetMemoryPressure(feedback), memoryFlickerHoldDuration);
         }
 
+        private void HandleNoiseEmitted(PlayerFeedbackEvents.NoiseFeedback feedback)
+        {
+            if (!respondToNoiseFeedback || !feedback.HeardByNeighbor)
+            {
+                return;
+            }
+
+            RaiseStealthPressure(GetNoisePressure(feedback), heardNoiseFlickerHoldDuration);
+        }
+
         private void RaiseStealthPressure(float pressure, float holdDuration)
         {
             targetStealthPressure = Mathf.Clamp01(pressure);
@@ -148,7 +165,7 @@ namespace Neighbor.Main.Features.Environment
 
         private void UpdateStealthPressure(float deltaTime)
         {
-            if (!respondToStealthLoop && !respondToNeighborMemory)
+            if (!respondToStealthLoop && !respondToNeighborMemory && !respondToNoiseFeedback)
             {
                 targetStealthPressure = 0f;
             }
@@ -191,6 +208,11 @@ namespace Neighbor.Main.Features.Environment
         {
             float stackPressure = Mathf.Clamp01(feedback.TotalMemoryCount / 4f) * stackedMemoryFlickerBoost;
             return Mathf.Clamp01(Mathf.Max(memoryFlickerPressure, feedback.Urgency) + stackPressure);
+        }
+
+        private float GetNoisePressure(PlayerFeedbackEvents.NoiseFeedback feedback)
+        {
+            return Mathf.Clamp01(Mathf.Max(heardNoiseFlickerPressure, Mathf.Max(feedback.Loudness, feedback.Urgency)));
         }
     }
 }

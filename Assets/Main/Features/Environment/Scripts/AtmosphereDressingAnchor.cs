@@ -26,6 +26,10 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField, Range(0f, 1f)] private float memoryDressingPressure = 0.38f;
         [SerializeField, Range(0f, 1f)] private float stackedMemoryDressingBoost = 0.14f;
         [SerializeField, Min(0f)] private float memoryHoldDuration = 3.8f;
+        [Header("Noise Response")]
+        [SerializeField] private bool respondToNoiseFeedback = true;
+        [SerializeField, Range(0f, 1f)] private float heardNoiseDressingPressure = 0.44f;
+        [SerializeField, Min(0f)] private float heardNoiseHoldDuration = 2.4f;
 
         private Renderer targetRenderer;
         private MaterialPropertyBlock propertyBlock;
@@ -53,6 +57,8 @@ namespace Neighbor.Main.Features.Environment
             PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged += HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NoiseEmitted -= HandleNoiseEmitted;
+            PlayerFeedbackEvents.NoiseEmitted += HandleNoiseEmitted;
             ApplyDressingVisuals();
         }
 
@@ -60,6 +66,7 @@ namespace Neighbor.Main.Features.Environment
         {
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NoiseEmitted -= HandleNoiseEmitted;
             RestoreDressingVisuals();
         }
 
@@ -116,6 +123,16 @@ namespace Neighbor.Main.Features.Environment
             RaiseStealthPressure(GetMemoryPressure(feedback), memoryHoldDuration);
         }
 
+        private void HandleNoiseEmitted(PlayerFeedbackEvents.NoiseFeedback feedback)
+        {
+            if (!respondToNoiseFeedback || !feedback.HeardByNeighbor)
+            {
+                return;
+            }
+
+            RaiseStealthPressure(GetNoisePressure(feedback), heardNoiseHoldDuration);
+        }
+
         private void RaiseStealthPressure(float pressure, float holdDuration)
         {
             targetStealthPressure = Mathf.Clamp01(pressure);
@@ -133,7 +150,7 @@ namespace Neighbor.Main.Features.Environment
 
         private void UpdateStealthDressing(float deltaTime)
         {
-            if (!respondToStealthLoop && !respondToNeighborMemory)
+            if (!respondToStealthLoop && !respondToNeighborMemory && !respondToNoiseFeedback)
             {
                 targetStealthPressure = 0f;
             }
@@ -238,6 +255,11 @@ namespace Neighbor.Main.Features.Environment
         {
             float stackPressure = Mathf.Clamp01(feedback.TotalMemoryCount / 4f) * stackedMemoryDressingBoost;
             return Mathf.Clamp01(Mathf.Max(memoryDressingPressure, feedback.Urgency) + stackPressure);
+        }
+
+        private float GetNoisePressure(PlayerFeedbackEvents.NoiseFeedback feedback)
+        {
+            return Mathf.Clamp01(Mathf.Max(heardNoiseDressingPressure, Mathf.Max(feedback.Loudness, feedback.Urgency)));
         }
     }
 }
