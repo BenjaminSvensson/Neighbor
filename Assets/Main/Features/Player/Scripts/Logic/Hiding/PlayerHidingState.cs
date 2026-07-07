@@ -304,7 +304,8 @@ namespace Neighbor.Main.Features.Player
                 BreathTension01,
                 kind == PlayerFeedbackEvents.HidingFeedbackKind.Recovered
                     ? "Breathing under control."
-                    : isHidden ? "Stay still. Let the tension drop." : "Back in the open.");
+                    : isHidden ? "Stay still. Let the tension drop." : "Back in the open.",
+                kind == PlayerFeedbackEvents.HidingFeedbackKind.Recovered);
         }
     }
 }

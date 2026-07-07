@@ -233,6 +233,54 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void SceneAtmosphereDirector_CalmingHidingRecoveryEasesFogAndGrade()
+        {
+            RenderSettingsSnapshot snapshot = RenderSettingsSnapshot.Capture();
+            GameObject directorObject = new("Recovery Atmosphere Director Test");
+            GameObject volumeObject = new("Recovery Atmosphere Volume Test");
+
+            try
+            {
+                Volume volume = volumeObject.AddComponent<Volume>();
+                SceneAtmosphereDirector director = directorObject.AddComponent<SceneAtmosphereDirector>();
+                director.Configure(
+                    null,
+                    null,
+                    volume,
+                    new AtmosphereFlickerLight[0],
+                    new AtmosphereDressingAnchor[0]);
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.Chased,
+                    1f,
+                    0.8f,
+                    0.9f,
+                    "Run or hide");
+                float dangerIntensity = director.CurrentStealthAtmosphereIntensity;
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.Hiding,
+                    0.08f,
+                    0f,
+                    0.12f,
+                    "Breathing under control.",
+                    true);
+                GameplaySmokeTestReflection.Invoke(director, "UpdateStealthAtmosphere", 1f);
+
+                Assert.That(director.TargetStealthAtmosphereIntensity, Is.LessThan(0.2f));
+                Assert.That(director.CurrentStealthAtmosphereIntensity, Is.LessThan(dangerIntensity));
+                Assert.That(director.CurrentStealthAtmosphereIntensity, Is.LessThan(0.2f));
+            }
+            finally
+            {
+                snapshot.Restore();
+                GameplaySmokeTestReflection.InvokeIfPresent(directorObject.GetComponent<SceneAtmosphereDirector>(), "OnDisable");
+                Object.DestroyImmediate(directorObject);
+                Object.DestroyImmediate(volumeObject);
+            }
+        }
+
+        [Test]
         public void SceneAtmosphereDirector_NeighborMemoryClueIntensifiesFogAndGrade()
         {
             RenderSettingsSnapshot snapshot = RenderSettingsSnapshot.Capture();
@@ -372,6 +420,48 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AtmosphereFlickerLight_CalmingHidingRecoveryEasesUnstableLight()
+        {
+            GameObject lightObject = new("Recovery Flicker Light Test");
+
+            try
+            {
+                Light light = lightObject.AddComponent<Light>();
+                AtmosphereFlickerLight flicker = lightObject.AddComponent<AtmosphereFlickerLight>();
+                flicker.Configure(1f, 0.2f, 4f);
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.Chased,
+                    1f,
+                    0.8f,
+                    0.9f,
+                    "Run or hide");
+                float dangerPressure = flicker.CurrentStealthPressure;
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.Hiding,
+                    0.08f,
+                    0f,
+                    0.08f,
+                    "Breathing under control.",
+                    true);
+                GameplaySmokeTestReflection.Invoke(flicker, "UpdateStealthPressure", 1f);
+
+                Assert.That(dangerPressure, Is.GreaterThan(0.95f));
+                Assert.That(flicker.CurrentStealthPressure, Is.LessThan(0.2f));
+                Assert.That(flicker.EffectiveFlickerAmount, Is.LessThan(0.3f));
+                Assert.That(light.intensity, Is.GreaterThan(0f));
+            }
+            finally
+            {
+                GameplaySmokeTestReflection.InvokeIfPresent(
+                    lightObject.GetComponent<AtmosphereFlickerLight>(),
+                    "OnDisable");
+                Object.DestroyImmediate(lightObject);
+            }
+        }
+
+        [Test]
         public void AtmosphereFlickerLight_NeighborMemoryClueAddsUneasyLight()
         {
             GameObject lightObject = new("Memory Flicker Light Test");
@@ -488,6 +578,65 @@ namespace Neighbor.Main.Tests
                 Assert.That(decal.CurrentStealthPressure, Is.Zero.Within(0.001f));
                 Assert.That(prop.CurrentStealthPressure, Is.Zero.Within(0.001f));
                 Assert.That(propObject.transform.localScale.x, Is.EqualTo(calmPropScale.x).Within(0.001f));
+            }
+            finally
+            {
+                GameplaySmokeTestReflection.InvokeIfPresent(
+                    decalObject.GetComponent<AtmosphereDressingAnchor>(),
+                    "OnDisable");
+                GameplaySmokeTestReflection.InvokeIfPresent(
+                    propObject.GetComponent<AtmosphereDressingAnchor>(),
+                    "OnDisable");
+                Object.DestroyImmediate(decalObject);
+                Object.DestroyImmediate(propObject);
+                Object.DestroyImmediate(decalMaterial);
+                Object.DestroyImmediate(propMaterial);
+            }
+        }
+
+        [Test]
+        public void AtmosphereDressingAnchor_CalmingHidingRecoveryEasesDecalsAndProps()
+        {
+            GameObject decalObject = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            GameObject propObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Material decalMaterial = CreateTestMaterial(new Color(0.18f, 0.14f, 0.09f, 0.3f));
+            Material propMaterial = CreateTestMaterial(new Color(0.34f, 0.23f, 0.14f, 1f));
+
+            try
+            {
+                Renderer decalRenderer = decalObject.GetComponent<Renderer>();
+                Renderer propRenderer = propObject.GetComponent<Renderer>();
+                decalRenderer.sharedMaterial = decalMaterial;
+                propRenderer.sharedMaterial = propMaterial;
+
+                AtmosphereDressingAnchor decal = decalObject.AddComponent<AtmosphereDressingAnchor>();
+                AtmosphereDressingAnchor prop = propObject.AddComponent<AtmosphereDressingAnchor>();
+                decal.Configure(AtmosphereDressingAnchor.DressingKind.DirtyDecal, 0.4f);
+                prop.Configure(AtmosphereDressingAnchor.DressingKind.PropDressing, 0.48f);
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.Chased,
+                    1f,
+                    0.8f,
+                    0.9f,
+                    "Run or hide");
+                float dangerDecalPressure = decal.CurrentStealthPressure;
+                float dangerPropPressure = prop.CurrentStealthPressure;
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.Hiding,
+                    0.08f,
+                    0f,
+                    0.08f,
+                    "Breathing under control.",
+                    true);
+                GameplaySmokeTestReflection.Invoke(decal, "UpdateStealthDressing", 1f);
+                GameplaySmokeTestReflection.Invoke(prop, "UpdateStealthDressing", 1f);
+
+                Assert.That(dangerDecalPressure, Is.GreaterThan(0.95f));
+                Assert.That(dangerPropPressure, Is.GreaterThan(0.95f));
+                Assert.That(decal.CurrentStealthPressure, Is.LessThan(0.15f));
+                Assert.That(prop.CurrentStealthPressure, Is.LessThan(0.15f));
             }
             finally
             {

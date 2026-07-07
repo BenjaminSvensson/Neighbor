@@ -18,6 +18,7 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField, Range(0f, 1f)] private float dangerFlickerAmountBoost = 0.35f;
         [SerializeField, Min(0f)] private float dangerFlickerSpeedBoost = 5f;
         [SerializeField, Range(0f, 1f)] private float dangerIntensityDip = 0.18f;
+        [SerializeField, Range(0f, 1f)] private float calmHidingFlickerPressure = 0.1f;
         [SerializeField, Min(0f)] private float dangerFlickerHoldDuration = 2.2f;
         [SerializeField, Min(0f)] private float dangerFlickerFadeSpeed = 2.4f;
         [Header("Memory Response")]
@@ -189,7 +190,7 @@ namespace Neighbor.Main.Features.Environment
             return flickerSpeed + dangerFlickerSpeedBoost * currentStealthPressure;
         }
 
-        private static float GetStealthPressure(PlayerFeedbackEvents.StealthLoopFeedback feedback)
+        private float GetStealthPressure(PlayerFeedbackEvents.StealthLoopFeedback feedback)
         {
             float pressure = Mathf.Max(feedback.Suspicion, feedback.Noise, feedback.Tension);
             return feedback.Phase switch
@@ -198,7 +199,9 @@ namespace Neighbor.Main.Features.Environment
                 PlayerFeedbackEvents.StealthLoopPhase.PostChase => Mathf.Max(0.58f, pressure),
                 PlayerFeedbackEvents.StealthLoopPhase.Searching => Mathf.Max(0.48f, pressure),
                 PlayerFeedbackEvents.StealthLoopPhase.Suspicious => Mathf.Max(0.36f, pressure),
-                PlayerFeedbackEvents.StealthLoopPhase.Hiding => Mathf.Max(0.3f, feedback.Tension),
+                PlayerFeedbackEvents.StealthLoopPhase.Hiding => feedback.IsCalming
+                    ? Mathf.Max(calmHidingFlickerPressure, feedback.Tension)
+                    : Mathf.Max(0.3f, feedback.Tension),
                 PlayerFeedbackEvents.StealthLoopPhase.Curious => Mathf.Max(0.16f, pressure * 0.7f),
                 _ => 0f
             };
