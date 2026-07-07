@@ -45,6 +45,7 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Range(0f, 1f)] private float stackedMemoryStealthBreathBoost = 0.1f;
         [SerializeField, Min(0f)] private float stealthBreathHoldDuration = 2.6f;
         [SerializeField, Min(0f)] private float memoryStealthBreathHoldDuration = 3f;
+        [SerializeField, Min(1f)] private float maximumMemoryStealthBreathHoldMultiplier = 1.5f;
         [SerializeField, Min(0f)] private float stealthBreathFadeSpeed = 1.8f;
 
         [Header("Movement Actions")]
@@ -479,7 +480,7 @@ namespace Neighbor.Main.Features.Player
                 return;
             }
 
-            RaiseStealthBreathStress(GetMemoryBreathStress(feedback), memoryStealthBreathHoldDuration);
+            RaiseStealthBreathStress(GetMemoryBreathStress(feedback), GetMemoryBreathHoldDuration(feedback));
         }
 
         private void RaiseStealthBreathStress(float stress, float holdDuration)
@@ -535,6 +536,25 @@ namespace Neighbor.Main.Features.Player
         {
             float stackPressure = Mathf.Clamp01(feedback.TotalMemoryCount / 4f) * stackedMemoryStealthBreathBoost;
             return Mathf.Clamp01(Mathf.Max(memoryStealthBreathPressure, feedback.Urgency) + stackPressure);
+        }
+
+        private float GetMemoryBreathHoldDuration(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
+        {
+            float stackPressure = Mathf.Clamp01(Mathf.Max(0, feedback.TotalMemoryCount - 1) / 3f);
+            float commitment = Mathf.Max(GetMemoryClueSeverity(feedback.Kind), stackPressure);
+            return memoryStealthBreathHoldDuration * Mathf.Lerp(1f, maximumMemoryStealthBreathHoldMultiplier, commitment);
+        }
+
+        private static float GetMemoryClueSeverity(PlayerFeedbackEvents.NeighborMemoryClueKind kind)
+        {
+            return kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => 1f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => 0.78f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => 0.45f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => 0.16f,
+                _ => 0f
+            };
         }
 
         private void ResolveHidingState()

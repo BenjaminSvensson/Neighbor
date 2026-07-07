@@ -3072,6 +3072,41 @@ namespace Neighbor.Main.Tests
 
                 Assert.That(audioController.CurrentStealthBreathStress01, Is.InRange(0.11f, 0.13f));
 
+                PlayerFeedbackEvents.NeighborMemoryFeedback openedDoor = new(
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
+                    "Front Door",
+                    Vector3.zero,
+                    0.38f,
+                    1);
+                PlayerFeedbackEvents.NeighborMemoryFeedback stolenKey = new(
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
+                    "Basement Key",
+                    Vector3.zero,
+                    0.38f,
+                    1);
+                PlayerFeedbackEvents.NeighborMemoryFeedback stackedDoor = new(
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
+                    "Front Door",
+                    Vector3.zero,
+                    0.38f,
+                    4);
+
+                float doorHold = GameplaySmokeTestReflection.InvokeResult<float>(
+                    audioController,
+                    "GetMemoryBreathHoldDuration",
+                    openedDoor);
+                float keyHold = GameplaySmokeTestReflection.InvokeResult<float>(
+                    audioController,
+                    "GetMemoryBreathHoldDuration",
+                    stolenKey);
+                float stackedHold = GameplaySmokeTestReflection.InvokeResult<float>(
+                    audioController,
+                    "GetMemoryBreathHoldDuration",
+                    stackedDoor);
+
+                Assert.That(keyHold, Is.GreaterThan(doorHold));
+                Assert.That(stackedHold, Is.GreaterThan(doorHold));
+
                 GameplaySmokeTestReflection.SetField(audioController, "currentStealthBreathStress", 0f);
                 PlayerFeedbackEvents.ReportNeighborMemory(
                     PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
