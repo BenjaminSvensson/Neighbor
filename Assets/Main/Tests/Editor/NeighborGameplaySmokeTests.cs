@@ -1150,6 +1150,84 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NeighborHunt_ReportsPostChaseAreaSweepWhenSearchingPoint()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            NeighborSearchPoint searchPoint = context.AddInitializedComponent<NeighborSearchPoint>(
+                context.CreateObject("LastSeenSearchPoint"));
+            searchPoint.transform.position = new Vector3(2f, 0f, 1f);
+            List<PlayerFeedbackEvents.NeighborInvestigationFeedback> feedback = new();
+            PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
+
+            try
+            {
+                GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.HuntMode);
+                GameplaySmokeTestReflection.SetField(brain, "currentSearchPoint", searchPoint);
+                GameplaySmokeTestReflection.SetField(brain, "suspicion", 0.58f);
+
+                GameplaySmokeTestReflection.Invoke(brain, "ReportHuntSweepSearchIfNeeded");
+                GameplaySmokeTestReflection.Invoke(brain, "ReportHuntSweepSearchIfNeeded");
+
+                Assert.That(feedback, Has.Count.EqualTo(1));
+                Assert.That(feedback[0].Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching));
+                Assert.That(feedback[0].IsTrailRelated, Is.False);
+                Assert.That(feedback[0].Position, Is.EqualTo(searchPoint.Position));
+                Assert.That(feedback[0].SourceName, Is.EqualTo("last seen area"));
+                Assert.That(feedback[0].Urgency, Is.EqualTo(0.65f).Within(0.001f));
+                Assert.That(brain.HasReportedCurrentHuntSweepSearch, Is.True);
+            }
+            finally
+            {
+                PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
+            }
+
+            void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback item)
+            {
+                feedback.Add(item);
+            }
+        }
+
+        [Test]
+        public void NeighborHunt_ReportsKnownHideSpotSweepAsUrgentSearch()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            ClosetHideSpot hideSpot = context.AddInitializedComponent<ClosetHideSpot>(
+                context.CreateObject("KnownCloset"));
+            hideSpot.transform.position = new Vector3(-1f, 0f, 3f);
+            PlayerFeedbackEvents.NeighborInvestigationFeedback feedback = default;
+            bool received = false;
+            PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
+
+            try
+            {
+                GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.HuntMode);
+                GameplaySmokeTestReflection.SetField(brain, "currentHideSpot", hideSpot);
+                GameplaySmokeTestReflection.SetField(brain, "currentHideSpotKnownOccupied", true);
+                GameplaySmokeTestReflection.SetField(brain, "suspicion", 0.74f);
+
+                GameplaySmokeTestReflection.Invoke(brain, "ReportHuntSweepSearchIfNeeded");
+
+                Assert.That(received, Is.True);
+                Assert.That(feedback.Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching));
+                Assert.That(feedback.IsTrailRelated, Is.False);
+                Assert.That(feedback.Position, Is.EqualTo(hideSpot.SearchPosition));
+                Assert.That(feedback.SourceName, Is.EqualTo("known hiding spot"));
+                Assert.That(feedback.Urgency, Is.EqualTo(1f).Within(0.001f));
+                Assert.That(brain.HasReportedCurrentHuntSweepSearch, Is.True);
+            }
+            finally
+            {
+                PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
+            }
+
+            void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback item)
+            {
+                feedback = item;
+                received = true;
+            }
+        }
+
+        [Test]
         public void ReinforcementTrigger_RecognizesCameraAndTrapPreferredPlacements()
         {
             GameObject triggerObject = context.CreateObject("ReinforcementTrigger");
