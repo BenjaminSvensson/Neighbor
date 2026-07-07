@@ -198,6 +198,57 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AwarenessHud_ShowsPersistentStealthStatusAndLoudNoiseWarning()
+        {
+            GameObject playerObject = context.CreateObject("Player");
+            context.AddInitializedComponent<PlayerController>(playerObject);
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleNoise",
+                new PlayerFeedbackEvents.NoiseFeedback(Vector3.zero, 0.82f, 6f));
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateStealthStatus");
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateWarning");
+
+            Text stealthStatusText = GameplaySmokeTestReflection.GetField<Text>(hud, "stealthStatusText");
+            Text warningText = GameplaySmokeTestReflection.GetField<Text>(hud, "warningText");
+            Assert.That(stealthStatusText.text, Is.EqualTo("QUIET / NOISE FADING"));
+            Assert.That(warningText.text, Is.EqualTo("LOUD NOISE"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleStealthLoopChanged",
+                new PlayerFeedbackEvents.StealthLoopFeedback(
+                    PlayerFeedbackEvents.StealthLoopPhase.Searching,
+                    0.52f,
+                    0.65f,
+                    0.18f,
+                    "He is investigating."));
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateStealthStatus");
+
+            Assert.That(stealthStatusText.text, Is.EqualTo("SEARCHING / NOISE TRACE"));
+        }
+
+        [Test]
+        public void AwarenessHud_HidingStatusShowsBreathPressure()
+        {
+            PlayerHidingState hidingState = context.AddInitializedComponent<PlayerHidingState>(
+                context.CreateObject("Player"));
+            hidingState.SetHidden(true);
+            hidingState.AddBreathTension(0.76f);
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+            GameplaySmokeTestReflection.SetField(hud, "hidingState", hidingState);
+
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateStealthStatus");
+
+            Text stealthStatusText = GameplaySmokeTestReflection.GetField<Text>(hud, "stealthStatusText");
+            Assert.That(stealthStatusText.text, Is.EqualTo("HIDDEN / BREATH HIGH"));
+        }
+
+        [Test]
         public void StealthLoop_LeavingChaseStartsPostChaseTension()
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
