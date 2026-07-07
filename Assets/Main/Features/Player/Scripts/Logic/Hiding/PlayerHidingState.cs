@@ -294,18 +294,34 @@ namespace Neighbor.Main.Features.Player
             bool isCompromised)
         {
             string spotName = hideSpot != null ? hideSpot.DisplayName : "hiding spot";
+            float stealthTension = isHidden && isCompromised ? 1f : BreathTension01;
             PlayerFeedbackEvents.ReportHiding(spotName, kind, BreathTension01, isHidden, isCompromised);
             PlayerFeedbackEvents.ReportStealthLoop(
                 isHidden
                     ? PlayerFeedbackEvents.StealthLoopPhase.Hiding
                     : PlayerFeedbackEvents.StealthLoopPhase.Quiet,
-                isCompromised ? 1f : BreathTension01,
+                isHidden && isCompromised ? 1f : BreathTension01,
                 0f,
-                BreathTension01,
-                kind == PlayerFeedbackEvents.HidingFeedbackKind.Recovered
-                    ? "Breathing under control."
-                    : isHidden ? "Stay still. Let the tension drop." : "Back in the open.",
+                stealthTension,
+                GetHidingStealthLoopMessage(kind, isHidden, isCompromised),
                 kind == PlayerFeedbackEvents.HidingFeedbackKind.Recovered);
+        }
+
+        private static string GetHidingStealthLoopMessage(
+            PlayerFeedbackEvents.HidingFeedbackKind kind,
+            bool isHidden,
+            bool isCompromised)
+        {
+            return kind switch
+            {
+                PlayerFeedbackEvents.HidingFeedbackKind.Found => "He found your hiding spot.",
+                PlayerFeedbackEvents.HidingFeedbackKind.Inspected => "Stay still. He is checking the hiding spot.",
+                PlayerFeedbackEvents.HidingFeedbackKind.Recovered => "Breathing under control.",
+                PlayerFeedbackEvents.HidingFeedbackKind.Exited => "Back in the open.",
+                _ => isHidden && isCompromised
+                    ? "He found your hiding spot."
+                    : isHidden ? "Stay still. Let the tension drop." : "Back in the open."
+            };
         }
     }
 }
