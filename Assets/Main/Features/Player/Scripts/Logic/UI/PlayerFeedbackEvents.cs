@@ -326,6 +326,8 @@ namespace Neighbor.Main.Features.Player
             public float Suspicion { get; }
             public float Urgency { get; }
             public bool IsTrailRelated { get; }
+            public bool HasMemoryClueKind { get; }
+            public NeighborMemoryClueKind MemoryClueKind { get; }
 
             public NeighborInvestigationFeedback(
                 NeighborInvestigationFeedbackKind kind,
@@ -334,13 +336,42 @@ namespace Neighbor.Main.Features.Player
                 float suspicion,
                 float urgency,
                 bool isTrailRelated = false)
+                : this(kind, position, sourceName, suspicion, urgency, isTrailRelated, false, default)
+            {
+            }
+
+            public NeighborInvestigationFeedback(
+                NeighborInvestigationFeedbackKind kind,
+                Vector3 position,
+                string sourceName,
+                float suspicion,
+                float urgency,
+                bool isTrailRelated,
+                NeighborMemoryClueKind memoryClueKind)
+                : this(kind, position, sourceName, suspicion, urgency, isTrailRelated, true, memoryClueKind)
+            {
+            }
+
+            private NeighborInvestigationFeedback(
+                NeighborInvestigationFeedbackKind kind,
+                Vector3 position,
+                string sourceName,
+                float suspicion,
+                float urgency,
+                bool isTrailRelated,
+                bool hasMemoryClueKind,
+                NeighborMemoryClueKind memoryClueKind)
             {
                 Kind = kind;
                 Position = position;
                 SourceName = string.IsNullOrWhiteSpace(sourceName) ? "disturbance" : sourceName.Trim();
                 Suspicion = Mathf.Clamp01(suspicion);
                 Urgency = Mathf.Clamp01(urgency);
-                IsTrailRelated = isTrailRelated || kind == NeighborInvestigationFeedbackKind.FollowingTrail;
+                HasMemoryClueKind = hasMemoryClueKind;
+                MemoryClueKind = hasMemoryClueKind ? memoryClueKind : default;
+                IsTrailRelated = isTrailRelated
+                    || kind == NeighborInvestigationFeedbackKind.FollowingTrail
+                    || hasMemoryClueKind;
             }
         }
 
@@ -530,6 +561,25 @@ namespace Neighbor.Main.Features.Player
                 suspicion,
                 urgency,
                 isTrailRelated));
+        }
+
+        public static void ReportNeighborInvestigation(
+            NeighborInvestigationFeedbackKind kind,
+            Vector3 position,
+            string sourceName,
+            float suspicion,
+            float urgency,
+            bool isTrailRelated,
+            NeighborMemoryClueKind memoryClueKind)
+        {
+            NeighborInvestigationChanged?.Invoke(new NeighborInvestigationFeedback(
+                kind,
+                position,
+                sourceName,
+                suspicion,
+                urgency,
+                isTrailRelated,
+                memoryClueKind));
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

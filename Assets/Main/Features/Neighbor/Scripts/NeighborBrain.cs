@@ -249,6 +249,10 @@ namespace Neighbor.Main.Features.Neighbor
         private Vector3 lastKnownInvestigationPosition;
         private Vector3 investigationSearchLookDirection;
         private bool currentInvestigationTrailRelated;
+        private bool currentInvestigationMemoryClueActive;
+        private PlayerFeedbackEvents.NeighborMemoryClueKind currentInvestigationMemoryClueKind;
+        private bool nextInvestigationMemoryClueActive;
+        private PlayerFeedbackEvents.NeighborMemoryClueKind nextInvestigationMemoryClueKind;
         private BehaviorState preInvestigationState;
         private Vector3 preInvestigationGoal;
         private NeighborTaskLocation preInvestigationTaskLocation;
@@ -964,6 +968,10 @@ namespace Neighbor.Main.Features.Neighbor
             currentUnexpectedOpenDoor = null;
             currentDoorRoomCheckPosition = default;
             currentInvestigationTrailRelated = false;
+            currentInvestigationMemoryClueActive = false;
+            currentInvestigationMemoryClueKind = default;
+            nextInvestigationMemoryClueActive = false;
+            nextInvestigationMemoryClueKind = default;
             ClearMemoryClueFollowUp();
             isVerifyingLastSeenPosition = false;
             lastSeenVerificationUntilTime = 0f;
@@ -1330,6 +1338,12 @@ namespace Neighbor.Main.Features.Neighbor
             PlayerFeedbackEvents.NeighborInvestigationFeedbackKind startedFeedbackKind = nextInvestigationStartedFeedbackKind;
             nextInvestigationStartedFeedbackKind = PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started;
             currentInvestigationTrailRelated = startedFeedbackKind == PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail;
+            currentInvestigationMemoryClueActive = currentInvestigationTrailRelated && nextInvestigationMemoryClueActive;
+            currentInvestigationMemoryClueKind = currentInvestigationMemoryClueActive
+                ? nextInvestigationMemoryClueKind
+                : default;
+            nextInvestigationMemoryClueActive = false;
+            nextInvestigationMemoryClueKind = default;
             ReportInvestigationFeedback(startedFeedbackKind);
 
             if (motor == null)
@@ -1390,6 +1404,8 @@ namespace Neighbor.Main.Features.Neighbor
             hasActiveInvestigation = false;
             hasReportedInvestigationSearch = false;
             currentInvestigationTrailRelated = false;
+            currentInvestigationMemoryClueActive = false;
+            currentInvestigationMemoryClueKind = default;
         }
 
         private void ClearPreInvestigationRoutine()
@@ -1497,10 +1513,8 @@ namespace Neighbor.Main.Features.Neighbor
                 case BehaviorState.HuntMode:
                     if (currentHuntMemoryClueActive)
                     {
-                        ReportInvestigationFeedback(
-                            PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned,
-                            true,
-                            true);
+                        ReportHuntMemoryClueInvestigationFeedback(
+                            PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned);
                         ClearHuntMemoryClueTarget();
                         ReportStealthLoopIfNeeded(true);
                     }
@@ -2754,7 +2768,7 @@ namespace Neighbor.Main.Features.Neighbor
             suspicion = Mathf.Max(suspicion, clueSuspicion);
             investigationMoveMode = moveMode;
             motor.SetMoveMode(moveMode);
-            ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail, true, true);
+            ReportHuntMemoryClueInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail);
             ReportStealthLoopIfNeeded(true);
             return true;
         }
@@ -2802,7 +2816,7 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning, true, true);
+            ReportHuntMemoryClueInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning);
             ClearHuntMemoryClueTarget();
             ReportStealthLoopIfNeeded(true);
         }
@@ -3606,7 +3620,7 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             hasReportedHuntMemoryClueSearch = true;
-            ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching, true, true);
+            ReportHuntMemoryClueInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching);
             ReportStealthLoopIfNeeded(true);
         }
 
@@ -3650,13 +3664,49 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            bool trailRelated = isTrailRelated || currentInvestigationTrailRelated;
+            string sourceName = GetInvestigationSourceName(currentInvestigationSource);
+            float urgency = GetInvestigationUrgency(investigationMoveMode);
+            if (trailRelated && currentInvestigationMemoryClueActive)
+            {
+                PlayerFeedbackEvents.ReportNeighborInvestigation(
+                    kind,
+                    lastKnownInvestigationPosition,
+                    sourceName,
+                    Mathf.Max(suspicion, GetMemoryClueInvestigationSuspicionFloor(currentInvestigationMemoryClueKind)),
+                    Mathf.Max(urgency, GetMemoryClueInvestigationUrgency(currentInvestigationMemoryClueKind)),
+                    true,
+                    currentInvestigationMemoryClueKind);
+                return;
+            }
+
             PlayerFeedbackEvents.ReportNeighborInvestigation(
                 kind,
                 lastKnownInvestigationPosition,
-                GetInvestigationSourceName(currentInvestigationSource),
+                sourceName,
                 suspicion,
-                GetInvestigationUrgency(investigationMoveMode),
-                isTrailRelated || currentInvestigationTrailRelated);
+                urgency,
+                trailRelated);
+        }
+
+        private void ReportHuntMemoryClueInvestigationFeedback(
+            PlayerFeedbackEvents.NeighborInvestigationFeedbackKind kind)
+        {
+            if (!currentHuntMemoryClueActive)
+            {
+                return;
+            }
+
+            PlayerFeedbackEvents.ReportNeighborInvestigation(
+                kind,
+                lastKnownInvestigationPosition,
+                GetInvestigationSourceName(currentHuntMemoryClueSource),
+                Mathf.Max(suspicion, GetMemoryClueInvestigationSuspicionFloor(currentHuntMemoryClueKind)),
+                Mathf.Max(
+                    GetInvestigationUrgency(investigationMoveMode),
+                    GetMemoryClueInvestigationUrgency(currentHuntMemoryClueKind)),
+                true,
+                currentHuntMemoryClueKind);
         }
 
         private static string GetInvestigationSourceName(GameObject source)
@@ -3885,9 +3935,12 @@ namespace Neighbor.Main.Features.Neighbor
 
             Vector3 cluePosition = pendingMemoryCluePosition;
             GameObject clueSource = pendingMemoryClueSource;
+            PlayerFeedbackEvents.NeighborMemoryClueKind clueKind = pendingMemoryClueKind;
             float clueSuspicion = Mathf.Max(memoryFollowUpMinimumSuspicion, pendingMemoryClueSuspicion);
             NeighborMotor.MoveMode moveMode = GetMemoryFollowUpMoveMode(clueSuspicion);
             nextInvestigationStartedFeedbackKind = PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail;
+            nextInvestigationMemoryClueActive = true;
+            nextInvestigationMemoryClueKind = clueKind;
 
             ClearMemoryClueFollowUp();
             nextMemoryFollowUpTime = Time.time + memoryFollowUpCooldown;
@@ -3911,6 +3964,30 @@ namespace Neighbor.Main.Features.Neighbor
             return clueSuspicion >= suspiciousThreshold
                 ? NeighborMotor.MoveMode.Cautious
                 : NeighborMotor.MoveMode.Walk;
+        }
+
+        private static float GetMemoryClueInvestigationUrgency(PlayerFeedbackEvents.NeighborMemoryClueKind kind)
+        {
+            return kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => 0.92f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => 0.78f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => 0.58f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => 0.48f,
+                _ => 0.35f
+            };
+        }
+
+        private static float GetMemoryClueInvestigationSuspicionFloor(PlayerFeedbackEvents.NeighborMemoryClueKind kind)
+        {
+            return kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => 0.72f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => 0.64f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => 0.44f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => 0.34f,
+                _ => 0f
+            };
         }
 
         private void ClearMemoryClueFollowUp()
@@ -4238,6 +4315,8 @@ namespace Neighbor.Main.Features.Neighbor
             falseAlarmMemory[currentInvestigationSource] = GetMemory(falseAlarmMemory, currentInvestigationSource) + 1f;
             currentInvestigationSource = null;
             currentInvestigationTrailRelated = false;
+            currentInvestigationMemoryClueActive = false;
+            currentInvestigationMemoryClueKind = default;
         }
 
         private void ResolvePlayer()

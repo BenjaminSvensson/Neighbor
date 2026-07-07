@@ -749,6 +749,11 @@ namespace Neighbor.Main.Features.Player
         {
             if (feedback.IsTrailRelated)
             {
+                if (feedback.HasMemoryClueKind)
+                {
+                    return BuildMemoryTrailWarningText(feedback);
+                }
+
                 return feedback.Kind switch
                 {
                     PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail => "HE IS FOLLOWING YOUR TRAIL",
@@ -767,6 +772,48 @@ namespace Neighbor.Main.Features.Player
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning => "NEIGHBOR RETURNING",
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned => "NEIGHBOR LOST THE TRAIL",
                 _ => "NEIGHBOR ALERTED"
+            };
+        }
+
+        private static string BuildMemoryTrailWarningText(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
+        {
+            return feedback.Kind switch
+            {
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail =>
+                    feedback.MemoryClueKind switch
+                    {
+                        PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => "HE IS TRACKING THE STOLEN KEY",
+                        PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => "HE IS CHECKING THE BROKEN GLASS",
+                        PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => "HE IS CHECKING THE MOVED OBJECT",
+                        PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => "HE IS CHECKING THAT DOOR",
+                        _ => "HE IS FOLLOWING YOUR TRAIL"
+                    },
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching =>
+                    feedback.MemoryClueKind switch
+                    {
+                        PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => "SEARCHING THE MISSING KEY",
+                        PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => "SEARCHING THE BROKEN GLASS",
+                        PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => "SEARCHING THE MOVED OBJECT",
+                        PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => "SEARCHING THAT DOOR",
+                        _ => "SEARCHING YOUR TRAIL"
+                    },
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning =>
+                    $"{GetMemoryClueLabel(feedback.MemoryClueKind)} TRAIL CLEARED",
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned =>
+                    $"LOST THE {GetMemoryClueLabel(feedback.MemoryClueKind)} TRAIL",
+                _ => "NEIGHBOR ON YOUR TRAIL"
+            };
+        }
+
+        private static string GetMemoryClueLabel(PlayerFeedbackEvents.NeighborMemoryClueKind kind)
+        {
+            return kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => "KEY",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => "GLASS",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => "OBJECT",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => "DOOR",
+                _ => "CLUE"
             };
         }
 
