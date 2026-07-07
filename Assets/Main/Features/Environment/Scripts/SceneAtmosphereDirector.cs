@@ -280,18 +280,8 @@ namespace Neighbor.Main.Features.Environment
 
         private float GetMemoryAtmosphereIntensity(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
         {
-            float stackPressure = Mathf.Clamp01(feedback.TotalMemoryCount / 4f);
-            float kindFloor = feedback.Kind switch
-            {
-                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => 0.68f,
-                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => 0.6f,
-                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => 0.5f,
-                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => 0.44f,
-                _ => memoryAtmosphereIntensity
-            };
-            float pressure = Mathf.Max(
-                Mathf.Max(memoryAtmosphereIntensity, kindFloor),
-                feedback.Suspicion + stackPressure * stackedMemoryAtmosphereBoost);
+            float stackPressure = Mathf.Clamp01(feedback.TotalMemoryCount / 4f) * stackedMemoryAtmosphereBoost;
+            float pressure = Mathf.Max(memoryAtmosphereIntensity, feedback.Urgency) + stackPressure;
             return Mathf.Clamp01(pressure);
         }
 

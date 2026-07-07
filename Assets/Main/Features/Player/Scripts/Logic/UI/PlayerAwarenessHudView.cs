@@ -647,11 +647,11 @@ namespace Neighbor.Main.Features.Player
         private void HandleNeighborMemoryChanged(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
         {
             lastNeighborMemoryCount = feedback.TotalMemoryCount;
-            lastNeighborMemorySuspicion = feedback.Suspicion;
+            lastNeighborMemorySuspicion = feedback.Urgency;
             neighborMemoryStatusUntil = Time.unscaledTime + Mathf.Lerp(
                 4f,
                 9f,
-                Mathf.Max(feedback.Suspicion, Mathf.Clamp01(feedback.TotalMemoryCount / 4f)));
+                Mathf.Max(feedback.Urgency, Mathf.Clamp01(feedback.TotalMemoryCount / 4f)));
             warningText.text = feedback.Kind switch
             {
                 PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => "HE REMEMBERS THAT DOOR",
@@ -663,8 +663,8 @@ namespace Neighbor.Main.Features.Player
             warningText.color = Color.Lerp(
                 new Color(0.8f, 0.86f, 0.96f, 0.95f),
                 new Color(1f, 0.38f, 0.14f, 1f),
-                feedback.Suspicion);
-            messageUntil = Time.unscaledTime + Mathf.Lerp(2.3f, MessageDuration, feedback.Suspicion);
+                feedback.Urgency);
+            messageUntil = Time.unscaledTime + Mathf.Lerp(2.3f, MessageDuration, feedback.Urgency);
         }
 
         private void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
