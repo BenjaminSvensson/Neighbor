@@ -7,7 +7,7 @@
 5. Increase an area's priority when it should override an overlapping area.
 
 The manager follows the scene's `AudioListener` automatically and smoothly crossfades profiles using the incoming profile's transition duration.
-Profiles can also shape the listener with a low-pass cutoff and reverb preset for heavier basement/garage spaces. Set `Zone Warning Text` and `Zone Warning Intensity` on a profile when entering that area should show a short HUD warning; basement and garage zones have default fallback warnings.
+Zone locations provide fallback listener feel even when a profile is neutral: inside uses a light room reverb, basement gets a heavy low-pass cave feel, garage gets a brighter parking-lot echo, and outside stays open. Profiles can override this with their own low-pass cutoff and reverb preset. Set `Zone Warning Text` and `Zone Warning Intensity` on a profile when entering that area should show a short HUD warning; basement and garage zones have default fallback warnings.
 
 Prefab starters live in `Prefabs/`:
 
