@@ -34,6 +34,8 @@ namespace Neighbor.Main.Features.Player
         private int lastNeighborMemoryCount;
         private float lastNeighborMemorySuspicion;
         private float neighborMemoryStatusUntil;
+        private float lastNeighborTrailInvestigationPressure;
+        private float neighborTrailInvestigationUntil;
         private float lastNeighborHeardNoise;
         private float neighborHeardNoiseUntil;
         private float cameraWarningUntil;
@@ -715,7 +717,47 @@ namespace Neighbor.Main.Features.Player
 
         private void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
         {
-            warningText.text = feedback.Kind switch
+            UpdateTrailInvestigationPulse(feedback);
+            warningText.text = BuildInvestigationWarningText(feedback);
+            warningText.color = GetInvestigationWarningColor(feedback);
+            messageUntil = Time.unscaledTime + Mathf.Lerp(2.4f, MessageDuration, Mathf.Max(feedback.Suspicion, feedback.Urgency));
+        }
+
+        private void UpdateTrailInvestigationPulse(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
+        {
+            if (!feedback.IsTrailRelated)
+            {
+                return;
+            }
+
+            if (feedback.Kind == PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning
+                || feedback.Kind == PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned)
+            {
+                lastNeighborTrailInvestigationPressure = 0f;
+                neighborTrailInvestigationUntil = 0f;
+                return;
+            }
+
+            float pressure = Mathf.Max(feedback.Suspicion, feedback.Urgency);
+            lastNeighborTrailInvestigationPressure = Mathf.Max(lastNeighborTrailInvestigationPressure, pressure);
+            neighborTrailInvestigationUntil = Time.unscaledTime + Mathf.Lerp(3.2f, 6.5f, pressure);
+        }
+
+        private static string BuildInvestigationWarningText(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
+        {
+            if (feedback.IsTrailRelated)
+            {
+                return feedback.Kind switch
+                {
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail => "HE IS FOLLOWING YOUR TRAIL",
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching => "SEARCHING YOUR TRAIL",
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning => "TRAIL CLEARED",
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned => "NEIGHBOR LOST THE TRAIL",
+                    _ => "NEIGHBOR ON YOUR TRAIL"
+                };
+            }
+
+            return feedback.Kind switch
             {
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started => "NEIGHBOR HEARD SOMETHING",
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail => "HE IS FOLLOWING YOUR TRAIL",
@@ -724,22 +766,33 @@ namespace Neighbor.Main.Features.Player
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned => "NEIGHBOR LOST THE TRAIL",
                 _ => "NEIGHBOR ALERTED"
             };
+        }
 
-            warningText.color = feedback.Kind switch
+        private static Color GetInvestigationWarningColor(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
+        {
+            float pressure = Mathf.Max(feedback.Suspicion, feedback.Urgency);
+            if (feedback.IsTrailRelated)
+            {
+                return Color.Lerp(
+                    new Color(1f, 0.72f, 0.18f, 0.98f),
+                    new Color(1f, 0.22f, 0.06f, 1f),
+                    pressure);
+            }
+
+            return feedback.Kind switch
             {
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail => Color.Lerp(
                     new Color(1f, 0.72f, 0.18f, 0.98f),
                     new Color(1f, 0.28f, 0.08f, 1f),
-                    Mathf.Max(feedback.Suspicion, feedback.Urgency)),
+                    pressure),
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching => new Color(1f, 0.66f, 0.16f, 1f),
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning => new Color(0.76f, 0.84f, 0.94f, 0.95f),
                 PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned => new Color(0.92f, 0.78f, 0.48f, 0.96f),
                 _ => Color.Lerp(
                     new Color(1f, 0.78f, 0.24f, 0.96f),
                     new Color(1f, 0.3f, 0.1f, 1f),
-                    Mathf.Max(feedback.Suspicion, feedback.Urgency))
+                    pressure)
             };
-            messageUntil = Time.unscaledTime + Mathf.Lerp(2.4f, MessageDuration, Mathf.Max(feedback.Suspicion, feedback.Urgency));
         }
 
         private void BuildHud()
@@ -967,7 +1020,22 @@ namespace Neighbor.Main.Features.Player
         {
             float trackedPressure = trackedNeighbor != null ? trackedNeighbor.RememberedClueTension01 : 0f;
             float recentPressure = Time.unscaledTime < neighborMemoryStatusUntil ? lastNeighborMemorySuspicion : 0f;
-            return Mathf.Max(trackedPressure, recentPressure);
+            float trailPressure = Time.unscaledTime < neighborTrailInvestigationUntil
+                ? lastNeighborTrailInvestigationPressure
+                : 0f;
+            return Mathf.Max(Mathf.Max(trackedPressure, recentPressure), trailPressure);
+        }
+
+        private bool IsTrailInvestigationActive()
+        {
+            if (trackedNeighbor != null
+                && (trackedNeighbor.IsHuntingMemoryClue || trackedNeighbor.IsCurrentInvestigationTrailRelated))
+            {
+                return true;
+            }
+
+            return Time.unscaledTime < neighborTrailInvestigationUntil
+                && lastNeighborTrailInvestigationPressure > 0.05f;
         }
 
         private float GetDisplayedNoiseLevel()
@@ -997,6 +1065,7 @@ namespace Neighbor.Main.Features.Player
                 && phase != PlayerFeedbackEvents.StealthLoopPhase.Chased
                 && phase != PlayerFeedbackEvents.StealthLoopPhase.Hiding
                 && phase != PlayerFeedbackEvents.StealthLoopPhase.Certain
+                && phase != PlayerFeedbackEvents.StealthLoopPhase.Searching
                 && phase != PlayerFeedbackEvents.StealthLoopPhase.PostChase)
             {
                 return memoryPressure >= 0.75f ? "SUSPICIOUS / YOUR TRAIL" : "SUSPICIOUS / MEMORY";
@@ -1024,6 +1093,11 @@ namespace Neighbor.Main.Features.Player
 
                     return tension >= 0.7f ? "HIDDEN / BREATH HIGH" : "HIDDEN / STEADY";
                 case PlayerFeedbackEvents.StealthLoopPhase.PostChase:
+                    if (IsTrailInvestigationActive())
+                    {
+                        return "RECOVERY / TRAIL SEARCH";
+                    }
+
                     if (memoryPressure >= 0.55f)
                     {
                         return "RECOVERY / TRAIL";
@@ -1031,6 +1105,11 @@ namespace Neighbor.Main.Features.Player
 
                     return tension >= 0.45f ? "RECOVERY / SEARCHING" : "RECOVERY / QUIET DOWN";
                 case PlayerFeedbackEvents.StealthLoopPhase.Searching:
+                    if (IsTrailInvestigationActive() || memoryPressure >= 0.55f)
+                    {
+                        return "SEARCHING / YOUR TRAIL";
+                    }
+
                     return noise >= 0.35f ? "SEARCHING / NOISE TRACE" : "SEARCHING";
                 case PlayerFeedbackEvents.StealthLoopPhase.Certain:
                     return "CERTAIN / ALMOST SEEN";

@@ -377,7 +377,7 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
-        public void SceneAtmosphereDirector_NeighborTrailInvestigationIntensifiesFogAndGrade()
+        public void SceneAtmosphereDirector_NeighborTrailSearchIntensifiesFogAndGrade()
         {
             RenderSettingsSnapshot snapshot = RenderSettingsSnapshot.Capture();
             GameObject directorObject = new("Trail Atmosphere Director Test");
@@ -403,11 +403,12 @@ namespace Neighbor.Main.Tests
                 float baseVignette = vignette.intensity.value;
 
                 PlayerFeedbackEvents.ReportNeighborInvestigation(
-                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail,
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching,
                     Vector3.zero,
                     "Basement Key Trail",
                     0.66f,
-                    0.9f);
+                    0.9f,
+                    true);
 
                 Assert.That(director.CurrentStealthAtmosphereIntensity, Is.GreaterThan(0.85f));
                 Assert.That(director.TargetStealthAtmosphereIntensity, Is.GreaterThan(0.85f));
@@ -623,7 +624,7 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
-        public void AtmosphereFlickerLight_NeighborTrailInvestigationAddsUnstableLight()
+        public void AtmosphereFlickerLight_NeighborTrailSearchAddsUnstableLight()
         {
             GameObject lightObject = new("Trail Flicker Light Test");
 
@@ -634,11 +635,12 @@ namespace Neighbor.Main.Tests
                 flicker.Configure(1f, 0.2f, 4f);
 
                 PlayerFeedbackEvents.ReportNeighborInvestigation(
-                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail,
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching,
                     Vector3.zero,
                     "Basement Key Trail",
                     0.66f,
-                    0.9f);
+                    0.9f,
+                    true);
 
                 Assert.That(flicker.CurrentStealthPressure, Is.GreaterThan(0.85f));
                 Assert.That(flicker.EffectiveFlickerAmount, Is.GreaterThan(0.48f));
@@ -994,7 +996,7 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
-        public void AtmosphereDressingAnchor_NeighborTrailInvestigationPressurizesDecalsAndProps()
+        public void AtmosphereDressingAnchor_NeighborTrailSearchPressurizesDecalsAndProps()
         {
             GameObject decalObject = GameObject.CreatePrimitive(PrimitiveType.Quad);
             GameObject propObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -1023,11 +1025,12 @@ namespace Neighbor.Main.Tests
                 Vector3 calmPropScale = propObject.transform.localScale;
 
                 PlayerFeedbackEvents.ReportNeighborInvestigation(
-                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail,
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching,
                     Vector3.zero,
                     "Basement Key Trail",
                     0.66f,
-                    0.9f);
+                    0.9f,
+                    true);
 
                 decalRenderer.GetPropertyBlock(block);
                 Color trailDecal = block.GetColor("_BaseColor");
