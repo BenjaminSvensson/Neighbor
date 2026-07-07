@@ -12,6 +12,7 @@ using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
+using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 
 internal static class ScenePlayableSetupUtility
@@ -70,6 +71,7 @@ internal static class ScenePlayableSetupUtility
         Light directionalLight = EnsureDirectionalLight(scene, result);
         Light moonLight = EnsureMoonLight(scene, result);
         DayNightCycle dayNightCycle = EnsureDayNightCycle(scene, directionalLight, moonLight, result);
+        SceneAtmosphereDirector atmosphereDirector = EnsureAtmosphereDirector(scene, directionalLight, moonLight, result);
 
         result.Player = player;
         result.Neighbor = neighbor;
@@ -83,6 +85,7 @@ internal static class ScenePlayableSetupUtility
         result.DirectionalLight = directionalLight;
         result.MoonLight = moonLight;
         result.DayNightCycle = dayNightCycle;
+        result.AtmosphereDirector = atmosphereDirector;
 
         if (bakeNavMesh && navMeshSurface != null)
         {
@@ -482,6 +485,199 @@ internal static class ScenePlayableSetupUtility
         return cycle;
     }
 
+    private static SceneAtmosphereDirector EnsureAtmosphereDirector(
+        Scene scene,
+        Light sun,
+        Light moon,
+        ScenePlayableSetupResult result)
+    {
+        SceneAtmosphereDirector director = FindInScene<SceneAtmosphereDirector>(scene);
+        if (director == null)
+        {
+            GameObject directorObject = CreateSceneObject(scene, "SceneAtmosphere");
+            director = directorObject.AddComponent<SceneAtmosphereDirector>();
+            result.CreatedObjectCount++;
+            result.CreatedAtmosphereDirector = true;
+        }
+
+        Volume volume = EnsureAtmosphereVolume(scene, result);
+        AtmosphereFlickerLight flickerLight = EnsureAtmosphereFlickerLight(scene, result);
+        AtmosphereDressingAnchor[] anchors = EnsureAtmosphereDressing(scene, result);
+        director.Configure(
+            sun,
+            moon,
+            volume,
+            new[] { flickerLight },
+            anchors);
+        EditorUtility.SetDirty(director);
+        return director;
+    }
+
+    private static Volume EnsureAtmosphereVolume(Scene scene, ScenePlayableSetupResult result)
+    {
+        Volume volume = FindNamedInScene<Volume>(scene, "Atmosphere Color Grade Volume");
+        if (volume != null)
+        {
+            volume.isGlobal = true;
+            volume.priority = Mathf.Max(volume.priority, 20f);
+            EditorUtility.SetDirty(volume);
+            return volume;
+        }
+
+        GameObject volumeObject = CreateSceneObject(scene, "Atmosphere Color Grade Volume");
+        volume = volumeObject.AddComponent<Volume>();
+        volume.isGlobal = true;
+        volume.priority = 20f;
+        result.CreatedObjectCount++;
+        result.CreatedAtmosphereVolume = true;
+        return volume;
+    }
+
+    private static AtmosphereFlickerLight EnsureAtmosphereFlickerLight(Scene scene, ScenePlayableSetupResult result)
+    {
+        AtmosphereFlickerLight flicker = FindNamedInScene<AtmosphereFlickerLight>(scene, "Flicker Practical Light");
+        if (flicker != null)
+        {
+            flicker.Configure(0.95f, 0.28f, 8.5f);
+            EditorUtility.SetDirty(flicker);
+            return flicker;
+        }
+
+        GameObject lightObject = CreateSceneObject(scene, "Flicker Practical Light");
+        lightObject.transform.SetPositionAndRotation(new Vector3(1.8f, 2.4f, 1.2f), Quaternion.identity);
+        Light light = lightObject.AddComponent<Light>();
+        light.type = LightType.Point;
+        light.color = new Color(1f, 0.78f, 0.45f, 1f);
+        light.range = 7.5f;
+        light.intensity = 0.95f;
+        light.shadows = LightShadows.Soft;
+        flicker = lightObject.AddComponent<AtmosphereFlickerLight>();
+        flicker.Configure(0.95f, 0.28f, 8.5f);
+        result.CreatedObjectCount++;
+        result.CreatedFlickerLight = true;
+        return flicker;
+    }
+
+    private static AtmosphereDressingAnchor[] EnsureAtmosphereDressing(Scene scene, ScenePlayableSetupResult result)
+    {
+        return new[]
+        {
+            EnsureDressingAnchor(
+                scene,
+                "Dirty Decal - Entry Scuffs",
+                AtmosphereDressingAnchor.DressingKind.DirtyDecal,
+                PrimitiveType.Quad,
+                new Vector3(-1.6f, 0.015f, 1.2f),
+                Quaternion.Euler(90f, 22f, 0f),
+                new Vector3(1.4f, 0.55f, 1f),
+                new Color(0.08f, 0.07f, 0.055f, 0.62f),
+                result),
+            EnsureDressingAnchor(
+                scene,
+                "Dirty Decal - Basement Drag",
+                AtmosphereDressingAnchor.DressingKind.DirtyDecal,
+                PrimitiveType.Quad,
+                new Vector3(1.45f, 0.016f, -1.35f),
+                Quaternion.Euler(90f, -18f, 0f),
+                new Vector3(1.7f, 0.42f, 1f),
+                new Color(0.12f, 0.095f, 0.07f, 0.58f),
+                result),
+            EnsureDressingAnchor(
+                scene,
+                "Prop Dressing - Stacked Boxes",
+                AtmosphereDressingAnchor.DressingKind.PropDressing,
+                PrimitiveType.Cube,
+                new Vector3(-2.2f, 0.35f, -0.8f),
+                Quaternion.Euler(0f, 12f, 0f),
+                new Vector3(0.7f, 0.7f, 0.7f),
+                new Color(0.36f, 0.23f, 0.13f, 1f),
+                result),
+            EnsureDressingAnchor(
+                scene,
+                "Prop Dressing - Loose Plank",
+                AtmosphereDressingAnchor.DressingKind.PropDressing,
+                PrimitiveType.Cube,
+                new Vector3(2.1f, 0.08f, 0.2f),
+                Quaternion.Euler(0f, -28f, 2f),
+                new Vector3(1.6f, 0.12f, 0.22f),
+                new Color(0.24f, 0.14f, 0.075f, 1f),
+                result)
+        };
+    }
+
+    private static AtmosphereDressingAnchor EnsureDressingAnchor(
+        Scene scene,
+        string objectName,
+        AtmosphereDressingAnchor.DressingKind kind,
+        PrimitiveType primitiveType,
+        Vector3 position,
+        Quaternion rotation,
+        Vector3 scale,
+        Color color,
+        ScenePlayableSetupResult result)
+    {
+        AtmosphereDressingAnchor anchor = FindNamedInScene<AtmosphereDressingAnchor>(scene, objectName);
+        if (anchor == null)
+        {
+            GameObject dressingObject = GameObject.CreatePrimitive(primitiveType);
+            dressingObject.name = objectName;
+            SceneManager.MoveGameObjectToScene(dressingObject, scene);
+            Undo.RegisterCreatedObjectUndo(dressingObject, $"Create {objectName}");
+            anchor = dressingObject.AddComponent<AtmosphereDressingAnchor>();
+            result.CreatedObjectCount++;
+            result.CreatedAtmosphereDressing = true;
+        }
+
+        anchor.transform.SetPositionAndRotation(position, rotation);
+        anchor.transform.localScale = scale;
+        anchor.Configure(kind, kind == AtmosphereDressingAnchor.DressingKind.DirtyDecal ? 0.72f : 0.52f);
+        Renderer renderer = anchor.GetComponent<Renderer>();
+        if (renderer != null)
+        {
+            renderer.sharedMaterial = CreateAtmosphereMaterial(objectName, color);
+            EditorUtility.SetDirty(renderer);
+        }
+
+        Collider collider = anchor.GetComponent<Collider>();
+        if (collider != null)
+        {
+            collider.enabled = kind == AtmosphereDressingAnchor.DressingKind.PropDressing;
+            EditorUtility.SetDirty(collider);
+        }
+
+        EditorUtility.SetDirty(anchor);
+        return anchor;
+    }
+
+    private static Material CreateAtmosphereMaterial(string name, Color color)
+    {
+        Shader shader = Shader.Find("Universal Render Pipeline/Lit")
+            ?? Shader.Find("Standard")
+            ?? Shader.Find("Unlit/Color");
+        Material material = new(shader)
+        {
+            name = $"{name} Material",
+            hideFlags = HideFlags.DontSaveInBuild
+        };
+
+        if (material.HasProperty("_BaseColor"))
+        {
+            material.SetColor("_BaseColor", color);
+        }
+
+        if (material.HasProperty("_Color"))
+        {
+            material.SetColor("_Color", color);
+        }
+
+        if (material.HasProperty("_Smoothness"))
+        {
+            material.SetFloat("_Smoothness", 0.22f);
+        }
+
+        return material;
+    }
+
     private static GameObject InstantiatePrefab(string path, Scene scene, string fallbackName)
     {
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
@@ -672,6 +868,7 @@ internal sealed class ScenePlayableSetupResult
     public Light DirectionalLight { get; set; }
     public Light MoonLight { get; set; }
     public DayNightCycle DayNightCycle { get; set; }
+    public SceneAtmosphereDirector AtmosphereDirector { get; set; }
     public int CreatedObjectCount { get; set; }
     public int AddedComponentCount { get; set; }
     public bool CreatedPlayer { get; set; }
@@ -695,6 +892,10 @@ internal sealed class ScenePlayableSetupResult
     public bool CreatedMoonLight { get; set; }
     public bool CreatedDayNightCycle { get; set; }
     public bool UpdatedDayNightCycle { get; set; }
+    public bool CreatedAtmosphereDirector { get; set; }
+    public bool CreatedAtmosphereVolume { get; set; }
+    public bool CreatedFlickerLight { get; set; }
+    public bool CreatedAtmosphereDressing { get; set; }
     public bool BakedNavMesh { get; set; }
     public bool HasChanges =>
         CreatedObjectCount > 0
@@ -703,6 +904,10 @@ internal sealed class ScenePlayableSetupResult
         || UpdatedStartCheckpoint
         || UpdatedEventSystem
         || UpdatedDayNightCycle
+        || CreatedAtmosphereDirector
+        || CreatedAtmosphereVolume
+        || CreatedFlickerLight
+        || CreatedAtmosphereDressing
         || BakedNavMesh;
 
     public string GetSummary()

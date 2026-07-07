@@ -181,6 +181,14 @@ namespace Neighbor.Main.Features.Player
         {
             string spotName = hideSpot != null ? hideSpot.DisplayName : "hiding spot";
             PlayerFeedbackEvents.ReportHiding(spotName, kind, BreathTension01, isHidden, isCompromised);
+            PlayerFeedbackEvents.ReportStealthLoop(
+                isHidden
+                    ? PlayerFeedbackEvents.StealthLoopPhase.Hiding
+                    : PlayerFeedbackEvents.StealthLoopPhase.Quiet,
+                isCompromised ? 1f : BreathTension01,
+                0f,
+                BreathTension01,
+                isHidden ? "Stay still. Let the tension drop." : "Back in the open.");
         }
     }
 }

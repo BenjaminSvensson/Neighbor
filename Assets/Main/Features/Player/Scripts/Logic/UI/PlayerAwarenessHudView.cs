@@ -14,6 +14,7 @@ namespace Neighbor.Main.Features.Player
         private CanvasGroup canvasGroup;
         private Image suspicionFill;
         private Image noiseFill;
+        private Image tensionFill;
         private Image staminaFill;
         private Text awarenessText;
         private Text objectiveText;
@@ -47,6 +48,8 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.OnboardingPrompted += HandleOnboardingPrompted;
             PlayerFeedbackEvents.ObjectiveProgressed += HandleObjectiveProgressed;
             PlayerFeedbackEvents.DoorInteractionReported += HandleDoorInteractionReported;
+            PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
+            PlayerFeedbackEvents.NeighborMemoryChanged += HandleNeighborMemoryChanged;
             PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
             ResolveObjective(true);
         }
@@ -64,6 +67,8 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.OnboardingPrompted -= HandleOnboardingPrompted;
             PlayerFeedbackEvents.ObjectiveProgressed -= HandleObjectiveProgressed;
             PlayerFeedbackEvents.DoorInteractionReported -= HandleDoorInteractionReported;
+            PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
             PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
             UnsubscribeObjective();
         }
@@ -79,6 +84,7 @@ namespace Neighbor.Main.Features.Player
             UpdateAwareness();
             UpdateObjective();
             UpdateNoise();
+            UpdateTension();
             UpdateStamina();
             UpdateWarning();
         }
@@ -180,6 +186,12 @@ namespace Neighbor.Main.Features.Player
                 return;
             }
 
+            if (trackedNeighbor.PostChaseTension01 >= 0.05f)
+            {
+                awarenessText.text = "TENSION";
+                return;
+            }
+
             if (trackedNeighbor.CurrentSuspicionLevel == NeighborBrain.SuspicionLevel.Relaxed)
             {
                 awarenessText.text = "UNNOTICED";
@@ -196,6 +208,23 @@ namespace Neighbor.Main.Features.Player
                 new Color(0.35f, 0.72f, 1f, 0.85f),
                 new Color(1f, 0.34f, 0.12f, 0.95f),
                 noiseLevel);
+        }
+
+        private void UpdateTension()
+        {
+            if (tensionFill == null)
+            {
+                return;
+            }
+
+            float postChaseTension = trackedNeighbor != null ? trackedNeighbor.PostChaseTension01 : 0f;
+            float breathTension = hidingState != null ? hidingState.BreathTension01 : 0f;
+            float tension = Mathf.Max(postChaseTension, breathTension);
+            tensionFill.fillAmount = tension;
+            tensionFill.color = Color.Lerp(
+                new Color(0.36f, 0.4f, 0.72f, 0.8f),
+                new Color(1f, 0.48f, 0.13f, 0.98f),
+                tension);
         }
 
         private void UpdateStamina()
@@ -300,6 +329,13 @@ namespace Neighbor.Main.Features.Player
             {
                 warningText.text = "EXHAUSTED";
                 warningText.color = new Color(1f, 0.45f, 0.18f, 1f);
+                return;
+            }
+
+            if (trackedNeighbor != null && trackedNeighbor.PostChaseTension01 >= 0.35f)
+            {
+                warningText.text = "HE IS STILL SEARCHING";
+                warningText.color = new Color(1f, 0.64f, 0.18f, 0.96f);
                 return;
             }
 
@@ -476,6 +512,41 @@ namespace Neighbor.Main.Features.Player
             messageUntil = Time.unscaledTime + Mathf.Lerp(1.8f, 3.2f, feedback.Intensity);
         }
 
+        private void HandleStealthLoopChanged(PlayerFeedbackEvents.StealthLoopFeedback feedback)
+        {
+            if (feedback.Noise > 0f)
+            {
+                noiseLevel = Mathf.Max(noiseLevel, feedback.Noise);
+            }
+
+            if (feedback.Phase == PlayerFeedbackEvents.StealthLoopPhase.Quiet
+                || string.IsNullOrWhiteSpace(feedback.Message))
+            {
+                return;
+            }
+
+            warningText.text = feedback.Message.ToUpperInvariant();
+            warningText.color = GetStealthLoopColor(feedback);
+            messageUntil = Time.unscaledTime + Mathf.Lerp(1.9f, MessageDuration, Mathf.Max(feedback.Suspicion, feedback.Tension));
+        }
+
+        private void HandleNeighborMemoryChanged(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
+        {
+            warningText.text = feedback.Kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => "HE REMEMBERS THAT DOOR",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => "HE NOTICED THE ROOM CHANGED",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => "HE REMEMBERS THE BROKEN GLASS",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => "HE KNOWS A KEY IS GONE",
+                _ => "HE FOUND A CLUE"
+            };
+            warningText.color = Color.Lerp(
+                new Color(0.8f, 0.86f, 0.96f, 0.95f),
+                new Color(1f, 0.38f, 0.14f, 1f),
+                feedback.Suspicion);
+            messageUntil = Time.unscaledTime + Mathf.Lerp(2.3f, MessageDuration, feedback.Suspicion);
+        }
+
         private void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
         {
             warningText.text = feedback.Kind switch
@@ -544,6 +615,15 @@ namespace Neighbor.Main.Features.Player
             Image noiseBackground = CreateImage("NoiseBackground", new Color(0f, 0f, 0f, 0.5f));
             SetRect(noiseBackground.rectTransform, Vector2.zero, Vector2.zero, new Vector2(102f, 108f), new Vector2(170f, 7f));
             noiseFill = CreateFill("NoiseFill", noiseBackground.transform);
+
+            Text tensionLabel = CreateText("TensionLabel", font, 12, FontStyle.Bold, TextAnchor.MiddleLeft);
+            tensionLabel.text = "TENSION";
+            tensionLabel.color = new Color(1f, 1f, 1f, 0.68f);
+            SetRect(tensionLabel.rectTransform, Vector2.zero, Vector2.zero, new Vector2(42f, 76f), new Vector2(80f, 18f));
+
+            Image tensionBackground = CreateImage("TensionBackground", new Color(0f, 0f, 0f, 0.5f));
+            SetRect(tensionBackground.rectTransform, Vector2.zero, Vector2.zero, new Vector2(132f, 80f), new Vector2(170f, 7f));
+            tensionFill = CreateFill("TensionFill", tensionBackground.transform);
 
             warningText = CreateText("Warning", font, 18, FontStyle.Bold, TextAnchor.MiddleCenter);
             SetRect(warningText.rectTransform, new Vector2(0.5f, 0.75f), new Vector2(0.5f, 0.75f), Vector2.zero, new Vector2(560f, 32f));
@@ -645,6 +725,29 @@ namespace Neighbor.Main.Features.Player
             }
 
             return new Color(0.82f, 0.86f, 0.92f, 0.95f);
+        }
+
+        private static Color GetStealthLoopColor(PlayerFeedbackEvents.StealthLoopFeedback feedback)
+        {
+            switch (feedback.Phase)
+            {
+                case PlayerFeedbackEvents.StealthLoopPhase.Chased:
+                    return new Color(1f, 0.1f, 0.06f, 1f);
+                case PlayerFeedbackEvents.StealthLoopPhase.PostChase:
+                    return new Color(1f, 0.58f, 0.16f, 1f);
+                case PlayerFeedbackEvents.StealthLoopPhase.Searching:
+                    return new Color(1f, 0.68f, 0.18f, 0.98f);
+                case PlayerFeedbackEvents.StealthLoopPhase.Hiding:
+                    return Color.Lerp(
+                        new Color(0.62f, 0.9f, 1f, 0.95f),
+                        new Color(1f, 0.54f, 0.14f, 1f),
+                        feedback.Tension);
+                default:
+                    return Color.Lerp(
+                        new Color(0.78f, 0.86f, 0.96f, 0.95f),
+                        new Color(1f, 0.5f, 0.14f, 1f),
+                        Mathf.Max(feedback.Suspicion, feedback.Noise));
+            }
         }
     }
 }
