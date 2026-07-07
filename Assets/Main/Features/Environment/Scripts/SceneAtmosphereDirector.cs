@@ -1,3 +1,4 @@
+using Neighbor.Main.Features.Player;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -30,6 +31,26 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField, Range(0f, 1f)] private float vignetteIntensity = 0.26f;
         [SerializeField, Range(0f, 1f)] private float filmGrainIntensity = 0.22f;
 
+        [Header("Stealth Atmosphere Response")]
+        [SerializeField] private bool respondToStealthLoop = true;
+        [SerializeField, Range(0f, 1f)] private float searchingAtmosphereIntensity = 0.52f;
+        [SerializeField, Range(0f, 1f)] private float postChaseAtmosphereIntensity = 0.64f;
+        [SerializeField, Range(0f, 1f)] private float hidingAtmosphereIntensity = 0.42f;
+        [SerializeField, Min(0f)] private float stealthAtmosphereHoldDuration = 2.8f;
+        [SerializeField, Min(0f)] private float stealthAtmosphereFadeSpeed = 1.6f;
+        [SerializeField, Min(0f)] private float stealthFogDensityBoost = 0.02f;
+        [SerializeField] private Color stealthFogColor = new(0.2f, 0.26f, 0.3f, 1f);
+        [SerializeField, Range(-2f, 0f)] private float stealthExposureOffset = -0.24f;
+        [SerializeField, Range(0f, 100f)] private float stealthContrastBoost = 14f;
+        [SerializeField, Range(-100f, 0f)] private float stealthSaturationOffset = -10f;
+        [SerializeField] private Color stealthColorFilter = new(0.76f, 0.86f, 1f, 1f);
+        [SerializeField, Range(0f, 1f)] private float stealthVignetteBoost = 0.24f;
+        [SerializeField, Range(0f, 1f)] private float stealthFilmGrainBoost = 0.2f;
+
+        private float currentStealthAtmosphereIntensity;
+        private float targetStealthAtmosphereIntensity;
+        private float stealthAtmosphereHoldUntilTime;
+
         public Light SunLight => sunLight;
         public Light MoonLight => moonLight;
         public Volume ColorGradingVolume => colorGradingVolume;
@@ -39,6 +60,8 @@ namespace Neighbor.Main.Features.Environment
         public int FlickerLightCount => CountLive(flickerLights);
         public int DirtyDecalAnchorCount => CountAnchors(AtmosphereDressingAnchor.DressingKind.DirtyDecal);
         public int PropDressingAnchorCount => CountAnchors(AtmosphereDressingAnchor.DressingKind.PropDressing);
+        public float CurrentStealthAtmosphereIntensity => currentStealthAtmosphereIntensity;
+        public float TargetStealthAtmosphereIntensity => targetStealthAtmosphereIntensity;
 
         private void Awake()
         {
@@ -47,12 +70,23 @@ namespace Neighbor.Main.Features.Environment
 
         private void OnEnable()
         {
+            PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
             ApplyAtmosphere();
+        }
+
+        private void OnDisable()
+        {
+            PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
         }
 
         private void Update()
         {
-            if (!Application.isPlaying)
+            if (Application.isPlaying)
+            {
+                UpdateStealthAtmosphere(Time.unscaledDeltaTime);
+            }
+            else
             {
                 ApplyAtmosphere();
             }
@@ -108,8 +142,8 @@ namespace Neighbor.Main.Features.Environment
 
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogColor = fogColor;
-            RenderSettings.fogDensity = fogDensity;
+            RenderSettings.fogColor = Color.Lerp(fogColor, stealthFogColor, currentStealthAtmosphereIntensity);
+            RenderSettings.fogDensity = fogDensity + stealthFogDensityBoost * currentStealthAtmosphereIntensity;
         }
 
         private void ApplyColorGrade()
@@ -135,17 +169,22 @@ namespace Neighbor.Main.Features.Environment
                 colorAdjustments = profile.Add<ColorAdjustments>(true);
             }
 
-            colorAdjustments.postExposure.Override(exposure);
-            colorAdjustments.contrast.Override(contrast);
-            colorAdjustments.saturation.Override(saturation);
-            colorAdjustments.colorFilter.Override(colorFilter);
+            colorAdjustments.postExposure.Override(
+                exposure + stealthExposureOffset * currentStealthAtmosphereIntensity);
+            colorAdjustments.contrast.Override(
+                contrast + stealthContrastBoost * currentStealthAtmosphereIntensity);
+            colorAdjustments.saturation.Override(
+                saturation + stealthSaturationOffset * currentStealthAtmosphereIntensity);
+            colorAdjustments.colorFilter.Override(
+                Color.Lerp(colorFilter, stealthColorFilter, currentStealthAtmosphereIntensity));
 
             if (!profile.TryGet(out Vignette vignette))
             {
                 vignette = profile.Add<Vignette>(true);
             }
 
-            vignette.intensity.Override(vignetteIntensity);
+            vignette.intensity.Override(
+                Mathf.Clamp01(vignetteIntensity + stealthVignetteBoost * currentStealthAtmosphereIntensity));
             vignette.smoothness.Override(0.42f);
 
             if (!profile.TryGet(out FilmGrain filmGrain))
@@ -154,8 +193,71 @@ namespace Neighbor.Main.Features.Environment
             }
 
             filmGrain.type.Override(FilmGrainLookup.Thin1);
-            filmGrain.intensity.Override(filmGrainIntensity);
+            filmGrain.intensity.Override(
+                Mathf.Clamp01(filmGrainIntensity + stealthFilmGrainBoost * currentStealthAtmosphereIntensity));
             filmGrain.response.Override(0.74f);
+        }
+
+        private void HandleStealthLoopChanged(PlayerFeedbackEvents.StealthLoopFeedback feedback)
+        {
+            if (!respondToStealthLoop)
+            {
+                return;
+            }
+
+            targetStealthAtmosphereIntensity = GetStealthAtmosphereIntensity(feedback);
+            if (targetStealthAtmosphereIntensity <= 0f)
+            {
+                stealthAtmosphereHoldUntilTime = 0f;
+            }
+            else
+            {
+                stealthAtmosphereHoldUntilTime = Time.unscaledTime + stealthAtmosphereHoldDuration;
+            }
+
+            if (targetStealthAtmosphereIntensity > currentStealthAtmosphereIntensity)
+            {
+                currentStealthAtmosphereIntensity = targetStealthAtmosphereIntensity;
+            }
+
+            ApplyAtmosphere();
+        }
+
+        private void UpdateStealthAtmosphere(float deltaTime)
+        {
+            if (!respondToStealthLoop)
+            {
+                targetStealthAtmosphereIntensity = 0f;
+            }
+
+            float desiredIntensity = Time.unscaledTime <= stealthAtmosphereHoldUntilTime
+                ? targetStealthAtmosphereIntensity
+                : 0f;
+            float previousIntensity = currentStealthAtmosphereIntensity;
+            currentStealthAtmosphereIntensity = Mathf.MoveTowards(
+                currentStealthAtmosphereIntensity,
+                desiredIntensity,
+                stealthAtmosphereFadeSpeed * Mathf.Max(0f, deltaTime));
+
+            if (!Mathf.Approximately(previousIntensity, currentStealthAtmosphereIntensity))
+            {
+                ApplyAtmosphere();
+            }
+        }
+
+        private float GetStealthAtmosphereIntensity(PlayerFeedbackEvents.StealthLoopFeedback feedback)
+        {
+            float feedbackPressure = Mathf.Max(feedback.Suspicion, feedback.Noise, feedback.Tension);
+            return feedback.Phase switch
+            {
+                PlayerFeedbackEvents.StealthLoopPhase.Chased => 1f,
+                PlayerFeedbackEvents.StealthLoopPhase.Searching => Mathf.Max(searchingAtmosphereIntensity, feedbackPressure),
+                PlayerFeedbackEvents.StealthLoopPhase.PostChase => Mathf.Max(postChaseAtmosphereIntensity, feedback.Tension),
+                PlayerFeedbackEvents.StealthLoopPhase.Hiding => Mathf.Max(hidingAtmosphereIntensity, feedback.Tension),
+                PlayerFeedbackEvents.StealthLoopPhase.Suspicious => Mathf.Max(0.48f, feedbackPressure),
+                PlayerFeedbackEvents.StealthLoopPhase.Curious => Mathf.Max(0.22f, Mathf.Min(0.42f, feedbackPressure)),
+                _ => 0f
+            };
         }
 
         private int CountAnchors(AtmosphereDressingAnchor.DressingKind kind)
