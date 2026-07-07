@@ -12,6 +12,7 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float breathTensionRecoveryRate = 0.3f;
         [SerializeField, Min(0f)] private float hiddenBreathRecoveryDelay = 1.2f;
         [SerializeField, Min(0f)] private float calmHiddenBreathRecoveryRate = 0.16f;
+        [SerializeField, Range(0f, 1f)] private float recoveredBreathTensionThreshold = 0.22f;
         [SerializeField, Range(0f, 1f)] private float inspectionTensionIncrease = 0.42f;
         [SerializeField, Range(0f, 1f)] private float compromisedTensionThreshold = 0.94f;
         [SerializeField, Range(0f, 1f)] private float exposedVisibilityThreshold = 0.78f;
@@ -35,6 +36,7 @@ namespace Neighbor.Main.Features.Player
         private float nextBreathNoiseTime = float.NegativeInfinity;
         private float nextNeighborSearchTime;
         private NeighborBrain dangerNeighbor;
+        private bool waitingForBreathRecoveryFeedback;
 
         public bool IsHidden { get; private set; }
         public ClosetHideSpot CurrentHideSpot { get; private set; }
@@ -103,6 +105,7 @@ namespace Neighbor.Main.Features.Player
                 lastInspectionTime = float.NegativeInfinity;
                 nextBreathNoiseTime = Time.time + breathNoiseCooldown;
                 IsCompromised = false;
+                waitingForBreathRecoveryFeedback = false;
             }
 
             IsHidden = true;
@@ -117,6 +120,7 @@ namespace Neighbor.Main.Features.Player
         {
             lastInspectionTime = Time.time;
             BreathTension01 = Mathf.Clamp01(BreathTension01 + inspectionTensionIncrease);
+            waitingForBreathRecoveryFeedback = true;
             if (foundPlayer || BreathTension01 >= compromisedTensionThreshold)
             {
                 IsCompromised = true;
@@ -134,6 +138,11 @@ namespace Neighbor.Main.Features.Player
         public void AddBreathTension(float amount)
         {
             BreathTension01 = Mathf.Clamp01(BreathTension01 + Mathf.Max(0f, amount));
+            if (BreathTension01 > recoveredBreathTensionThreshold)
+            {
+                waitingForBreathRecoveryFeedback = true;
+            }
+
             if (BreathTension01 >= compromisedTensionThreshold)
             {
                 IsCompromised = true;
@@ -188,6 +197,11 @@ namespace Neighbor.Main.Features.Player
             {
                 float dangerBuildMultiplier = Mathf.Lerp(0.35f, 1f, danger01);
                 BreathTension01 = Mathf.Clamp01(BreathTension01 + breathTensionBuildRate * dangerBuildMultiplier * deltaTime);
+                if (BreathTension01 > recoveredBreathTensionThreshold)
+                {
+                    waitingForBreathRecoveryFeedback = true;
+                }
+
                 if (BreathTension01 >= compromisedTensionThreshold)
                 {
                     IsCompromised = true;
@@ -198,10 +212,23 @@ namespace Neighbor.Main.Features.Player
 
             if (HiddenDuration > hiddenBreathRecoveryDelay)
             {
+                float previousTension = BreathTension01;
                 BreathTension01 = Mathf.MoveTowards(
                     BreathTension01,
                     0f,
                     calmHiddenBreathRecoveryRate * deltaTime);
+                if (waitingForBreathRecoveryFeedback
+                    && previousTension > recoveredBreathTensionThreshold
+                    && BreathTension01 <= recoveredBreathTensionThreshold
+                    && !IsCompromised)
+                {
+                    waitingForBreathRecoveryFeedback = false;
+                    ReportHidingFeedback(
+                        CurrentHideSpot,
+                        PlayerFeedbackEvents.HidingFeedbackKind.Recovered,
+                        true,
+                        false);
+                }
             }
         }
 
@@ -275,7 +302,9 @@ namespace Neighbor.Main.Features.Player
                 isCompromised ? 1f : BreathTension01,
                 0f,
                 BreathTension01,
-                isHidden ? "Stay still. Let the tension drop." : "Back in the open.");
+                kind == PlayerFeedbackEvents.HidingFeedbackKind.Recovered
+                    ? "Breathing under control."
+                    : isHidden ? "Stay still. Let the tension drop." : "Back in the open.");
         }
     }
 }

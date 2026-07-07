@@ -422,6 +422,76 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void HidingBreath_RecoveryReportsSteadyHiddenLoop()
+        {
+            PlayerHidingState hidingState = context.AddInitializedComponent<PlayerHidingState>(
+                context.CreateObject("Player"));
+            hidingState.SetHidden(true);
+            hidingState.AddBreathTension(0.58f);
+            GameplaySmokeTestReflection.SetField(hidingState, "hiddenSinceTime", Time.time - 5f);
+            GameplaySmokeTestReflection.SetField(hidingState, "hiddenBreathRecoveryDelay", 0f);
+            GameplaySmokeTestReflection.SetField(hidingState, "calmHiddenBreathRecoveryRate", 0.5f);
+            GameplaySmokeTestReflection.SetField(hidingState, "recoveredBreathTensionThreshold", 0.25f);
+
+            PlayerFeedbackEvents.HidingFeedback hidingFeedback = default;
+            PlayerFeedbackEvents.StealthLoopFeedback stealthFeedback = default;
+            bool hidingReported = false;
+            bool stealthReported = false;
+            PlayerFeedbackEvents.HidingChanged += HandleHidingChanged;
+            PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
+            try
+            {
+                GameplaySmokeTestReflection.Invoke(hidingState, "UpdateHiddenBreathTension", 1f);
+            }
+            finally
+            {
+                PlayerFeedbackEvents.HidingChanged -= HandleHidingChanged;
+                PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            }
+
+            Assert.That(hidingReported, Is.True);
+            Assert.That(stealthReported, Is.True);
+            Assert.That(hidingFeedback.Kind, Is.EqualTo(PlayerFeedbackEvents.HidingFeedbackKind.Recovered));
+            Assert.That(hidingFeedback.IsHidden, Is.True);
+            Assert.That(hidingFeedback.BreathTension, Is.LessThanOrEqualTo(0.25f));
+            Assert.That(stealthFeedback.Phase, Is.EqualTo(PlayerFeedbackEvents.StealthLoopPhase.Hiding));
+            Assert.That(stealthFeedback.Message, Is.EqualTo("Breathing under control."));
+            Assert.That(stealthFeedback.Tension, Is.LessThanOrEqualTo(0.25f));
+
+            void HandleHidingChanged(PlayerFeedbackEvents.HidingFeedback feedback)
+            {
+                hidingFeedback = feedback;
+                hidingReported = true;
+            }
+
+            void HandleStealthLoopChanged(PlayerFeedbackEvents.StealthLoopFeedback feedback)
+            {
+                stealthFeedback = feedback;
+                stealthReported = true;
+            }
+        }
+
+        [Test]
+        public void AwarenessHud_ShowsHidingRecoveryFeedback()
+        {
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleHidingChanged",
+                new PlayerFeedbackEvents.HidingFeedback(
+                    "closet",
+                    PlayerFeedbackEvents.HidingFeedbackKind.Recovered,
+                    0.12f,
+                    true,
+                    false));
+
+            Text warningText = GameplaySmokeTestReflection.GetField<Text>(hud, "warningText");
+            Assert.That(warningText.text, Is.EqualTo("BREATH STEADY"));
+        }
+
+        [Test]
         public void HidingBreath_BuildsWhenNeighborSearchesNearby()
         {
             PlayerHidingState hidingState = context.AddInitializedComponent<PlayerHidingState>(

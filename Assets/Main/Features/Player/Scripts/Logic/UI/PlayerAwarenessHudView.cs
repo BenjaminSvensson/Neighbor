@@ -533,6 +533,7 @@ namespace Neighbor.Main.Features.Player
                 PlayerFeedbackEvents.HidingFeedbackKind.Exited => $"LEFT {spotName}",
                 PlayerFeedbackEvents.HidingFeedbackKind.Inspected => $"SEARCHED {spotName} - STAY STILL",
                 PlayerFeedbackEvents.HidingFeedbackKind.Found => $"FOUND IN {spotName}",
+                PlayerFeedbackEvents.HidingFeedbackKind.Recovered => "BREATH STEADY",
                 _ => spotName
             };
             warningText.color = feedback.Kind switch
@@ -544,9 +545,12 @@ namespace Neighbor.Main.Features.Player
                     new Color(1f, 0.46f, 0.12f, 1f),
                     feedback.BreathTension),
                 PlayerFeedbackEvents.HidingFeedbackKind.Found => new Color(1f, 0.12f, 0.08f, 1f),
+                PlayerFeedbackEvents.HidingFeedbackKind.Recovered => new Color(0.62f, 0.95f, 1f, 0.96f),
                 _ => new Color(0.82f, 0.86f, 0.92f, 0.95f)
             };
-            messageUntil = Time.unscaledTime + (feedback.Kind == PlayerFeedbackEvents.HidingFeedbackKind.Found ? MessageDuration : 2.8f);
+            messageUntil = Time.unscaledTime + (feedback.Kind == PlayerFeedbackEvents.HidingFeedbackKind.Found
+                ? MessageDuration
+                : feedback.Kind == PlayerFeedbackEvents.HidingFeedbackKind.Recovered ? 2.4f : 2.8f);
         }
 
         private void HandleObjectiveProgressChanged(CoreLoopObjectiveTracker tracker)

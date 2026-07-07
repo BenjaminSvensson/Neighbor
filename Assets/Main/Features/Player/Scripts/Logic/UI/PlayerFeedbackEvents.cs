@@ -110,7 +110,8 @@ namespace Neighbor.Main.Features.Player
             Entered,
             Exited,
             Inspected,
-            Found
+            Found,
+            Recovered
         }
 
         public readonly struct HidingFeedback
