@@ -206,7 +206,8 @@ namespace Neighbor.Main.Features.Environment
 
             return ContainsVegetationToken(material.name)
                 || ContainsVegetationToken(renderer != null ? renderer.name : null)
-                || ContainsVegetationToken(renderer != null ? renderer.gameObject.name : null);
+                || ContainsVegetationToken(renderer != null ? renderer.gameObject.name : null)
+                || ContainsVegetationToken(GetAncestorNames(renderer != null ? renderer.transform : null));
         }
 
         private Material CreateReplacementMaterial(Renderer renderer, Material original)

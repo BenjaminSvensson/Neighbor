@@ -42,6 +42,39 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void RepairSceneVegetationMaterials_ReplacesTexturelessBasicTreeLodMaterialFromParentContext()
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            GameObject tree = new("BasicTree");
+            GameObject lod = new("LOD0");
+            Material texturelessMaterial = CreateTexturelessMaterial();
+            try
+            {
+                lod.transform.SetParent(tree.transform);
+                MeshRenderer renderer = lod.AddComponent<MeshRenderer>();
+                renderer.sharedMaterial = texturelessMaterial;
+                LODGroup lodGroup = tree.AddComponent<LODGroup>();
+                lodGroup.SetLODs(new[] { new LOD(0.6f, new Renderer[] { renderer }) });
+
+                VegetationMaterialGuard guard = VegetationMaterialGuard.EnsureForScene(scene);
+                int repairCount = guard.LastTotalRepairs;
+
+                Material repairedMaterial = renderer.sharedMaterial;
+                Assert.That(repairCount, Is.EqualTo(1));
+                Assert.That(guard.LastSceneRendererRepairs, Is.EqualTo(1));
+                Assert.That(repairedMaterial, Is.Not.Null);
+                Assert.That(repairedMaterial, Is.Not.SameAs(texturelessMaterial));
+                Assert.That(VegetationMaterialGuard.IsBrokenVegetationMaterial(repairedMaterial), Is.False);
+                Assert.That(HasMainTexture(repairedMaterial), Is.True);
+            }
+            finally
+            {
+                Object.DestroyImmediate(tree);
+                Object.DestroyImmediate(texturelessMaterial);
+            }
+        }
+
+        [Test]
         public void RepairSceneVegetationMaterials_ReplacesTerrainTreePrototypeMaterial()
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -99,6 +132,29 @@ namespace Neighbor.Main.Tests
             if (material.HasProperty("_Color"))
             {
                 material.SetColor("_Color", Color.magenta);
+            }
+
+            return material;
+        }
+
+        private static Material CreateTexturelessMaterial()
+        {
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit")
+                ?? Shader.Find("Standard")
+                ?? Shader.Find("Unlit/Color");
+            Material material = new(shader)
+            {
+                name = "PrototypeDefaultMaterial"
+            };
+
+            if (material.HasProperty("_BaseColor"))
+            {
+                material.SetColor("_BaseColor", new Color(0.52f, 0.48f, 0.39f, 1f));
+            }
+
+            if (material.HasProperty("_Color"))
+            {
+                material.SetColor("_Color", new Color(0.52f, 0.48f, 0.39f, 1f));
             }
 
             return material;
