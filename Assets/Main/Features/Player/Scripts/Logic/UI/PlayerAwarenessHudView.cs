@@ -226,7 +226,7 @@ namespace Neighbor.Main.Features.Player
             }
 
             PlayerFeedbackEvents.StealthLoopPhase phase = GetDisplayedStealthLoopPhase();
-            bool hasRecentLoopStatus = Time.unscaledTime < stealthLoopStatusUntil;
+            bool hasRecentLoopStatus = HasRecentStealthLoopStatus();
             float suspicion = trackedNeighbor != null
                 ? trackedNeighbor.Suspicion
                 : hasRecentLoopStatus ? lastStealthLoopSuspicion : 0f;
@@ -260,7 +260,9 @@ namespace Neighbor.Main.Features.Player
 
             float postChaseTension = trackedNeighbor != null ? trackedNeighbor.PostChaseTension01 : 0f;
             float breathTension = hidingState != null ? hidingState.BreathTension01 : 0f;
-            float tension = Mathf.Max(postChaseTension, breathTension, GetDisplayedMemoryPressure());
+            float tension = Mathf.Max(
+                Mathf.Max(postChaseTension, breathTension),
+                Mathf.Max(GetRecentStealthLoopTension(), GetDisplayedMemoryPressure()));
             tensionFill.fillAmount = tension;
             tensionFill.color = Color.Lerp(
                 new Color(0.36f, 0.4f, 0.72f, 0.8f),
@@ -398,6 +400,23 @@ namespace Neighbor.Main.Features.Player
             {
                 warningText.text = "HE IS STILL SEARCHING";
                 warningText.color = new Color(1f, 0.64f, 0.18f, 0.96f);
+                return;
+            }
+
+            float recentLoopTension = GetRecentStealthLoopTension();
+            if (recentLoopTension >= 0.55f)
+            {
+                warningText.text = lastStealthLoopPhase switch
+                {
+                    PlayerFeedbackEvents.StealthLoopPhase.PostChase => "POST-CHASE TENSION",
+                    PlayerFeedbackEvents.StealthLoopPhase.Hiding => "HOLD YOUR BREATH",
+                    PlayerFeedbackEvents.StealthLoopPhase.Chased => "DANGER CLOSE",
+                    _ => "TENSION HIGH"
+                };
+                warningText.color = Color.Lerp(
+                    new Color(1f, 0.68f, 0.18f, 0.96f),
+                    new Color(1f, 0.28f, 0.08f, 1f),
+                    recentLoopTension);
                 return;
             }
 
@@ -883,6 +902,16 @@ namespace Neighbor.Main.Features.Player
             float trackedPressure = trackedNeighbor != null ? trackedNeighbor.RememberedClueTension01 : 0f;
             float recentPressure = Time.unscaledTime < neighborMemoryStatusUntil ? lastNeighborMemorySuspicion : 0f;
             return Mathf.Max(trackedPressure, recentPressure);
+        }
+
+        private bool HasRecentStealthLoopStatus()
+        {
+            return Time.unscaledTime < stealthLoopStatusUntil;
+        }
+
+        private float GetRecentStealthLoopTension()
+        {
+            return HasRecentStealthLoopStatus() ? lastStealthLoopTension : 0f;
         }
 
         private string BuildStealthStatusText(

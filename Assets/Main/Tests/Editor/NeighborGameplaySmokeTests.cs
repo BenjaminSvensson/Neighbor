@@ -171,6 +171,7 @@ namespace Neighbor.Main.Tests
             PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
                 context.CreateObject("AwarenessHud"));
             Text warningText = GameplaySmokeTestReflection.GetField<Text>(hud, "warningText");
+            Image tensionFill = GameplaySmokeTestReflection.GetField<Image>(hud, "tensionFill");
 
             GameplaySmokeTestReflection.Invoke(
                 hud,
@@ -183,6 +184,12 @@ namespace Neighbor.Main.Tests
                     "Stay hidden. He is checking the area."));
 
             Assert.That(warningText.text, Is.EqualTo("STAY HIDDEN. HE IS CHECKING THE AREA."));
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateTension");
+            Assert.That(tensionFill.fillAmount, Is.GreaterThan(0.75f));
+
+            GameplaySmokeTestReflection.SetField(hud, "messageUntil", 0f);
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateWarning");
+            Assert.That(warningText.text, Is.EqualTo("POST-CHASE TENSION"));
 
             GameplaySmokeTestReflection.Invoke(
                 hud,
