@@ -25,6 +25,7 @@ namespace Neighbor.Main.Features.Player
         [SerializeField] private bool defaultInvertLookY;
         [SerializeField] private bool defaultFullscreen = true;
         [SerializeField] private PlayerPerformanceProfile defaultPerformanceProfile = PlayerPerformanceProfile.Balanced;
+        [SerializeField] private PlayerFrameRateLimit defaultFrameRateLimit = PlayerFrameRateLimit.Profile;
 
         private PlayerController playerController;
         private PlayerCameraController cameraController;
@@ -36,10 +37,12 @@ namespace Neighbor.Main.Features.Player
         private Text invertLookYValueText;
         private Text fullscreenValueText;
         private Text performanceProfileValueText;
+        private Text frameRateLimitValueText;
         private CursorLockMode previousCursorLockMode;
         private bool previousCursorVisible;
         private float previousTimeScale = 1f;
         private PlayerPerformanceProfile currentPerformanceProfile = PlayerPerformanceProfile.Balanced;
+        private PlayerFrameRateLimit currentFrameRateLimit = PlayerFrameRateLimit.Profile;
         private PlayerInputBindingAction? pendingRebindAction;
         private int pendingRebindStartFrame;
         private bool invertLookY;
@@ -193,8 +196,13 @@ namespace Neighbor.Main.Features.Player
             currentPerformanceProfile = PlayerPrefs.HasKey(PlayerPerformanceSettings.PreferenceKey)
                 ? PlayerPerformanceSettings.LoadProfile()
                 : defaultPerformanceProfile;
+            currentFrameRateLimit = PlayerPrefs.HasKey(PlayerPerformanceSettings.FrameRateLimitPreferenceKey)
+                ? PlayerPerformanceSettings.LoadFrameRateLimit()
+                : defaultFrameRateLimit;
+            PlayerPerformanceSettings.ApplyFrameRateLimit(currentFrameRateLimit);
             PlayerPerformanceSettings.ApplyProfile(currentPerformanceProfile);
             RefreshPerformanceProfileText();
+            RefreshFrameRateLimitText();
             RefreshBindingButtons();
         }
 
@@ -308,7 +316,7 @@ namespace Neighbor.Main.Features.Player
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
             panelRect.pivot = new Vector2(0.5f, 0.5f);
             panelRect.anchoredPosition = Vector2.zero;
-            panelRect.sizeDelta = new Vector2(680f, 960f);
+            panelRect.sizeDelta = new Vector2(680f, 1000f);
 
             Text title = CreateText("Title", panel.transform, font, 30, FontStyle.Bold, TextAnchor.MiddleCenter);
             SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -44f), new Vector2(440f, 44f));
@@ -321,21 +329,22 @@ namespace Neighbor.Main.Features.Player
             CreateToggleRow(panel.transform, font, "Invert Y", new Vector2(-150f, 112f), ToggleInvertLookY, out invertLookYValueText);
             CreateToggleRow(panel.transform, font, "Fullscreen", new Vector2(170f, 112f), ToggleFullscreen, out fullscreenValueText);
 
-            CreatePerformanceRow(panel.transform, font, new Vector2(0f, 52f));
+            CreatePerformanceRow(panel.transform, font, new Vector2(0f, 64f));
+            CreateFrameRateRow(panel.transform, font, new Vector2(0f, 18f));
 
             Text controlsTitle = CreateText("Controls Title", panel.transform, font, 15, FontStyle.Bold, TextAnchor.MiddleLeft);
             controlsTitle.text = "CONTROLS";
             controlsTitle.color = new Color(1f, 1f, 1f, 0.76f);
-            SetRect(controlsTitle.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-220f, -8f), new Vector2(180f, 24f));
+            SetRect(controlsTitle.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-220f, -38f), new Vector2(180f, 24f));
 
-            CreateButton(panel.transform, font, "Reset Settings", new Vector2(55f, -8f), ResetUserSettings, new Vector2(150f, 32f));
-            CreateButton(panel.transform, font, "Reset Controls", new Vector2(215f, -8f), ResetControlBindings, new Vector2(150f, 32f));
+            CreateButton(panel.transform, font, "Reset Settings", new Vector2(55f, -38f), ResetUserSettings, new Vector2(150f, 32f));
+            CreateButton(panel.transform, font, "Reset Controls", new Vector2(215f, -38f), ResetControlBindings, new Vector2(150f, 32f));
 
             CreateBindingRows(panel.transform, font);
 
-            CreateButton(panel.transform, font, "Resume", new Vector2(0f, -405f), Close, new Vector2(280f, 44f));
-            CreateButton(panel.transform, font, "Restart", new Vector2(-122f, -455f), RestartScene, new Vector2(210f, 42f));
-            CreateButton(panel.transform, font, "Quit", new Vector2(122f, -455f), QuitGame, new Vector2(210f, 42f));
+            CreateButton(panel.transform, font, "Resume", new Vector2(0f, -420f), Close, new Vector2(280f, 44f));
+            CreateButton(panel.transform, font, "Restart", new Vector2(-122f, -470f), RestartScene, new Vector2(210f, 42f));
+            CreateButton(panel.transform, font, "Quit", new Vector2(122f, -470f), QuitGame, new Vector2(210f, 42f));
         }
 
         private void CreateToggleRow(
@@ -363,7 +372,7 @@ namespace Neighbor.Main.Features.Player
                 int column = i % 2;
                 int row = i / 2;
                 float x = column == 0 ? -175f : 175f;
-                float y = -52f - row * 34f;
+                float y = -78f - row * 32f;
                 CreateBindingRow(parent, font, actions[i], new Vector2(x, y));
             }
         }
@@ -382,6 +391,22 @@ namespace Neighbor.Main.Features.Player
             SetRect(performanceProfileValueText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(124f, 0f), new Vector2(120f, 28f));
 
             CreateButton(parent, font, ">", position + new Vector2(210f, 0f), () => CyclePerformanceProfile(1), new Vector2(42f, 34f));
+        }
+
+        private void CreateFrameRateRow(Transform parent, Font font, Vector2 position)
+        {
+            Text labelText = CreateText("Frame Rate Limit Label", parent, font, 15, FontStyle.Bold, TextAnchor.MiddleLeft);
+            labelText.text = "FRAME CAP";
+            labelText.color = new Color(1f, 1f, 1f, 0.76f);
+            SetRect(labelText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(-185f, 0f), new Vector2(170f, 28f));
+
+            CreateButton(parent, font, "<", position + new Vector2(38f, 0f), () => CycleFrameRateLimit(-1), new Vector2(42f, 34f));
+
+            frameRateLimitValueText = CreateText("Frame Rate Limit Value", parent, font, 15, FontStyle.Bold, TextAnchor.MiddleCenter);
+            frameRateLimitValueText.color = new Color(1f, 0.86f, 0.42f, 0.95f);
+            SetRect(frameRateLimitValueText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(124f, 0f), new Vector2(120f, 28f));
+
+            CreateButton(parent, font, ">", position + new Vector2(210f, 0f), () => CycleFrameRateLimit(1), new Vector2(42f, 34f));
         }
 
         private void CreateBindingRow(Transform parent, Font font, PlayerInputBindingAction action, Vector2 position)
@@ -465,6 +490,15 @@ namespace Neighbor.Main.Features.Player
             RefreshPerformanceProfileText();
         }
 
+        private void CycleFrameRateLimit(int direction)
+        {
+            currentFrameRateLimit = direction >= 0
+                ? PlayerPerformanceSettings.GetNextFrameRateLimit(currentFrameRateLimit)
+                : PlayerPerformanceSettings.GetPreviousFrameRateLimit(currentFrameRateLimit);
+            PlayerPerformanceSettings.SetFrameRateLimit(currentFrameRateLimit);
+            RefreshFrameRateLimitText();
+        }
+
         private void BeginRebind(PlayerInputBindingAction action)
         {
             pendingRebindAction = action;
@@ -521,7 +555,8 @@ namespace Neighbor.Main.Features.Player
                 defaultFieldOfView,
                 defaultInvertLookY,
                 defaultFullscreen,
-                defaultPerformanceProfile);
+                defaultPerformanceProfile,
+                defaultFrameRateLimit);
 
             ApplySensitivity(defaultSensitivity);
             ApplyVolume(defaultVolume);
@@ -529,8 +564,11 @@ namespace Neighbor.Main.Features.Player
             ApplyInvertLookY(defaultInvertLookY);
             ApplyFullscreen(defaultFullscreen);
             currentPerformanceProfile = defaultPerformanceProfile;
+            currentFrameRateLimit = defaultFrameRateLimit;
+            PlayerPerformanceSettings.ApplyFrameRateLimit(currentFrameRateLimit);
             PlayerPerformanceSettings.ApplyProfile(currentPerformanceProfile);
             RefreshPerformanceProfileText();
+            RefreshFrameRateLimitText();
         }
 
         private static void ResetPersistentSettings(
@@ -539,7 +577,8 @@ namespace Neighbor.Main.Features.Player
             float fieldOfView,
             bool invertLookY,
             bool fullscreen,
-            PlayerPerformanceProfile performanceProfile)
+            PlayerPerformanceProfile performanceProfile,
+            PlayerFrameRateLimit frameRateLimit)
         {
             PlayerPrefs.SetFloat(SensitivityPreferenceKey, Mathf.Clamp(sensitivity, 0.02f, 0.2f));
             PlayerPrefs.SetFloat(VolumePreferenceKey, Mathf.Clamp01(volume));
@@ -547,6 +586,7 @@ namespace Neighbor.Main.Features.Player
             PlayerPrefs.SetInt(InvertLookYPreferenceKey, invertLookY ? 1 : 0);
             PlayerPrefs.SetInt(FullscreenPreferenceKey, fullscreen ? 1 : 0);
             PlayerPrefs.SetInt(PlayerPerformanceSettings.PreferenceKey, (int)performanceProfile);
+            PlayerPrefs.SetInt(PlayerPerformanceSettings.FrameRateLimitPreferenceKey, (int)frameRateLimit);
             PlayerPrefs.Save();
         }
 
@@ -581,6 +621,14 @@ namespace Neighbor.Main.Features.Player
             if (performanceProfileValueText != null)
             {
                 performanceProfileValueText.text = PlayerPerformanceSettings.GetDisplayName(currentPerformanceProfile).ToUpperInvariant();
+            }
+        }
+
+        private void RefreshFrameRateLimitText()
+        {
+            if (frameRateLimitValueText != null)
+            {
+                frameRateLimitValueText.text = PlayerPerformanceSettings.GetFrameRateLimitDisplayName(currentFrameRateLimit).ToUpperInvariant();
             }
         }
 
