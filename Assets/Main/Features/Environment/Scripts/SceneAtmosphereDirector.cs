@@ -274,7 +274,14 @@ namespace Neighbor.Main.Features.Environment
                 return;
             }
 
-            RaiseAtmospherePressure(GetStealthAtmosphereIntensity(feedback), stealthAtmosphereHoldDuration);
+            float pressure = GetStealthAtmosphereIntensity(feedback);
+            if (ShouldSettleStealthAtmosphere(feedback))
+            {
+                SettleAtmospherePressure(pressure, stealthAtmosphereHoldDuration);
+                return;
+            }
+
+            RaiseAtmospherePressure(pressure, stealthAtmosphereHoldDuration);
         }
 
         private void HandleNeighborMemoryChanged(PlayerFeedbackEvents.NeighborMemoryFeedback feedback)
@@ -297,6 +304,12 @@ namespace Neighbor.Main.Features.Environment
             float pressure = GetInvestigationAtmosphereIntensity(feedback);
             if (pressure > 0f)
             {
+                if (IsResolvingInvestigation(feedback.Kind))
+                {
+                    SettleAtmospherePressure(pressure, investigationAtmosphereHoldDuration);
+                    return;
+                }
+
                 RaiseAtmospherePressure(pressure, investigationAtmosphereHoldDuration);
             }
         }
@@ -313,7 +326,25 @@ namespace Neighbor.Main.Features.Environment
 
         private void RaiseAtmospherePressure(float pressure, float holdDuration)
         {
-            targetStealthAtmosphereIntensity = Mathf.Clamp01(pressure);
+            SetAtmospherePressure(pressure, holdDuration, false);
+        }
+
+        private void SettleAtmospherePressure(float pressure, float holdDuration)
+        {
+            SetAtmospherePressure(pressure, holdDuration, true);
+        }
+
+        private void SetAtmospherePressure(float pressure, float holdDuration, bool allowLowerPressure)
+        {
+            float nextPressure = Mathf.Clamp01(pressure);
+            if (!allowLowerPressure
+                && Time.unscaledTime <= stealthAtmosphereHoldUntilTime
+                && nextPressure < targetStealthAtmosphereIntensity)
+            {
+                return;
+            }
+
+            targetStealthAtmosphereIntensity = nextPressure;
             stealthAtmosphereHoldUntilTime = targetStealthAtmosphereIntensity <= 0f
                 ? 0f
                 : Time.unscaledTime + holdDuration;
@@ -324,6 +355,17 @@ namespace Neighbor.Main.Features.Environment
             }
 
             ApplyAtmosphere();
+        }
+
+        private static bool ShouldSettleStealthAtmosphere(PlayerFeedbackEvents.StealthLoopFeedback feedback)
+        {
+            return feedback.IsCalming || feedback.Phase == PlayerFeedbackEvents.StealthLoopPhase.Quiet;
+        }
+
+        private static bool IsResolvingInvestigation(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind kind)
+        {
+            return kind == PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning
+                || kind == PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned;
         }
 
         private void UpdateStealthAtmosphere(float deltaTime)
