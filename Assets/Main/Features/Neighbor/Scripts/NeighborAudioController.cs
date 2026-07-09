@@ -1,4 +1,5 @@
 using System;
+using Neighbor.Main.Features.Player;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -73,6 +74,8 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Range(0f, 4f)] private float chaseLoopVolume = 0.45f;
         [SerializeField, Range(0f, 4f)] private float searchLoopVolume = 0.16f;
         [SerializeField, Range(0f, 4f)] private float investigationLoopVolume = 0.1f;
+        [SerializeField, Range(0f, 4f)] private float memoryTrailLoopBoost = 0.18f;
+        [SerializeField, Range(0f, 0.3f)] private float memoryTrailLoopPitchLift = 0.08f;
         [SerializeField, Min(0f)] private float loopFadeSharpness = 8f;
 
         [Header("3D Audio")]
@@ -430,7 +433,7 @@ namespace Neighbor.Main.Features.Neighbor
 
             SetLoopTarget(breathingLoopSource, GetBreathingLoopClip(), breathingTarget, breathingPitch);
 
-            SetLoopTarget(chaseLoopSource, GetChaseLoopClip(), GetChaseLoopTarget(state), 1f);
+            SetLoopTarget(chaseLoopSource, GetChaseLoopClip(), GetChaseLoopTarget(state), GetChaseLoopPitch(state));
 
             float foleyTarget = planarSpeed >= movementFoleySpeedThreshold
                 ? movementFoleyVolume * speed01
@@ -682,12 +685,51 @@ namespace Neighbor.Main.Features.Neighbor
 
         private float GetChaseLoopTarget(NeighborBrain.BehaviorState state)
         {
-            return state switch
+            float baseTarget = state switch
             {
                 NeighborBrain.BehaviorState.Chase => chaseLoopVolume,
                 NeighborBrain.BehaviorState.HuntMode => searchLoopVolume,
                 NeighborBrain.BehaviorState.Investigate => investigationLoopVolume,
                 NeighborBrain.BehaviorState.DoorSecurityCheck => investigationLoopVolume,
+                _ => 0f
+            };
+
+            return Mathf.Min(chaseLoopVolume, baseTarget + GetMemoryTrailLoopPressure(state) * memoryTrailLoopBoost);
+        }
+
+        private float GetChaseLoopPitch(NeighborBrain.BehaviorState state)
+        {
+            return 1f + GetMemoryTrailLoopPressure(state) * memoryTrailLoopPitchLift;
+        }
+
+        private float GetMemoryTrailLoopPressure(NeighborBrain.BehaviorState state)
+        {
+            if (brain == null)
+            {
+                return 0f;
+            }
+
+            if (state == NeighborBrain.BehaviorState.HuntMode && brain.IsHuntingMemoryClue)
+            {
+                return GetMemoryClueAudioPressure(brain.CurrentHuntMemoryClueKind);
+            }
+
+            if (state == NeighborBrain.BehaviorState.Investigate && brain.IsCurrentInvestigationMemoryClue)
+            {
+                return GetMemoryClueAudioPressure(brain.CurrentInvestigationMemoryClueKind);
+            }
+
+            return 0f;
+        }
+
+        private static float GetMemoryClueAudioPressure(PlayerFeedbackEvents.NeighborMemoryClueKind kind)
+        {
+            return kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => 1f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => 0.72f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => 0.44f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => 0.16f,
                 _ => 0f
             };
         }
