@@ -1214,6 +1214,65 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NeighborMemory_ResolvedTrailDoesNotTeachFalseAlarmPenalty()
+        {
+            NeighborBrain memoryBrain = context.AddInitializedComponent<NeighborBrain>(
+                context.CreateObject("MemoryTrailNeighbor"));
+            GameObject glassObject = context.CreateObject("BrokenKitchenWindow");
+            GlassShatter glass = context.AddInitializedComponent<GlassShatter>(glassObject);
+
+            GameplaySmokeTestReflection.Invoke(
+                memoryBrain,
+                "RememberMemoryClue",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken,
+                glass,
+                glassObject.transform.position,
+                0.65f);
+            GameplaySmokeTestReflection.SetField(
+                memoryBrain,
+                "currentState",
+                NeighborBrain.BehaviorState.Investigate);
+            GameplaySmokeTestReflection.SetField(memoryBrain, "hasActiveInvestigation", true);
+            GameplaySmokeTestReflection.SetField(memoryBrain, "currentInvestigationSource", glassObject);
+            GameplaySmokeTestReflection.SetField(memoryBrain, "currentInvestigationTrailRelated", true);
+            GameplaySmokeTestReflection.SetField(memoryBrain, "currentInvestigationMemoryClueActive", true);
+            GameplaySmokeTestReflection.SetField(
+                memoryBrain,
+                "currentInvestigationMemoryClueKind",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken);
+
+            GameplaySmokeTestReflection.Invoke(memoryBrain, "FinishInvestigationAndReturnToRoutine");
+
+            Assert.That(memoryBrain.HasActiveInvestigation, Is.False);
+            Assert.That(memoryBrain.CurrentInvestigationSource, Is.Null);
+
+            GameplaySmokeTestReflection.SetField(memoryBrain, "suspicion", 0f);
+            GameplaySmokeTestReflection.Invoke(memoryBrain, "AddSuspicion", 0.5f, glassObject);
+
+            NeighborBrain noiseBrain = context.AddInitializedComponent<NeighborBrain>(
+                context.CreateObject("NoiseNeighbor"));
+            GameObject noiseSource = context.CreateObject("NoiseSource");
+
+            GameplaySmokeTestReflection.SetField(
+                noiseBrain,
+                "currentState",
+                NeighborBrain.BehaviorState.Investigate);
+            GameplaySmokeTestReflection.SetField(noiseBrain, "hasActiveInvestigation", true);
+            GameplaySmokeTestReflection.SetField(noiseBrain, "currentInvestigationSource", noiseSource);
+
+            GameplaySmokeTestReflection.Invoke(noiseBrain, "FinishInvestigationAndReturnToRoutine");
+
+            Assert.That(noiseBrain.HasActiveInvestigation, Is.False);
+            Assert.That(noiseBrain.CurrentInvestigationSource, Is.Null);
+
+            GameplaySmokeTestReflection.SetField(noiseBrain, "suspicion", 0f);
+            GameplaySmokeTestReflection.Invoke(noiseBrain, "AddSuspicion", 0.5f, noiseSource);
+
+            Assert.That(memoryBrain.Suspicion, Is.EqualTo(0.5f).Within(0.001f));
+            Assert.That(noiseBrain.Suspicion, Is.EqualTo(0.42f).Within(0.001f));
+        }
+
+        [Test]
         public void NeighborMemory_RespawnRequeuesStrongestRememberedClue()
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
