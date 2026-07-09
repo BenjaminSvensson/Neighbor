@@ -852,6 +852,30 @@ namespace Neighbor.Main.Tests
                     3);
 
                 Assert.That(cameraController.CurrentStealthCameraPressure, Is.GreaterThan(0.9f));
+
+                cameraController.SyncAfterRespawn();
+                PlayerFeedbackEvents.ReportNeighborInvestigation(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail,
+                    Vector3.zero,
+                    "Basement Key",
+                    0.32f,
+                    1f,
+                    true,
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen);
+
+                Assert.That(cameraController.CurrentStealthCameraPressure, Is.EqualTo(1f).Within(0.001f));
+
+                cameraController.SyncAfterRespawn();
+                PlayerFeedbackEvents.ReportNeighborInvestigation(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning,
+                    Vector3.zero,
+                    "Basement Key",
+                    0.32f,
+                    1f,
+                    true,
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen);
+
+                Assert.That(cameraController.CurrentStealthCameraPressure, Is.InRange(0.23f, 0.25f));
             }
             finally
             {

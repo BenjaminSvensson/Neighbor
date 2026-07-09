@@ -47,17 +47,22 @@ namespace Neighbor.Main.Features.Player
         [Header("Stealth Camera Pressure")]
         [SerializeField] private bool respondToStealthLoop = true;
         [SerializeField] private bool respondToNeighborMemory = true;
+        [SerializeField] private bool respondToNeighborInvestigation = true;
         [SerializeField] private bool respondToNoiseFeedback = true;
         [SerializeField, Range(0f, 1f)] private float stealthWobbleBoost = 0.45f;
         [SerializeField, Min(0f)] private float stealthShakeAmount = 0.18f;
         [SerializeField, Min(0f)] private float stealthFieldOfViewKick = 2.4f;
         [SerializeField, Range(0f, 1f)] private float calmHidingCameraPressure = 0.08f;
         [SerializeField, Range(0f, 1f)] private float calmPostChaseCameraPressure = 0.14f;
+        [SerializeField, Range(0f, 1f)] private float investigationCameraPressure = 0.36f;
+        [SerializeField, Range(0f, 1f)] private float trailInvestigationCameraPressure = 0.54f;
+        [SerializeField, Range(0f, 1f)] private float resolvedTrailCameraPressure = 0.12f;
         [SerializeField, Range(0f, 1f)] private float heardNoiseCameraPressure = 0.34f;
         [SerializeField, Range(0f, 1f)] private float heardNoiseListenerCameraBoost = 0.08f;
         [SerializeField, Range(0f, 1f)] private float memoryCameraPressure = 0.24f;
         [SerializeField, Range(0f, 1f)] private float stackedMemoryCameraBoost = 0.12f;
         [SerializeField, Min(0f)] private float stealthCameraPressureHoldDuration = 2.4f;
+        [SerializeField, Min(0f)] private float investigationCameraPressureHoldDuration = 2.2f;
         [SerializeField, Min(0f)] private float heardNoiseCameraPressureHoldDuration = 1.6f;
         [SerializeField, Min(0f)] private float memoryCameraPressureHoldDuration = 2.8f;
         [SerializeField, Min(1f)] private float maximumMemoryCameraPressureHoldMultiplier = 1.5f;
@@ -200,6 +205,8 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged += HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
+            PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
             PlayerFeedbackEvents.NoiseEmitted -= HandleNoiseEmitted;
             PlayerFeedbackEvents.NoiseEmitted += HandleNoiseEmitted;
         }
@@ -208,6 +215,7 @@ namespace Neighbor.Main.Features.Player
         {
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
             PlayerFeedbackEvents.NoiseEmitted -= HandleNoiseEmitted;
         }
 
@@ -752,6 +760,18 @@ namespace Neighbor.Main.Features.Player
             RaiseStealthCameraPressure(GetMemoryCameraPressure(feedback), GetMemoryCameraPressureHoldDuration(feedback));
         }
 
+        private void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
+        {
+            if (!respondToNeighborInvestigation)
+            {
+                return;
+            }
+
+            RaiseStealthCameraPressure(
+                GetInvestigationCameraPressure(feedback),
+                GetInvestigationCameraPressureHoldDuration(feedback));
+        }
+
         private void HandleNoiseEmitted(PlayerFeedbackEvents.NoiseFeedback feedback)
         {
             if (!respondToNoiseFeedback || !feedback.HeardByNeighbor)
@@ -777,7 +797,10 @@ namespace Neighbor.Main.Features.Player
 
         private void UpdateStealthCameraPressure(float deltaTime)
         {
-            if (!respondToStealthLoop && !respondToNeighborMemory && !respondToNoiseFeedback)
+            if (!respondToStealthLoop
+                && !respondToNeighborMemory
+                && !respondToNeighborInvestigation
+                && !respondToNoiseFeedback)
             {
                 targetStealthCameraPressure = 0f;
             }
@@ -809,6 +832,40 @@ namespace Neighbor.Main.Features.Player
                 PlayerFeedbackEvents.StealthLoopPhase.Curious => Mathf.Max(0.18f, pressure * 0.65f),
                 _ => 0f
             };
+        }
+
+        private float GetInvestigationCameraPressure(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
+        {
+            float pressure = Mathf.Max(feedback.Suspicion, feedback.Urgency);
+            return feedback.Kind switch
+            {
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.CheckingHideSpot => 1f,
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail =>
+                    Mathf.Max(trailInvestigationCameraPressure, pressure),
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching when feedback.IsTrailRelated =>
+                    Mathf.Max(trailInvestigationCameraPressure, pressure),
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching =>
+                    Mathf.Max(investigationCameraPressure, pressure),
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started =>
+                    Mathf.Max(investigationCameraPressure, pressure),
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning when feedback.IsTrailRelated =>
+                    Mathf.Max(resolvedTrailCameraPressure, pressure * 0.24f),
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned when feedback.IsTrailRelated =>
+                    Mathf.Max(resolvedTrailCameraPressure, pressure * 0.18f),
+                _ => 0f
+            };
+        }
+
+        private float GetInvestigationCameraPressureHoldDuration(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
+        {
+            if (feedback.Kind == PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning
+                || feedback.Kind == PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned)
+            {
+                return investigationCameraPressureHoldDuration * 0.7f;
+            }
+
+            float pressure = Mathf.Max(feedback.Suspicion, feedback.Urgency);
+            return investigationCameraPressureHoldDuration * Mathf.Lerp(1f, 1.45f, pressure);
         }
 
         private float GetNoiseCameraPressure(PlayerFeedbackEvents.NoiseFeedback feedback)
