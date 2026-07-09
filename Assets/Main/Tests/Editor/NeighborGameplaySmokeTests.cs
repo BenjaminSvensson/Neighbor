@@ -573,6 +573,36 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AwarenessHud_ShowsMultipleListenersHeardNoise()
+        {
+            GameObject playerObject = context.CreateObject("Player");
+            context.AddInitializedComponent<PlayerController>(playerObject);
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleNoise",
+                new PlayerFeedbackEvents.NoiseFeedback(
+                    Vector3.zero,
+                    0.58f,
+                    6f,
+                    0.72f,
+                    true,
+                    3));
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateNoise");
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateWarning");
+
+            Text noiseLabel = GameplaySmokeTestReflection.GetField<Text>(hud, "noiseLabel");
+            Image noiseFill = GameplaySmokeTestReflection.GetField<Image>(hud, "noiseFill");
+            Text warningText = GameplaySmokeTestReflection.GetField<Text>(hud, "warningText");
+
+            Assert.That(noiseLabel.text, Is.EqualTo("HEARD x3"));
+            Assert.That(noiseFill.fillAmount, Is.GreaterThan(0.72f));
+            Assert.That(warningText.text, Is.EqualTo("THEY HEARD THAT"));
+        }
+
+        [Test]
         public void AwarenessHud_FadesNeighborHeardNoisePressureWhileWarningStaysReadable()
         {
             GameObject playerObject = context.CreateObject("Player");
