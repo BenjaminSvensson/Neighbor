@@ -75,6 +75,10 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float noiseDestinationSampleRadius = 4f;
         [SerializeField, Min(0f)] private float investigationWaitTime = 2.2f;
         [SerializeField, Min(0f)] private float heardNoiseFeedbackDuration = 1.6f;
+        [SerializeField, Range(0f, 1f)] private float activeInvestigationNoiseRedirectMinimumLoudness = 0.35f;
+        [SerializeField, Range(0f, 1f)] private float activeInvestigationNoiseRedirectLead = 0.12f;
+        [SerializeField, Range(0f, 1f)] private float memoryTrailNoiseRedirectMinimumLoudness = 0.85f;
+        [SerializeField, Min(0f)] private float activeInvestigationNoiseRedirectMinimumDistance = 1.25f;
         [SerializeField, Min(0.1f)] private float televisionShutoffDistance = 2.2f;
         [SerializeField, Range(0f, 1f)] private float unexpectedOpenDoorSuspicion = 0.36f;
         [SerializeField, Min(0.1f)] private float doorRoomCheckDistance = 2.4f;
@@ -1303,14 +1307,17 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            float previousHeardNoise = GetRecentHeardNoise01();
             RegisterHeardNoiseFeedback(stimulus.Loudness01);
             AddSuspicion(stimulus.Loudness01 * Mathf.Lerp(0.35f, 0.75f, stimulus.Urgency01), stimulus.SourceObject);
-            investigationMoveMode = stimulus.Urgency01 >= minimumUrgencyToRunToNoise || CurrentSuspicionLevel == SuspicionLevel.Certain
-                ? NeighborMotor.MoveMode.Run
-                : CurrentSuspicionLevel >= SuspicionLevel.Suspicious
-                    ? NeighborMotor.MoveMode.Cautious
-                    : NeighborMotor.MoveMode.Walk;
+            NeighborMotor.MoveMode heardNoiseMoveMode = GetNoiseInvestigationMoveMode(stimulus);
+            if (ShouldKeepCurrentInvestigationForNoise(stimulus, previousHeardNoise))
+            {
+                ReportStealthLoopIfNeeded(true);
+                return;
+            }
 
+            investigationMoveMode = heardNoiseMoveMode;
             BeginInvestigation(
                 stimulus.Position,
                 stimulus.SourceObject,
@@ -1318,6 +1325,54 @@ namespace Neighbor.Main.Features.Neighbor
                 investigationMoveMode,
                 true);
             ReportStealthLoopIfNeeded(true);
+        }
+
+        private NeighborMotor.MoveMode GetNoiseInvestigationMoveMode(NeighborNoiseStimulus stimulus)
+        {
+            if (stimulus.Urgency01 >= minimumUrgencyToRunToNoise || CurrentSuspicionLevel == SuspicionLevel.Certain)
+            {
+                return NeighborMotor.MoveMode.Run;
+            }
+
+            return CurrentSuspicionLevel >= SuspicionLevel.Suspicious
+                ? NeighborMotor.MoveMode.Cautious
+                : NeighborMotor.MoveMode.Walk;
+        }
+
+        private bool ShouldKeepCurrentInvestigationForNoise(
+            NeighborNoiseStimulus stimulus,
+            float previousHeardNoise)
+        {
+            if (!hasActiveInvestigation
+                || currentState != BehaviorState.Investigate && currentState != BehaviorState.GarageDoorUse)
+            {
+                return false;
+            }
+
+            if (stimulus.SourceObject != null && stimulus.SourceObject == currentInvestigationSource)
+            {
+                return false;
+            }
+
+            float distanceFromCurrentInvestigation = Vector3.Distance(
+                lastKnownInvestigationPosition,
+                stimulus.Position);
+            if (distanceFromCurrentInvestigation <= activeInvestigationNoiseRedirectMinimumDistance)
+            {
+                return false;
+            }
+
+            float loudness = Mathf.Clamp01(stimulus.Loudness01);
+            float urgency = Mathf.Clamp01(stimulus.Urgency01);
+            float activeMinimum = currentInvestigationTrailRelated || currentInvestigationMemoryClueActive
+                ? memoryTrailNoiseRedirectMinimumLoudness
+                : activeInvestigationNoiseRedirectMinimumLoudness;
+            float requiredLoudness = Mathf.Min(
+                1f,
+                Mathf.Max(activeMinimum, Mathf.Clamp01(previousHeardNoise) + activeInvestigationNoiseRedirectLead));
+            bool urgentEnoughToRedirect = urgency >= minimumUrgencyToRunToNoise
+                && loudness >= Mathf.Max(activeInvestigationNoiseRedirectMinimumLoudness, Mathf.Clamp01(previousHeardNoise));
+            return !urgentEnoughToRedirect && loudness < requiredLoudness;
         }
 
         private void BeginInvestigation(

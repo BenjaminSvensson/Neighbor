@@ -4186,6 +4186,98 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void HeardNoise_QuietSecondaryNoiseDoesNotStealActiveInvestigation()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            GameObject firstSource = context.CreateObject("FirstNoise");
+            GameObject quietSource = context.CreateObject("QuietSideNoise");
+            Vector3 firstPosition = new(2f, 0f, 1f);
+            Vector3 quietPosition = new(-3f, 0f, -2f);
+
+            GameplaySmokeTestReflection.Invoke(
+                brain,
+                "BeginInvestigation",
+                firstPosition,
+                firstSource,
+                2f,
+                NeighborMotor.MoveMode.Cautious,
+                false);
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.Investigate);
+            GameplaySmokeTestReflection.SetField(brain, "hasReportedInvestigationSearch", true);
+            GameplaySmokeTestReflection.SetField(brain, "recentHeardNoise", 0.62f);
+            GameplaySmokeTestReflection.SetField(brain, "recentHeardNoiseUntilTime", Time.time + 1f);
+
+            GameplaySmokeTestReflection.Invoke(
+                brain,
+                "HandleNoiseHeard",
+                new NeighborNoiseStimulus(quietPosition, 0.24f, 0.2f, 5f, quietSource));
+
+            Assert.That(brain.LastKnownInvestigationPosition, Is.EqualTo(firstPosition));
+            Assert.That(brain.CurrentInvestigationSource, Is.SameAs(firstSource));
+            Assert.That(brain.HasReportedInvestigationSearch, Is.True);
+            Assert.That(
+                GameplaySmokeTestReflection.GetField<float>(brain, "recentHeardNoise"),
+                Is.EqualTo(0.62f).Within(0.001f));
+            Assert.That(brain.Suspicion, Is.GreaterThan(0f));
+        }
+
+        [Test]
+        public void HeardNoise_UrgentSecondaryNoiseRedirectsActiveInvestigation()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            GameObject firstSource = context.CreateObject("FirstNoise");
+            GameObject urgentSource = context.CreateObject("UrgentCrash");
+            Vector3 firstPosition = new(2f, 0f, 1f);
+            Vector3 urgentPosition = new(-4f, 0f, 3f);
+            List<PlayerFeedbackEvents.NeighborInvestigationFeedback> feedback = new();
+
+            GameplaySmokeTestReflection.Invoke(
+                brain,
+                "BeginInvestigation",
+                firstPosition,
+                firstSource,
+                2f,
+                NeighborMotor.MoveMode.Walk,
+                false);
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.Investigate);
+            GameplaySmokeTestReflection.SetField(brain, "hasReportedInvestigationSearch", true);
+            GameplaySmokeTestReflection.SetField(brain, "recentHeardNoise", 0.3f);
+            GameplaySmokeTestReflection.SetField(brain, "recentHeardNoiseUntilTime", Time.time + 1f);
+            PlayerFeedbackEvents.NeighborInvestigationChanged += HandleInvestigationFeedback;
+
+            try
+            {
+                GameplaySmokeTestReflection.Invoke(
+                    brain,
+                    "HandleNoiseHeard",
+                    new NeighborNoiseStimulus(urgentPosition, 0.82f, 1f, 7f, urgentSource));
+
+                Assert.That(brain.LastKnownInvestigationPosition, Is.EqualTo(urgentPosition));
+                Assert.That(brain.CurrentInvestigationSource, Is.SameAs(urgentSource));
+                Assert.That(brain.HasReportedInvestigationSearch, Is.False);
+                Assert.That(
+                    GameplaySmokeTestReflection.GetField<NeighborMotor.MoveMode>(brain, "investigationMoveMode"),
+                    Is.EqualTo(NeighborMotor.MoveMode.Run));
+                Assert.That(feedback, Has.Count.EqualTo(1));
+                Assert.That(feedback[0].Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started));
+                Assert.That(feedback[0].Position, Is.EqualTo(urgentPosition));
+                Assert.That(feedback[0].SourceName, Is.EqualTo("UrgentCrash"));
+                Assert.That(feedback[0].Urgency, Is.EqualTo(1f).Within(0.001f));
+            }
+            finally
+            {
+                PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleInvestigationFeedback;
+            }
+
+            void HandleInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedback item)
+            {
+                feedback.Add(item);
+            }
+        }
+
+        [Test]
         public void PlayerMovementNoise_PrimesNeighborInvestigation()
         {
             GameObject neighborObject = context.CreateObject("Neighbor");
