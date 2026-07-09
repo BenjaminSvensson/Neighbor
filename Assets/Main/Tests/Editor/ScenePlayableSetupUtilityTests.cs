@@ -845,6 +845,31 @@ namespace Neighbor.Main.Tests
                 float baseExposure = colorAdjustments.postExposure.value;
                 float baseVignette = vignette.intensity.value;
 
+                PlayerFeedbackEvents.NoiseFeedback singleListenerNoise = new(
+                    Vector3.zero,
+                    0.48f,
+                    6f,
+                    0.64f,
+                    true,
+                    1);
+                PlayerFeedbackEvents.NoiseFeedback multiListenerNoise = new(
+                    Vector3.zero,
+                    0.48f,
+                    6f,
+                    0.64f,
+                    true,
+                    3);
+                float singleListenerIntensity = GameplaySmokeTestReflection.InvokeResult<float>(
+                    director,
+                    "GetNoiseAtmosphereIntensity",
+                    singleListenerNoise);
+                float multiListenerIntensity = GameplaySmokeTestReflection.InvokeResult<float>(
+                    director,
+                    "GetNoiseAtmosphereIntensity",
+                    multiListenerNoise);
+
+                Assert.That(multiListenerIntensity, Is.GreaterThan(singleListenerIntensity));
+
                 PlayerFeedbackEvents.ReportNoise(Vector3.zero, 0.58f, 6f, 0.86f, true, 1);
 
                 Assert.That(director.CurrentStealthAtmosphereIntensity, Is.GreaterThan(0.8f));
@@ -1150,6 +1175,31 @@ namespace Neighbor.Main.Tests
                 AtmosphereFlickerLight flicker = lightObject.AddComponent<AtmosphereFlickerLight>();
                 flicker.Configure(1f, 0.2f, 4f);
 
+                PlayerFeedbackEvents.NoiseFeedback singleListenerNoise = new(
+                    Vector3.zero,
+                    0.48f,
+                    6f,
+                    0.64f,
+                    true,
+                    1);
+                PlayerFeedbackEvents.NoiseFeedback multiListenerNoise = new(
+                    Vector3.zero,
+                    0.48f,
+                    6f,
+                    0.64f,
+                    true,
+                    3);
+                float singleListenerPressure = GameplaySmokeTestReflection.InvokeResult<float>(
+                    flicker,
+                    "GetNoisePressure",
+                    singleListenerNoise);
+                float multiListenerPressure = GameplaySmokeTestReflection.InvokeResult<float>(
+                    flicker,
+                    "GetNoisePressure",
+                    multiListenerNoise);
+
+                Assert.That(multiListenerPressure, Is.GreaterThan(singleListenerPressure));
+
                 PlayerFeedbackEvents.ReportNoise(Vector3.zero, 0.58f, 6f, 0.86f, true, 1);
 
                 Assert.That(flicker.CurrentStealthPressure, Is.GreaterThan(0.8f));
@@ -1379,6 +1429,31 @@ namespace Neighbor.Main.Tests
                 AtmosphereDressingAnchor prop = propObject.AddComponent<AtmosphereDressingAnchor>();
                 decal.Configure(AtmosphereDressingAnchor.DressingKind.DirtyDecal, 0.4f);
                 prop.Configure(AtmosphereDressingAnchor.DressingKind.PropDressing, 0.48f);
+
+                PlayerFeedbackEvents.NoiseFeedback singleListenerNoise = new(
+                    Vector3.zero,
+                    0.48f,
+                    6f,
+                    0.64f,
+                    true,
+                    1);
+                PlayerFeedbackEvents.NoiseFeedback multiListenerNoise = new(
+                    Vector3.zero,
+                    0.48f,
+                    6f,
+                    0.64f,
+                    true,
+                    3);
+                float singleListenerPressure = GameplaySmokeTestReflection.InvokeResult<float>(
+                    decal,
+                    "GetNoisePressure",
+                    singleListenerNoise);
+                float multiListenerPressure = GameplaySmokeTestReflection.InvokeResult<float>(
+                    decal,
+                    "GetNoisePressure",
+                    multiListenerNoise);
+
+                Assert.That(multiListenerPressure, Is.GreaterThan(singleListenerPressure));
 
                 MaterialPropertyBlock block = new();
                 decalRenderer.GetPropertyBlock(block);
