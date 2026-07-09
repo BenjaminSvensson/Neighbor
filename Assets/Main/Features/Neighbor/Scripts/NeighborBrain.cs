@@ -1395,7 +1395,7 @@ namespace Neighbor.Main.Features.Neighbor
         {
             ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning);
             SettleCurrentInvestigationMemoryClue();
-            RememberFalseAlarm();
+            RememberCurrentInvestigationFalseAlarmIfNeeded();
             ClearInvestigationState();
 
             if (TryResumePreInvestigationRoutine())
@@ -1408,6 +1408,7 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void ClearInvestigationState()
         {
+            currentInvestigationSource = null;
             currentSearchPoint = null;
             currentUnexpectedOpenDoor = null;
             currentDoorRoomCheckPosition = default;
@@ -1552,7 +1553,7 @@ namespace Neighbor.Main.Features.Neighbor
                     return;
                 case BehaviorState.Investigate:
                     ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned);
-                    RememberFalseAlarm();
+                    RememberCurrentInvestigationFalseAlarmIfNeeded();
                     ClearInvestigationState();
                     suspicion = Mathf.Max(0f, suspicion - 0.08f);
                     if (TryResumePreInvestigationRoutine())
@@ -4544,6 +4545,16 @@ namespace Neighbor.Main.Features.Neighbor
             currentInvestigationTrailRelated = false;
             currentInvestigationMemoryClueActive = false;
             currentInvestigationMemoryClueKind = default;
+        }
+
+        private void RememberCurrentInvestigationFalseAlarmIfNeeded()
+        {
+            if (currentInvestigationTrailRelated || currentInvestigationMemoryClueActive)
+            {
+                return;
+            }
+
+            RememberFalseAlarm();
         }
 
         private void ResolvePlayer()
