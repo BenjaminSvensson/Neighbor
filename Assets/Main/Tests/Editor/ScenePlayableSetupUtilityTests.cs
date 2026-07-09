@@ -888,6 +888,72 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AtmosphereResponders_WeakNoiseDoesNotCutActiveDangerHold()
+        {
+            RenderSettingsSnapshot snapshot = RenderSettingsSnapshot.Capture();
+            GameObject directorObject = new("Stacked Pressure Atmosphere Director Test");
+            GameObject volumeObject = new("Stacked Pressure Atmosphere Volume Test");
+            GameObject lightObject = new("Stacked Pressure Flicker Test");
+            GameObject propObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Material propMaterial = CreateTestMaterial(new Color(0.34f, 0.23f, 0.14f, 1f));
+
+            try
+            {
+                Volume volume = volumeObject.AddComponent<Volume>();
+                SceneAtmosphereDirector director = directorObject.AddComponent<SceneAtmosphereDirector>();
+                director.Configure(
+                    null,
+                    null,
+                    volume,
+                    new AtmosphereFlickerLight[0],
+                    new AtmosphereDressingAnchor[0]);
+
+                Light light = lightObject.AddComponent<Light>();
+                AtmosphereFlickerLight flicker = lightObject.AddComponent<AtmosphereFlickerLight>();
+                flicker.Configure(1f, 0.2f, 4f);
+
+                propObject.name = "Stacked Pressure Prop Dressing Test";
+                propObject.GetComponent<Renderer>().sharedMaterial = propMaterial;
+                AtmosphereDressingAnchor dressing = propObject.AddComponent<AtmosphereDressingAnchor>();
+                dressing.Configure(AtmosphereDressingAnchor.DressingKind.PropDressing, 0.48f);
+
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.Chased,
+                    1f,
+                    0.8f,
+                    0.9f,
+                    "Run or hide");
+
+                Assert.That(director.CurrentStealthAtmosphereIntensity, Is.GreaterThan(0.95f));
+                Assert.That(flicker.CurrentStealthPressure, Is.GreaterThan(0.95f));
+                Assert.That(dressing.CurrentStealthPressure, Is.GreaterThan(0.95f));
+
+                PlayerFeedbackEvents.ReportNoise(Vector3.zero, 0.08f, 5f, 0.2f, true, 1);
+                GameplaySmokeTestReflection.Invoke(director, "UpdateStealthAtmosphere", 0.5f);
+                GameplaySmokeTestReflection.Invoke(flicker, "UpdateStealthPressure", 0.5f);
+                GameplaySmokeTestReflection.Invoke(dressing, "UpdateStealthDressing", 0.5f);
+
+                Assert.That(director.TargetStealthAtmosphereIntensity, Is.GreaterThan(0.95f));
+                Assert.That(director.CurrentStealthAtmosphereIntensity, Is.GreaterThan(0.95f));
+                Assert.That(flicker.CurrentStealthPressure, Is.GreaterThan(0.95f));
+                Assert.That(dressing.CurrentStealthPressure, Is.GreaterThan(0.95f));
+                Assert.That(light.intensity, Is.LessThanOrEqualTo(1f));
+            }
+            finally
+            {
+                snapshot.Restore();
+                GameplaySmokeTestReflection.InvokeIfPresent(directorObject.GetComponent<SceneAtmosphereDirector>(), "OnDisable");
+                GameplaySmokeTestReflection.InvokeIfPresent(lightObject.GetComponent<AtmosphereFlickerLight>(), "OnDisable");
+                GameplaySmokeTestReflection.InvokeIfPresent(propObject.GetComponent<AtmosphereDressingAnchor>(), "OnDisable");
+                Object.DestroyImmediate(directorObject);
+                Object.DestroyImmediate(volumeObject);
+                Object.DestroyImmediate(lightObject);
+                Object.DestroyImmediate(propObject);
+                Object.DestroyImmediate(propMaterial);
+            }
+        }
+
+        [Test]
         public void AtmosphereFlickerLight_StealthLoopDangerAddsUnstableLight()
         {
             GameObject lightObject = new("Flicker Light Test");
