@@ -72,6 +72,7 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Range(0f, 4f)] private float chaseBreathingVolume = 0.34f;
         [SerializeField, Range(0f, 4f)] private float chaseLoopVolume = 0.45f;
         [SerializeField, Range(0f, 4f)] private float searchLoopVolume = 0.16f;
+        [SerializeField, Range(0f, 4f)] private float investigationLoopVolume = 0.1f;
         [SerializeField, Min(0f)] private float loopFadeSharpness = 8f;
 
         [Header("3D Audio")]
@@ -429,17 +430,7 @@ namespace Neighbor.Main.Features.Neighbor
 
             SetLoopTarget(breathingLoopSource, GetBreathingLoopClip(), breathingTarget, breathingPitch);
 
-            float chaseTarget = 0f;
-            if (state == NeighborBrain.BehaviorState.Chase)
-            {
-                chaseTarget = chaseLoopVolume;
-            }
-            else if (state == NeighborBrain.BehaviorState.HuntMode)
-            {
-                chaseTarget = searchLoopVolume;
-            }
-
-            SetLoopTarget(chaseLoopSource, GetChaseLoopClip(), chaseTarget, 1f);
+            SetLoopTarget(chaseLoopSource, GetChaseLoopClip(), GetChaseLoopTarget(state), 1f);
 
             float foleyTarget = planarSpeed >= movementFoleySpeedThreshold
                 ? movementFoleyVolume * speed01
@@ -689,6 +680,18 @@ namespace Neighbor.Main.Features.Neighbor
             return chaseLoopClip != null ? chaseLoopClip : generatedChaseLoopClip;
         }
 
+        private float GetChaseLoopTarget(NeighborBrain.BehaviorState state)
+        {
+            return state switch
+            {
+                NeighborBrain.BehaviorState.Chase => chaseLoopVolume,
+                NeighborBrain.BehaviorState.HuntMode => searchLoopVolume,
+                NeighborBrain.BehaviorState.Investigate => investigationLoopVolume,
+                NeighborBrain.BehaviorState.DoorSecurityCheck => investigationLoopVolume,
+                _ => 0f
+            };
+        }
+
         private AudioClip GetMovementFoleyLoopClip()
         {
             return movementFoleyLoopClip != null ? movementFoleyLoopClip : generatedMovementFoleyLoopClip;
@@ -698,7 +701,8 @@ namespace Neighbor.Main.Features.Neighbor
         {
             return state == NeighborBrain.BehaviorState.Chase
                 || state == NeighborBrain.BehaviorState.HuntMode
-                || state == NeighborBrain.BehaviorState.Investigate;
+                || state == NeighborBrain.BehaviorState.Investigate
+                || state == NeighborBrain.BehaviorState.DoorSecurityCheck;
         }
 
         private void ScheduleNextMutter()

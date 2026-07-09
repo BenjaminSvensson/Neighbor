@@ -3380,6 +3380,46 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NeighborAudio_SearchStatesKeepLowThreatLoopAudible()
+        {
+            NeighborAudioController audio = context.AddInitializedComponent<NeighborAudioController>();
+            GameplaySmokeTestReflection.SetField(audio, "chaseLoopVolume", 0.45f);
+            GameplaySmokeTestReflection.SetField(audio, "searchLoopVolume", 0.16f);
+            GameplaySmokeTestReflection.SetField(audio, "investigationLoopVolume", 0.1f);
+
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<float>(
+                    audio,
+                    "GetChaseLoopTarget",
+                    NeighborBrain.BehaviorState.Idle),
+                Is.Zero);
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<float>(
+                    audio,
+                    "GetChaseLoopTarget",
+                    NeighborBrain.BehaviorState.Investigate),
+                Is.EqualTo(0.1f).Within(0.001f));
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<float>(
+                    audio,
+                    "GetChaseLoopTarget",
+                    NeighborBrain.BehaviorState.DoorSecurityCheck),
+                Is.EqualTo(0.1f).Within(0.001f));
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<float>(
+                    audio,
+                    "GetChaseLoopTarget",
+                    NeighborBrain.BehaviorState.HuntMode),
+                Is.EqualTo(0.16f).Within(0.001f));
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<float>(
+                    audio,
+                    "GetChaseLoopTarget",
+                    NeighborBrain.BehaviorState.Chase),
+                Is.EqualTo(0.45f).Within(0.001f));
+        }
+
+        [Test]
         public void NeighborPlacedCameraSpacing_PreventsOverlappingMounts()
         {
             GameObject cameraObject = context.CreateObject("NeighborPlacedCamera");
