@@ -25,6 +25,7 @@ namespace Neighbor.Main.Features.Player
         private PlayerHidingState hidingState;
         private NeighborBrain trackedNeighbor;
         private CoreLoopObjectiveTracker objectiveTracker;
+        [SerializeField, Range(0f, 1f)] private float heardNoiseListenerHudBoost = 0.08f;
         private float noiseLevel;
         private PlayerFeedbackEvents.StealthLoopPhase lastStealthLoopPhase = PlayerFeedbackEvents.StealthLoopPhase.Quiet;
         private float lastStealthLoopSuspicion;
@@ -508,9 +509,7 @@ namespace Neighbor.Main.Features.Player
                 return;
             }
 
-            float feedbackNoise = feedback.HeardByNeighbor
-                ? Mathf.Max(feedback.Loudness, feedback.Urgency)
-                : feedback.Loudness;
+            float feedbackNoise = GetNoiseFeedbackPressure(feedback);
             noiseLevel = Mathf.Max(noiseLevel, feedbackNoise);
             if (feedback.HeardByNeighbor)
             {
@@ -523,6 +522,18 @@ namespace Neighbor.Main.Features.Player
                 neighborHeardNoiseDuration = Mathf.Lerp(1.8f, 3.4f, lastNeighborHeardNoise);
                 neighborHeardNoiseUntil = Time.unscaledTime + neighborHeardNoiseDuration;
             }
+        }
+
+        private float GetNoiseFeedbackPressure(PlayerFeedbackEvents.NoiseFeedback feedback)
+        {
+            if (!feedback.HeardByNeighbor)
+            {
+                return feedback.Loudness;
+            }
+
+            float listenerPressure = Mathf.Clamp01(Mathf.Max(0, feedback.NeighborListenerCount - 1) / 2f)
+                * heardNoiseListenerHudBoost;
+            return Mathf.Clamp01(Mathf.Max(feedback.Loudness, feedback.Urgency) + listenerPressure);
         }
 
         private void HandleCameraDetection()
