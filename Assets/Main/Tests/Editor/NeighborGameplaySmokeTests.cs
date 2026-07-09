@@ -489,6 +489,31 @@ namespace Neighbor.Main.Tests
             PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
                 context.CreateObject("AwarenessHud"));
 
+            PlayerFeedbackEvents.NoiseFeedback singleListenerNoise = new(
+                Vector3.zero,
+                0.48f,
+                6f,
+                0.64f,
+                true,
+                1);
+            PlayerFeedbackEvents.NoiseFeedback multiListenerNoise = new(
+                Vector3.zero,
+                0.48f,
+                6f,
+                0.64f,
+                true,
+                3);
+            float singleListenerPressure = GameplaySmokeTestReflection.InvokeResult<float>(
+                hud,
+                "GetNoiseFeedbackPressure",
+                singleListenerNoise);
+            float multiListenerPressure = GameplaySmokeTestReflection.InvokeResult<float>(
+                hud,
+                "GetNoiseFeedbackPressure",
+                multiListenerNoise);
+
+            Assert.That(multiListenerPressure, Is.GreaterThan(singleListenerPressure));
+
             GameplaySmokeTestReflection.Invoke(
                 hud,
                 "HandleNoise",
