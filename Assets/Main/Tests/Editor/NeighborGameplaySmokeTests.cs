@@ -3480,6 +3480,79 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NeighborAudio_MemoryTrailSeverityRaisesSearchLoopPressure()
+        {
+            GameObject neighbor = context.CreateObject("Neighbor");
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighbor);
+            NeighborAudioController audio = context.AddInitializedComponent<NeighborAudioController>(neighbor);
+            GameplaySmokeTestReflection.SetField(audio, "brain", brain);
+            GameplaySmokeTestReflection.SetField(audio, "chaseLoopVolume", 0.45f);
+            GameplaySmokeTestReflection.SetField(audio, "searchLoopVolume", 0.16f);
+            GameplaySmokeTestReflection.SetField(audio, "investigationLoopVolume", 0.1f);
+            GameplaySmokeTestReflection.SetField(audio, "memoryTrailLoopBoost", 0.18f);
+            GameplaySmokeTestReflection.SetField(audio, "memoryTrailLoopPitchLift", 0.08f);
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.HuntMode);
+
+            float baseHuntTarget = GameplaySmokeTestReflection.InvokeResult<float>(
+                audio,
+                "GetChaseLoopTarget",
+                NeighborBrain.BehaviorState.HuntMode);
+
+            GameplaySmokeTestReflection.SetField(brain, "currentHuntMemoryClueActive", true);
+            GameplaySmokeTestReflection.SetField(
+                brain,
+                "currentHuntMemoryClueKind",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened);
+            float doorTarget = GameplaySmokeTestReflection.InvokeResult<float>(
+                audio,
+                "GetChaseLoopTarget",
+                NeighborBrain.BehaviorState.HuntMode);
+            GameplaySmokeTestReflection.SetField(
+                brain,
+                "currentHuntMemoryClueKind",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken);
+            float glassTarget = GameplaySmokeTestReflection.InvokeResult<float>(
+                audio,
+                "GetChaseLoopTarget",
+                NeighborBrain.BehaviorState.HuntMode);
+            GameplaySmokeTestReflection.SetField(
+                brain,
+                "currentHuntMemoryClueKind",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen);
+            float keyTarget = GameplaySmokeTestReflection.InvokeResult<float>(
+                audio,
+                "GetChaseLoopTarget",
+                NeighborBrain.BehaviorState.HuntMode);
+            float keyPitch = GameplaySmokeTestReflection.InvokeResult<float>(
+                audio,
+                "GetChaseLoopPitch",
+                NeighborBrain.BehaviorState.HuntMode);
+
+            Assert.That(baseHuntTarget, Is.EqualTo(0.16f).Within(0.001f));
+            Assert.That(doorTarget, Is.GreaterThan(baseHuntTarget));
+            Assert.That(glassTarget, Is.GreaterThan(doorTarget));
+            Assert.That(keyTarget, Is.GreaterThan(glassTarget));
+            Assert.That(keyTarget, Is.LessThanOrEqualTo(0.45f));
+            Assert.That(keyPitch, Is.EqualTo(1.08f).Within(0.001f));
+
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.Investigate);
+            GameplaySmokeTestReflection.SetField(brain, "currentHuntMemoryClueActive", false);
+            GameplaySmokeTestReflection.SetField(brain, "currentInvestigationTrailRelated", true);
+            GameplaySmokeTestReflection.SetField(brain, "currentInvestigationMemoryClueActive", true);
+            GameplaySmokeTestReflection.SetField(
+                brain,
+                "currentInvestigationMemoryClueKind",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen);
+
+            float keyInvestigationTarget = GameplaySmokeTestReflection.InvokeResult<float>(
+                audio,
+                "GetChaseLoopTarget",
+                NeighborBrain.BehaviorState.Investigate);
+
+            Assert.That(keyInvestigationTarget, Is.GreaterThan(0.27f));
+        }
+
+        [Test]
         public void NeighborPlacedCameraSpacing_PreventsOverlappingMounts()
         {
             GameObject cameraObject = context.CreateObject("NeighborPlacedCamera");
