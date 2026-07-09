@@ -37,16 +37,21 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float hiddenBreathPitchLift = 0.08f;
         [SerializeField] private bool respondToStealthLoop = true;
         [SerializeField] private bool respondToNeighborMemory = true;
+        [SerializeField] private bool respondToNeighborInvestigation = true;
         [SerializeField] private bool respondToNoiseFeedback = true;
         [SerializeField, Range(0f, 1f)] private float stealthBreathVolume = 0.32f;
         [SerializeField, Min(0f)] private float stealthBreathPitchLift = 0.06f;
         [SerializeField, Range(0f, 1f)] private float calmHidingStealthBreathPressure = 0.04f;
         [SerializeField, Range(0f, 1f)] private float calmPostChaseStealthBreathPressure = 0.12f;
+        [SerializeField, Range(0f, 1f)] private float investigationStealthBreathPressure = 0.34f;
+        [SerializeField, Range(0f, 1f)] private float trailInvestigationStealthBreathPressure = 0.5f;
+        [SerializeField, Range(0f, 1f)] private float resolvedTrailStealthBreathPressure = 0.1f;
         [SerializeField, Range(0f, 1f)] private float heardNoiseStealthBreathPressure = 0.28f;
         [SerializeField, Range(0f, 1f)] private float heardNoiseListenerStealthBreathBoost = 0.08f;
         [SerializeField, Range(0f, 1f)] private float memoryStealthBreathPressure = 0.2f;
         [SerializeField, Range(0f, 1f)] private float stackedMemoryStealthBreathBoost = 0.1f;
         [SerializeField, Min(0f)] private float stealthBreathHoldDuration = 2.6f;
+        [SerializeField, Min(0f)] private float investigationStealthBreathHoldDuration = 2.2f;
         [SerializeField, Min(0f)] private float heardNoiseStealthBreathHoldDuration = 1.8f;
         [SerializeField, Min(0f)] private float memoryStealthBreathHoldDuration = 3f;
         [SerializeField, Min(1f)] private float maximumMemoryStealthBreathHoldMultiplier = 1.5f;
@@ -176,6 +181,8 @@ namespace Neighbor.Main.Features.Player
             PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged += HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
+            PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
             PlayerFeedbackEvents.NoiseEmitted -= HandleNoiseEmitted;
             PlayerFeedbackEvents.NoiseEmitted += HandleNoiseEmitted;
         }
@@ -489,6 +496,16 @@ namespace Neighbor.Main.Features.Player
             RaiseStealthBreathStress(GetMemoryBreathStress(feedback), GetMemoryBreathHoldDuration(feedback));
         }
 
+        private void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
+        {
+            if (!respondToNeighborInvestigation)
+            {
+                return;
+            }
+
+            RaiseStealthBreathStress(GetInvestigationBreathStress(feedback), GetInvestigationBreathHoldDuration(feedback));
+        }
+
         private void HandleNoiseEmitted(PlayerFeedbackEvents.NoiseFeedback feedback)
         {
             if (!respondToNoiseFeedback || !feedback.HeardByNeighbor)
@@ -514,7 +531,10 @@ namespace Neighbor.Main.Features.Player
 
         private void UpdateStealthBreathStress(float deltaTime)
         {
-            if (!respondToStealthLoop && !respondToNeighborMemory && !respondToNoiseFeedback)
+            if (!respondToStealthLoop
+                && !respondToNeighborMemory
+                && !respondToNeighborInvestigation
+                && !respondToNoiseFeedback)
             {
                 targetStealthBreathStress = 0f;
             }
@@ -546,6 +566,40 @@ namespace Neighbor.Main.Features.Player
                 PlayerFeedbackEvents.StealthLoopPhase.Curious => Mathf.Max(0.14f, pressure * 0.6f),
                 _ => 0f
             };
+        }
+
+        private float GetInvestigationBreathStress(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
+        {
+            float pressure = Mathf.Max(feedback.Suspicion, feedback.Urgency);
+            return feedback.Kind switch
+            {
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.CheckingHideSpot => 1f,
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail =>
+                    Mathf.Max(trailInvestigationStealthBreathPressure, pressure),
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching when feedback.IsTrailRelated =>
+                    Mathf.Max(trailInvestigationStealthBreathPressure, pressure),
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching =>
+                    Mathf.Max(investigationStealthBreathPressure, pressure),
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Started =>
+                    Mathf.Max(investigationStealthBreathPressure, pressure),
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning when feedback.IsTrailRelated =>
+                    Mathf.Max(resolvedTrailStealthBreathPressure, pressure * 0.24f),
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned when feedback.IsTrailRelated =>
+                    Mathf.Max(resolvedTrailStealthBreathPressure, pressure * 0.18f),
+                _ => 0f
+            };
+        }
+
+        private float GetInvestigationBreathHoldDuration(PlayerFeedbackEvents.NeighborInvestigationFeedback feedback)
+        {
+            if (feedback.Kind == PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning
+                || feedback.Kind == PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Abandoned)
+            {
+                return investigationStealthBreathHoldDuration * 0.7f;
+            }
+
+            float pressure = Mathf.Max(feedback.Suspicion, feedback.Urgency);
+            return investigationStealthBreathHoldDuration * Mathf.Lerp(1f, 1.45f, pressure);
         }
 
         private float GetNoiseBreathStress(PlayerFeedbackEvents.NoiseFeedback feedback)
@@ -633,6 +687,7 @@ namespace Neighbor.Main.Features.Player
         {
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
+            PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
             PlayerFeedbackEvents.NoiseEmitted -= HandleNoiseEmitted;
             if (cameraController != null)
             {

@@ -3302,6 +3302,34 @@ namespace Neighbor.Main.Tests
                     3);
 
                 Assert.That(audioController.CurrentStealthBreathStress01, Is.GreaterThan(0.9f));
+
+                GameplaySmokeTestReflection.SetField(audioController, "currentStealthBreathStress", 0f);
+                GameplaySmokeTestReflection.SetField(audioController, "targetStealthBreathStress", 0f);
+                GameplaySmokeTestReflection.SetField(audioController, "stealthBreathHoldUntilTime", 0f);
+                PlayerFeedbackEvents.ReportNeighborInvestigation(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail,
+                    Vector3.zero,
+                    "Basement Key",
+                    0.32f,
+                    1f,
+                    true,
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen);
+
+                Assert.That(audioController.CurrentStealthBreathStress01, Is.EqualTo(1f).Within(0.001f));
+
+                GameplaySmokeTestReflection.SetField(audioController, "currentStealthBreathStress", 0f);
+                GameplaySmokeTestReflection.SetField(audioController, "targetStealthBreathStress", 0f);
+                GameplaySmokeTestReflection.SetField(audioController, "stealthBreathHoldUntilTime", 0f);
+                PlayerFeedbackEvents.ReportNeighborInvestigation(
+                    PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning,
+                    Vector3.zero,
+                    "Basement Key",
+                    0.32f,
+                    1f,
+                    true,
+                    PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen);
+
+                Assert.That(audioController.CurrentStealthBreathStress01, Is.InRange(0.23f, 0.25f));
             }
             finally
             {
