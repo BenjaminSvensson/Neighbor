@@ -1160,6 +1160,60 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NeighborMemory_ResolvedCluesSettleButSevereCluesLinger()
+        {
+            NeighborBrain doorBrain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("DoorMemoryNeighbor"));
+            Door door = context.AddInitializedComponent<Door>("RememberedDoor");
+            door.SetLocked(false, false, false);
+            GameplaySmokeTestReflection.Invoke(
+                doorBrain,
+                "RememberMemoryClue",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
+                door,
+                door.transform.position,
+                0.34f);
+            GameplaySmokeTestReflection.Invoke(doorBrain, "ClearMemoryClueFollowUp");
+
+            float doorBeforeSettle = doorBrain.RememberedClueTension01;
+
+            GameplaySmokeTestReflection.Invoke(
+                doorBrain,
+                "SettleMemoryClue",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
+                door.gameObject);
+
+            float doorAfterSettle = doorBrain.RememberedClueTension01;
+
+            NeighborBrain keyBrain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("KeyMemoryNeighbor"));
+            Pickupable stolenKey = CreatePickupable("StolenBasementKey", new Vector3(0.75f, 0f, 0f), true);
+            DoorKey key = stolenKey.GetComponent<DoorKey>();
+            GameplaySmokeTestReflection.Invoke(
+                keyBrain,
+                "RememberMemoryClue",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
+                key,
+                stolenKey.HomePosition,
+                0.72f);
+            GameplaySmokeTestReflection.Invoke(keyBrain, "ClearMemoryClueFollowUp");
+
+            float keyBeforeSettle = keyBrain.RememberedClueTension01;
+
+            GameplaySmokeTestReflection.Invoke(
+                keyBrain,
+                "SettleMemoryClue",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
+                stolenKey.gameObject);
+
+            float keyAfterSettle = keyBrain.RememberedClueTension01;
+
+            Assert.That(doorAfterSettle, Is.LessThan(doorBeforeSettle));
+            Assert.That(keyAfterSettle, Is.LessThan(keyBeforeSettle));
+            Assert.That(keyAfterSettle, Is.GreaterThan(doorAfterSettle + 0.1f));
+            Assert.That(doorBrain.RememberedOpenedDoorCount, Is.EqualTo(1));
+            Assert.That(keyBrain.RememberedStolenKeyCount, Is.EqualTo(1));
+        }
+
+        [Test]
         public void NeighborMemory_RespawnRequeuesStrongestRememberedClue()
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
