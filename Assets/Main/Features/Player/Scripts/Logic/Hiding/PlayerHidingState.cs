@@ -27,6 +27,15 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Range(0f, 1f)] private float breathNoiseLoudness = 0.18f;
         [SerializeField, Min(0f)] private float breathNoiseLifetime = 0.35f;
 
+        [Header("Exit Risk")]
+        [SerializeField] private bool emitNoisyExit = true;
+        [SerializeField, Range(0f, 1f)] private float noisyExitTensionThreshold = 0.45f;
+        [SerializeField, Range(0f, 1f)] private float inspectedExitNoiseFloor = 0.38f;
+        [SerializeField, Range(0f, 1f)] private float compromisedExitNoiseFloor = 0.62f;
+        [SerializeField, Min(0f)] private float noisyExitRadius = 5.5f;
+        [SerializeField, Range(0f, 1f)] private float noisyExitLoudness = 0.28f;
+        [SerializeField, Min(0f)] private float noisyExitLifetime = 0.35f;
+
         [Header("Peek Risk")]
         [SerializeField, Min(0f)] private float peekExposureRecoveryRate = 2.2f;
         [SerializeField, Min(0f)] private float peekTensionBuildRate = 0.08f;
@@ -84,13 +93,20 @@ namespace Neighbor.Main.Features.Player
                 ClosetHideSpot previousHideSpot = CurrentHideSpot;
                 bool wasHidden = IsHidden;
                 bool wasCompromised = IsCompromised;
+                float exitNoise = wasHidden ? CalculateNoisyExitLoudness(wasCompromised) : 0f;
                 IsHidden = false;
                 CurrentHideSpot = null;
                 IsCompromised = false;
                 PeekExposure01 = 0f;
                 if (wasHidden)
                 {
-                    ReportHidingFeedback(previousHideSpot, PlayerFeedbackEvents.HidingFeedbackKind.Exited, false, wasCompromised);
+                    TryEmitNoisyExit(exitNoise);
+                    ReportHidingFeedback(
+                        previousHideSpot,
+                        PlayerFeedbackEvents.HidingFeedbackKind.Exited,
+                        false,
+                        wasCompromised,
+                        exitNoise);
                 }
 
                 return;
@@ -188,6 +204,55 @@ namespace Neighbor.Main.Features.Player
                 gameObject,
                 breathNoiseLifetime,
                 BreathTension01,
+                gameObject);
+        }
+
+        private float CalculateNoisyExitLoudness(bool wasCompromised)
+        {
+            if (!emitNoisyExit
+                || noisyExitRadius <= 0f
+                || noisyExitLoudness <= 0f)
+            {
+                return 0f;
+            }
+
+            float exitPressure = BreathTension01;
+            if (WasInspectedRecently)
+            {
+                exitPressure = Mathf.Max(exitPressure, inspectedExitNoiseFloor);
+            }
+
+            if (wasCompromised || IsDangerouslyExposed)
+            {
+                exitPressure = Mathf.Max(exitPressure, compromisedExitNoiseFloor);
+            }
+
+            if (exitPressure < noisyExitTensionThreshold)
+            {
+                return 0f;
+            }
+
+            return Mathf.Clamp01(Mathf.Lerp(noisyExitLoudness * 0.6f, noisyExitLoudness, exitPressure));
+        }
+
+        private void TryEmitNoisyExit(float loudness)
+        {
+            if (loudness <= 0f)
+            {
+                return;
+            }
+
+            GameObject noiseObject = new("HiddenExitNoiseEvent");
+            noiseObject.transform.position = transform.position;
+            noiseObject.AddComponent<SphereCollider>();
+            NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
+            noiseEvent.Initialize(
+                transform.position,
+                noisyExitRadius,
+                loudness,
+                gameObject,
+                noisyExitLifetime,
+                Mathf.Max(loudness, BreathTension01),
                 gameObject);
         }
 
@@ -310,14 +375,15 @@ namespace Neighbor.Main.Features.Player
                 isHidden && isCompromised ? 1f : BreathTension01,
                 noise,
                 stealthTension,
-                GetHidingStealthLoopMessage(kind, isHidden, isCompromised),
+                GetHidingStealthLoopMessage(kind, isHidden, isCompromised, noise),
                 kind == PlayerFeedbackEvents.HidingFeedbackKind.Recovered);
         }
 
         private static string GetHidingStealthLoopMessage(
             PlayerFeedbackEvents.HidingFeedbackKind kind,
             bool isHidden,
-            bool isCompromised)
+            bool isCompromised,
+            float noise)
         {
             return kind switch
             {
@@ -325,7 +391,9 @@ namespace Neighbor.Main.Features.Player
                 PlayerFeedbackEvents.HidingFeedbackKind.Inspected => "Stay still. He is checking the hiding spot.",
                 PlayerFeedbackEvents.HidingFeedbackKind.BreathNoisy => "Your breathing is too loud.",
                 PlayerFeedbackEvents.HidingFeedbackKind.Recovered => "Breathing under control.",
-                PlayerFeedbackEvents.HidingFeedbackKind.Exited => "Back in the open.",
+                PlayerFeedbackEvents.HidingFeedbackKind.Exited => noise > 0.01f
+                    ? "You made noise leaving cover."
+                    : "Back in the open.",
                 _ => isHidden && isCompromised
                     ? "He found your hiding spot."
                     : isHidden ? "Stay still. Let the tension drop." : "Back in the open."

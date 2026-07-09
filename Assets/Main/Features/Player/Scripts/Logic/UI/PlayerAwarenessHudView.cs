@@ -620,7 +620,9 @@ namespace Neighbor.Main.Features.Player
             warningText.text = feedback.Kind switch
             {
                 PlayerFeedbackEvents.HidingFeedbackKind.Entered => $"HIDDEN IN {spotName}",
-                PlayerFeedbackEvents.HidingFeedbackKind.Exited => $"LEFT {spotName}",
+                PlayerFeedbackEvents.HidingFeedbackKind.Exited => feedback.BreathTension >= 0.45f
+                    ? $"NOISY EXIT FROM {spotName}"
+                    : $"LEFT {spotName}",
                 PlayerFeedbackEvents.HidingFeedbackKind.Inspected => $"SEARCHED {spotName} - STAY STILL",
                 PlayerFeedbackEvents.HidingFeedbackKind.BreathNoisy => "BREATH TOO LOUD",
                 PlayerFeedbackEvents.HidingFeedbackKind.Found => $"FOUND IN {spotName}",
@@ -630,7 +632,10 @@ namespace Neighbor.Main.Features.Player
             warningText.color = feedback.Kind switch
             {
                 PlayerFeedbackEvents.HidingFeedbackKind.Entered => new Color(0.62f, 0.9f, 1f, 0.96f),
-                PlayerFeedbackEvents.HidingFeedbackKind.Exited => new Color(0.78f, 0.84f, 0.94f, 0.94f),
+                PlayerFeedbackEvents.HidingFeedbackKind.Exited => Color.Lerp(
+                    new Color(0.78f, 0.84f, 0.94f, 0.94f),
+                    new Color(1f, 0.5f, 0.12f, 0.98f),
+                    feedback.BreathTension),
                 PlayerFeedbackEvents.HidingFeedbackKind.Inspected => Color.Lerp(
                         new Color(1f, 0.72f, 0.18f, 0.98f),
                         new Color(1f, 0.46f, 0.12f, 1f),
