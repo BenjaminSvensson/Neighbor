@@ -895,6 +895,27 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void AwarenessHud_ShowsNoisyExitWhenLeavingCoverTense()
+        {
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+
+            GameplaySmokeTestReflection.Invoke(
+                hud,
+                "HandleHidingChanged",
+                new PlayerFeedbackEvents.HidingFeedback(
+                    "closet",
+                    PlayerFeedbackEvents.HidingFeedbackKind.Exited,
+                    0.76f,
+                    false,
+                    false));
+
+            Text warningText = GameplaySmokeTestReflection.GetField<Text>(hud, "warningText");
+            Assert.That(warningText.text, Is.EqualTo("NOISY EXIT FROM CLOSET"));
+            Assert.That(warningText.color.r, Is.GreaterThan(warningText.color.b));
+        }
+
+        [Test]
         public void HidingBreath_BuildsWhenNeighborSearchesNearby()
         {
             PlayerHidingState hidingState = context.AddInitializedComponent<PlayerHidingState>(
@@ -3405,6 +3426,76 @@ namespace Neighbor.Main.Tests
 
             Assert.That(hidingState.PeekExposure01, Is.Zero);
             Assert.That(hidingState.IsConcealedFromVision, Is.False);
+        }
+
+        [Test]
+        public void HidingState_LeavingCoverWithHighBreathEmitsReadableExitNoise()
+        {
+            PlayerFeedbackEvents.NoiseFeedback received = default;
+            PlayerFeedbackEvents.HidingFeedback hidingFeedback = default;
+            PlayerFeedbackEvents.StealthLoopFeedback stealthFeedback = default;
+            bool reportedNoise = false;
+            bool reportedHiding = false;
+            bool reportedStealth = false;
+            PlayerFeedbackEvents.NoiseEmitted += HandleNoise;
+            PlayerFeedbackEvents.HidingChanged += HandleHidingChanged;
+            PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
+
+            GameObject noiseObject = null;
+            try
+            {
+                PlayerHidingState hidingState = context.CreateObject("HiddenPlayer").AddComponent<PlayerHidingState>();
+                GameplaySmokeTestReflection.SetField(hidingState, "noisyExitTensionThreshold", 0.2f);
+                GameplaySmokeTestReflection.SetField(hidingState, "noisyExitRadius", 6f);
+                GameplaySmokeTestReflection.SetField(hidingState, "noisyExitLoudness", 0.5f);
+
+                hidingState.SetHidden(true);
+                hidingState.AddBreathTension(0.82f);
+                hidingState.SetHidden(false);
+
+                noiseObject = GameObject.Find("HiddenExitNoiseEvent");
+                Assert.That(reportedNoise, Is.True);
+                Assert.That(reportedHiding, Is.True);
+                Assert.That(reportedStealth, Is.True);
+                Assert.That(hidingFeedback.Kind, Is.EqualTo(PlayerFeedbackEvents.HidingFeedbackKind.Exited));
+                Assert.That(hidingFeedback.BreathTension, Is.EqualTo(0.82f).Within(0.001f));
+                Assert.That(stealthFeedback.Phase, Is.EqualTo(PlayerFeedbackEvents.StealthLoopPhase.Quiet));
+                Assert.That(stealthFeedback.Message, Is.EqualTo("You made noise leaving cover."));
+                Assert.That(stealthFeedback.Noise, Is.GreaterThan(0.4f));
+                Assert.That(stealthFeedback.Tension, Is.EqualTo(0.82f).Within(0.001f));
+                Assert.That(received.Radius, Is.EqualTo(6f));
+                Assert.That(received.Loudness, Is.GreaterThan(0.4f));
+                Assert.That(noiseObject, Is.Not.Null);
+                Assert.That(noiseObject.GetComponent<SphereCollider>().isTrigger, Is.True);
+            }
+            finally
+            {
+                PlayerFeedbackEvents.NoiseEmitted -= HandleNoise;
+                PlayerFeedbackEvents.HidingChanged -= HandleHidingChanged;
+                PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+                if (noiseObject != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(noiseObject);
+                }
+            }
+
+            void HandleNoise(PlayerFeedbackEvents.NoiseFeedback feedback)
+            {
+                received = feedback;
+                reportedNoise = true;
+            }
+
+            void HandleHidingChanged(PlayerFeedbackEvents.HidingFeedback feedback)
+            {
+                hidingFeedback = feedback;
+                reportedHiding = true;
+            }
+
+            void HandleStealthLoopChanged(PlayerFeedbackEvents.StealthLoopFeedback feedback)
+            {
+                stealthFeedback = feedback;
+                reportedStealth = true;
+            }
         }
 
         [Test]
