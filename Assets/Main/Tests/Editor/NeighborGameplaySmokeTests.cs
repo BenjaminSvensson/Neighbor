@@ -950,6 +950,11 @@ namespace Neighbor.Main.Tests
             Assert.That(brain.RememberedBrokenGlassCount, Is.EqualTo(1));
             Assert.That(brain.TotalRememberedClueCount, Is.EqualTo(4));
             Assert.That(brain.LastRememberedClueKind, Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken));
+            NeighborMemoryClueVisual glassVisual = glassObject.GetComponent<NeighborMemoryClueVisual>();
+            Assert.That(glassVisual, Is.Not.Null);
+            Assert.That(glassVisual.LastKind, Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken));
+            Assert.That(glassVisual.IsCueActive, Is.True);
+            Assert.That(glassVisual.IsTracking, Is.False);
         }
 
         [Test]
@@ -1020,6 +1025,11 @@ namespace Neighbor.Main.Tests
                     Assert.That(
                         brain.CurrentInvestigationMemoryClueKind,
                         Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened));
+                    NeighborMemoryClueVisual clueVisual = door.GetComponent<NeighborMemoryClueVisual>();
+                    Assert.That(clueVisual, Is.Not.Null);
+                    Assert.That(clueVisual.LastKind, Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened));
+                    Assert.That(clueVisual.IsTracking, Is.True);
+                    Assert.That(clueVisual.CurrentIntensity, Is.GreaterThan(0.7f));
                     Assert.That(brain.HasPendingMemoryClueFollowUp, Is.False);
                     Assert.That(receivedInvestigation, Is.True);
                     Assert.That(
@@ -1858,6 +1868,9 @@ namespace Neighbor.Main.Tests
                 GameplaySmokeTestReflection.SetField(brain, "lastKnownInvestigationPosition", cluePosition);
                 GameplaySmokeTestReflection.SetField(brain, "investigationMoveMode", NeighborMotor.MoveMode.Cautious);
                 GameplaySmokeTestReflection.SetField(brain, "suspicion", 0.66f);
+                NeighborMemoryClueVisual clueVisual = NeighborMemoryClueVisual.EnsureFor(glassObject);
+                clueVisual.Track(PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken, 0.78f);
+                Assert.That(clueVisual.IsTracking, Is.True);
 
                 GameplaySmokeTestReflection.Invoke(brain, "FinishHuntMemoryClueSearch");
 
@@ -1871,6 +1884,8 @@ namespace Neighbor.Main.Tests
                 Assert.That(feedback.SourceName, Is.EqualTo(glassObject.name));
                 Assert.That(brain.IsHuntingMemoryClue, Is.False);
                 Assert.That(brain.IsCurrentInvestigationTrailRelated, Is.False);
+                Assert.That(clueVisual.IsTracking, Is.False);
+                Assert.That(clueVisual.IsCueActive, Is.True);
             }
             finally
             {
