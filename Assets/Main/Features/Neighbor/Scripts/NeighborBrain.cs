@@ -1467,6 +1467,7 @@ namespace Neighbor.Main.Features.Neighbor
             currentInvestigationTrailRelated = true;
             currentInvestigationMemoryClueActive = true;
             currentInvestigationMemoryClueKind = kind;
+            TrackMemoryClueVisual(kind, source, investigationSuspicion);
             ClearMatchingMemoryClueFollowUp(source, kind);
             ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail);
             ReportStealthLoopIfNeeded(true);
@@ -1501,6 +1502,7 @@ namespace Neighbor.Main.Features.Neighbor
             currentInvestigationTrailRelated = true;
             currentInvestigationMemoryClueActive = true;
             currentInvestigationMemoryClueKind = kind;
+            TrackMemoryClueVisual(kind, source, Mathf.Max(suspicion, GetMemoryClueInvestigationUrgency(kind)));
             ClearMatchingMemoryClueFollowUp(source, kind);
             ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail);
         }
@@ -1560,6 +1562,11 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void ClearInvestigationState()
         {
+            if (currentInvestigationMemoryClueActive)
+            {
+                SettleMemoryClueVisual(currentInvestigationSource);
+            }
+
             currentInvestigationSource = null;
             currentSearchPoint = null;
             currentUnexpectedOpenDoor = null;
@@ -2929,6 +2936,7 @@ namespace Neighbor.Main.Features.Neighbor
             currentInvestigationTrailRelated = true;
             goalWaitDuration = Mathf.Max(closetSearchWaitTime, searchDuration);
             waitingAtGoal = false;
+            TrackMemoryClueVisual(clueKind, clueSource, clueSuspicion);
             ClearMemoryClueFollowUp();
             nextMemoryFollowUpTime = Time.time + memoryFollowUpCooldown;
             suspicion = Mathf.Max(suspicion, clueSuspicion);
@@ -2964,6 +2972,11 @@ namespace Neighbor.Main.Features.Neighbor
         private void ClearHuntMemoryClueTarget()
         {
             bool clearingActiveHuntClue = currentHuntMemoryClueActive;
+            if (clearingActiveHuntClue)
+            {
+                SettleMemoryClueVisual(currentHuntMemoryClueSource);
+            }
+
             if (currentInvestigationSource == currentHuntMemoryClueSource)
             {
                 currentInvestigationSource = null;
@@ -4163,6 +4176,7 @@ namespace Neighbor.Main.Features.Neighbor
                 position,
                 Mathf.Max(suspicion, pressureSuspicion),
                 TotalRememberedClueCount);
+            RememberMemoryClueVisual(kind, clue, pressureSuspicion);
             ReportStealthLoopIfNeeded(true);
         }
 
@@ -4359,6 +4373,52 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             RefreshRememberedClueSuspicionFromMemory();
+            SettleMemoryClueVisual(source);
+        }
+
+        private void RememberMemoryClueVisual(
+            PlayerFeedbackEvents.NeighborMemoryClueKind kind,
+            UnityEngine.Object clue,
+            float urgency)
+        {
+            GameObject source = ResolveMemoryClueSource(clue);
+            NeighborMemoryClueVisual visual = NeighborMemoryClueVisual.EnsureFor(source);
+            if (visual == null)
+            {
+                return;
+            }
+
+            visual.Remember(
+                kind,
+                urgency,
+                Mathf.Max(2.5f, memoryFollowUpWaitTime + 2f));
+        }
+
+        private void TrackMemoryClueVisual(
+            PlayerFeedbackEvents.NeighborMemoryClueKind kind,
+            GameObject source,
+            float urgency)
+        {
+            NeighborMemoryClueVisual visual = NeighborMemoryClueVisual.EnsureFor(source);
+            if (visual == null)
+            {
+                return;
+            }
+
+            visual.Track(
+                kind,
+                urgency,
+                Mathf.Max(2.5f, GetMemoryFollowUpSearchDuration(kind, urgency) + 1.5f));
+        }
+
+        private static void SettleMemoryClueVisual(GameObject source)
+        {
+            if (source == null || !source.TryGetComponent(out NeighborMemoryClueVisual visual))
+            {
+                return;
+            }
+
+            visual.Settle();
         }
 
         private float GetResolvedMemoryRetention(PlayerFeedbackEvents.NeighborMemoryClueKind kind)
