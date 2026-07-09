@@ -134,6 +134,10 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float stackedMemoryVigilanceDuration = 14f;
         [SerializeField, Min(0f)] private float rememberedClueTensionDuration = 8f;
         [SerializeField, Range(0f, 1f)] private float rememberedClueTensionFloor = 0.24f;
+        [SerializeField, Range(0f, 1f)] private float resolvedDoorMemoryRetention = 0.22f;
+        [SerializeField, Range(0f, 1f)] private float resolvedObjectMemoryRetention = 0.38f;
+        [SerializeField, Range(0f, 1f)] private float resolvedGlassMemoryRetention = 0.58f;
+        [SerializeField, Range(0f, 1f)] private float resolvedKeyMemoryRetention = 0.74f;
 
         [Header("Post-Encounter Vigilance")]
         [SerializeField, Min(0f)] private float postEncounterTaskCooldown = 25f;
@@ -1390,6 +1394,7 @@ namespace Neighbor.Main.Features.Neighbor
         private void FinishInvestigationAndReturnToRoutine()
         {
             ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning);
+            SettleCurrentInvestigationMemoryClue();
             RememberFalseAlarm();
             ClearInvestigationState();
 
@@ -2825,6 +2830,7 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             ReportHuntMemoryClueInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Returning);
+            SettleMemoryClue(currentHuntMemoryClueKind, currentHuntMemoryClueSource);
             ClearHuntMemoryClueTarget();
             ReportStealthLoopIfNeeded(true);
         }
@@ -4148,6 +4154,76 @@ namespace Neighbor.Main.Features.Neighbor
             pendingMemoryCluePosition = default;
             pendingMemoryClueSuspicion = 0f;
             pendingMemoryClueScore = 0f;
+        }
+
+        private void SettleCurrentInvestigationMemoryClue()
+        {
+            if (!currentInvestigationMemoryClueActive)
+            {
+                return;
+            }
+
+            SettleMemoryClue(currentInvestigationMemoryClueKind, currentInvestigationSource);
+        }
+
+        private void SettleMemoryClue(PlayerFeedbackEvents.NeighborMemoryClueKind kind, GameObject source)
+        {
+            if (source == null)
+            {
+                return;
+            }
+
+            float retention = GetResolvedMemoryRetention(kind);
+            switch (kind)
+            {
+                case PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened:
+                    SettleMemory(openedDoorMemory, source.GetComponent<Door>() ?? source.GetComponentInParent<Door>(), retention);
+                    break;
+                case PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved:
+                    SettleMemory(movedObjectMemory, source.GetComponent<Pickupable>() ?? source.GetComponentInParent<Pickupable>(), retention);
+                    break;
+                case PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken:
+                    SettleMemory(brokenGlassMemory, source.GetComponent<GlassShatter>() ?? source.GetComponentInParent<GlassShatter>(), retention);
+                    break;
+                case PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen:
+                    DoorKey key = source.GetComponent<DoorKey>()
+                        ?? source.GetComponentInParent<DoorKey>()
+                        ?? source.GetComponentInChildren<DoorKey>(true);
+                    SettleMemory(stolenKeyMemory, key, retention);
+                    break;
+            }
+
+            RefreshRememberedClueSuspicionFromMemory();
+        }
+
+        private float GetResolvedMemoryRetention(PlayerFeedbackEvents.NeighborMemoryClueKind kind)
+        {
+            return kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => resolvedKeyMemoryRetention,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => resolvedGlassMemoryRetention,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => resolvedObjectMemoryRetention,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => resolvedDoorMemoryRetention,
+                _ => 0.35f
+            };
+        }
+
+        private static void SettleMemory<TKey>(Dictionary<TKey, float> memory, TKey key, float retention)
+            where TKey : UnityEngine.Object
+        {
+            if (key == null || !memory.TryGetValue(key, out float strength))
+            {
+                return;
+            }
+
+            memory[key] = Mathf.Max(0f, strength) * Mathf.Clamp01(retention);
+        }
+
+        private void RefreshRememberedClueSuspicionFromMemory()
+        {
+            lastRememberedClueSuspicion = TryGetStrongestRememberedClue(out RememberedClueFollowUpCandidate candidate)
+                ? Mathf.Max(pendingMemoryClueSuspicion, candidate.Suspicion)
+                : pendingMemoryClueSuspicion;
         }
 
         private void RequeueStrongestRememberedClueFollowUp()
