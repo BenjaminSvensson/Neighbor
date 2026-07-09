@@ -66,6 +66,7 @@ namespace Neighbor.Main.Features.Environment
         [Header("Noise Atmosphere Response")]
         [SerializeField] private bool respondToNoiseFeedback = true;
         [SerializeField, Range(0f, 1f)] private float heardNoiseAtmosphereIntensity = 0.5f;
+        [SerializeField, Range(0f, 1f)] private float heardNoiseListenerAtmosphereBoost = 0.08f;
         [SerializeField, Min(0f)] private float heardNoiseAtmosphereHoldDuration = 2.4f;
 
         private float currentStealthAtmosphereIntensity;
@@ -425,7 +426,10 @@ namespace Neighbor.Main.Features.Environment
 
         private float GetNoiseAtmosphereIntensity(PlayerFeedbackEvents.NoiseFeedback feedback)
         {
-            return Mathf.Clamp01(Mathf.Max(heardNoiseAtmosphereIntensity, Mathf.Max(feedback.Loudness, feedback.Urgency)));
+            float listenerPressure = Mathf.Clamp01(Mathf.Max(0, feedback.NeighborListenerCount - 1) / 2f)
+                * heardNoiseListenerAtmosphereBoost;
+            return Mathf.Clamp01(Mathf.Max(heardNoiseAtmosphereIntensity, Mathf.Max(feedback.Loudness, feedback.Urgency))
+                + listenerPressure);
         }
 
         private int CountAnchors(AtmosphereDressingAnchor.DressingKind kind)

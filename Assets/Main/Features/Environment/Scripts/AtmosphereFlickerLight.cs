@@ -38,6 +38,7 @@ namespace Neighbor.Main.Features.Environment
         [Header("Noise Response")]
         [SerializeField] private bool respondToNoiseFeedback = true;
         [SerializeField, Range(0f, 1f)] private float heardNoiseFlickerPressure = 0.46f;
+        [SerializeField, Range(0f, 1f)] private float heardNoiseListenerFlickerBoost = 0.08f;
         [SerializeField, Min(0f)] private float heardNoiseFlickerHoldDuration = 2.2f;
 
         private float noiseSeed;
@@ -293,7 +294,10 @@ namespace Neighbor.Main.Features.Environment
 
         private float GetNoisePressure(PlayerFeedbackEvents.NoiseFeedback feedback)
         {
-            return Mathf.Clamp01(Mathf.Max(heardNoiseFlickerPressure, Mathf.Max(feedback.Loudness, feedback.Urgency)));
+            float listenerPressure = Mathf.Clamp01(Mathf.Max(0, feedback.NeighborListenerCount - 1) / 2f)
+                * heardNoiseListenerFlickerBoost;
+            return Mathf.Clamp01(Mathf.Max(heardNoiseFlickerPressure, Mathf.Max(feedback.Loudness, feedback.Urgency))
+                + listenerPressure);
         }
     }
 }
