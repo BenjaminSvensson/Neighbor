@@ -972,6 +972,88 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NeighborMemory_PlayerOpenedDoorStartsImmediateDoorTrailInvestigation()
+        {
+            GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            NavMeshSurface surface = null;
+            try
+            {
+                ground.name = "TemporaryOpenedDoorNavMeshGround";
+                ground.transform.position = new Vector3(0f, -0.1f, 0f);
+                ground.transform.localScale = new Vector3(10f, 0.2f, 10f);
+                surface = ground.AddComponent<NavMeshSurface>();
+                surface.collectObjects = CollectObjects.All;
+                surface.useGeometry = NavMeshCollectGeometry.RenderMeshes;
+                surface.layerMask = ~0;
+                surface.defaultArea = 0;
+                surface.BuildNavMesh();
+
+                GameObject neighborObject = context.CreateObject("Neighbor");
+                neighborObject.transform.position = Vector3.zero;
+                NavMeshAgent agent = neighborObject.AddComponent<NavMeshAgent>();
+                agent.radius = 0.3f;
+                agent.height = 2f;
+                agent.stoppingDistance = 0.1f;
+                context.AddInitializedComponent<NeighborMotor>(neighborObject);
+                NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+
+                Door door = context.AddInitializedComponent<Door>("RememberedDoor");
+                door.transform.position = new Vector3(2f, 0f, 0f);
+                door.SetLocked(false, false, false);
+                Transform opener = context.CreateObject("PlayerOpener").transform;
+                opener.position = door.transform.position + Vector3.back;
+
+                PlayerFeedbackEvents.NeighborInvestigationFeedback investigationFeedback = default;
+                bool receivedInvestigation = false;
+                PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
+
+                try
+                {
+                    Assert.That(door.TryOpenFor(opener), Is.True);
+
+                    Assert.That(brain.RememberedOpenedDoorCount, Is.EqualTo(1));
+                    Assert.That(brain.CurrentState, Is.EqualTo(NeighborBrain.BehaviorState.Investigate));
+                    Assert.That(brain.HasActiveInvestigation, Is.True);
+                    Assert.That(brain.CurrentInvestigationSource, Is.SameAs(door.gameObject));
+                    Assert.That(brain.CurrentUnexpectedOpenDoor, Is.SameAs(door));
+                    Assert.That(brain.IsCurrentInvestigationMemoryClue, Is.True);
+                    Assert.That(
+                        brain.CurrentInvestigationMemoryClueKind,
+                        Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened));
+                    Assert.That(brain.HasPendingMemoryClueFollowUp, Is.False);
+                    Assert.That(receivedInvestigation, Is.True);
+                    Assert.That(
+                        investigationFeedback.Kind,
+                        Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail));
+                    Assert.That(investigationFeedback.IsTrailRelated, Is.True);
+                    Assert.That(investigationFeedback.HasMemoryClueKind, Is.True);
+                    Assert.That(
+                        investigationFeedback.MemoryClueKind,
+                        Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened));
+                }
+                finally
+                {
+                    PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
+                }
+
+                void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback item)
+                {
+                    investigationFeedback = item;
+                    receivedInvestigation = true;
+                }
+            }
+            finally
+            {
+                if (surface != null)
+                {
+                    surface.RemoveData();
+                }
+
+                UnityEngine.Object.DestroyImmediate(ground);
+            }
+        }
+
+        [Test]
         public void NeighborMemory_StrongerPendingTrailSurvivesWeakerLaterClue()
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
@@ -1407,6 +1489,86 @@ namespace Neighbor.Main.Tests
                         investigationFeedback.MemoryClueKind,
                         Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken));
                     Assert.That(investigationFeedback.SourceName, Is.EqualTo(glassObject.name));
+                }
+                finally
+                {
+                    PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
+                }
+
+                void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback item)
+                {
+                    investigationFeedback = item;
+                    receivedInvestigation = true;
+                }
+            }
+            finally
+            {
+                if (surface != null)
+                {
+                    surface.RemoveData();
+                }
+
+                UnityEngine.Object.DestroyImmediate(ground);
+            }
+        }
+
+        [Test]
+        public void NeighborMemory_PlayerBrokenGlassStartsImmediateTrailInvestigation()
+        {
+            GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            NavMeshSurface surface = null;
+            try
+            {
+                ground.name = "TemporaryImmediateGlassNavMeshGround";
+                ground.transform.position = new Vector3(0f, -0.1f, 0f);
+                ground.transform.localScale = new Vector3(10f, 0.2f, 10f);
+                surface = ground.AddComponent<NavMeshSurface>();
+                surface.collectObjects = CollectObjects.All;
+                surface.useGeometry = NavMeshCollectGeometry.RenderMeshes;
+                surface.layerMask = ~0;
+                surface.defaultArea = 0;
+                surface.BuildNavMesh();
+
+                GameObject neighborObject = context.CreateObject("Neighbor");
+                neighborObject.transform.position = Vector3.zero;
+                NavMeshAgent agent = neighborObject.AddComponent<NavMeshAgent>();
+                agent.radius = 0.3f;
+                agent.height = 2f;
+                agent.stoppingDistance = 0.1f;
+                context.AddInitializedComponent<NeighborMotor>(neighborObject);
+                NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+
+                GameObject glassObject = context.CreateObject("BrokenKitchenWindow");
+                glassObject.transform.position = new Vector3(2f, 0f, 1f);
+                glassObject.AddComponent<BoxCollider>();
+                GlassShatter glass = context.AddInitializedComponent<GlassShatter>(glassObject);
+                PlayerFeedbackEvents.NeighborInvestigationFeedback investigationFeedback = default;
+                bool receivedInvestigation = false;
+                PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
+
+                try
+                {
+                    glass.ShatterFromPlayer(glassObject.transform.position, Vector3.right, null);
+
+                    Assert.That(brain.RememberedBrokenGlassCount, Is.EqualTo(1));
+                    Assert.That(brain.CurrentState, Is.EqualTo(NeighborBrain.BehaviorState.Investigate));
+                    Assert.That(brain.HasActiveInvestigation, Is.True);
+                    Assert.That(brain.CurrentInvestigationSource, Is.SameAs(glassObject));
+                    Assert.That(brain.LastKnownInvestigationPosition, Is.EqualTo(glassObject.transform.position));
+                    Assert.That(brain.IsCurrentInvestigationMemoryClue, Is.True);
+                    Assert.That(
+                        brain.CurrentInvestigationMemoryClueKind,
+                        Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken));
+                    Assert.That(brain.HasPendingMemoryClueFollowUp, Is.False);
+                    Assert.That(receivedInvestigation, Is.True);
+                    Assert.That(
+                        investigationFeedback.Kind,
+                        Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail));
+                    Assert.That(investigationFeedback.IsTrailRelated, Is.True);
+                    Assert.That(investigationFeedback.HasMemoryClueKind, Is.True);
+                    Assert.That(
+                        investigationFeedback.MemoryClueKind,
+                        Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken));
                 }
                 finally
                 {
@@ -2664,9 +2826,93 @@ namespace Neighbor.Main.Tests
             GameplaySmokeTestReflection.Invoke(brain, "TryNoticeObjectLocationChanges");
 
             Assert.That(brain.Suspicion, Is.EqualTo(0.35f).Within(0.001f));
-            Assert.That(
-                GameplaySmokeTestReflection.GetField<GameObject>(brain, "currentInvestigationSource"),
-                Is.SameAs(pickupObject));
+            Assert.That(brain.RememberedMovedObjectCount, Is.EqualTo(1));
+            Assert.That(brain.HasPendingMemoryClueFollowUp, Is.True);
+            Assert.That(brain.PendingMemoryClueSource, Is.SameAs(pickupObject));
+        }
+
+        [Test]
+        public void ObjectLocationChange_WithMotorStartsImmediateMemoryTrailInvestigation()
+        {
+            GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            NavMeshSurface surface = null;
+            try
+            {
+                ground.name = "TemporaryMovedObjectNavMeshGround";
+                ground.transform.position = new Vector3(0f, -0.1f, 0f);
+                ground.transform.localScale = new Vector3(10f, 0.2f, 10f);
+                surface = ground.AddComponent<NavMeshSurface>();
+                surface.collectObjects = CollectObjects.All;
+                surface.useGeometry = NavMeshCollectGeometry.RenderMeshes;
+                surface.layerMask = ~0;
+                surface.defaultArea = 0;
+                surface.BuildNavMesh();
+
+                GameObject neighborObject = context.CreateObject("Neighbor");
+                neighborObject.transform.position = Vector3.zero;
+                NavMeshAgent agent = neighborObject.AddComponent<NavMeshAgent>();
+                agent.radius = 0.3f;
+                agent.height = 2f;
+                agent.stoppingDistance = 0.1f;
+                context.AddInitializedComponent<NeighborMotor>(neighborObject);
+                NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+                GameplaySmokeTestReflection.SetField(brain, "objectLocationAwarenessRadius", 6f);
+                GameplaySmokeTestReflection.SetField(brain, "missingObjectSuspicion", 0.35f);
+
+                GameObject pickupObject = context.CreateObject("MovedPickup");
+                pickupObject.AddComponent<Rigidbody>();
+                pickupObject.AddComponent<BoxCollider>();
+                context.AddInitializedComponent<Pickupable>(pickupObject);
+                pickupObject.transform.position = Vector3.right * 2f;
+                Physics.SyncTransforms();
+
+                PlayerFeedbackEvents.NeighborInvestigationFeedback investigationFeedback = default;
+                bool receivedInvestigation = false;
+                PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
+
+                try
+                {
+                    GameplaySmokeTestReflection.Invoke(brain, "TryNoticeObjectLocationChanges");
+
+                    Assert.That(brain.RememberedMovedObjectCount, Is.EqualTo(1));
+                    Assert.That(brain.CurrentState, Is.EqualTo(NeighborBrain.BehaviorState.Investigate));
+                    Assert.That(brain.HasActiveInvestigation, Is.True);
+                    Assert.That(brain.CurrentInvestigationSource, Is.SameAs(pickupObject));
+                    Assert.That(brain.IsCurrentInvestigationMemoryClue, Is.True);
+                    Assert.That(
+                        brain.CurrentInvestigationMemoryClueKind,
+                        Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved));
+                    Assert.That(brain.HasPendingMemoryClueFollowUp, Is.False);
+                    Assert.That(receivedInvestigation, Is.True);
+                    Assert.That(
+                        investigationFeedback.Kind,
+                        Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail));
+                    Assert.That(investigationFeedback.IsTrailRelated, Is.True);
+                    Assert.That(investigationFeedback.HasMemoryClueKind, Is.True);
+                    Assert.That(
+                        investigationFeedback.MemoryClueKind,
+                        Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved));
+                }
+                finally
+                {
+                    PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
+                }
+
+                void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback item)
+                {
+                    investigationFeedback = item;
+                    receivedInvestigation = true;
+                }
+            }
+            finally
+            {
+                if (surface != null)
+                {
+                    surface.RemoveData();
+                }
+
+                UnityEngine.Object.DestroyImmediate(ground);
+            }
         }
 
         [Test]

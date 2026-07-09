@@ -1376,6 +1376,158 @@ namespace Neighbor.Main.Features.Neighbor
             }
         }
 
+        private bool TryBeginImmediateMemoryClueInvestigation(
+            PlayerFeedbackEvents.NeighborMemoryClueKind kind,
+            GameObject source,
+            Vector3 position,
+            float clueSuspicion)
+        {
+            if (source == null)
+            {
+                return false;
+            }
+
+            if (TryPromoteCurrentInvestigationToMemoryClue(kind, source, position, clueSuspicion))
+            {
+                return true;
+            }
+
+            if (!CanBeginImmediateInvestigation())
+            {
+                return false;
+            }
+
+            float investigationSuspicion = Mathf.Max(
+                memoryFollowUpMinimumSuspicion,
+                clueSuspicion,
+                suspicion,
+                GetMemoryClueInvestigationSuspicionFloor(kind));
+            NeighborMotor.MoveMode moveMode = GetMemoryFollowUpMoveMode(kind, investigationSuspicion);
+            suspicion = Mathf.Max(suspicion, investigationSuspicion);
+            PrimeImmediateMemoryClueInvestigation(
+                kind,
+                source,
+                position,
+                GetMemoryFollowUpSearchDuration(kind, investigationSuspicion),
+                moveMode);
+
+            motor.SetMoveMode(investigationMoveMode);
+            if (motor.TrySetDestinationNear(position, noiseDestinationSampleRadius, out Vector3 investigatePosition))
+            {
+                currentGoal = investigatePosition;
+                SetState(BehaviorState.Investigate);
+                return true;
+            }
+
+            currentGoal = position;
+            if (!TryStartGarageDoorUseForGoal(position, BehaviorState.Investigate, true))
+            {
+                SetState(BehaviorState.Investigate);
+            }
+
+            return true;
+        }
+
+        private bool TryPromoteCurrentInvestigationToMemoryClue(
+            PlayerFeedbackEvents.NeighborMemoryClueKind kind,
+            GameObject source,
+            Vector3 position,
+            float clueSuspicion)
+        {
+            if (!hasActiveInvestigation
+                || source == null
+                || currentState != BehaviorState.Investigate && currentState != BehaviorState.GarageDoorUse)
+            {
+                return false;
+            }
+
+            float matchRadius = Mathf.Max(0.5f, noiseDestinationSampleRadius);
+            bool matchesCurrentSource = currentInvestigationSource == source;
+            bool matchesCurrentPosition = Vector3.Distance(lastKnownInvestigationPosition, position) <= matchRadius;
+            if (!matchesCurrentSource && !matchesCurrentPosition)
+            {
+                return false;
+            }
+
+            float investigationSuspicion = Mathf.Max(
+                memoryFollowUpMinimumSuspicion,
+                clueSuspicion,
+                suspicion,
+                GetMemoryClueInvestigationSuspicionFloor(kind));
+            suspicion = Mathf.Max(suspicion, investigationSuspicion);
+            currentInvestigationSource = source;
+            lastKnownInvestigationPosition = position;
+            investigationSearchLookDirection = position - transform.position;
+            investigationSearchLookDirection.y = 0f;
+            goalWaitDuration = Mathf.Max(
+                goalWaitDuration,
+                GetMemoryFollowUpSearchDuration(kind, investigationSuspicion));
+            investigationMoveMode = GetMemoryFollowUpMoveMode(kind, investigationSuspicion);
+            motor?.SetMoveMode(investigationMoveMode);
+            currentInvestigationTrailRelated = true;
+            currentInvestigationMemoryClueActive = true;
+            currentInvestigationMemoryClueKind = kind;
+            ClearMatchingMemoryClueFollowUp(source, kind);
+            ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail);
+            ReportStealthLoopIfNeeded(true);
+            return true;
+        }
+
+        private void PrimeImmediateMemoryClueInvestigation(
+            PlayerFeedbackEvents.NeighborMemoryClueKind kind,
+            GameObject source,
+            Vector3 position,
+            float waitDuration,
+            NeighborMotor.MoveMode moveMode)
+        {
+            CapturePreInvestigationRoutine();
+            RememberInterruptedTask();
+            RememberPlayerActivity(position);
+
+            lastKnownInvestigationPosition = position;
+            investigationSearchLookDirection = position - transform.position;
+            investigationSearchLookDirection.y = 0f;
+            hasActiveInvestigation = true;
+            hasReportedInvestigationSearch = false;
+            currentInvestigationSource = source;
+            currentUnexpectedOpenDoor = null;
+            currentDoorRoomCheckPosition = default;
+            currentSearchPoint = null;
+            goalWaitDuration = Mathf.Max(0f, waitDuration);
+            waitingAtGoal = false;
+            currentTaskLocation = null;
+            StopActiveTaskAudio();
+            investigationMoveMode = moveMode;
+            currentInvestigationTrailRelated = true;
+            currentInvestigationMemoryClueActive = true;
+            currentInvestigationMemoryClueKind = kind;
+            ClearMatchingMemoryClueFollowUp(source, kind);
+            ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail);
+        }
+
+        private bool CanBeginImmediateInvestigation()
+        {
+            return motor != null
+                && currentState != BehaviorState.Chase
+                && currentState != BehaviorState.Catching
+                && currentState != BehaviorState.HuntMode
+                && currentState != BehaviorState.Investigate
+                && currentState != BehaviorState.GarageDoorUse
+                && currentState != BehaviorState.DoorSecurityCheck;
+        }
+
+        private void ClearMatchingMemoryClueFollowUp(
+            GameObject source,
+            PlayerFeedbackEvents.NeighborMemoryClueKind kind)
+        {
+            if (hasPendingMemoryClueFollowUp
+                && pendingMemoryClueSource == source
+                && pendingMemoryClueKind == kind)
+            {
+                ClearMemoryClueFollowUp();
+            }
+        }
+
         private void CapturePreInvestigationRoutine()
         {
             if (currentState == BehaviorState.Investigate || currentState == BehaviorState.GarageDoorUse)
@@ -2811,16 +2963,22 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void ClearHuntMemoryClueTarget()
         {
+            bool clearingActiveHuntClue = currentHuntMemoryClueActive;
             if (currentInvestigationSource == currentHuntMemoryClueSource)
             {
                 currentInvestigationSource = null;
+                currentInvestigationTrailRelated = false;
             }
 
             currentHuntMemoryClueActive = false;
             hasReportedHuntMemoryClueSearch = false;
             currentHuntMemoryClueKind = default;
             currentHuntMemoryClueSource = null;
-            currentInvestigationTrailRelated = false;
+            if (clearingActiveHuntClue && currentInvestigationMemoryClueActive)
+            {
+                currentInvestigationMemoryClueActive = false;
+                currentInvestigationMemoryClueKind = default;
+            }
         }
 
         private void FinishHuntMemoryClueSearch()
@@ -3223,35 +3381,16 @@ namespace Neighbor.Main.Features.Neighbor
             RememberInterruptedTask();
             AddSuspicion(suspicionAmount, pickup.gameObject);
             RememberPlayerActivity(cluePosition);
-            RememberObjectLocationClue(pickup, cluePosition, suspicionAmount);
-            currentInvestigationSource = pickup.gameObject;
-            currentInvestigationTrailRelated = false;
-            currentUnexpectedOpenDoor = null;
-            currentDoorRoomCheckPosition = default;
-
-            if (currentState == BehaviorState.Chase
-                || currentState == BehaviorState.Catching
-                || currentState == BehaviorState.HuntMode
-                || currentState == BehaviorState.GarageDoorUse
-                || motor == null)
-            {
-                return;
-            }
-
-            goalWaitDuration = investigationWaitTime * Mathf.Lerp(0.75f, 1.25f, suspicion);
-            waitingAtGoal = false;
-            currentTaskLocation = null;
-            StopActiveTaskAudio();
-            investigationMoveMode = CurrentSuspicionLevel >= SuspicionLevel.Suspicious
-                ? NeighborMotor.MoveMode.Cautious
-                : NeighborMotor.MoveMode.Walk;
-            motor.SetMoveMode(investigationMoveMode);
-
-            if (motor.TrySetDestinationNear(cluePosition, noiseDestinationSampleRadius, out Vector3 investigatePosition))
-            {
-                currentGoal = investigatePosition;
-                SetState(BehaviorState.Investigate);
-            }
+            PlayerFeedbackEvents.NeighborMemoryClueKind clueKind = RememberObjectLocationClue(
+                pickup,
+                cluePosition,
+                suspicionAmount,
+                out GameObject clueSource);
+            TryBeginImmediateMemoryClueInvestigation(
+                clueKind,
+                clueSource,
+                cluePosition,
+                suspicionAmount);
         }
 
         private void HandleUnexpectedDoorOpened(Door door, Vector3 openerPosition)
@@ -3280,35 +3419,47 @@ namespace Neighbor.Main.Features.Neighbor
             Vector3 roomCheckPosition = door.GetPositionBeyond(openerPosition, doorRoomCheckDistance);
             RememberPlayerActivity(roomCheckPosition);
 
-            if (currentState == BehaviorState.Chase
-                || currentState == BehaviorState.Catching
-                || currentState == BehaviorState.HuntMode
-                || motor == null)
+            if (!CanBeginImmediateInvestigation())
             {
                 return;
             }
 
-            currentInvestigationSource = door.gameObject;
-            currentInvestigationTrailRelated = false;
-            currentUnexpectedOpenDoor = door;
-            currentDoorRoomCheckPosition = roomCheckPosition;
-            currentTaskLocation = null;
-            currentHideSpot = null;
-            StopActiveTaskAudio();
-            goalWaitDuration = investigationWaitTime * Mathf.Lerp(1f, 1.45f, suspicion);
-            waitingAtGoal = false;
+            float clueSuspicion = Mathf.Max(
+                unexpectedOpenDoorSuspicion,
+                suspicion,
+                GetMemoryClueInvestigationSuspicionFloor(PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened));
             investigationMoveMode = CurrentSuspicionLevel >= SuspicionLevel.Certain
                 ? NeighborMotor.MoveMode.Run
                 : NeighborMotor.MoveMode.Cautious;
+            PrimeImmediateMemoryClueInvestigation(
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
+                door.gameObject,
+                door.transform.position,
+                investigationWaitTime * Mathf.Lerp(1f, 1.45f, suspicion),
+                investigationMoveMode);
+            currentUnexpectedOpenDoor = door;
+            currentDoorRoomCheckPosition = roomCheckPosition;
+            currentHideSpot = null;
+            suspicion = Mathf.Max(suspicion, clueSuspicion);
             motor.SetMoveMode(investigationMoveMode);
 
             if (!TrySetDoorRoomCheckDestination(door, openerPosition, roomCheckPosition))
             {
-                currentInvestigationSource = null;
-                currentInvestigationTrailRelated = false;
-                currentUnexpectedOpenDoor = null;
-                currentDoorRoomCheckPosition = default;
-                return;
+                if (motor.TrySetDestinationNear(
+                    door.transform.position,
+                    noiseDestinationSampleRadius,
+                    out Vector3 fallbackDoorPosition))
+                {
+                    currentSearchPoint = null;
+                    currentDoorRoomCheckPosition = fallbackDoorPosition;
+                    currentGoal = fallbackDoorPosition;
+                }
+                else
+                {
+                    currentSearchPoint = null;
+                    currentDoorRoomCheckPosition = door.transform.position;
+                    currentGoal = door.transform.position;
+                }
             }
 
             SetState(BehaviorState.Investigate);
@@ -3322,11 +3473,17 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
+            float clueSuspicion = Mathf.Max(suspicion, 0.65f);
             RememberMemoryClue(
                 PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken,
                 glass,
                 origin,
-                Mathf.Max(suspicion, 0.65f));
+                clueSuspicion);
+            TryBeginImmediateMemoryClueInvestigation(
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken,
+                glass.gameObject,
+                origin,
+                clueSuspicion);
         }
 
         private bool TrySetDoorRoomCheckDestination(Door door, Vector3 openerPosition, Vector3 roomCheckPosition)
@@ -3919,22 +4076,28 @@ namespace Neighbor.Main.Features.Neighbor
             }
         }
 
-        private void RememberObjectLocationClue(Pickupable pickup, Vector3 cluePosition, float suspicionAmount)
+        private PlayerFeedbackEvents.NeighborMemoryClueKind RememberObjectLocationClue(
+            Pickupable pickup,
+            Vector3 cluePosition,
+            float suspicionAmount,
+            out GameObject clueSource)
         {
+            clueSource = pickup != null ? pickup.gameObject : null;
             if (pickup == null)
             {
-                return;
+                return default;
             }
 
             DoorKey key = pickup.GetComponentInChildren<DoorKey>(true);
             if (key != null)
             {
+                clueSource = ResolveMemoryClueSource(key);
                 RememberMemoryClue(
                     PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
                     key,
                     cluePosition,
                     Mathf.Max(suspicionAmount, 0.32f));
-                return;
+                return PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen;
             }
 
             RememberMemoryClue(
@@ -3942,6 +4105,7 @@ namespace Neighbor.Main.Features.Neighbor
                 pickup,
                 cluePosition,
                 suspicionAmount);
+            return PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved;
         }
 
         private void RememberMemoryClue(
