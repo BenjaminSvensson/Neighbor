@@ -43,6 +43,7 @@ namespace Neighbor.Main.Features.Player
         private float lastNeighborHeardNoise;
         private float neighborHeardNoiseDuration;
         private float neighborHeardNoiseUntil;
+        private int lastNeighborHeardListenerCount;
         private float cameraWarningUntil;
         private float messageUntil;
         private float nextPlayerSearchTime;
@@ -286,7 +287,7 @@ namespace Neighbor.Main.Features.Player
 
             if (noiseLabel != null)
             {
-                noiseLabel.text = heardByNeighbor ? "HEARD" : "NOISE";
+                noiseLabel.text = heardByNeighbor ? BuildHeardNoiseLabel() : "NOISE";
                 noiseLabel.color = heardByNeighbor
                     ? new Color(1f, 0.54f, 0.14f, 0.96f)
                     : new Color(1f, 1f, 1f, 0.68f);
@@ -420,7 +421,7 @@ namespace Neighbor.Main.Features.Player
             float heardNoisePressure = GetDisplayedHeardNoisePressure();
             if (heardNoisePressure >= 0.35f)
             {
-                warningText.text = "HE HEARD THAT";
+                warningText.text = GetDisplayedHeardNoiseListenerCount() > 1 ? "THEY HEARD THAT" : "HE HEARD THAT";
                 warningText.color = Color.Lerp(
                     new Color(1f, 0.72f, 0.18f, 0.98f),
                     new Color(1f, 0.26f, 0.08f, 1f),
@@ -516,9 +517,11 @@ namespace Neighbor.Main.Features.Player
                 if (Time.unscaledTime >= neighborHeardNoiseUntil)
                 {
                     lastNeighborHeardNoise = 0f;
+                    lastNeighborHeardListenerCount = 0;
                 }
 
                 lastNeighborHeardNoise = Mathf.Max(lastNeighborHeardNoise, feedbackNoise);
+                lastNeighborHeardListenerCount = Mathf.Max(lastNeighborHeardListenerCount, Mathf.Max(1, feedback.NeighborListenerCount));
                 neighborHeardNoiseDuration = Mathf.Lerp(1.8f, 3.4f, lastNeighborHeardNoise);
                 neighborHeardNoiseUntil = Time.unscaledTime + neighborHeardNoiseDuration;
             }
@@ -534,6 +537,17 @@ namespace Neighbor.Main.Features.Player
             float listenerPressure = Mathf.Clamp01(Mathf.Max(0, feedback.NeighborListenerCount - 1) / 2f)
                 * heardNoiseListenerHudBoost;
             return Mathf.Clamp01(Mathf.Max(feedback.Loudness, feedback.Urgency) + listenerPressure);
+        }
+
+        private string BuildHeardNoiseLabel()
+        {
+            int listenerCount = GetDisplayedHeardNoiseListenerCount();
+            return listenerCount > 1 ? $"HEARD x{Mathf.Min(listenerCount, 9)}" : "HEARD";
+        }
+
+        private int GetDisplayedHeardNoiseListenerCount()
+        {
+            return GetDisplayedHeardNoisePressure() > 0.05f ? lastNeighborHeardListenerCount : 0;
         }
 
         private void HandleCameraDetection()
