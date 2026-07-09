@@ -2748,7 +2748,7 @@ namespace Neighbor.Main.Features.Neighbor
             PlayerFeedbackEvents.NeighborMemoryClueKind clueKind = pendingMemoryClueKind;
             float clueSuspicion = Mathf.Max(memoryFollowUpMinimumSuspicion, pendingMemoryClueSuspicion);
             float searchDuration = GetMemoryFollowUpSearchDuration(clueKind, clueSuspicion);
-            NeighborMotor.MoveMode moveMode = GetMemoryFollowUpMoveMode(clueSuspicion);
+            NeighborMotor.MoveMode moveMode = GetMemoryFollowUpMoveMode(clueKind, clueSuspicion);
 
             if (!TryResolveRememberedClueHuntPosition(cluePosition, out Vector3 huntPosition))
             {
@@ -4049,7 +4049,7 @@ namespace Neighbor.Main.Features.Neighbor
             PlayerFeedbackEvents.NeighborMemoryClueKind clueKind = pendingMemoryClueKind;
             float clueSuspicion = Mathf.Max(memoryFollowUpMinimumSuspicion, pendingMemoryClueSuspicion);
             float searchDuration = GetMemoryFollowUpSearchDuration(clueKind, clueSuspicion);
-            NeighborMotor.MoveMode moveMode = GetMemoryFollowUpMoveMode(clueSuspicion);
+            NeighborMotor.MoveMode moveMode = GetMemoryFollowUpMoveMode(clueKind, clueSuspicion);
             nextInvestigationStartedFeedbackKind = PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail;
             nextInvestigationMemoryClueActive = true;
             nextInvestigationMemoryClueKind = clueKind;
@@ -4090,16 +4090,31 @@ namespace Neighbor.Main.Features.Neighbor
             return memoryFollowUpWaitTime * Mathf.Lerp(1f, maximumMemoryFollowUpWaitMultiplier, commitment);
         }
 
-        private NeighborMotor.MoveMode GetMemoryFollowUpMoveMode(float clueSuspicion)
+        private NeighborMotor.MoveMode GetMemoryFollowUpMoveMode(
+            PlayerFeedbackEvents.NeighborMemoryClueKind kind,
+            float clueSuspicion)
         {
-            if (clueSuspicion >= certainThreshold)
+            float movementPressure = Mathf.Max(Mathf.Clamp01(clueSuspicion), GetMemoryClueMovementPressure(kind));
+            if (movementPressure >= certainThreshold)
             {
                 return NeighborMotor.MoveMode.Run;
             }
 
-            return clueSuspicion >= suspiciousThreshold
+            return movementPressure >= suspiciousThreshold
                 ? NeighborMotor.MoveMode.Cautious
                 : NeighborMotor.MoveMode.Walk;
+        }
+
+        private static float GetMemoryClueMovementPressure(PlayerFeedbackEvents.NeighborMemoryClueKind kind)
+        {
+            return kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => 0.9f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => 0.62f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => 0.48f,
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened => 0.28f,
+                _ => 0f
+            };
         }
 
         private static float GetMemoryClueInvestigationUrgency(PlayerFeedbackEvents.NeighborMemoryClueKind kind)

@@ -1128,6 +1128,38 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NeighborMemory_FollowUpMoveModeScalesWithClueSeverity()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+
+            NeighborMotor.MoveMode doorMoveMode = GameplaySmokeTestReflection.InvokeResult<NeighborMotor.MoveMode>(
+                brain,
+                "GetMemoryFollowUpMoveMode",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.DoorOpened,
+                0.32f);
+            NeighborMotor.MoveMode objectMoveMode = GameplaySmokeTestReflection.InvokeResult<NeighborMotor.MoveMode>(
+                brain,
+                "GetMemoryFollowUpMoveMode",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved,
+                0.32f);
+            NeighborMotor.MoveMode glassMoveMode = GameplaySmokeTestReflection.InvokeResult<NeighborMotor.MoveMode>(
+                brain,
+                "GetMemoryFollowUpMoveMode",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken,
+                0.32f);
+            NeighborMotor.MoveMode keyMoveMode = GameplaySmokeTestReflection.InvokeResult<NeighborMotor.MoveMode>(
+                brain,
+                "GetMemoryFollowUpMoveMode",
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen,
+                0.32f);
+
+            Assert.That(doorMoveMode, Is.EqualTo(NeighborMotor.MoveMode.Walk));
+            Assert.That(objectMoveMode, Is.EqualTo(NeighborMotor.MoveMode.Cautious));
+            Assert.That(glassMoveMode, Is.EqualTo(NeighborMotor.MoveMode.Cautious));
+            Assert.That(keyMoveMode, Is.EqualTo(NeighborMotor.MoveMode.Run));
+        }
+
+        [Test]
         public void NeighborMemory_RespawnRequeuesStrongestRememberedClue()
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
