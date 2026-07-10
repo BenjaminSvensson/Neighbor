@@ -6,7 +6,7 @@ namespace Neighbor.Main.Features.Neighbor
     [DisallowMultipleComponent]
     public sealed class NeighborMemoryClueVisual : MonoBehaviour
     {
-        private const string PulseLightName = "Neighbor Memory Clue Pulse";
+        private const string WorldMarkerName = "Neighbor Memory Clue Evidence";
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
         private static readonly int ColorId = Shader.PropertyToID("_Color");
         private static readonly int EmissionColorId = Shader.PropertyToID("_EmissionColor");
@@ -22,24 +22,32 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0f)] private float emissionBoost = 0.85f;
         [SerializeField, Min(0f)] private float pulseLightIntensity = 0.32f;
         [SerializeField, Min(0f)] private float pulseLightRange = 2.1f;
+        [SerializeField, Min(0f)] private float rendererCueMaximumDistance = 0.9f;
         [SerializeField] private Color rememberedColor = new(1f, 0.7f, 0.25f, 1f);
         [SerializeField] private Color trackingColor = new(1f, 0.28f, 0.08f, 1f);
         [SerializeField] private Color settledColor = new(0.72f, 0.86f, 1f, 1f);
 
         private Renderer[] targetRenderers;
         private MaterialPropertyBlock propertyBlock;
-        private Light pulseLight;
+        private NeighborMemoryClueWorldMarker worldMarker;
         private Color cueColor = Color.white;
+        private Vector3 cueWorldPosition;
         private float currentIntensity;
         private float targetIntensity;
         private float holdUntilTime;
         private bool isTracking;
+        private bool rendererCueAligned = true;
+        private bool usesWorldCuePosition;
         private PlayerFeedbackEvents.NeighborMemoryClueKind lastKind;
 
         public bool IsCueActive => currentIntensity > 0.01f || targetIntensity > 0.01f;
         public bool IsTracking => isTracking && IsCueActive;
         public float CurrentIntensity => currentIntensity;
         public PlayerFeedbackEvents.NeighborMemoryClueKind LastKind => lastKind;
+        public bool UsesWorldCuePosition => usesWorldCuePosition;
+        public Vector3 CueWorldPosition => cueWorldPosition;
+        public bool IsSourceCueAligned => rendererCueAligned;
+        public Light WorldMarkerLight => worldMarker != null ? worldMarker.CueLight : null;
 
         private void Awake()
         {
@@ -55,9 +63,22 @@ namespace Neighbor.Main.Features.Neighbor
         private void OnDisable()
         {
             ClearRendererCue();
-            if (pulseLight != null)
+        }
+
+        private void OnDestroy()
+        {
+            if (worldMarker == null)
             {
-                pulseLight.enabled = false;
+                return;
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(worldMarker.gameObject);
+            }
+            else
+            {
+                DestroyImmediate(worldMarker.gameObject);
             }
         }
 
@@ -73,6 +94,13 @@ namespace Neighbor.Main.Features.Neighbor
             if (desiredIntensity <= 0f && currentIntensity <= 0.01f)
             {
                 isTracking = false;
+            }
+
+            bool isAligned = GetRendererCueAlignment();
+            if (isAligned != rendererCueAligned)
+            {
+                rendererCueAligned = isAligned;
+                ApplyRendererCue();
             }
 
             if (!Mathf.Approximately(previousIntensity, currentIntensity))
@@ -97,11 +125,21 @@ namespace Neighbor.Main.Features.Neighbor
             float urgency,
             float duration = -1f)
         {
+            RememberAt(kind, urgency, transform.position, duration);
+        }
+
+        public void RememberAt(
+            PlayerFeedbackEvents.NeighborMemoryClueKind kind,
+            float urgency,
+            Vector3 worldPosition,
+            float duration = -1f)
+        {
             SetCue(
                 kind,
                 Mathf.Max(rememberedCueIntensity, Mathf.Clamp01(urgency) * 0.62f),
                 duration >= 0f ? duration : defaultRememberDuration,
-                rememberedColor,
+                GetClueColor(kind, rememberedColor),
+                worldPosition,
                 false);
         }
 
@@ -110,23 +148,34 @@ namespace Neighbor.Main.Features.Neighbor
             float urgency,
             float duration = -1f)
         {
+            TrackAt(kind, urgency, transform.position, duration);
+        }
+
+        public void TrackAt(
+            PlayerFeedbackEvents.NeighborMemoryClueKind kind,
+            float urgency,
+            Vector3 worldPosition,
+            float duration = -1f)
+        {
             SetCue(
                 kind,
                 Mathf.Max(trackingCueIntensity, Mathf.Clamp01(urgency)),
                 duration >= 0f ? duration : defaultTrackingDuration,
-                trackingColor,
+                GetClueColor(kind, trackingColor),
+                worldPosition,
                 true);
         }
 
         public void Settle(float duration = -1f)
         {
             isTracking = false;
-            cueColor = settledColor;
+            cueColor = GetClueColor(lastKind, settledColor);
             targetIntensity = Mathf.Min(
                 Mathf.Max(settledCueIntensity, currentIntensity * 0.35f),
                 Mathf.Max(currentIntensity, targetIntensity));
             currentIntensity = Mathf.Max(currentIntensity, targetIntensity);
             holdUntilTime = Time.unscaledTime + (duration >= 0f ? duration : settledDuration);
+            worldMarker?.Settle(cueColor, targetIntensity, duration >= 0f ? duration : settledDuration);
             ApplyCue();
         }
 
@@ -135,15 +184,29 @@ namespace Neighbor.Main.Features.Neighbor
             float intensity,
             float duration,
             Color color,
+            Vector3 worldPosition,
             bool tracking)
         {
             CaptureTargets();
             lastKind = kind;
             isTracking = tracking;
             cueColor = color;
+            cueWorldPosition = worldPosition;
+            usesWorldCuePosition = true;
+            rendererCueAligned = GetRendererCueAlignment();
             targetIntensity = Mathf.Clamp01(intensity);
             currentIntensity = Mathf.Max(currentIntensity, targetIntensity);
             holdUntilTime = Time.unscaledTime + Mathf.Max(0f, duration);
+            EnsureWorldMarker().Configure(
+                WorldMarkerName,
+                cueWorldPosition,
+                cueColor,
+                targetIntensity,
+                duration,
+                fadeSpeed,
+                pulseLightIntensity,
+                pulseLightRange,
+                tracking);
             ApplyCue();
         }
 
@@ -151,38 +214,38 @@ namespace Neighbor.Main.Features.Neighbor
         {
             targetRenderers = GetComponentsInChildren<Renderer>(true);
             propertyBlock ??= new MaterialPropertyBlock();
-            pulseLight = pulseLight != null ? pulseLight : FindPulseLight();
         }
 
-        private Light FindPulseLight()
+        private NeighborMemoryClueWorldMarker EnsureWorldMarker()
         {
-            Transform existing = transform.Find(PulseLightName);
-            if (existing != null && existing.TryGetComponent(out Light existingLight))
+            if (worldMarker != null)
             {
-                return existingLight;
+                return worldMarker;
             }
 
-            GameObject lightObject = new(PulseLightName);
-            lightObject.hideFlags = HideFlags.DontSave;
-            lightObject.transform.SetParent(transform, false);
-            lightObject.transform.localPosition = Vector3.up * 0.25f;
-            Light light = lightObject.AddComponent<Light>();
-            light.type = LightType.Point;
-            light.shadows = LightShadows.None;
-            light.enabled = false;
-            return light;
+            GameObject markerObject = new(WorldMarkerName)
+            {
+                hideFlags = HideFlags.DontSave
+            };
+            worldMarker = markerObject.AddComponent<NeighborMemoryClueWorldMarker>();
+            return worldMarker;
         }
 
         private void ApplyCue()
         {
             ApplyRendererCue();
-            ApplyPulseLight();
         }
 
         private void ApplyRendererCue()
         {
             if (targetRenderers == null)
             {
+                return;
+            }
+
+            if (!rendererCueAligned)
+            {
+                ClearRendererCue();
                 return;
             }
 
@@ -205,23 +268,15 @@ namespace Neighbor.Main.Features.Neighbor
             }
         }
 
-        private void ApplyPulseLight()
+        private bool GetRendererCueAlignment()
         {
-            if (pulseLight == null)
+            if (!usesWorldCuePosition)
             {
-                return;
+                return true;
             }
 
-            bool enabledCue = currentIntensity > 0.01f;
-            pulseLight.enabled = enabledCue;
-            if (!enabledCue)
-            {
-                return;
-            }
-
-            pulseLight.color = cueColor;
-            pulseLight.intensity = pulseLightIntensity * currentIntensity;
-            pulseLight.range = pulseLightRange * Mathf.Lerp(0.7f, 1.25f, currentIntensity);
+            float maximumDistance = Mathf.Max(0f, rendererCueMaximumDistance);
+            return (transform.position - cueWorldPosition).sqrMagnitude <= maximumDistance * maximumDistance;
         }
 
         private void ClearRendererCue()
@@ -254,6 +309,153 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             return material.HasProperty(ColorId) ? material.GetColor(ColorId) : Color.white;
+        }
+
+        private static Color GetClueColor(
+            PlayerFeedbackEvents.NeighborMemoryClueKind kind,
+            Color baseColor)
+        {
+            Color clueColor = kind switch
+            {
+                PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen => new Color(1f, 0.16f, 0.05f, 1f),
+                PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken => new Color(0.42f, 0.76f, 1f, 1f),
+                PlayerFeedbackEvents.NeighborMemoryClueKind.ObjectMoved => new Color(1f, 0.58f, 0.12f, 1f),
+                _ => new Color(1f, 0.76f, 0.24f, 1f)
+            };
+            return Color.Lerp(baseColor, clueColor, 0.34f);
+        }
+    }
+
+    [DisallowMultipleComponent]
+    public sealed class NeighborMemoryClueWorldMarker : MonoBehaviour
+    {
+        private Light cueLight;
+        private Color cueColor = Color.white;
+        private float currentIntensity;
+        private float targetIntensity;
+        private float holdUntilTime;
+        private float fadeSpeed = 1.8f;
+        private float maximumLightIntensity = 0.32f;
+        private float maximumLightRange = 2.1f;
+        private float pulsePhase;
+        private bool hasPulsePhase;
+        private bool isTracking;
+
+        public Light CueLight
+        {
+            get
+            {
+                EnsureLight();
+                return cueLight;
+            }
+        }
+        public bool IsCueActive => currentIntensity > 0.01f || targetIntensity > 0.01f;
+        public bool IsTracking => isTracking && IsCueActive;
+        public float CurrentIntensity => currentIntensity;
+
+        private void Awake()
+        {
+            EnsureLight();
+        }
+
+        private void Update()
+        {
+            float desiredIntensity = Time.unscaledTime <= holdUntilTime ? targetIntensity : 0f;
+            currentIntensity = Mathf.MoveTowards(
+                currentIntensity,
+                desiredIntensity,
+                fadeSpeed * Mathf.Max(0f, Time.unscaledDeltaTime));
+            ApplyLight();
+
+            if (desiredIntensity <= 0f && currentIntensity <= 0.01f)
+            {
+                if (Application.isPlaying)
+                {
+                    Destroy(gameObject);
+                }
+                else
+                {
+                    DestroyImmediate(gameObject);
+                }
+            }
+        }
+
+        public void Configure(
+            string markerName,
+            Vector3 worldPosition,
+            Color color,
+            float intensity,
+            float duration,
+            float markerFadeSpeed,
+            float lightIntensity,
+            float lightRange,
+            bool tracking)
+        {
+            EnsureLight();
+            name = markerName;
+            transform.position = worldPosition + Vector3.up * 0.22f;
+            cueColor = color;
+            targetIntensity = Mathf.Clamp01(intensity);
+            currentIntensity = Mathf.Max(currentIntensity, targetIntensity);
+            holdUntilTime = Time.unscaledTime + Mathf.Max(0f, duration);
+            fadeSpeed = Mathf.Max(0f, markerFadeSpeed);
+            maximumLightIntensity = Mathf.Max(0f, lightIntensity);
+            maximumLightRange = Mathf.Max(0f, lightRange);
+            isTracking = tracking;
+            ApplyLight();
+        }
+
+        public void Settle(Color color, float intensity, float duration)
+        {
+            cueColor = color;
+            targetIntensity = Mathf.Clamp01(intensity);
+            currentIntensity = Mathf.Max(currentIntensity, targetIntensity);
+            holdUntilTime = Time.unscaledTime + Mathf.Max(0f, duration);
+            isTracking = false;
+            ApplyLight();
+        }
+
+        private void ApplyLight()
+        {
+            EnsureLight();
+
+            bool showCue = currentIntensity > 0.01f;
+            cueLight.enabled = showCue;
+            if (!showCue)
+            {
+                return;
+            }
+
+            float pulseSpeed = isTracking ? 5.2f : 3.1f;
+            float pulseDepth = isTracking ? 0.24f : 0.14f;
+            float pulse = 1f - pulseDepth
+                + Mathf.Sin(Time.unscaledTime * pulseSpeed + pulsePhase) * pulseDepth;
+            cueLight.color = cueColor;
+            cueLight.intensity = maximumLightIntensity * currentIntensity * Mathf.Max(0.55f, pulse);
+            cueLight.range = maximumLightRange * Mathf.Lerp(0.7f, 1.25f, currentIntensity);
+        }
+
+        private void EnsureLight()
+        {
+            if (cueLight == null)
+            {
+                cueLight = GetComponent<Light>();
+                if (cueLight == null)
+                {
+                    cueLight = gameObject.AddComponent<Light>();
+                }
+
+                cueLight.type = LightType.Point;
+                cueLight.shadows = LightShadows.None;
+                cueLight.renderMode = LightRenderMode.ForcePixel;
+                cueLight.enabled = false;
+            }
+
+            if (!hasPulsePhase)
+            {
+                pulsePhase = Random.value * Mathf.PI * 2f;
+                hasPulsePhase = true;
+            }
         }
     }
 }

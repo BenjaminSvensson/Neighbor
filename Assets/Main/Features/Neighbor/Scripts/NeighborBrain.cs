@@ -1533,7 +1533,7 @@ namespace Neighbor.Main.Features.Neighbor
             currentInvestigationTrailRelated = true;
             currentInvestigationMemoryClueActive = true;
             currentInvestigationMemoryClueKind = kind;
-            TrackMemoryClueVisual(kind, source, investigationSuspicion);
+            TrackMemoryClueVisual(kind, source, position, investigationSuspicion);
             ClearMatchingMemoryClueFollowUp(source, kind);
             ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail);
             ReportStealthLoopIfNeeded(true);
@@ -1568,7 +1568,11 @@ namespace Neighbor.Main.Features.Neighbor
             currentInvestigationTrailRelated = true;
             currentInvestigationMemoryClueActive = true;
             currentInvestigationMemoryClueKind = kind;
-            TrackMemoryClueVisual(kind, source, Mathf.Max(suspicion, GetMemoryClueInvestigationUrgency(kind)));
+            TrackMemoryClueVisual(
+                kind,
+                source,
+                position,
+                Mathf.Max(suspicion, GetMemoryClueInvestigationUrgency(kind)));
             ClearMatchingMemoryClueFollowUp(source, kind);
             ReportInvestigationFeedback(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail);
         }
@@ -3008,7 +3012,7 @@ namespace Neighbor.Main.Features.Neighbor
             currentInvestigationTrailRelated = true;
             goalWaitDuration = Mathf.Max(closetSearchWaitTime, searchDuration);
             waitingAtGoal = false;
-            TrackMemoryClueVisual(clueKind, clueSource, clueSuspicion);
+            TrackMemoryClueVisual(clueKind, clueSource, cluePosition, clueSuspicion);
             ClearMemoryClueFollowUp();
             nextMemoryFollowUpTime = Time.time + memoryFollowUpCooldown;
             suspicion = Mathf.Max(suspicion, clueSuspicion);
@@ -4330,7 +4334,7 @@ namespace Neighbor.Main.Features.Neighbor
                 position,
                 Mathf.Max(suspicion, pressureSuspicion),
                 TotalRememberedClueCount);
-            RememberMemoryClueVisual(kind, clue, pressureSuspicion);
+            RememberMemoryClueVisual(kind, clue, position, pressureSuspicion);
             ReportStealthLoopIfNeeded(true);
         }
 
@@ -4533,6 +4537,7 @@ namespace Neighbor.Main.Features.Neighbor
         private void RememberMemoryClueVisual(
             PlayerFeedbackEvents.NeighborMemoryClueKind kind,
             UnityEngine.Object clue,
+            Vector3 position,
             float urgency)
         {
             GameObject source = ResolveMemoryClueSource(clue);
@@ -4542,15 +4547,17 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            visual.Remember(
+            visual.RememberAt(
                 kind,
                 urgency,
+                position,
                 Mathf.Max(2.5f, memoryFollowUpWaitTime + 2f));
         }
 
         private void TrackMemoryClueVisual(
             PlayerFeedbackEvents.NeighborMemoryClueKind kind,
             GameObject source,
+            Vector3 position,
             float urgency)
         {
             NeighborMemoryClueVisual visual = NeighborMemoryClueVisual.EnsureFor(source);
@@ -4559,9 +4566,10 @@ namespace Neighbor.Main.Features.Neighbor
                 return;
             }
 
-            visual.Track(
+            visual.TrackAt(
                 kind,
                 urgency,
+                position,
                 Mathf.Max(2.5f, GetMemoryFollowUpSearchDuration(kind, urgency) + 1.5f));
         }
 

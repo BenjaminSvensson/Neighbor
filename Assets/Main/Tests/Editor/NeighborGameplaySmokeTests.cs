@@ -1157,6 +1157,11 @@ namespace Neighbor.Main.Tests
             Assert.That(glassVisual.LastKind, Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.GlassBroken));
             Assert.That(glassVisual.IsCueActive, Is.True);
             Assert.That(glassVisual.IsTracking, Is.False);
+            Assert.That(glassVisual.UsesWorldCuePosition, Is.True);
+            Assert.That(glassVisual.CueWorldPosition, Is.EqualTo(glass.transform.position));
+            Assert.That(glassVisual.IsSourceCueAligned, Is.True);
+            Assert.That(glassVisual.WorldMarkerLight, Is.Not.Null);
+            Assert.That(glassVisual.WorldMarkerLight.enabled, Is.True);
         }
 
         [Test]
@@ -1166,6 +1171,7 @@ namespace Neighbor.Main.Tests
             brain.transform.position = Vector3.zero;
             Pickupable stolenKey = CreatePickupable("StolenBasementKey", new Vector3(0.75f, 0f, 0f), true);
             GameObject inventory = context.CreateObject("PlayerInventory");
+            inventory.transform.position = new Vector3(5f, 0f, 0f);
 
             stolenKey.StoreInInventory(inventory.transform);
             GameplaySmokeTestReflection.Invoke(brain, "TryNoticeObjectLocationChanges");
@@ -1176,6 +1182,23 @@ namespace Neighbor.Main.Tests
             Assert.That(brain.PendingMemoryClueKind, Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen));
             Assert.That(brain.PendingMemoryClueSource, Is.SameAs(stolenKey.gameObject));
             Assert.That(brain.PendingMemoryCluePosition, Is.EqualTo(stolenKey.HomePosition));
+            NeighborMemoryClueVisual clueVisual = stolenKey.GetComponent<NeighborMemoryClueVisual>();
+            Assert.That(clueVisual, Is.Not.Null);
+            Assert.That(clueVisual.LastKind, Is.EqualTo(PlayerFeedbackEvents.NeighborMemoryClueKind.KeyStolen));
+            Assert.That(clueVisual.UsesWorldCuePosition, Is.True);
+            Assert.That(clueVisual.CueWorldPosition, Is.EqualTo(stolenKey.HomePosition));
+            Assert.That(clueVisual.IsSourceCueAligned, Is.False);
+            Assert.That(clueVisual.WorldMarkerLight, Is.Not.Null);
+            Assert.That(clueVisual.WorldMarkerLight.enabled, Is.True);
+            Assert.That(clueVisual.WorldMarkerLight.transform.parent, Is.Null);
+
+            Vector3 markerPosition = clueVisual.WorldMarkerLight.transform.position;
+            inventory.transform.position = new Vector3(9f, 0f, 2f);
+
+            Assert.That(clueVisual.WorldMarkerLight.transform.position, Is.EqualTo(markerPosition));
+            Assert.That(
+                markerPosition,
+                Is.EqualTo(stolenKey.HomePosition + Vector3.up * 0.22f));
         }
 
         [Test]
