@@ -2027,6 +2027,162 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NeighborHunt_EscapeRouteClassificationUsesLastSeenDirectionAndBudget()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            GameplaySmokeTestReflection.SetField(brain, "lastKnownPlayerPosition", Vector3.zero);
+            GameplaySmokeTestReflection.SetField(brain, "lastSeenPlayerMoveDirection", Vector3.forward);
+            GameplaySmokeTestReflection.SetField(brain, "huntEscapeRouteMinimumAlignment", 0.25f);
+            GameplaySmokeTestReflection.SetField(brain, "huntEscapeRouteMinimumDistance", 0.75f);
+            GameplaySmokeTestReflection.SetField(brain, "maximumEscapeRouteSearches", 2);
+
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    brain,
+                    "IsEscapeRouteDestination",
+                    new Vector3(0.5f, 0f, 3f)),
+                Is.True);
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    brain,
+                    "IsEscapeRouteDestination",
+                    new Vector3(0f, 0f, -3f)),
+                Is.False);
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    brain,
+                    "IsEscapeRouteDestination",
+                    new Vector3(0f, 0f, 0.4f)),
+                Is.False);
+
+            GameplaySmokeTestReflection.SetField(brain, "escapeRouteSearchesStarted", 2);
+            Assert.That(
+                GameplaySmokeTestReflection.InvokeResult<bool>(
+                    brain,
+                    "IsEscapeRouteDestination",
+                    new Vector3(0f, 0f, 3f)),
+                Is.False);
+        }
+
+        [Test]
+        public void NeighborHunt_BeginningEscapeRouteSearchReportsImmediateTrailPressure()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            Vector3 destination = new(0f, 0f, 3f);
+            PlayerFeedbackEvents.NeighborInvestigationFeedback investigationFeedback = default;
+            PlayerFeedbackEvents.StealthLoopFeedback stealthFeedback = default;
+            bool receivedInvestigation = false;
+            bool receivedStealth = false;
+            PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
+            PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
+
+            try
+            {
+                GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.HuntMode);
+                GameplaySmokeTestReflection.SetField(brain, "lastKnownPlayerPosition", Vector3.zero);
+                GameplaySmokeTestReflection.SetField(brain, "lastSeenPlayerMoveDirection", Vector3.forward);
+                GameplaySmokeTestReflection.SetField(brain, "suspicion", 0.58f);
+
+                GameplaySmokeTestReflection.Invoke(
+                    brain,
+                    "BeginEscapeRouteSearch",
+                    destination,
+                    "escape route",
+                    0.72f);
+
+                Assert.That(receivedInvestigation, Is.True);
+                Assert.That(
+                    investigationFeedback.Kind,
+                    Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail));
+                Assert.That(investigationFeedback.IsTrailRelated, Is.True);
+                Assert.That(investigationFeedback.Position, Is.EqualTo(destination));
+                Assert.That(investigationFeedback.SourceName, Is.EqualTo("escape route"));
+                Assert.That(brain.IsFollowingEscapeRoute, Is.True);
+                Assert.That(brain.EscapeRouteSearchesStarted, Is.EqualTo(1));
+                Assert.That(receivedStealth, Is.True);
+                Assert.That(stealthFeedback.Phase, Is.EqualTo(PlayerFeedbackEvents.StealthLoopPhase.PostChase));
+                Assert.That(stealthFeedback.Message, Is.EqualTo("Stay hidden. He is following your escape route."));
+            }
+            finally
+            {
+                PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
+                PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            }
+
+            void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback item)
+            {
+                investigationFeedback = item;
+                receivedInvestigation = true;
+            }
+
+            void HandleStealthLoopChanged(PlayerFeedbackEvents.StealthLoopFeedback item)
+            {
+                stealthFeedback = item;
+                receivedStealth = true;
+            }
+        }
+
+        [Test]
+        public void NeighborHunt_EscapeRouteSweepReportsTrailFeedback()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            NeighborSearchPoint searchPoint = context.AddInitializedComponent<NeighborSearchPoint>(
+                context.CreateObject("EscapeRoutePoint"));
+            searchPoint.transform.position = new Vector3(0f, 0f, 3f);
+            PlayerFeedbackEvents.NeighborInvestigationFeedback feedback = default;
+            bool received = false;
+            PlayerFeedbackEvents.NeighborInvestigationChanged += HandleNeighborInvestigationChanged;
+
+            try
+            {
+                GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.HuntMode);
+                GameplaySmokeTestReflection.SetField(brain, "currentSearchPoint", searchPoint);
+                GameplaySmokeTestReflection.SetField(brain, "currentHuntDestinationTrailRelated", true);
+                GameplaySmokeTestReflection.SetField(brain, "suspicion", 0.58f);
+
+                GameplaySmokeTestReflection.Invoke(brain, "ReportHuntSweepSearchIfNeeded");
+
+                Assert.That(received, Is.True);
+                Assert.That(feedback.Kind, Is.EqualTo(PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching));
+                Assert.That(feedback.IsTrailRelated, Is.True);
+                Assert.That(feedback.Position, Is.EqualTo(searchPoint.Position));
+                Assert.That(feedback.SourceName, Is.EqualTo("escape route"));
+                Assert.That(feedback.Urgency, Is.EqualTo(0.72f).Within(0.001f));
+                Assert.That(brain.IsFollowingEscapeRoute, Is.True);
+            }
+            finally
+            {
+                PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
+            }
+
+            void HandleNeighborInvestigationChanged(PlayerFeedbackEvents.NeighborInvestigationFeedback item)
+            {
+                feedback = item;
+                received = true;
+            }
+        }
+
+        [Test]
+        public void NeighborHunt_EscapeRouteSweepFacesLastSeenMovement()
+        {
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));
+            NeighborSearchPoint searchPoint = context.AddInitializedComponent<NeighborSearchPoint>(
+                context.CreateObject("EscapeRoutePoint"));
+            searchPoint.transform.rotation = Quaternion.LookRotation(Vector3.right);
+            Vector3 escapeDirection = new Vector3(0.2f, 0f, 1f).normalized;
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.HuntMode);
+            GameplaySmokeTestReflection.SetField(brain, "currentSearchPoint", searchPoint);
+            GameplaySmokeTestReflection.SetField(brain, "currentHuntDestinationTrailRelated", true);
+            GameplaySmokeTestReflection.SetField(brain, "lastSeenPlayerMoveDirection", escapeDirection);
+
+            Vector3 sweepDirection = GameplaySmokeTestReflection.InvokeResult<Vector3>(
+                brain,
+                "GetSearchSweepBaseDirection");
+
+            Assert.That(Vector3.Dot(sweepDirection, escapeDirection), Is.GreaterThan(0.99f));
+        }
+
+        [Test]
         public void NeighborHunt_ReportsKnownHideSpotSweepAsUrgentSearch()
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));

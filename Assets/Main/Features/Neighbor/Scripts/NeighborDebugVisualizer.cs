@@ -174,6 +174,10 @@ namespace Neighbor.Main.Features.Neighbor
                 text.Append("\nHunt: ").Append(brain.HuntTimeRemaining.ToString("0.0")).Append("s");
                 text.Append("  |  Search points ").Append(brain.VisitedSearchPointCount);
                 text.Append('/').Append(brain.RequiredSearchPointVisits);
+                if (brain.IsFollowingEscapeRoute)
+                {
+                    text.Append("  |  ESCAPE ROUTE ").Append(brain.EscapeRouteSearchesStarted);
+                }
             }
             else if (brain.IsVerifyingLastSeenPosition)
             {
@@ -269,6 +273,11 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (brain.CurrentSearchPoint != null)
             {
+                if (brain.IsFollowingEscapeRoute)
+                {
+                    return $"Escape route via {brain.CurrentSearchPoint.name}";
+                }
+
                 return brain.CurrentUnexpectedOpenDoor != null
                     ? $"Room beyond {brain.CurrentUnexpectedOpenDoor.name} via {brain.CurrentSearchPoint.name}"
                     : $"Search point {brain.CurrentSearchPoint.name}";
@@ -276,7 +285,9 @@ namespace Neighbor.Main.Features.Neighbor
 
             if (brain.CurrentHideSpot != null)
             {
-                return $"Hide spot {brain.CurrentHideSpot.name}";
+                return brain.IsFollowingEscapeRoute
+                    ? $"Escape-route hide spot {brain.CurrentHideSpot.name}"
+                    : $"Hide spot {brain.CurrentHideSpot.name}";
             }
 
             if (brain.CurrentInvestigationSource != null)

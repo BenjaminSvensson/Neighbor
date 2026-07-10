@@ -166,8 +166,12 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0)] private int minimumSearchPointsAfterChase = 3;
         [SerializeField, Min(0f)] private float huntPointWaitTime = 0.65f;
         [SerializeField, Min(0f)] private float huntDirectionWeight = 8f;
+        [SerializeField, Min(0f)] private float huntHideSpotDirectionWeight = 6f;
         [SerializeField, Min(0f)] private float huntDistancePenalty = 0.08f;
         [SerializeField, Min(0f)] private float huntDestinationTimePadding = 0.35f;
+        [SerializeField, Range(-1f, 1f)] private float huntEscapeRouteMinimumAlignment = 0.25f;
+        [SerializeField, Min(0f)] private float huntEscapeRouteMinimumDistance = 0.75f;
+        [SerializeField, Min(0)] private int maximumEscapeRouteSearches = 2;
         [SerializeField, Min(0f)] private float playerDirectionSampleMaximumGap = 0.5f;
         [SerializeField, Min(0f)] private float playerDirectionMinimumDistance = 0.01f;
 
@@ -227,6 +231,7 @@ namespace Neighbor.Main.Features.Neighbor
         private float goalWaitDuration;
         private float huntUntilTime;
         private int requiredSearchPointVisits;
+        private int escapeRouteSearchesStarted;
         private float lastPlayerSeenTime = float.NegativeInfinity;
         private float nextChaseRepathTime;
         private float nextClimbLinkSearchTime;
@@ -239,6 +244,7 @@ namespace Neighbor.Main.Features.Neighbor
         private bool isPlayerVisible;
         private bool waitingAtGoal;
         private bool currentHideSpotKnownOccupied;
+        private bool currentHuntDestinationTrailRelated;
         private bool currentHuntMemoryClueActive;
         private bool hasReportedHuntMemoryClueSearch;
         private bool hasReportedCurrentHuntSweepSearch;
@@ -353,6 +359,9 @@ namespace Neighbor.Main.Features.Neighbor
         public float HuntTimeRemaining => currentState == BehaviorState.HuntMode ? Mathf.Max(0f, huntUntilTime - Time.time) : 0f;
         public int VisitedSearchPointCount => visitedSearchPoints.Count;
         public int RequiredSearchPointVisits => requiredSearchPointVisits;
+        public int EscapeRouteSearchesStarted => escapeRouteSearchesStarted;
+        public bool IsFollowingEscapeRoute => currentState == BehaviorState.HuntMode
+            && currentHuntDestinationTrailRelated;
         public NeighborTaskLocation CurrentTaskLocation => currentTaskLocation;
         public bool IsAtTaskUsePoint => currentState == BehaviorState.Task && IsAtCurrentTaskUseDistance();
         public NeighborSearchPoint CurrentSearchPoint => currentSearchPoint;
@@ -952,6 +961,8 @@ namespace Neighbor.Main.Features.Neighbor
             currentSearchPoint = null;
             currentHideSpot = null;
             currentHideSpotKnownOccupied = false;
+            currentHuntDestinationTrailRelated = false;
+            escapeRouteSearchesStarted = 0;
             witnessedPlayerHideSpot = null;
             caughtPlayer = null;
             catchPlayerAtTime = 0f;
@@ -1758,6 +1769,7 @@ namespace Neighbor.Main.Features.Neighbor
                     currentSearchPoint = null;
                     currentHideSpot = null;
                     currentHideSpotKnownOccupied = false;
+                    currentHuntDestinationTrailRelated = false;
                     hasReportedCurrentHuntSweepSearch = false;
                     if (!TrySetNextHuntDestination())
                     {
@@ -2845,11 +2857,13 @@ namespace Neighbor.Main.Features.Neighbor
             currentSearchPoint = null;
             currentHideSpot = null;
             currentHideSpotKnownOccupied = false;
+            currentHuntDestinationTrailRelated = false;
             hasReportedCurrentHuntSweepSearch = false;
             ClearHuntMemoryClueTarget();
             StopActiveTaskAudio();
             visitedSearchPoints.Clear();
             searchedHideSpots.Clear();
+            escapeRouteSearchesStarted = 0;
             huntUntilTime = Time.time + huntDuration;
             requiredSearchPointVisits = GetReachableSearchPointCount(minimumSearchPointsAfterChase);
             RememberPlayerActivity(lostPlayerPosition);
@@ -2881,6 +2895,7 @@ namespace Neighbor.Main.Features.Neighbor
                 return false;
             }
 
+            currentHuntDestinationTrailRelated = false;
             if (Time.time < huntUntilTime && TrySetRememberedClueHuntDestination())
             {
                 return true;
@@ -2946,10 +2961,12 @@ namespace Neighbor.Main.Features.Neighbor
             motor.SetMoveMode(NeighborMotor.MoveMode.Run);
             if (motor.SetDestination(bestDestination))
             {
+                BeginEscapeRouteSearch(bestPoint.Position, "escape route", 0.72f);
                 return true;
             }
 
             currentSearchPoint = null;
+            currentHuntDestinationTrailRelated = false;
             return false;
         }
 
@@ -3145,6 +3162,7 @@ namespace Neighbor.Main.Features.Neighbor
                 }
 
                 float score = GetMemory(hideSpotMemory, hideSpot) * favoriteHideSpotWeight;
+                score += GetHuntDirectionAlignment(hideSpot.SearchPosition) * huntHideSpotDirectionWeight;
                 score -= pathDistance * 0.1f;
                 score += Random.Range(0f, 0.35f);
 
@@ -3171,12 +3189,62 @@ namespace Neighbor.Main.Features.Neighbor
             motor.SetMoveMode(NeighborMotor.MoveMode.Cautious);
             if (motor.SetDestination(bestDestination))
             {
+                BeginEscapeRouteSearch(bestSpot.SearchPosition, "possible hiding spot", 0.82f);
                 return true;
             }
 
             currentHideSpot = null;
             currentHideSpotKnownOccupied = false;
+            currentHuntDestinationTrailRelated = false;
             return false;
+        }
+
+        private void BeginEscapeRouteSearch(Vector3 destination, string sourceName, float urgency)
+        {
+            if (!IsEscapeRouteDestination(destination))
+            {
+                currentHuntDestinationTrailRelated = false;
+                return;
+            }
+
+            currentHuntDestinationTrailRelated = true;
+            escapeRouteSearchesStarted++;
+            PlayerFeedbackEvents.ReportNeighborInvestigation(
+                PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.FollowingTrail,
+                destination,
+                sourceName,
+                Mathf.Max(suspicion, postChaseSuspicionFloor),
+                urgency,
+                true);
+            ReportStealthLoopIfNeeded(true);
+        }
+
+        private bool IsEscapeRouteDestination(Vector3 destination)
+        {
+            if (escapeRouteSearchesStarted >= maximumEscapeRouteSearches
+                || lastSeenPlayerMoveDirection.sqrMagnitude <= 0.001f)
+            {
+                return false;
+            }
+
+            Vector3 fromLastSeen = destination - lastKnownPlayerPosition;
+            fromLastSeen.y = 0f;
+            return fromLastSeen.sqrMagnitude >= huntEscapeRouteMinimumDistance * huntEscapeRouteMinimumDistance
+                && GetHuntDirectionAlignment(destination) >= huntEscapeRouteMinimumAlignment;
+        }
+
+        private float GetHuntDirectionAlignment(Vector3 destination)
+        {
+            Vector3 fromLastSeen = destination - lastKnownPlayerPosition;
+            fromLastSeen.y = 0f;
+            Vector3 escapeDirection = lastSeenPlayerMoveDirection;
+            escapeDirection.y = 0f;
+            if (fromLastSeen.sqrMagnitude <= 0.001f || escapeDirection.sqrMagnitude <= 0.001f)
+            {
+                return 0f;
+            }
+
+            return Vector3.Dot(escapeDirection.normalized, fromLastSeen.normalized);
         }
 
         private bool TrySetKnownHideSpotSearch(ClosetHideSpot hideSpot)
@@ -3190,6 +3258,7 @@ namespace Neighbor.Main.Features.Neighbor
 
             currentHideSpot = hideSpot;
             currentHideSpotKnownOccupied = true;
+            currentHuntDestinationTrailRelated = true;
             currentSearchPoint = null;
             currentGoal = sampledPosition;
             goalWaitDuration = Mathf.Min(0.25f, closetSearchWaitTime);
@@ -3203,6 +3272,7 @@ namespace Neighbor.Main.Features.Neighbor
 
             currentHideSpot = null;
             currentHideSpotKnownOccupied = false;
+            currentHuntDestinationTrailRelated = false;
             witnessedPlayerHideSpot = null;
             return false;
         }
@@ -3212,11 +3282,13 @@ namespace Neighbor.Main.Features.Neighbor
             currentSearchPoint = null;
             currentHideSpot = null;
             currentHideSpotKnownOccupied = false;
+            currentHuntDestinationTrailRelated = false;
             hasReportedCurrentHuntSweepSearch = false;
             ClearHuntMemoryClueTarget();
             witnessedPlayerHideSpot = null;
             visitedSearchPoints.Clear();
             searchedHideSpots.Clear();
+            escapeRouteSearchesStarted = 0;
             requiredSearchPointVisits = 0;
             suspicion = Mathf.Max(suspicion, suspiciousThreshold);
             RefreshPostEncounterVigilance();
@@ -3839,6 +3911,13 @@ namespace Neighbor.Main.Features.Neighbor
                 return "He knows your hiding spot.";
             }
 
+            if (currentHuntDestinationTrailRelated && !currentHuntMemoryClueActive)
+            {
+                return currentHideSpot != null
+                    ? "He is checking hiding spots along your escape route."
+                    : "Stay hidden. He is following your escape route.";
+            }
+
             if (currentHuntMemoryClueActive)
             {
                 return GetMemoryClueStealthLoopMessage(currentHuntMemoryClueKind, phase);
@@ -3925,12 +4004,27 @@ namespace Neighbor.Main.Features.Neighbor
 
         private Vector3 GetSearchSweepBaseDirection()
         {
-            Vector3 baseDirection = currentSearchPoint != null
-                ? currentSearchPoint.LookDirection
-                : (currentState == BehaviorState.Investigate || currentHuntMemoryClueActive)
-                    && investigationSearchLookDirection.sqrMagnitude > 0.001f
-                    ? investigationSearchLookDirection
-                    : transform.forward;
+            Vector3 baseDirection;
+            if (currentState == BehaviorState.HuntMode
+                && currentHuntDestinationTrailRelated
+                && lastSeenPlayerMoveDirection.sqrMagnitude > 0.001f)
+            {
+                baseDirection = lastSeenPlayerMoveDirection;
+            }
+            else if (currentSearchPoint != null)
+            {
+                baseDirection = currentSearchPoint.LookDirection;
+            }
+            else if ((currentState == BehaviorState.Investigate || currentHuntMemoryClueActive)
+                && investigationSearchLookDirection.sqrMagnitude > 0.001f)
+            {
+                baseDirection = investigationSearchLookDirection;
+            }
+            else
+            {
+                baseDirection = transform.forward;
+            }
+
             baseDirection.y = 0f;
             if (baseDirection.sqrMagnitude <= 0.001f)
             {
@@ -3979,10 +4073,15 @@ namespace Neighbor.Main.Features.Neighbor
                 : currentSearchPoint.Position;
             string sourceName = currentHideSpot != null
                 ? (currentHideSpotKnownOccupied ? "known hiding spot" : "hiding spot")
-                : "last seen area";
+                : currentHuntDestinationTrailRelated ? "escape route" : "last seen area";
+            if (currentHideSpot != null && currentHuntDestinationTrailRelated && !currentHideSpotKnownOccupied)
+            {
+                sourceName = "possible hiding spot";
+            }
+
             float urgency = currentHideSpotKnownOccupied
                 ? 1f
-                : currentHideSpot != null ? 0.8f : 0.65f;
+                : currentHideSpot != null ? 0.8f : currentHuntDestinationTrailRelated ? 0.72f : 0.65f;
             PlayerFeedbackEvents.NeighborInvestigationFeedbackKind feedbackKind = currentHideSpotKnownOccupied
                 ? PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.CheckingHideSpot
                 : PlayerFeedbackEvents.NeighborInvestigationFeedbackKind.Searching;
@@ -3993,7 +4092,7 @@ namespace Neighbor.Main.Features.Neighbor
                 sourceName,
                 Mathf.Max(suspicion, postChaseSuspicionFloor),
                 urgency,
-                currentHideSpotKnownOccupied);
+                currentHideSpotKnownOccupied || currentHuntDestinationTrailRelated);
             ReportStealthLoopIfNeeded(true);
         }
 
