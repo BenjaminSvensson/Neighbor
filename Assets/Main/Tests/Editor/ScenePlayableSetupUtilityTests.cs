@@ -20,6 +20,8 @@ namespace Neighbor.Main.Tests
 {
     public sealed class ScenePlayableSetupUtilityTests
     {
+        private const string PrimaryBuildScenePath = "Assets/Main/Scenes/Testing/AITestingMap/AITestingMap.unity";
+
         [Test]
         public void ScenePlayableSetupUtilityScript_IsAvailableForEditorWorkflow()
         {
@@ -207,6 +209,96 @@ namespace Neighbor.Main.Tests
 
             Assert.That(sawDirtyDecalTexture, Is.True);
             Assert.That(sawPropTexture, Is.True);
+        }
+
+        [Test]
+        public void EnabledBuildScene_ContainsCompleteGameReadyAtmospherePass()
+        {
+            bool sceneIsEnabled = false;
+            EditorBuildSettingsScene[] buildScenes = EditorBuildSettings.scenes;
+            for (int i = 0; i < buildScenes.Length; i++)
+            {
+                if (buildScenes[i].enabled && buildScenes[i].path == PrimaryBuildScenePath)
+                {
+                    sceneIsEnabled = true;
+                    break;
+                }
+            }
+
+            Assert.That(sceneIsEnabled, Is.True, $"Expected enabled gameplay scene '{PrimaryBuildScenePath}'.");
+            RenderSettingsSnapshot snapshot = RenderSettingsSnapshot.Capture();
+            try
+            {
+                Scene scene = EditorSceneManager.OpenScene(PrimaryBuildScenePath, OpenSceneMode.Single);
+                SceneAtmosphereDirector director = FindFirstInScene<SceneAtmosphereDirector>(scene);
+
+                Assert.That(director, Is.Not.Null);
+                Assert.That(CountInScene<SceneAtmosphereDirector>(scene), Is.EqualTo(1));
+                Assert.That(director.SunLight, Is.Not.Null);
+                Assert.That(director.MoonLight, Is.Not.Null);
+                Assert.That(director.HasColorGradingVolume, Is.True);
+                Assert.That(director.FlickerLightCount, Is.GreaterThanOrEqualTo(1));
+                Assert.That(director.DirtyDecalAnchorCount, Is.EqualTo(2));
+                Assert.That(director.PropDressingAnchorCount, Is.EqualTo(2));
+
+                Volume volume = director.ColorGradingVolume;
+                Assert.That(volume, Is.Not.Null);
+                Assert.That(volume.isGlobal, Is.True);
+                Assert.That(volume.weight, Is.GreaterThan(0.99f));
+                Assert.That(volume.profile, Is.Not.Null);
+                Assert.That(volume.profile.TryGet(out ColorAdjustments colorAdjustments), Is.True);
+                Assert.That(volume.profile.TryGet(out Vignette vignette), Is.True);
+                Assert.That(volume.profile.TryGet(out FilmGrain filmGrain), Is.True);
+                Assert.That(colorAdjustments.active, Is.True);
+                Assert.That(vignette.active, Is.True);
+                Assert.That(filmGrain.active, Is.True);
+
+                AtmosphereFlickerLight flicker = FindFirstInScene<AtmosphereFlickerLight>(scene);
+                Assert.That(flicker, Is.Not.Null);
+                Assert.That(flicker.TargetLight, Is.Not.Null);
+                Assert.That(flicker.TargetLight.enabled, Is.True);
+                Assert.That(flicker.FlickerAmount, Is.GreaterThan(0f));
+
+                AtmosphereDressingAnchor[] anchors = FindDressingAnchorsInScene(scene);
+                Assert.That(anchors, Has.Length.EqualTo(4));
+                int dirtyDecals = 0;
+                int props = 0;
+                for (int i = 0; i < anchors.Length; i++)
+                {
+                    AtmosphereDressingAnchor anchor = anchors[i];
+                    Assert.That(anchor.gameObject.activeInHierarchy, Is.True);
+                    Assert.That(anchor.Intensity, Is.GreaterThan(0f));
+                    Renderer renderer = anchor.GetComponent<Renderer>();
+                    Assert.That(renderer, Is.Not.Null);
+                    Assert.That(renderer.enabled, Is.True);
+                    Assert.That(renderer.sharedMaterial, Is.Not.Null);
+                    Assert.That(GetMainTexture(renderer.sharedMaterial), Is.Not.Null);
+
+                    if (anchor.Kind == AtmosphereDressingAnchor.DressingKind.DirtyDecal)
+                    {
+                        dirtyDecals++;
+                    }
+                    else
+                    {
+                        props++;
+                    }
+                }
+
+                Assert.That(dirtyDecals, Is.EqualTo(2));
+                Assert.That(props, Is.EqualTo(2));
+
+                director.ApplyAtmosphere();
+                Assert.That(RenderSettings.fog, Is.True);
+                Assert.That(RenderSettings.fogMode, Is.EqualTo(FogMode.ExponentialSquared));
+                Assert.That(RenderSettings.fogDensity, Is.GreaterThan(0f));
+                Assert.That(director.SunLight.intensity, Is.GreaterThan(0f));
+                Assert.That(director.MoonLight.intensity, Is.GreaterThan(0f));
+            }
+            finally
+            {
+                snapshot.Restore();
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            }
         }
 
         [Test]
@@ -1889,6 +1981,20 @@ namespace Neighbor.Main.Tests
             }
 
             return count;
+        }
+
+        private static T FindFirstInScene<T>(Scene scene) where T : Component
+        {
+            T[] components = Object.FindObjectsByType<T>(FindObjectsInactive.Include);
+            for (int i = 0; i < components.Length; i++)
+            {
+                if (components[i] != null && components[i].gameObject.scene == scene)
+                {
+                    return components[i];
+                }
+            }
+
+            return null;
         }
 
         private static AtmosphereDressingAnchor[] FindDressingAnchorsInScene(Scene scene)

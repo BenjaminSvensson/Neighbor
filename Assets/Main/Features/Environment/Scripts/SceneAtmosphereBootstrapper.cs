@@ -264,7 +264,7 @@ namespace Neighbor.Main.Features.Environment
                 material.SetFloat("_Smoothness", 0.22f);
             }
 
-            Texture2D texture = CreateRuntimeDressingTexture(name, kind, color);
+            Texture2D texture = CreateDressingTexture(name, kind, color);
             SetTexture(material, "_BaseMap", texture);
             SetTexture(material, "_MainTex", texture);
 
@@ -276,7 +276,7 @@ namespace Neighbor.Main.Features.Environment
             return material;
         }
 
-        private static Texture2D CreateRuntimeDressingTexture(
+        public static Texture2D CreateDressingTexture(
             string name,
             AtmosphereDressingAnchor.DressingKind kind,
             Color color)
@@ -357,6 +357,8 @@ namespace Neighbor.Main.Features.Environment
             }
 
             material.SetOverrideTag("RenderType", "Transparent");
+            material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            material.DisableKeyword("_ALPHAMODULATE_ON");
             material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
             material.renderQueue = (int)RenderQueue.Transparent;
         }

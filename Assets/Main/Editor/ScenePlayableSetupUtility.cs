@@ -62,6 +62,7 @@ internal static class ScenePlayableSetupUtility
                 EditorSceneManager.SaveScene(scene);
             }
 
+            AssetDatabase.SaveAssets();
             Debug.Log(result.GetSummary());
             EditorApplication.Exit(0);
         }
@@ -759,14 +760,13 @@ internal static class ScenePlayableSetupUtility
         Material material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
         if (material == null)
         {
-            material = CreateTemporaryAtmosphereMaterial(name, kind, color);
+            material = CreateAtmosphereMaterialInstance(name);
             material.hideFlags = HideFlags.None;
             AssetDatabase.CreateAsset(material, materialPath);
         }
-        else
-        {
-            ConfigureAtmosphereMaterial(material, kind, color);
-        }
+
+        Texture2D texture = GetOrCreateAtmosphereTextureAsset(name, kind, color);
+        ConfigureAtmosphereMaterial(material, kind, color, texture);
 
         EditorUtility.SetDirty(material);
         return material;
@@ -777,23 +777,58 @@ internal static class ScenePlayableSetupUtility
         AtmosphereDressingAnchor.DressingKind kind,
         Color color)
     {
+        Material material = CreateAtmosphereMaterialInstance(name);
+        material.hideFlags = HideFlags.DontSaveInBuild;
+        Texture2D texture = SceneAtmosphereBootstrapper.CreateDressingTexture(name, kind, color);
+        ConfigureAtmosphereMaterial(material, kind, color, texture);
+        return material;
+    }
+
+    private static Material CreateAtmosphereMaterialInstance(string name)
+    {
         Shader shader = Shader.Find("Universal Render Pipeline/Lit")
             ?? Shader.Find("Standard")
             ?? Shader.Find("Unlit/Color");
-        Material material = new(shader)
+        return new Material(shader)
         {
-            name = $"{name} Material",
-            hideFlags = HideFlags.DontSaveInBuild
+            name = $"{name} Material"
         };
+    }
 
-        ConfigureAtmosphereMaterial(material, kind, color);
-        return material;
+    private static Texture2D GetOrCreateAtmosphereTextureAsset(
+        string name,
+        AtmosphereDressingAnchor.DressingKind kind,
+        Color color)
+    {
+        string texturePath = $"{AtmosphereMaterialFolder}/{SanitizeAssetName(name)}_Texture.asset";
+        Texture2D generated = SceneAtmosphereBootstrapper.CreateDressingTexture(name, kind, color);
+        generated.name = $"{name} Texture";
+        generated.hideFlags = HideFlags.None;
+
+        Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath);
+        if (texture == null)
+        {
+            AssetDatabase.CreateAsset(generated, texturePath);
+            texture = generated;
+        }
+        else
+        {
+            texture.SetPixels(generated.GetPixels());
+            texture.Apply(true, false);
+            texture.wrapMode = generated.wrapMode;
+            texture.filterMode = generated.filterMode;
+            Object.DestroyImmediate(generated);
+        }
+
+        EditorUtility.SetDirty(texture);
+        return texture;
     }
 
     private static void ConfigureAtmosphereMaterial(
         Material material,
         AtmosphereDressingAnchor.DressingKind kind,
-        Color color)
+        Color color,
+        Texture texture)
     {
         if (material == null)
         {
@@ -813,6 +848,19 @@ internal static class ScenePlayableSetupUtility
         if (material.HasProperty("_Smoothness"))
         {
             material.SetFloat("_Smoothness", 0.22f);
+        }
+
+        if (texture != null)
+        {
+            if (material.HasProperty("_BaseMap"))
+            {
+                material.SetTexture("_BaseMap", texture);
+            }
+
+            if (material.HasProperty("_MainTex"))
+            {
+                material.SetTexture("_MainTex", texture);
+            }
         }
 
         if (kind == AtmosphereDressingAnchor.DressingKind.DirtyDecal)
@@ -849,6 +897,8 @@ internal static class ScenePlayableSetupUtility
         }
 
         material.SetOverrideTag("RenderType", "Transparent");
+        material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        material.DisableKeyword("_ALPHAMODULATE_ON");
         material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
         material.renderQueue = (int)RenderQueue.Transparent;
     }
