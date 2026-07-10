@@ -72985,12 +72985,12 @@ MonoBehaviour:
   ambientColor: {r: 0.26, g: 0.29, b: 0.34, a: 1}
   maximumSunIntensity: 0.95
   minimumMoonIntensity: 0.24
-  exposure: 0.1
-  contrast: 8
-  saturation: -6
-  colorFilter: {r: 0.94, g: 0.97, b: 1, a: 1}
-  vignetteIntensity: 0.16
-  filmGrainIntensity: 0.08
+  exposure: 0.04
+  contrast: 14
+  saturation: -8
+  colorFilter: {r: 1, g: 0.96, b: 0.88, a: 1}
+  vignetteIntensity: 0.22
+  filmGrainIntensity: 0.09
 --- !u!4 &2078840762
 Transform:
   m_ObjectHideFlags: 0

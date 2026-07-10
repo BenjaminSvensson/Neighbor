@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Player;
@@ -95,6 +96,25 @@ namespace Neighbor.Main.Tests
             Assert.That(
                 selectedItemName.rectTransform.anchoredPosition.y,
                 Is.GreaterThan(panel.anchoredPosition.y + panel.sizeDelta.y));
+        }
+
+        [Test]
+        public void PcRenderer_PreservesStrongAnalogIdentityWithoutLowResolutionPixelation()
+        {
+            string renderer = File.ReadAllText("Assets/Settings/Renderer/PC_Renderer.asset");
+            string pipeline = File.ReadAllText("Assets/Settings/Renderer/PC_RPAsset.asset");
+
+            Assert.That(renderer, Does.Contain("m_Name: VHS Recording"));
+            Assert.That(renderer, Does.Contain("intensity: 0.55"));
+            Assert.That(renderer, Does.Contain("scanlineIntensity: 0.16"));
+            Assert.That(renderer, Does.Contain("m_Name: Seventies Film"));
+            Assert.That(renderer, Does.Contain("warmth: 0.32"));
+            Assert.That(renderer, Does.Contain("pixelSize: 2"));
+            Assert.That(renderer, Does.Contain("colorLevels: 26"));
+            Assert.That(renderer, Does.Contain("ditherStrength: 0.018"));
+            Assert.That(pipeline, Does.Contain("m_MainLightShadowmapResolution: 4096"));
+            Assert.That(pipeline, Does.Contain("m_ShadowDistance: 140"));
+            Assert.That(pipeline, Does.Contain("m_MSAA: 4"));
         }
 
         private GameObject CreateObject(string name, params System.Type[] components)

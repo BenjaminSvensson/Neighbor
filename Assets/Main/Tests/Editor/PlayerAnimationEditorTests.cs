@@ -349,6 +349,7 @@ namespace Neighbor.Main.Tests
             {
                 PlayerInputBindings.ResetToDefaults();
                 Assert.That(PlayerInputBindings.TrySetBoundKey(PlayerInputBindingAction.Forward, Key.UpArrow), Is.True);
+                PlayerPrefs.SetFloat(FieldOfViewKey, 80f);
 
                 MethodInfo resetSettings = typeof(PlayerPauseMenu).GetMethod(
                     "ResetPersistentSettings",
@@ -361,7 +362,6 @@ namespace Neighbor.Main.Tests
                     {
                         0.11f,
                         0.42f,
-                        80f,
                         0.25f,
                         true,
                         false,
@@ -372,7 +372,7 @@ namespace Neighbor.Main.Tests
 
                 Assert.That(PlayerPrefs.GetFloat(SensitivityKey), Is.EqualTo(0.11f).Within(0.001f));
                 Assert.That(PlayerPrefs.GetFloat(VolumeKey), Is.EqualTo(0.42f).Within(0.001f));
-                Assert.That(PlayerPrefs.GetFloat(FieldOfViewKey), Is.EqualTo(80f).Within(0.001f));
+                Assert.That(PlayerPrefs.HasKey(FieldOfViewKey), Is.False);
                 Assert.That(PlayerPrefs.GetFloat(CameraMotionKey), Is.EqualTo(0.25f).Within(0.001f));
                 Assert.That(PlayerPrefs.GetInt(InvertYKey), Is.EqualTo(1));
                 Assert.That(PlayerPrefs.GetInt(ReticlePulseKey), Is.EqualTo(0));
@@ -398,7 +398,7 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
-        public void PlayerPauseMenu_LoadsSavedSettingsIntoRuntimeAndUi()
+        public void PlayerPauseMenu_LoadsSavedSettingsWithoutOverridingGameplayZoomRange()
         {
             const string SensitivityKey = "Neighbor.MouseSensitivity";
             const string VolumeKey = "Neighbor.MasterVolume";
@@ -448,12 +448,13 @@ namespace Neighbor.Main.Tests
                     GameplaySmokeTestReflection.GetField<float>(playerController, "mouseSensitivity"),
                     Is.EqualTo(0.123f).Within(0.001f));
                 Assert.That(cameraController.RuntimeMouseSensitivity, Is.EqualTo(0.123f).Within(0.001f));
-                Assert.That(cameraController.RuntimeFieldOfView, Is.EqualTo(82f).Within(0.001f));
+                Assert.That(cameraController.RuntimeFieldOfView, Is.EqualTo(72f).Within(0.001f));
                 Assert.That(cameraController.RuntimeCameraMotionIntensity, Is.EqualTo(0.35f).Within(0.001f));
                 Assert.That(crosshairFeedback.RuntimePulseEnabled, Is.False);
                 Assert.That(playerController.RuntimeInvertLookY, Is.True);
                 Assert.That(cameraController.RuntimeInvertLookY, Is.True);
-                Assert.That(playerCamera.fieldOfView, Is.EqualTo(82f).Within(0.001f));
+                Assert.That(playerCamera.fieldOfView, Is.EqualTo(72f).Within(0.001f));
+                Assert.That(PlayerPrefs.HasKey(FieldOfViewKey), Is.False);
                 Assert.That(AudioListener.volume, Is.EqualTo(0.37f).Within(0.001f));
                 Assert.That(Application.targetFrameRate, Is.EqualTo(120));
 
@@ -463,9 +464,6 @@ namespace Neighbor.Main.Tests
                 Assert.That(
                     GameplaySmokeTestReflection.GetField<Text>(pauseMenu, "volumeValueText").text,
                     Is.EqualTo("37"));
-                Assert.That(
-                    GameplaySmokeTestReflection.GetField<Text>(pauseMenu, "fieldOfViewValueText").text,
-                    Is.EqualTo("82"));
                 Assert.That(
                     GameplaySmokeTestReflection.GetField<Text>(pauseMenu, "cameraMotionValueText").text,
                     Is.EqualTo("35%"));
@@ -532,15 +530,17 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
-        public void ProjectQualitySettings_UsePrototypePerformanceBudgets()
+        public void ProjectQualitySettings_UseHighFidelityPcBudgets()
         {
             string qualitySettings = File.ReadAllText("ProjectSettings/QualitySettings.asset");
 
             Assert.That(qualitySettings, Does.Not.Contain("terrainTreeDistance: 5000"));
             Assert.That(qualitySettings, Does.Contain("terrainTreeDistance: 260"));
-            Assert.That(qualitySettings, Does.Contain("terrainTreeDistance: 420"));
+            Assert.That(qualitySettings, Does.Contain("terrainTreeDistance: 800"));
             Assert.That(qualitySettings, Does.Contain("terrainMaxTrees: 18"));
-            Assert.That(qualitySettings, Does.Contain("terrainMaxTrees: 32"));
+            Assert.That(qualitySettings, Does.Contain("terrainMaxTrees: 80"));
+            Assert.That(qualitySettings, Does.Contain("shadowDistance: 140"));
+            Assert.That(qualitySettings, Does.Contain("antiAliasing: 4"));
         }
 
         [Test]

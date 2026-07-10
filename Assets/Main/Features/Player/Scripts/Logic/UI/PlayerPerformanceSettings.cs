@@ -29,7 +29,7 @@ namespace Neighbor.Main.Features.Player
         public const string FrameRateLimitPreferenceKey = "Neighbor.FrameRateLimit";
 
         private static bool runtimeHooksRegistered;
-        private static PlayerPerformanceProfile currentProfile = PlayerPerformanceProfile.Balanced;
+        private static PlayerPerformanceProfile currentProfile = PlayerPerformanceProfile.Quality;
         private static PlayerFrameRateLimit currentFrameRateLimit = PlayerFrameRateLimit.Profile;
 
         public static PlayerPerformanceProfile CurrentProfile => currentProfile;
@@ -41,7 +41,7 @@ namespace Neighbor.Main.Features.Player
             SceneManager.sceneLoaded -= HandleSceneLoaded;
             RenderPipelineManager.beginCameraRendering -= HandleBeginCameraRendering;
             runtimeHooksRegistered = false;
-            currentProfile = PlayerPerformanceProfile.Balanced;
+            currentProfile = PlayerPerformanceProfile.Quality;
             currentFrameRateLimit = PlayerFrameRateLimit.Profile;
         }
 
@@ -56,7 +56,7 @@ namespace Neighbor.Main.Features.Player
         {
             PlayerPerformanceProfile profile = (PlayerPerformanceProfile)PlayerPrefs.GetInt(
                 PreferenceKey,
-                (int)PlayerPerformanceProfile.Balanced);
+                (int)PlayerPerformanceProfile.Quality);
             return Normalize(profile);
         }
 
@@ -265,59 +265,59 @@ namespace Neighbor.Main.Features.Player
                 PlayerPerformanceProfile.Quality => new ProfileSettings(
                     qualityLevel: 1,
                     targetFrameRate: 90,
-                    lodBias: 1.8f,
+                    lodBias: 2.4f,
+                    maximumLodLevel: 0,
+                    renderScale: 1f,
+                    supportsHdr: true,
+                    msaaSampleCount: 4,
+                    globalTextureMipmapLimit: 0,
+                    streamingMipmapsActive: true,
+                    streamingMipmapsMemoryBudget: 1024f,
+                    particleRaycastBudget: 512,
+                    shadowDistance: 140f,
+                    shadowResolution: EngineShadowResolution.High,
+                    shadowCascadeCount: 4,
+                    mainLightShadowmapResolution: 4096,
+                    maxAdditionalLightsCount: 6,
+                    additionalLightsShadowmapResolution: 4096,
+                    allowDynamicResolution: false,
+                    useOcclusionCulling: true,
+                    treeDistance: 1000f,
+                    treeBillboardDistance: 120f,
+                    treeCrossFadeLength: 14f,
+                    treeMaximumFullLodCount: 120,
+                    detailObjectDistance: 150f,
+                    detailObjectDensity: 1f,
+                    heightmapPixelError: 1.5f,
+                    basemapDistance: 1800f),
+                _ => new ProfileSettings(
+                    qualityLevel: 1,
+                    targetFrameRate: 75,
+                    lodBias: 2f,
                     maximumLodLevel: 0,
                     renderScale: 1f,
                     supportsHdr: true,
                     msaaSampleCount: 2,
                     globalTextureMipmapLimit: 0,
                     streamingMipmapsActive: true,
-                    streamingMipmapsMemoryBudget: 512f,
+                    streamingMipmapsMemoryBudget: 768f,
                     particleRaycastBudget: 384,
-                    shadowDistance: 55f,
+                    shadowDistance: 100f,
                     shadowResolution: EngineShadowResolution.High,
-                    shadowCascadeCount: 2,
-                    mainLightShadowmapResolution: 2048,
+                    shadowCascadeCount: 4,
+                    mainLightShadowmapResolution: 4096,
                     maxAdditionalLightsCount: 4,
                     additionalLightsShadowmapResolution: 4096,
                     allowDynamicResolution: false,
                     useOcclusionCulling: true,
-                    treeDistance: 550f,
-                    treeBillboardDistance: 70f,
-                    treeCrossFadeLength: 8f,
-                    treeMaximumFullLodCount: 60,
-                    detailObjectDistance: 95f,
+                    treeDistance: 800f,
+                    treeBillboardDistance: 90f,
+                    treeCrossFadeLength: 12f,
+                    treeMaximumFullLodCount: 80,
+                    detailObjectDistance: 110f,
                     detailObjectDensity: 1f,
-                    heightmapPixelError: 3f,
-                    basemapDistance: 1000f),
-                _ => new ProfileSettings(
-                    qualityLevel: 1,
-                    targetFrameRate: 75,
-                    lodBias: 1.35f,
-                    maximumLodLevel: 0,
-                    renderScale: 1f,
-                    supportsHdr: true,
-                    msaaSampleCount: 1,
-                    globalTextureMipmapLimit: 0,
-                    streamingMipmapsActive: true,
-                    streamingMipmapsMemoryBudget: 384f,
-                    particleRaycastBudget: 256,
-                    shadowDistance: 38f,
-                    shadowResolution: EngineShadowResolution.Medium,
-                    shadowCascadeCount: 2,
-                    mainLightShadowmapResolution: 2048,
-                    maxAdditionalLightsCount: 2,
-                    additionalLightsShadowmapResolution: 4096,
-                    allowDynamicResolution: true,
-                    useOcclusionCulling: true,
-                    treeDistance: 360f,
-                    treeBillboardDistance: 45f,
-                    treeCrossFadeLength: 5f,
-                    treeMaximumFullLodCount: 32,
-                    detailObjectDistance: 70f,
-                    detailObjectDensity: 0.85f,
-                    heightmapPixelError: 5f,
-                    basemapDistance: 700f)
+                    heightmapPixelError: 2f,
+                    basemapDistance: 1400f)
             };
         }
 

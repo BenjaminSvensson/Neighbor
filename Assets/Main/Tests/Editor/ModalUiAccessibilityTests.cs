@@ -49,7 +49,11 @@ namespace Neighbor.Main.Tests
 
                 RectTransform panel = FindRectTransform(playerObject.transform, "Panel");
                 Assert.That(panel, Is.Not.Null);
-                Assert.That(panel.rect.height, Is.LessThanOrEqualTo(1080f));
+                Assert.That(panel.rect.width, Is.GreaterThanOrEqualTo(1100f));
+                Assert.That(panel.rect.height, Is.LessThanOrEqualTo(900f));
+                Assert.That(FindRectTransform(playerObject.transform, "Settings Card"), Is.Not.Null);
+                Assert.That(FindRectTransform(playerObject.transform, "Controls Card"), Is.Not.Null);
+                Assert.That(FindRectTransform(playerObject.transform, "FOV Slider"), Is.Null);
 
                 Button resumeButton = GetPrivateField<Button>(pauseMenu, "resumeButton");
                 Dictionary<PlayerInputBindingAction, Text> bindingTexts =

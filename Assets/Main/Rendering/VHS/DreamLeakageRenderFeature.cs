@@ -13,12 +13,12 @@ namespace Neighbor.Rendering
         {
             public RenderPassEvent renderPassEvent = RenderPassEvent.AfterRenderingPostProcessing;
 
-            [Range(0f, 1f)] public float intensity = 0.16f;
-            [Range(0f, 1f)] public float lightLeak = 0.12f;
-            [Range(0f, 1f)] public float spectralHalo = 0.1f;
-            [Range(0f, 1f)] public float lensBreathing = 0.06f;
-            [Range(0f, 1f)] public float dreamTint = 0.1f;
-            [Range(0f, 1f)] public float pulse = 0.05f;
+            [Range(0f, 1f)] public float intensity = 0.3f;
+            [Range(0f, 1f)] public float lightLeak = 0.26f;
+            [Range(0f, 1f)] public float spectralHalo = 0.2f;
+            [Range(0f, 1f)] public float lensBreathing = 0.09f;
+            [Range(0f, 1f)] public float dreamTint = 0.16f;
+            [Range(0f, 1f)] public float pulse = 0.08f;
         }
 
         [SerializeField] Settings settings = new();

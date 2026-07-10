@@ -27,12 +27,12 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField, Min(0f)] private float stealthMoonIntensityBoost = 0.34f;
 
         [Header("Color Grade")]
-        [SerializeField, Range(-2f, 2f)] private float exposure = 0.1f;
-        [SerializeField, Range(-100f, 100f)] private float contrast = 8f;
-        [SerializeField, Range(-100f, 100f)] private float saturation = -6f;
-        [SerializeField] private Color colorFilter = new(0.94f, 0.97f, 1f, 1f);
-        [SerializeField, Range(0f, 1f)] private float vignetteIntensity = 0.16f;
-        [SerializeField, Range(0f, 1f)] private float filmGrainIntensity = 0.08f;
+        [SerializeField, Range(-2f, 2f)] private float exposure = 0.04f;
+        [SerializeField, Range(-100f, 100f)] private float contrast = 14f;
+        [SerializeField, Range(-100f, 100f)] private float saturation = -8f;
+        [SerializeField] private Color colorFilter = new(1f, 0.96f, 0.88f, 1f);
+        [SerializeField, Range(0f, 1f)] private float vignetteIntensity = 0.22f;
+        [SerializeField, Range(0f, 1f)] private float filmGrainIntensity = 0.09f;
 
         [Header("Stealth Atmosphere Response")]
         [SerializeField] private bool respondToStealthLoop = true;
@@ -43,14 +43,14 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField, Range(0f, 1f)] private float calmHidingAtmosphereIntensity = 0.14f;
         [SerializeField, Min(0f)] private float stealthAtmosphereHoldDuration = 2.8f;
         [SerializeField, Min(0f)] private float stealthAtmosphereFadeSpeed = 1.6f;
-        [SerializeField, Min(0f)] private float stealthFogDensityBoost = 0.006f;
+        [SerializeField, Min(0f)] private float stealthFogDensityBoost = 0.008f;
         [SerializeField] private Color stealthFogColor = new(0.2f, 0.26f, 0.3f, 1f);
-        [SerializeField, Range(-2f, 0f)] private float stealthExposureOffset = -0.1f;
-        [SerializeField, Range(0f, 100f)] private float stealthContrastBoost = 6f;
-        [SerializeField, Range(-100f, 0f)] private float stealthSaturationOffset = -4f;
+        [SerializeField, Range(-2f, 0f)] private float stealthExposureOffset = -0.14f;
+        [SerializeField, Range(0f, 100f)] private float stealthContrastBoost = 9f;
+        [SerializeField, Range(-100f, 0f)] private float stealthSaturationOffset = -6f;
         [SerializeField] private Color stealthColorFilter = new(0.84f, 0.91f, 1f, 1f);
-        [SerializeField, Range(0f, 1f)] private float stealthVignetteBoost = 0.1f;
-        [SerializeField, Range(0f, 1f)] private float stealthFilmGrainBoost = 0.08f;
+        [SerializeField, Range(0f, 1f)] private float stealthVignetteBoost = 0.15f;
+        [SerializeField, Range(0f, 1f)] private float stealthFilmGrainBoost = 0.12f;
         [Header("Memory Atmosphere Response")]
         [SerializeField] private bool respondToNeighborMemory = true;
         [SerializeField, Range(0f, 1f)] private float memoryAtmosphereIntensity = 0.42f;

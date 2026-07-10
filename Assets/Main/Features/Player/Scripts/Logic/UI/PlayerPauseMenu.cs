@@ -15,22 +15,30 @@ namespace Neighbor.Main.Features.Player
     {
         private const string SensitivityPreferenceKey = "Neighbor.MouseSensitivity";
         private const string VolumePreferenceKey = "Neighbor.MasterVolume";
-        private const string FieldOfViewPreferenceKey = "Neighbor.FieldOfView";
+        private const string LegacyFieldOfViewPreferenceKey = "Neighbor.FieldOfView";
         private const string CameraMotionPreferenceKey = "Neighbor.CameraMotionIntensity";
         private const string InvertLookYPreferenceKey = "Neighbor.InvertLookY";
         private const string ReticlePulsePreferenceKey = "Neighbor.ReticlePulse";
         private const string FullscreenPreferenceKey = "Neighbor.Fullscreen";
         private const float DestructiveActionConfirmationDuration = 3f;
+        private static readonly Color BackdropColor = new(0.008f, 0.012f, 0.014f, 0.82f);
+        private static readonly Color PanelColor = new(0.035f, 0.042f, 0.044f, 0.985f);
+        private static readonly Color CardColor = new(0.075f, 0.082f, 0.078f, 0.92f);
+        private static readonly Color CardEdgeColor = new(0.95f, 0.69f, 0.31f, 0.22f);
+        private static readonly Color AccentColor = new(1f, 0.68f, 0.25f, 1f);
+        private static readonly Color AccentMutedColor = new(0.62f, 0.42f, 0.18f, 0.9f);
+        private static readonly Color PrimaryTextColor = new(0.96f, 0.94f, 0.87f, 1f);
+        private static readonly Color SecondaryTextColor = new(0.72f, 0.73f, 0.68f, 1f);
+        private static readonly Color DangerColor = new(0.72f, 0.24f, 0.18f, 1f);
 
         [Header("Defaults")]
         [SerializeField, Min(0f)] private float defaultSensitivity = 0.08f;
         [SerializeField, Range(0f, 1f)] private float defaultVolume = 1f;
-        [SerializeField, Range(45f, 100f)] private float defaultFieldOfView = 72f;
         [SerializeField, Range(0f, 1f)] private float defaultCameraMotionIntensity = 1f;
         [SerializeField] private bool defaultInvertLookY;
         [SerializeField] private bool defaultReticlePulse = true;
         [SerializeField] private bool defaultFullscreen = true;
-        [SerializeField] private PlayerPerformanceProfile defaultPerformanceProfile = PlayerPerformanceProfile.Balanced;
+        [SerializeField] private PlayerPerformanceProfile defaultPerformanceProfile = PlayerPerformanceProfile.Quality;
         [SerializeField] private PlayerFrameRateLimit defaultFrameRateLimit = PlayerFrameRateLimit.Profile;
 
         private PlayerController playerController;
@@ -40,7 +48,6 @@ namespace Neighbor.Main.Features.Player
         private readonly Dictionary<PlayerInputBindingAction, Text> bindingValueTexts = new();
         private Text sensitivityValueText;
         private Text volumeValueText;
-        private Text fieldOfViewValueText;
         private Text cameraMotionValueText;
         private Text invertLookYValueText;
         private Text reticlePulseValueText;
@@ -71,6 +78,14 @@ namespace Neighbor.Main.Features.Player
             None,
             Restart,
             Quit
+        }
+
+        private enum ButtonTone
+        {
+            Standard,
+            Primary,
+            Secondary,
+            Danger
         }
 
         private void Awake()
@@ -296,9 +311,6 @@ namespace Neighbor.Main.Features.Player
                 SensitivityPreferenceKey,
                 cameraController != null ? cameraController.RuntimeMouseSensitivity : defaultSensitivity);
             float volume = PlayerPrefs.GetFloat(VolumePreferenceKey, defaultVolume);
-            float fieldOfView = PlayerPrefs.GetFloat(
-                FieldOfViewPreferenceKey,
-                cameraController != null ? cameraController.RuntimeFieldOfView : defaultFieldOfView);
             float savedCameraMotionIntensity = PlayerPrefs.GetFloat(
                 CameraMotionPreferenceKey,
                 cameraController != null
@@ -318,7 +330,6 @@ namespace Neighbor.Main.Features.Player
 
             ApplySensitivity(sensitivity);
             ApplyVolume(volume);
-            ApplyFieldOfView(fieldOfView);
             ApplyCameraMotionIntensity(savedCameraMotionIntensity);
             ApplyInvertLookY(savedInvertLookY);
             ApplyReticlePulse(savedReticlePulse);
@@ -335,6 +346,12 @@ namespace Neighbor.Main.Features.Player
             RefreshPerformanceProfileText();
             RefreshFrameRateLimitText();
             RefreshBindingButtons();
+
+            if (PlayerPrefs.HasKey(LegacyFieldOfViewPreferenceKey))
+            {
+                PlayerPrefs.DeleteKey(LegacyFieldOfViewPreferenceKey);
+                settingsDirty = true;
+            }
         }
 
         private void SetFloatPreference(string key, float value)
@@ -390,17 +407,6 @@ namespace Neighbor.Main.Features.Player
             if (volumeValueText != null)
             {
                 volumeValueText.text = Mathf.RoundToInt(volume * 100f).ToString();
-            }
-        }
-
-        private void ApplyFieldOfView(float fieldOfView)
-        {
-            fieldOfView = Mathf.Clamp(fieldOfView, 45f, 100f);
-            SetFloatPreference(FieldOfViewPreferenceKey, fieldOfView);
-            cameraController?.SetRuntimeFieldOfView(fieldOfView);
-            if (fieldOfViewValueText != null)
-            {
-                fieldOfViewValueText.text = Mathf.RoundToInt(fieldOfView).ToString();
             }
         }
 
@@ -495,57 +501,81 @@ namespace Neighbor.Main.Features.Player
             canvasGroup = canvasObject.AddComponent<CanvasGroup>();
             Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
-            Image dim = CreateImage("Dim", canvasObject.transform, new Color(0f, 0f, 0f, 0.68f));
+            Image dim = CreateImage("Dim", canvasObject.transform, BackdropColor);
             Stretch(dim.rectTransform);
+            CreateBackdropBars(dim.transform);
 
-            Image panel = CreateImage("Panel", canvasObject.transform, new Color(0.045f, 0.05f, 0.055f, 0.96f));
+            Image panel = CreateImage("Panel", canvasObject.transform, PanelColor);
             RectTransform panelRect = panel.rectTransform;
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
             panelRect.pivot = new Vector2(0.5f, 0.5f);
             panelRect.anchoredPosition = Vector2.zero;
-            panelRect.sizeDelta = new Vector2(680f, 1060f);
+            panelRect.sizeDelta = new Vector2(1240f, 820f);
+            AddOutline(panel.gameObject, new Color(0f, 0f, 0f, 0.8f), new Vector2(14f, -14f));
 
-            Text title = CreateText("Title", panel.transform, font, 30, FontStyle.Bold, TextAnchor.MiddleCenter);
-            SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -44f), new Vector2(440f, 44f));
-            title.text = "PAUSED";
+            Image signalRail = CreateImage("Signal Rail", panel.transform, AccentColor);
+            SetRect(signalRail.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(5f, 0f), new Vector2(10f, 820f));
 
-            CreateSliderRow(panel.transform, font, "Sensitivity", new Vector2(0f, 315f), 0.02f, 0.2f, defaultSensitivity, ApplySensitivity, out sensitivityValueText);
-            CreateSliderRow(panel.transform, font, "Volume", new Vector2(0f, 255f), 0f, 1f, defaultVolume, ApplyVolume, out volumeValueText);
-            CreateSliderRow(panel.transform, font, "FOV", new Vector2(0f, 195f), 45f, 100f, defaultFieldOfView, ApplyFieldOfView, out fieldOfViewValueText);
+            Text title = CreateText("Title", panel.transform, font, 36, FontStyle.Bold, TextAnchor.MiddleLeft);
+            SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-380f, -52f), new Vector2(420f, 48f));
+            title.text = "NEIGHBOR";
+            title.color = PrimaryTextColor;
+
+            Text subtitle = CreateText("Subtitle", panel.transform, font, 15, FontStyle.Bold, TextAnchor.MiddleLeft);
+            SetRect(subtitle.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-380f, -83f), new Vector2(420f, 24f));
+            subtitle.text = "PAUSED // SIGNAL HELD";
+            subtitle.color = AccentColor;
+
+            Text resumeHint = CreateText("Resume Hint", panel.transform, font, 14, FontStyle.Bold, TextAnchor.MiddleRight);
+            SetRect(resumeHint.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(465f, -65f), new Vector2(300f, 28f));
+            resumeHint.text = "ESC / START / B   RESUME";
+            resumeHint.color = SecondaryTextColor;
+
+            Image headerLine = CreateImage("Header Line", panel.transform, AccentMutedColor);
+            SetRect(headerLine.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -112f), new Vector2(1120f, 2f));
+
+            Image settingsCard = CreateSectionCard("Settings Card", panel.transform, new Vector2(-336f, 32f), new Vector2(510f, 516f));
+            Image controlsCard = CreateSectionCard("Controls Card", panel.transform, new Vector2(276f, 32f), new Vector2(660f, 516f));
+
+            CreateSectionHeader(settingsCard.transform, font, "PLAYER & DISPLAY", "01", new Vector2(0f, 221f), 430f);
+            CreateSectionHeader(controlsCard.transform, font, "CONTROL DECK", "02", new Vector2(0f, 221f), 578f);
+
+            CreateSliderRow(settingsCard.transform, font, "Sensitivity", new Vector2(0f, 146f), 0.02f, 0.2f, defaultSensitivity, ApplySensitivity, out sensitivityValueText);
+            CreateSliderRow(settingsCard.transform, font, "Volume", new Vector2(0f, 72f), 0f, 1f, defaultVolume, ApplyVolume, out volumeValueText);
             CreateSliderRow(
-                panel.transform,
+                settingsCard.transform,
                 font,
                 "Camera Motion",
-                new Vector2(0f, 135f),
+                new Vector2(0f, -2f),
                 0f,
                 1f,
                 defaultCameraMotionIntensity,
                 ApplyCameraMotionIntensity,
                 out cameraMotionValueText);
 
-            CreateToggleRow(panel.transform, font, "Invert Y", new Vector2(-150f, 72f), ToggleInvertLookY, out invertLookYValueText);
-            CreateToggleRow(panel.transform, font, "Reticle Pulse", new Vector2(170f, 72f), ToggleReticlePulse, out reticlePulseValueText);
-            CreateToggleRow(panel.transform, font, "Fullscreen", new Vector2(170f, 24f), ToggleFullscreen, out fullscreenValueText);
+            CreateToggleRow(settingsCard.transform, font, "Invert Y", new Vector2(-115f, -72f), ToggleInvertLookY, out invertLookYValueText);
+            CreateToggleRow(settingsCard.transform, font, "Reticle", new Vector2(116f, -72f), ToggleReticlePulse, out reticlePulseValueText);
+            CreateToggleRow(settingsCard.transform, font, "Fullscreen", new Vector2(-115f, -122f), ToggleFullscreen, out fullscreenValueText);
 
-            CreatePerformanceRow(panel.transform, font, new Vector2(0f, -24f));
-            CreateFrameRateRow(panel.transform, font, new Vector2(0f, -70f));
+            CreatePerformanceRow(settingsCard.transform, font, new Vector2(0f, -172f));
+            CreateFrameRateRow(settingsCard.transform, font, new Vector2(0f, -218f));
 
-            Text controlsTitle = CreateText("Controls Title", panel.transform, font, 15, FontStyle.Bold, TextAnchor.MiddleLeft);
-            controlsTitle.text = "CONTROLS";
-            controlsTitle.color = new Color(1f, 1f, 1f, 0.76f);
-            SetRect(controlsTitle.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-220f, -126f), new Vector2(180f, 24f));
+            CreateButton(settingsCard.transform, font, "Reset Settings", new Vector2(0f, -260f), ResetUserSettings, new Vector2(200f, 34f), ButtonTone.Secondary);
 
-            CreateButton(panel.transform, font, "Reset Settings", new Vector2(55f, -126f), ResetUserSettings, new Vector2(150f, 32f));
-            CreateButton(panel.transform, font, "Reset Controls", new Vector2(215f, -126f), ResetControlBindings, new Vector2(150f, 32f));
+            CreateBindingRows(controlsCard.transform, font);
+            CreateButton(controlsCard.transform, font, "Reset Controls", new Vector2(244f, -260f), ResetControlBindings, new Vector2(168f, 34f), ButtonTone.Secondary);
 
-            CreateBindingRows(panel.transform, font);
-
-            resumeButton = CreateButton(panel.transform, font, "Resume", new Vector2(0f, -460f), Close, new Vector2(280f, 44f));
-            Button restartButton = CreateButton(panel.transform, font, "Restart", new Vector2(-122f, -505f), ConfirmOrRestartScene, new Vector2(210f, 38f));
-            Button quitButton = CreateButton(panel.transform, font, "Quit", new Vector2(122f, -505f), ConfirmOrQuitGame, new Vector2(210f, 38f));
+            resumeButton = CreateButton(panel.transform, font, "Resume", new Vector2(0f, -352f), Close, new Vector2(330f, 54f), ButtonTone.Primary);
+            Button restartButton = CreateButton(panel.transform, font, "Restart", new Vector2(-284f, -352f), ConfirmOrRestartScene, new Vector2(190f, 44f), ButtonTone.Secondary);
+            Button quitButton = CreateButton(panel.transform, font, "Quit", new Vector2(284f, -352f), ConfirmOrQuitGame, new Vector2(190f, 44f), ButtonTone.Danger);
             restartButtonText = restartButton.GetComponentInChildren<Text>(true);
             quitButtonText = quitButton.GetComponentInChildren<Text>(true);
+
+            Text footer = CreateText("Footer", panel.transform, font, 11, FontStyle.Normal, TextAnchor.MiddleCenter);
+            SetRect(footer.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 14f), new Vector2(600f, 18f));
+            footer.text = "ANALOG SURVEILLANCE SYSTEM // LOCAL SESSION";
+            footer.color = new Color(SecondaryTextColor.r, SecondaryTextColor.g, SecondaryTextColor.b, 0.58f);
         }
 
         private void CreateToggleRow(
@@ -556,12 +586,12 @@ namespace Neighbor.Main.Features.Player
             UnityEngine.Events.UnityAction clicked,
             out Text valueText)
         {
-            Text labelText = CreateText($"{label} Label", parent, font, 15, FontStyle.Bold, TextAnchor.MiddleLeft);
+            Text labelText = CreateText($"{label} Label", parent, font, 13, FontStyle.Bold, TextAnchor.MiddleLeft);
             labelText.text = label.ToUpperInvariant();
-            labelText.color = new Color(1f, 1f, 1f, 0.76f);
-            SetRect(labelText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(-70f, 0f), new Vector2(130f, 28f));
+            labelText.color = SecondaryTextColor;
+            SetRect(labelText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(-58f, 0f), new Vector2(100f, 28f));
 
-            Button button = CreateButton(parent, font, "OFF", position + new Vector2(80f, 0f), clicked, new Vector2(82f, 34f));
+            Button button = CreateButton(parent, font, "OFF", position + new Vector2(58f, 0f), clicked, new Vector2(72f, 32f), ButtonTone.Secondary);
             valueText = button.GetComponentInChildren<Text>(true);
         }
 
@@ -573,7 +603,7 @@ namespace Neighbor.Main.Features.Player
                 int column = i % 2;
                 int row = i / 2;
                 float x = column == 0 ? -175f : 175f;
-                float y = -158f - row * 29f;
+                float y = 164f - row * 40f;
                 CreateBindingRow(parent, font, actions[i], new Vector2(x, y));
             }
         }
@@ -602,50 +632,51 @@ namespace Neighbor.Main.Features.Player
 
         private void CreatePerformanceRow(Transform parent, Font font, Vector2 position)
         {
-            Text labelText = CreateText("Performance Label", parent, font, 15, FontStyle.Bold, TextAnchor.MiddleLeft);
+            Text labelText = CreateText("Performance Label", parent, font, 13, FontStyle.Bold, TextAnchor.MiddleLeft);
             labelText.text = "PERFORMANCE";
-            labelText.color = new Color(1f, 1f, 1f, 0.76f);
-            SetRect(labelText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(-185f, 0f), new Vector2(170f, 28f));
+            labelText.color = SecondaryTextColor;
+            SetRect(labelText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(-160f, 0f), new Vector2(150f, 28f));
 
-            CreateButton(parent, font, "<", position + new Vector2(38f, 0f), () => CyclePerformanceProfile(-1), new Vector2(42f, 34f));
+            CreateButton(parent, font, "<", position + new Vector2(42f, 0f), () => CyclePerformanceProfile(-1), new Vector2(36f, 32f), ButtonTone.Secondary);
 
-            performanceProfileValueText = CreateText("Performance Value", parent, font, 15, FontStyle.Bold, TextAnchor.MiddleCenter);
-            performanceProfileValueText.color = new Color(1f, 0.86f, 0.42f, 0.95f);
-            SetRect(performanceProfileValueText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(124f, 0f), new Vector2(120f, 28f));
+            performanceProfileValueText = CreateText("Performance Value", parent, font, 14, FontStyle.Bold, TextAnchor.MiddleCenter);
+            performanceProfileValueText.color = AccentColor;
+            SetRect(performanceProfileValueText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(125f, 0f), new Vector2(120f, 28f));
 
-            CreateButton(parent, font, ">", position + new Vector2(210f, 0f), () => CyclePerformanceProfile(1), new Vector2(42f, 34f));
+            CreateButton(parent, font, ">", position + new Vector2(208f, 0f), () => CyclePerformanceProfile(1), new Vector2(36f, 32f), ButtonTone.Secondary);
         }
 
         private void CreateFrameRateRow(Transform parent, Font font, Vector2 position)
         {
-            Text labelText = CreateText("Frame Rate Limit Label", parent, font, 15, FontStyle.Bold, TextAnchor.MiddleLeft);
+            Text labelText = CreateText("Frame Rate Limit Label", parent, font, 13, FontStyle.Bold, TextAnchor.MiddleLeft);
             labelText.text = "FRAME CAP";
-            labelText.color = new Color(1f, 1f, 1f, 0.76f);
-            SetRect(labelText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(-185f, 0f), new Vector2(170f, 28f));
+            labelText.color = SecondaryTextColor;
+            SetRect(labelText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(-160f, 0f), new Vector2(150f, 28f));
 
-            CreateButton(parent, font, "<", position + new Vector2(38f, 0f), () => CycleFrameRateLimit(-1), new Vector2(42f, 34f));
+            CreateButton(parent, font, "<", position + new Vector2(42f, 0f), () => CycleFrameRateLimit(-1), new Vector2(36f, 32f), ButtonTone.Secondary);
 
-            frameRateLimitValueText = CreateText("Frame Rate Limit Value", parent, font, 15, FontStyle.Bold, TextAnchor.MiddleCenter);
-            frameRateLimitValueText.color = new Color(1f, 0.86f, 0.42f, 0.95f);
-            SetRect(frameRateLimitValueText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(124f, 0f), new Vector2(120f, 28f));
+            frameRateLimitValueText = CreateText("Frame Rate Limit Value", parent, font, 14, FontStyle.Bold, TextAnchor.MiddleCenter);
+            frameRateLimitValueText.color = AccentColor;
+            SetRect(frameRateLimitValueText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(125f, 0f), new Vector2(120f, 28f));
 
-            CreateButton(parent, font, ">", position + new Vector2(210f, 0f), () => CycleFrameRateLimit(1), new Vector2(42f, 34f));
+            CreateButton(parent, font, ">", position + new Vector2(208f, 0f), () => CycleFrameRateLimit(1), new Vector2(36f, 32f), ButtonTone.Secondary);
         }
 
         private void CreateBindingRow(Transform parent, Font font, PlayerInputBindingAction action, Vector2 position)
         {
-            Text labelText = CreateText($"{action} Binding Label", parent, font, 13, FontStyle.Bold, TextAnchor.MiddleLeft);
+            Text labelText = CreateText($"{action} Binding Label", parent, font, 12, FontStyle.Bold, TextAnchor.MiddleLeft);
             labelText.text = PlayerInputBindings.GetActionLabel(action).ToUpperInvariant();
-            labelText.color = new Color(1f, 1f, 1f, 0.72f);
-            SetRect(labelText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(-62f, 0f), new Vector2(126f, 28f));
+            labelText.color = SecondaryTextColor;
+            SetRect(labelText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(-58f, 0f), new Vector2(112f, 28f));
 
             Button button = CreateButton(
                 parent,
                 font,
                 PlayerInputBindings.GetKeyLabel(action),
-                position + new Vector2(76f, 0f),
+                position + new Vector2(70f, 0f),
                 () => BeginRebind(action),
-                new Vector2(130f, 32f));
+                new Vector2(124f, 30f),
+                ButtonTone.Secondary);
             bindingValueTexts[action] = button.GetComponentInChildren<Text>(true);
         }
 
@@ -660,18 +691,18 @@ namespace Neighbor.Main.Features.Player
             UnityEngine.Events.UnityAction<float> changed,
             out Text valueText)
         {
-            Text labelText = CreateText($"{label} Label", parent, font, 15, FontStyle.Bold, TextAnchor.MiddleLeft);
+            Text labelText = CreateText($"{label} Label", parent, font, 13, FontStyle.Bold, TextAnchor.MiddleLeft);
             labelText.text = label.ToUpperInvariant();
-            labelText.color = new Color(1f, 1f, 1f, 0.76f);
-            SetRect(labelText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(-130f, 18f), new Vector2(180f, 24f));
+            labelText.color = SecondaryTextColor;
+            SetRect(labelText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(-150f, 18f), new Vector2(200f, 24f));
 
             valueText = CreateText($"{label} Value", parent, font, 14, FontStyle.Bold, TextAnchor.MiddleRight);
-            valueText.color = new Color(1f, 0.86f, 0.42f, 0.95f);
-            SetRect(valueText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(160f, 18f), new Vector2(72f, 24f));
+            valueText.color = AccentColor;
+            SetRect(valueText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(178f, 18f), new Vector2(72f, 24f));
 
             Slider slider = CreateSlider($"{label} Slider", parent);
             RectTransform sliderRect = slider.GetComponent<RectTransform>();
-            SetRect(sliderRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(0f, -12f), new Vector2(360f, 26f));
+            SetRect(sliderRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position + new Vector2(0f, -12f), new Vector2(390f, 24f));
             slider.minValue = minimumValue;
             slider.maxValue = maximumValue;
             slider.value = value;
@@ -681,25 +712,58 @@ namespace Neighbor.Main.Features.Player
         private Button CreateButton(Transform parent, Font font, string label, Vector2 position, UnityEngine.Events.UnityAction clicked)
         {
             Vector2 size = label == "Resume" ? new Vector2(260f, 48f) : new Vector2(210f, 48f);
-            return CreateButton(parent, font, label, position, clicked, size);
+            return CreateButton(parent, font, label, position, clicked, size, ButtonTone.Standard);
         }
 
         private Button CreateButton(Transform parent, Font font, string label, Vector2 position, UnityEngine.Events.UnityAction clicked, Vector2 size)
         {
-            Image image = CreateImage($"{label} Button", parent, new Color(0.16f, 0.18f, 0.19f, 0.96f));
+            return CreateButton(parent, font, label, position, clicked, size, ButtonTone.Standard);
+        }
+
+        private Button CreateButton(
+            Transform parent,
+            Font font,
+            string label,
+            Vector2 position,
+            UnityEngine.Events.UnityAction clicked,
+            Vector2 size,
+            ButtonTone tone)
+        {
+            Color normalColor = tone switch
+            {
+                ButtonTone.Primary => new Color(0.96f, 0.57f, 0.18f, 1f),
+                ButtonTone.Secondary => new Color(0.105f, 0.115f, 0.108f, 0.98f),
+                ButtonTone.Danger => new Color(0.27f, 0.08f, 0.065f, 1f),
+                _ => new Color(0.14f, 0.15f, 0.145f, 0.98f)
+            };
+            Color highlightedColor = tone switch
+            {
+                ButtonTone.Primary => new Color(1f, 0.72f, 0.3f, 1f),
+                ButtonTone.Danger => new Color(0.55f, 0.14f, 0.09f, 1f),
+                _ => new Color(0.27f, 0.245f, 0.18f, 1f)
+            };
+
+            Image image = CreateImage($"{label} Button", parent, Color.white);
             Button button = image.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
             ColorBlock colors = button.colors;
-            colors.normalColor = image.color;
-            colors.highlightedColor = new Color(0.26f, 0.29f, 0.31f, 1f);
-            colors.pressedColor = new Color(0.9f, 0.7f, 0.28f, 1f);
+            colors.normalColor = normalColor;
+            colors.highlightedColor = highlightedColor;
+            colors.pressedColor = AccentColor;
             colors.selectedColor = colors.highlightedColor;
+            colors.disabledColor = new Color(normalColor.r, normalColor.g, normalColor.b, 0.35f);
+            colors.fadeDuration = 0.08f;
             button.colors = colors;
             button.onClick.AddListener(clicked);
+            AddOutline(
+                image.gameObject,
+                tone == ButtonTone.Danger ? new Color(DangerColor.r, DangerColor.g, DangerColor.b, 0.8f) : CardEdgeColor,
+                new Vector2(1f, -1f));
 
             SetRect(image.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position, size);
             Text text = CreateText($"{label} Text", image.transform, font, 16, FontStyle.Bold, TextAnchor.MiddleCenter);
             text.text = label.ToUpperInvariant();
+            text.color = tone == ButtonTone.Primary ? new Color(0.11f, 0.07f, 0.025f, 1f) : PrimaryTextColor;
             Stretch(text.rectTransform);
             return button;
         }
@@ -775,7 +839,6 @@ namespace Neighbor.Main.Features.Player
             ResetPersistentSettings(
                 defaultSensitivity,
                 defaultVolume,
-                defaultFieldOfView,
                 defaultCameraMotionIntensity,
                 defaultInvertLookY,
                 defaultReticlePulse,
@@ -785,7 +848,6 @@ namespace Neighbor.Main.Features.Player
 
             ApplySensitivity(defaultSensitivity);
             ApplyVolume(defaultVolume);
-            ApplyFieldOfView(defaultFieldOfView);
             ApplyCameraMotionIntensity(defaultCameraMotionIntensity);
             ApplyInvertLookY(defaultInvertLookY);
             ApplyReticlePulse(defaultReticlePulse);
@@ -802,7 +864,6 @@ namespace Neighbor.Main.Features.Player
         private static void ResetPersistentSettings(
             float sensitivity,
             float volume,
-            float fieldOfView,
             float cameraMotion,
             bool invertLookY,
             bool reticlePulse,
@@ -812,7 +873,7 @@ namespace Neighbor.Main.Features.Player
         {
             PlayerPrefs.SetFloat(SensitivityPreferenceKey, Mathf.Clamp(sensitivity, 0.02f, 0.2f));
             PlayerPrefs.SetFloat(VolumePreferenceKey, Mathf.Clamp01(volume));
-            PlayerPrefs.SetFloat(FieldOfViewPreferenceKey, Mathf.Clamp(fieldOfView, 45f, 100f));
+            PlayerPrefs.DeleteKey(LegacyFieldOfViewPreferenceKey);
             PlayerPrefs.SetFloat(CameraMotionPreferenceKey, Mathf.Clamp01(cameraMotion));
             PlayerPrefs.SetInt(InvertLookYPreferenceKey, invertLookY ? 1 : 0);
             PlayerPrefs.SetInt(ReticlePulsePreferenceKey, reticlePulse ? 1 : 0);
@@ -864,28 +925,128 @@ namespace Neighbor.Main.Features.Player
             }
         }
 
+        private void CreateBackdropBars(Transform parent)
+        {
+            Image topBar = CreateImage("Top Letterbox", parent, new Color(0f, 0f, 0f, 0.42f));
+            RectTransform topRect = topBar.rectTransform;
+            topRect.anchorMin = new Vector2(0f, 1f);
+            topRect.anchorMax = new Vector2(1f, 1f);
+            topRect.pivot = new Vector2(0.5f, 1f);
+            topRect.anchoredPosition = Vector2.zero;
+            topRect.sizeDelta = new Vector2(0f, 52f);
+
+            Image bottomBar = CreateImage("Bottom Letterbox", parent, new Color(0f, 0f, 0f, 0.42f));
+            RectTransform bottomRect = bottomBar.rectTransform;
+            bottomRect.anchorMin = Vector2.zero;
+            bottomRect.anchorMax = new Vector2(1f, 0f);
+            bottomRect.pivot = new Vector2(0.5f, 0f);
+            bottomRect.anchoredPosition = Vector2.zero;
+            bottomRect.sizeDelta = new Vector2(0f, 52f);
+
+            for (int i = 1; i < 12; i++)
+            {
+                float anchor = i / 12f;
+                Image scanline = CreateImage($"Menu Scanline {i:00}", parent, new Color(1f, 0.72f, 0.38f, 0.012f));
+                RectTransform scanlineRect = scanline.rectTransform;
+                scanlineRect.anchorMin = new Vector2(0f, anchor);
+                scanlineRect.anchorMax = new Vector2(1f, anchor);
+                scanlineRect.pivot = new Vector2(0.5f, 0.5f);
+                scanlineRect.anchoredPosition = Vector2.zero;
+                scanlineRect.sizeDelta = new Vector2(0f, 1f);
+            }
+        }
+
+        private Image CreateSectionCard(string objectName, Transform parent, Vector2 position, Vector2 size)
+        {
+            Image card = CreateImage(objectName, parent, CardColor);
+            SetRect(card.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), position, size);
+            AddOutline(card.gameObject, CardEdgeColor, new Vector2(1f, -1f));
+
+            Image topAccent = CreateImage($"{objectName} Accent", card.transform, AccentMutedColor);
+            SetRect(
+                topAccent.rectTransform,
+                new Vector2(0.5f, 1f),
+                new Vector2(0.5f, 1f),
+                new Vector2(0f, -5f),
+                new Vector2(size.x - 12f, 3f));
+            return card;
+        }
+
+        private void CreateSectionHeader(Transform parent, Font font, string label, string index, Vector2 position, float width)
+        {
+            Text title = CreateText($"{label} Header", parent, font, 15, FontStyle.Bold, TextAnchor.MiddleLeft);
+            title.text = label;
+            title.color = PrimaryTextColor;
+            SetRect(
+                title.rectTransform,
+                new Vector2(0.5f, 0.5f),
+                new Vector2(0.5f, 0.5f),
+                position + new Vector2((-width * 0.5f) + 92f, 0f),
+                new Vector2(260f, 30f));
+
+            Text number = CreateText($"{label} Index", parent, font, 13, FontStyle.Bold, TextAnchor.MiddleRight);
+            number.text = index;
+            number.color = AccentColor;
+            SetRect(
+                number.rectTransform,
+                new Vector2(0.5f, 0.5f),
+                new Vector2(0.5f, 0.5f),
+                position + new Vector2((width * 0.5f) - 38f, 0f),
+                new Vector2(48f, 30f));
+
+            Image divider = CreateImage($"{label} Divider", parent, new Color(AccentColor.r, AccentColor.g, AccentColor.b, 0.3f));
+            SetRect(
+                divider.rectTransform,
+                new Vector2(0.5f, 0.5f),
+                new Vector2(0.5f, 0.5f),
+                position + new Vector2(0f, -24f),
+                new Vector2(width, 1f));
+        }
+
+        private static void AddOutline(GameObject target, Color color, Vector2 distance)
+        {
+            Outline outline = target.GetComponent<Outline>();
+            if (outline == null)
+            {
+                outline = target.AddComponent<Outline>();
+            }
+
+            outline.effectColor = color;
+            outline.effectDistance = distance;
+            outline.useGraphicAlpha = true;
+        }
+
         private Slider CreateSlider(string objectName, Transform parent)
         {
             GameObject sliderObject = new(objectName, typeof(RectTransform));
             sliderObject.transform.SetParent(parent, false);
             Slider slider = sliderObject.AddComponent<Slider>();
 
-            Image background = CreateImage("Background", sliderObject.transform, new Color(0f, 0f, 0f, 0.55f));
-            Stretch(background.rectTransform);
+            Image background = CreateImage("Background", sliderObject.transform, new Color(0.015f, 0.018f, 0.017f, 0.95f));
+            RectTransform backgroundRect = background.rectTransform;
+            backgroundRect.anchorMin = new Vector2(0f, 0.5f);
+            backgroundRect.anchorMax = new Vector2(1f, 0.5f);
+            backgroundRect.offsetMin = new Vector2(8f, -3f);
+            backgroundRect.offsetMax = new Vector2(-8f, 3f);
 
             GameObject fillArea = new("Fill Area", typeof(RectTransform));
             fillArea.transform.SetParent(sliderObject.transform, false);
-            Stretch((RectTransform)fillArea.transform);
+            RectTransform fillAreaRect = (RectTransform)fillArea.transform;
+            fillAreaRect.anchorMin = new Vector2(0f, 0.5f);
+            fillAreaRect.anchorMax = new Vector2(1f, 0.5f);
+            fillAreaRect.offsetMin = new Vector2(8f, -3f);
+            fillAreaRect.offsetMax = new Vector2(-8f, 3f);
 
-            Image fill = CreateImage("Fill", fillArea.transform, new Color(1f, 0.72f, 0.24f, 0.95f));
+            Image fill = CreateImage("Fill", fillArea.transform, AccentColor);
             Stretch(fill.rectTransform);
 
-            Image handle = CreateImage("Handle", sliderObject.transform, new Color(1f, 1f, 1f, 0.95f));
+            Image handle = CreateImage("Handle", sliderObject.transform, PrimaryTextColor);
             RectTransform handleRect = handle.rectTransform;
             handleRect.anchorMin = new Vector2(0f, 0.5f);
             handleRect.anchorMax = new Vector2(0f, 0.5f);
             handleRect.pivot = new Vector2(0.5f, 0.5f);
-            handleRect.sizeDelta = new Vector2(16f, 30f);
+            handleRect.sizeDelta = new Vector2(14f, 24f);
+            AddOutline(handle.gameObject, CardEdgeColor, new Vector2(1f, -1f));
 
             slider.fillRect = fill.rectTransform;
             slider.handleRect = handleRect;
