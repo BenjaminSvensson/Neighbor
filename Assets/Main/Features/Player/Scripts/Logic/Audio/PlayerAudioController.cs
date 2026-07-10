@@ -35,6 +35,8 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Range(0f, 1f)] private float hiddenBreathMinimumStress = 0.18f;
         [SerializeField, Range(0f, 1f)] private float hiddenInspectionBreathStress = 0.62f;
         [SerializeField, Min(0f)] private float hiddenBreathPitchLift = 0.08f;
+        [SerializeField, Range(0f, 1f)] private float heldBreathVolumeScale = 0.05f;
+        [SerializeField, Range(0f, 1f)] private float exhaustedBreathMinimumStress = 0.78f;
         [SerializeField] private bool respondToStealthLoop = true;
         [SerializeField] private bool respondToNeighborMemory = true;
         [SerializeField] private bool respondToNeighborInvestigation = true;
@@ -407,6 +409,10 @@ namespace Neighbor.Main.Features.Player
             CurrentBreathTargetVolume = Mathf.Max(
                 Mathf.Max(tiredBreathVolume * staminaStress, hiddenBreathVolume * hidingStress),
                 stealthBreathVolume * stealthStress);
+            if (hidingState != null && hidingState.IsHidden && hidingState.IsHoldingBreath)
+            {
+                CurrentBreathTargetVolume *= heldBreathVolumeScale;
+            }
 
             breathLoopSource.volume = Mathf.Lerp(
                 breathLoopSource.volume,
@@ -466,6 +472,11 @@ namespace Neighbor.Main.Features.Player
             if (hidingState.WasInspectedRecently)
             {
                 hidingStress = Mathf.Max(hidingStress, hiddenInspectionBreathStress);
+            }
+
+            if (hidingState.IsBreathHoldExhausted)
+            {
+                hidingStress = Mathf.Max(hidingStress, exhaustedBreathMinimumStress);
             }
 
             if (hidingState.IsCompromised || hidingState.IsDangerouslyExposed)

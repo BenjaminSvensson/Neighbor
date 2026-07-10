@@ -19,6 +19,21 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float hidingDangerNeighborRadius = 9f;
         [SerializeField, Min(0.05f)] private float neighborSearchInterval = 0.5f;
 
+        [Header("Breath Control")]
+        [SerializeField] private bool allowBreathControl = true;
+        [SerializeField] private PlayerInputBindingAction breathHoldInputAction = PlayerInputBindingAction.Run;
+        [SerializeField, Min(0.1f)] private float breathHoldDuration = 3.8f;
+        [SerializeField, Range(0f, 1f)] private float breathHoldMinimumCapacityToStart = 0.12f;
+        [SerializeField, Min(0f)] private float breathHoldRecoveryDelay = 0.85f;
+        [SerializeField, Min(0f)] private float breathHoldRecoveryRate = 0.28f;
+        [SerializeField, Min(0f)] private float breathHoldTensionReliefRate = 0.18f;
+        [SerializeField, Range(0f, 1f)] private float breathHoldDangerBuildMultiplier = 0.08f;
+        [SerializeField, Range(0f, 1f)] private float breathHoldExhaustionTensionIncrease = 0.46f;
+        [SerializeField, Range(0f, 1f)] private float breathHoldExhaustionRecoveryThreshold = 0.35f;
+        [SerializeField, Range(0f, 1f)] private float breathHoldExhaustionNoiseLoudness = 0.32f;
+        [SerializeField, Min(0f)] private float breathHoldExhaustionNoiseRadius = 6f;
+        [SerializeField, Min(0f)] private float breathHoldExhaustionNoiseLifetime = 0.45f;
+
         [Header("Breath Noise")]
         [SerializeField] private bool emitBreathNoise = true;
         [SerializeField, Range(0f, 1f)] private float breathNoiseThreshold = 0.82f;
@@ -44,12 +59,22 @@ namespace Neighbor.Main.Features.Player
         private float lastInspectionTime = float.NegativeInfinity;
         private float nextBreathNoiseTime = float.NegativeInfinity;
         private float nextNeighborSearchTime;
+        private float breathHoldRecoveryBlockedUntilTime;
         private NeighborBrain dangerNeighbor;
         private bool waitingForBreathRecoveryFeedback;
 
         public bool IsHidden { get; private set; }
         public ClosetHideSpot CurrentHideSpot { get; private set; }
         public float BreathTension01 { get; private set; }
+        public float BreathHoldCapacity01 { get; private set; } = 1f;
+        public bool IsHoldingBreath { get; private set; }
+        public bool IsBreathHoldExhausted { get; private set; }
+        public bool CanHoldBreath => allowBreathControl
+            && IsHidden
+            && !IsCompromised
+            && !IsBreathHoldExhausted
+            && BreathHoldCapacity01 >= breathHoldMinimumCapacityToStart;
+        public PlayerInputBindingAction BreathHoldInputAction => breathHoldInputAction;
         public float PeekExposure01 { get; private set; }
         public bool IsCompromised { get; private set; }
         public bool IsDangerouslyExposed => IsHidden && PeekExposure01 >= exposedVisibilityThreshold;
@@ -69,6 +94,7 @@ namespace Neighbor.Main.Features.Player
                     PeekExposure01,
                     0f,
                     peekExposureRecoveryRate * Time.deltaTime);
+                RecoverBreathHoldCapacity(Time.deltaTime);
                 return;
             }
 
@@ -77,6 +103,9 @@ namespace Neighbor.Main.Features.Player
                 0f,
                 peekExposureRecoveryRate * Time.deltaTime);
 
+            UpdateBreathControl(
+                Time.deltaTime,
+                PlayerInputBindings.IsPressed(breathHoldInputAction));
             UpdateHiddenBreathTension(Time.deltaTime);
             TryEmitBreathNoise();
         }
@@ -97,6 +126,10 @@ namespace Neighbor.Main.Features.Player
                 IsHidden = false;
                 CurrentHideSpot = null;
                 IsCompromised = false;
+                IsHoldingBreath = false;
+                IsBreathHoldExhausted = false;
+                BreathHoldCapacity01 = 1f;
+                breathHoldRecoveryBlockedUntilTime = 0f;
                 PeekExposure01 = 0f;
                 if (wasHidden)
                 {
@@ -121,6 +154,10 @@ namespace Neighbor.Main.Features.Player
                 lastInspectionTime = float.NegativeInfinity;
                 nextBreathNoiseTime = Time.time + breathNoiseCooldown;
                 IsCompromised = false;
+                IsHoldingBreath = false;
+                IsBreathHoldExhausted = false;
+                BreathHoldCapacity01 = 1f;
+                breathHoldRecoveryBlockedUntilTime = 0f;
                 waitingForBreathRecoveryFeedback = false;
             }
 
@@ -177,6 +214,7 @@ namespace Neighbor.Main.Features.Player
         private void TryEmitBreathNoise()
         {
             if (!emitBreathNoise
+                || IsHoldingBreath
                 || BreathTension01 < breathNoiseThreshold
                 || Time.time < nextBreathNoiseTime
                 || breathNoiseRadius <= 0f
@@ -204,6 +242,123 @@ namespace Neighbor.Main.Features.Player
                 gameObject,
                 breathNoiseLifetime,
                 BreathTension01,
+                gameObject);
+        }
+
+        private void UpdateBreathControl(float deltaTime, bool wantsToHoldBreath)
+        {
+            if (deltaTime <= 0f)
+            {
+                return;
+            }
+
+            if (!allowBreathControl || !IsHidden || IsCompromised)
+            {
+                StopHoldingBreath(false);
+                RecoverBreathHoldCapacity(deltaTime);
+                return;
+            }
+
+            bool canContinueHolding = IsHoldingBreath && BreathHoldCapacity01 > 0f;
+            if (wantsToHoldBreath && (canContinueHolding || CanHoldBreath))
+            {
+                if (!IsHoldingBreath)
+                {
+                    IsHoldingBreath = true;
+                    ReportHidingFeedback(
+                        CurrentHideSpot,
+                        PlayerFeedbackEvents.HidingFeedbackKind.BreathHeld,
+                        true,
+                        false);
+                }
+
+                BreathHoldCapacity01 = Mathf.MoveTowards(
+                    BreathHoldCapacity01,
+                    0f,
+                    deltaTime / Mathf.Max(0.1f, breathHoldDuration));
+                if (BreathHoldCapacity01 <= 0.001f)
+                {
+                    ExhaustBreathHold();
+                }
+
+                return;
+            }
+
+            StopHoldingBreath(true);
+            RecoverBreathHoldCapacity(deltaTime);
+        }
+
+        private void StopHoldingBreath(bool reportRelease)
+        {
+            if (!IsHoldingBreath)
+            {
+                return;
+            }
+
+            IsHoldingBreath = false;
+            breathHoldRecoveryBlockedUntilTime = Time.time + breathHoldRecoveryDelay;
+            if (reportRelease && IsHidden && !IsBreathHoldExhausted)
+            {
+                PlayerFeedbackEvents.ReportStealthLoop(
+                    PlayerFeedbackEvents.StealthLoopPhase.Hiding,
+                    BreathTension01,
+                    0f,
+                    BreathTension01,
+                    "Breathing again.");
+            }
+        }
+
+        private void RecoverBreathHoldCapacity(float deltaTime)
+        {
+            if (deltaTime <= 0f || IsHoldingBreath || Time.time < breathHoldRecoveryBlockedUntilTime)
+            {
+                return;
+            }
+
+            BreathHoldCapacity01 = Mathf.MoveTowards(
+                BreathHoldCapacity01,
+                1f,
+                breathHoldRecoveryRate * deltaTime);
+            if (IsBreathHoldExhausted
+                && BreathHoldCapacity01 >= breathHoldExhaustionRecoveryThreshold)
+            {
+                IsBreathHoldExhausted = false;
+            }
+        }
+
+        private void ExhaustBreathHold()
+        {
+            IsHoldingBreath = false;
+            IsBreathHoldExhausted = true;
+            BreathHoldCapacity01 = 0f;
+            breathHoldRecoveryBlockedUntilTime = Time.time + breathHoldRecoveryDelay;
+            AddBreathTension(breathHoldExhaustionTensionIncrease);
+
+            float loudness = breathHoldExhaustionNoiseRadius > 0f
+                ? breathHoldExhaustionNoiseLoudness
+                : 0f;
+            ReportHidingFeedback(
+                CurrentHideSpot,
+                PlayerFeedbackEvents.HidingFeedbackKind.BreathExhausted,
+                true,
+                IsCompromised,
+                loudness);
+            if (loudness <= 0f)
+            {
+                return;
+            }
+
+            GameObject noiseObject = new("HeldBreathGaspNoiseEvent");
+            noiseObject.transform.position = transform.position;
+            noiseObject.AddComponent<SphereCollider>();
+            NoiseEvent noiseEvent = noiseObject.AddComponent<NoiseEvent>();
+            noiseEvent.Initialize(
+                transform.position,
+                breathHoldExhaustionNoiseRadius,
+                loudness,
+                gameObject,
+                breathHoldExhaustionNoiseLifetime,
+                Mathf.Max(loudness, BreathTension01),
                 gameObject);
         }
 
@@ -264,6 +419,23 @@ namespace Neighbor.Main.Features.Player
             }
 
             float danger01 = GetHidingDanger01();
+            if (IsHoldingBreath)
+            {
+                float dangerBuild = 0f;
+                if (danger01 > 0.05f && HiddenDuration > hiddenBreathGraceTime)
+                {
+                    float dangerBuildMultiplier = Mathf.Lerp(0.35f, 1f, danger01);
+                    dangerBuild = breathTensionBuildRate
+                        * dangerBuildMultiplier
+                        * breathHoldDangerBuildMultiplier;
+                }
+
+                BreathTension01 = Mathf.Clamp01(
+                    BreathTension01
+                    + (dangerBuild - breathHoldTensionReliefRate) * deltaTime);
+                return;
+            }
+
             if (danger01 > 0.05f && HiddenDuration > hiddenBreathGraceTime)
             {
                 float dangerBuildMultiplier = Mathf.Lerp(0.35f, 1f, danger01);
@@ -376,7 +548,8 @@ namespace Neighbor.Main.Features.Player
                 noise,
                 stealthTension,
                 GetHidingStealthLoopMessage(kind, isHidden, isCompromised, noise),
-                kind == PlayerFeedbackEvents.HidingFeedbackKind.Recovered);
+                kind == PlayerFeedbackEvents.HidingFeedbackKind.Recovered
+                    || kind == PlayerFeedbackEvents.HidingFeedbackKind.BreathHeld);
         }
 
         private static string GetHidingStealthLoopMessage(
@@ -389,7 +562,9 @@ namespace Neighbor.Main.Features.Player
             {
                 PlayerFeedbackEvents.HidingFeedbackKind.Found => "He found your hiding spot.",
                 PlayerFeedbackEvents.HidingFeedbackKind.Inspected => "Stay still. He is checking the hiding spot.",
+                PlayerFeedbackEvents.HidingFeedbackKind.BreathHeld => "Holding breath",
                 PlayerFeedbackEvents.HidingFeedbackKind.BreathNoisy => "Your breathing is too loud.",
+                PlayerFeedbackEvents.HidingFeedbackKind.BreathExhausted => "You gasped for air.",
                 PlayerFeedbackEvents.HidingFeedbackKind.Recovered => "Breathing under control.",
                 PlayerFeedbackEvents.HidingFeedbackKind.Exited => noise > 0.01f
                     ? "You made noise leaving cover."

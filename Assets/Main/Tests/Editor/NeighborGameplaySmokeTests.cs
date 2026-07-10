@@ -940,6 +940,187 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void HidingBreath_HoldingConsumesCapacityAndRelievesTension()
+        {
+            PlayerHidingState hidingState = context.AddInitializedComponent<PlayerHidingState>(
+                context.CreateObject("Player"));
+            hidingState.SetHidden(true);
+            hidingState.AddBreathTension(0.6f);
+            GameplaySmokeTestReflection.SetField(hidingState, "breathHoldDuration", 2f);
+            GameplaySmokeTestReflection.SetField(hidingState, "breathHoldTensionReliefRate", 0.2f);
+            PlayerFeedbackEvents.HidingFeedback hidingFeedback = default;
+            PlayerFeedbackEvents.StealthLoopFeedback stealthFeedback = default;
+            bool receivedHiding = false;
+            bool receivedStealth = false;
+            PlayerFeedbackEvents.HidingChanged += HandleHidingChanged;
+            PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
+
+            try
+            {
+                GameplaySmokeTestReflection.Invoke(hidingState, "UpdateBreathControl", 1f, true);
+
+                Assert.That(hidingState.IsHoldingBreath, Is.True);
+                Assert.That(hidingState.BreathHoldCapacity01, Is.EqualTo(0.5f).Within(0.001f));
+
+                GameplaySmokeTestReflection.Invoke(hidingState, "UpdateHiddenBreathTension", 1f);
+
+                Assert.That(hidingState.BreathTension01, Is.EqualTo(0.4f).Within(0.001f));
+                Assert.That(receivedHiding, Is.True);
+                Assert.That(hidingFeedback.Kind, Is.EqualTo(PlayerFeedbackEvents.HidingFeedbackKind.BreathHeld));
+                Assert.That(receivedStealth, Is.True);
+                Assert.That(stealthFeedback.Phase, Is.EqualTo(PlayerFeedbackEvents.StealthLoopPhase.Hiding));
+                Assert.That(stealthFeedback.IsCalming, Is.True);
+                Assert.That(stealthFeedback.Message, Is.EqualTo("Holding breath"));
+            }
+            finally
+            {
+                PlayerFeedbackEvents.HidingChanged -= HandleHidingChanged;
+                PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
+            }
+
+            void HandleHidingChanged(PlayerFeedbackEvents.HidingFeedback feedback)
+            {
+                hidingFeedback = feedback;
+                receivedHiding = true;
+            }
+
+            void HandleStealthLoopChanged(PlayerFeedbackEvents.StealthLoopFeedback feedback)
+            {
+                stealthFeedback = feedback;
+                receivedStealth = true;
+            }
+        }
+
+        [Test]
+        public void HidingBreath_ExhaustionCreatesGaspNoiseAndRequiresRecovery()
+        {
+            PlayerHidingState hidingState = context.AddInitializedComponent<PlayerHidingState>(
+                context.CreateObject("Player"));
+            hidingState.SetHidden(true);
+            GameplaySmokeTestReflection.SetField(hidingState, "breathHoldDuration", 0.5f);
+            GameplaySmokeTestReflection.SetField(hidingState, "breathHoldRecoveryDelay", 0f);
+            GameplaySmokeTestReflection.SetField(hidingState, "breathHoldRecoveryRate", 1f);
+            GameplaySmokeTestReflection.SetField(hidingState, "breathHoldExhaustionRecoveryThreshold", 0.3f);
+            GameplaySmokeTestReflection.SetField(hidingState, "breathHoldExhaustionNoiseLoudness", 0.5f);
+            GameplaySmokeTestReflection.SetField(hidingState, "breathHoldExhaustionNoiseRadius", 7f);
+            PlayerFeedbackEvents.NoiseFeedback noiseFeedback = default;
+            PlayerFeedbackEvents.HidingFeedback hidingFeedback = default;
+            bool receivedNoise = false;
+            bool receivedHiding = false;
+            PlayerFeedbackEvents.NoiseEmitted += HandleNoise;
+            PlayerFeedbackEvents.HidingChanged += HandleHidingChanged;
+            GameObject gaspObject = null;
+
+            try
+            {
+                GameplaySmokeTestReflection.Invoke(hidingState, "UpdateBreathControl", 0.5f, true);
+                gaspObject = GameObject.Find("HeldBreathGaspNoiseEvent");
+
+                Assert.That(hidingState.IsHoldingBreath, Is.False);
+                Assert.That(hidingState.IsBreathHoldExhausted, Is.True);
+                Assert.That(hidingState.CanHoldBreath, Is.False);
+                Assert.That(hidingState.BreathHoldCapacity01, Is.Zero);
+                Assert.That(hidingState.BreathTension01, Is.GreaterThanOrEqualTo(0.45f));
+                Assert.That(receivedHiding, Is.True);
+                Assert.That(hidingFeedback.Kind, Is.EqualTo(PlayerFeedbackEvents.HidingFeedbackKind.BreathExhausted));
+                Assert.That(receivedNoise, Is.True);
+                Assert.That(noiseFeedback.Loudness, Is.EqualTo(0.5f).Within(0.001f));
+                Assert.That(noiseFeedback.Radius, Is.EqualTo(7f).Within(0.001f));
+                Assert.That(gaspObject, Is.Not.Null);
+
+                GameplaySmokeTestReflection.Invoke(hidingState, "UpdateBreathControl", 0.5f, false);
+
+                Assert.That(hidingState.BreathHoldCapacity01, Is.EqualTo(0.5f).Within(0.001f));
+                Assert.That(hidingState.IsBreathHoldExhausted, Is.False);
+                Assert.That(hidingState.CanHoldBreath, Is.True);
+            }
+            finally
+            {
+                PlayerFeedbackEvents.NoiseEmitted -= HandleNoise;
+                PlayerFeedbackEvents.HidingChanged -= HandleHidingChanged;
+                if (gaspObject != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(gaspObject);
+                }
+            }
+
+            void HandleNoise(PlayerFeedbackEvents.NoiseFeedback feedback)
+            {
+                noiseFeedback = feedback;
+                receivedNoise = true;
+            }
+
+            void HandleHidingChanged(PlayerFeedbackEvents.HidingFeedback feedback)
+            {
+                hidingFeedback = feedback;
+                receivedHiding = true;
+            }
+        }
+
+        [Test]
+        public void AwarenessHud_HidingBreathControlShowsCapacityAndState()
+        {
+            PlayerHidingState hidingState = context.AddInitializedComponent<PlayerHidingState>(
+                context.CreateObject("Player"));
+            hidingState.SetHidden(true);
+            PlayerAwarenessHudView hud = context.AddInitializedComponent<PlayerAwarenessHudView>(
+                context.CreateObject("AwarenessHud"));
+            GameplaySmokeTestReflection.SetField(hud, "hidingState", hidingState);
+
+            GameplaySmokeTestReflection.Invoke(hidingState, "UpdateBreathControl", 1f, true);
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateBreathControl");
+            GameplaySmokeTestReflection.Invoke(hud, "UpdateWarning");
+
+            Image background = GameplaySmokeTestReflection.GetField<Image>(hud, "breathHoldBackground");
+            Image fill = GameplaySmokeTestReflection.GetField<Image>(hud, "breathHoldFill");
+            Text label = GameplaySmokeTestReflection.GetField<Text>(hud, "breathHoldLabel");
+            Text warning = GameplaySmokeTestReflection.GetField<Text>(hud, "warningText");
+            Assert.That(background.gameObject.activeSelf, Is.True);
+            Assert.That(fill.fillAmount, Is.EqualTo(hidingState.BreathHoldCapacity01).Within(0.001f));
+            Assert.That(label.text, Is.EqualTo("HOLDING"));
+            Assert.That(warning.text, Is.EqualTo("HOLDING BREATH"));
+        }
+
+        [Test]
+        public void PlayerAudio_HeldBreathSuppressesBreathLoopUntilReleased()
+        {
+            GameObject playerObject = context.CreateObject("Player");
+            playerObject.AddComponent<CharacterController>();
+            context.AddInitializedComponent<PlayerController>(playerObject);
+            PlayerHidingState hidingState = playerObject.AddComponent<PlayerHidingState>();
+            PlayerAudioController audioController = context.AddInitializedComponent<PlayerAudioController>(playerObject);
+            AudioClip breathClip = AudioClip.Create("HeldBreathLoop", 64, 1, 8000, false);
+
+            try
+            {
+                GameplaySmokeTestReflection.SetField(audioController, "tiredBreathLoop", breathClip);
+                GameplaySmokeTestReflection.SetField(audioController, "hiddenBreathVolume", 0.6f);
+                GameplaySmokeTestReflection.SetField(audioController, "heldBreathVolumeScale", 0.05f);
+                GameplaySmokeTestReflection.SetField(audioController, "breathStartStamina", 0f);
+                hidingState.SetHidden(true);
+                hidingState.AddBreathTension(0.8f);
+
+                GameplaySmokeTestReflection.Invoke(hidingState, "UpdateBreathControl", 0.1f, true);
+                GameplaySmokeTestReflection.Invoke(audioController, "UpdateBreathing");
+                float heldVolume = audioController.CurrentBreathTargetVolume;
+
+                Assert.That(hidingState.IsHoldingBreath, Is.True);
+                Assert.That(audioController.CurrentBreathStress01, Is.EqualTo(0.8f).Within(0.001f));
+                Assert.That(heldVolume, Is.LessThan(0.03f));
+
+                GameplaySmokeTestReflection.Invoke(hidingState, "UpdateBreathControl", 0.1f, false);
+                GameplaySmokeTestReflection.Invoke(audioController, "UpdateBreathing");
+
+                Assert.That(hidingState.IsHoldingBreath, Is.False);
+                Assert.That(audioController.CurrentBreathTargetVolume, Is.GreaterThan(heldVolume * 10f));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(breathClip);
+            }
+        }
+
+        [Test]
         public void NeighborMemory_RemembersDoorObjectBrokenGlassAndStolenKeyClues()
         {
             NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(context.CreateObject("Neighbor"));

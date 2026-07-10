@@ -16,7 +16,10 @@ namespace Neighbor.Main.Features.Player
         private Image noiseFill;
         private Image tensionFill;
         private Image staminaFill;
+        private Image breathHoldBackground;
+        private Image breathHoldFill;
         private Text noiseLabel;
+        private Text breathHoldLabel;
         private Text awarenessText;
         private Text stealthStatusText;
         private Text objectiveText;
@@ -107,6 +110,7 @@ namespace Neighbor.Main.Features.Player
             UpdateNoise();
             UpdateTension();
             UpdateStamina();
+            UpdateBreathControl();
             UpdateWarning();
         }
 
@@ -328,6 +332,42 @@ namespace Neighbor.Main.Features.Player
                 stamina);
         }
 
+        private void UpdateBreathControl()
+        {
+            if (breathHoldBackground == null || breathHoldFill == null || breathHoldLabel == null)
+            {
+                return;
+            }
+
+            bool showBreathControl = hidingState != null && hidingState.IsHidden;
+            breathHoldBackground.gameObject.SetActive(showBreathControl);
+            breathHoldLabel.gameObject.SetActive(showBreathControl);
+            if (!showBreathControl)
+            {
+                return;
+            }
+
+            float capacity = hidingState.BreathHoldCapacity01;
+            breathHoldFill.fillAmount = capacity;
+            breathHoldFill.color = hidingState.IsBreathHoldExhausted
+                ? Color.Lerp(
+                    new Color(1f, 0.22f, 0.08f, 0.98f),
+                    new Color(1f, 0.64f, 0.16f, 0.96f),
+                    capacity)
+                : Color.Lerp(
+                    new Color(1f, 0.42f, 0.12f, 0.96f),
+                    new Color(0.48f, 0.92f, 1f, 0.94f),
+                    capacity);
+            breathHoldLabel.text = hidingState.IsBreathHoldExhausted
+                ? "RECOVER"
+                : hidingState.IsHoldingBreath ? "HOLDING" : "BREATH";
+            breathHoldLabel.color = hidingState.IsBreathHoldExhausted
+                ? new Color(1f, 0.42f, 0.12f, 0.96f)
+                : hidingState.IsHoldingBreath
+                    ? new Color(0.56f, 0.94f, 1f, 0.96f)
+                    : new Color(1f, 1f, 1f, 0.68f);
+        }
+
         private void UpdateObjective()
         {
             if (objectiveText == null)
@@ -400,6 +440,20 @@ namespace Neighbor.Main.Features.Player
                 {
                     warningText.text = "STAY STILL";
                     warningText.color = new Color(1f, 0.72f, 0.18f, 1f);
+                    return;
+                }
+
+                if (hidingState.IsBreathHoldExhausted)
+                {
+                    warningText.text = "CATCH YOUR BREATH";
+                    warningText.color = new Color(1f, 0.4f, 0.12f, 1f);
+                    return;
+                }
+
+                if (hidingState.IsHoldingBreath)
+                {
+                    warningText.text = "HOLDING BREATH";
+                    warningText.color = new Color(0.56f, 0.92f, 1f, 0.96f);
                     return;
                 }
 
@@ -624,7 +678,9 @@ namespace Neighbor.Main.Features.Player
                     ? $"NOISY EXIT FROM {spotName}"
                     : $"LEFT {spotName}",
                 PlayerFeedbackEvents.HidingFeedbackKind.Inspected => $"SEARCHED {spotName} - STAY STILL",
+                PlayerFeedbackEvents.HidingFeedbackKind.BreathHeld => "HOLDING BREATH",
                 PlayerFeedbackEvents.HidingFeedbackKind.BreathNoisy => "BREATH TOO LOUD",
+                PlayerFeedbackEvents.HidingFeedbackKind.BreathExhausted => "GASPED FOR AIR",
                 PlayerFeedbackEvents.HidingFeedbackKind.Found => $"FOUND IN {spotName}",
                 PlayerFeedbackEvents.HidingFeedbackKind.Recovered => "BREATH STEADY",
                 _ => spotName
@@ -640,17 +696,21 @@ namespace Neighbor.Main.Features.Player
                         new Color(1f, 0.72f, 0.18f, 0.98f),
                         new Color(1f, 0.46f, 0.12f, 1f),
                         feedback.BreathTension),
+                PlayerFeedbackEvents.HidingFeedbackKind.BreathHeld => new Color(0.56f, 0.92f, 1f, 0.96f),
                 PlayerFeedbackEvents.HidingFeedbackKind.BreathNoisy => Color.Lerp(
                     new Color(1f, 0.64f, 0.16f, 0.98f),
                     new Color(1f, 0.24f, 0.08f, 1f),
                     feedback.BreathTension),
+                PlayerFeedbackEvents.HidingFeedbackKind.BreathExhausted => new Color(1f, 0.24f, 0.08f, 1f),
                 PlayerFeedbackEvents.HidingFeedbackKind.Found => new Color(1f, 0.12f, 0.08f, 1f),
                 PlayerFeedbackEvents.HidingFeedbackKind.Recovered => new Color(0.62f, 0.95f, 1f, 0.96f),
                 _ => new Color(0.82f, 0.86f, 0.92f, 0.95f)
             };
             messageUntil = Time.unscaledTime + (feedback.Kind == PlayerFeedbackEvents.HidingFeedbackKind.Found
                 ? MessageDuration
-                : feedback.Kind == PlayerFeedbackEvents.HidingFeedbackKind.BreathNoisy ? 3.2f
+                : feedback.Kind == PlayerFeedbackEvents.HidingFeedbackKind.BreathNoisy
+                    || feedback.Kind == PlayerFeedbackEvents.HidingFeedbackKind.BreathExhausted ? 3.2f
+                : feedback.Kind == PlayerFeedbackEvents.HidingFeedbackKind.BreathHeld ? 1.25f
                 : feedback.Kind == PlayerFeedbackEvents.HidingFeedbackKind.Recovered ? 2.4f : 2.8f);
         }
 
@@ -964,6 +1024,17 @@ namespace Neighbor.Main.Features.Player
             Image tensionBackground = CreateImage("TensionBackground", new Color(0f, 0f, 0f, 0.5f));
             SetRect(tensionBackground.rectTransform, Vector2.zero, Vector2.zero, new Vector2(132f, 80f), new Vector2(170f, 7f));
             tensionFill = CreateFill("TensionFill", tensionBackground.transform);
+
+            breathHoldLabel = CreateText("BreathHoldLabel", font, 12, FontStyle.Bold, TextAnchor.MiddleLeft);
+            breathHoldLabel.text = "BREATH";
+            breathHoldLabel.color = new Color(1f, 1f, 1f, 0.68f);
+            SetRect(breathHoldLabel.rectTransform, Vector2.zero, Vector2.zero, new Vector2(42f, 48f), new Vector2(80f, 18f));
+
+            breathHoldBackground = CreateImage("BreathHoldBackground", new Color(0f, 0f, 0f, 0.5f));
+            SetRect(breathHoldBackground.rectTransform, Vector2.zero, Vector2.zero, new Vector2(132f, 52f), new Vector2(170f, 7f));
+            breathHoldFill = CreateFill("BreathHoldFill", breathHoldBackground.transform);
+            breathHoldBackground.gameObject.SetActive(false);
+            breathHoldLabel.gameObject.SetActive(false);
 
             warningText = CreateText("Warning", font, 18, FontStyle.Bold, TextAnchor.MiddleCenter);
             SetRect(warningText.rectTransform, new Vector2(0.5f, 0.75f), new Vector2(0.5f, 0.75f), Vector2.zero, new Vector2(560f, 32f));
