@@ -39,7 +39,6 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             GameObject overlayObject = new GameObject("BookReaderOverlay");
-            DontDestroyOnLoad(overlayObject);
             activeOverlay = overlayObject.AddComponent<BookReaderOverlay>();
             activeOverlay.Initialize(bookTitle, bookPages);
         }
@@ -74,23 +73,23 @@ namespace Neighbor.Main.Features.Interaction
             HandleMouseInput();
 
             Keyboard keyboard = Keyboard.current;
-            if (keyboard == null)
-            {
-                return;
-            }
+            Gamepad gamepad = Gamepad.current;
 
-            if (keyboard.escapeKey.wasPressedThisFrame)
+            if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame
+                || gamepad != null && gamepad.buttonEast.wasPressedThisFrame)
             {
                 Close();
                 return;
             }
 
-            if (keyboard.rightArrowKey.wasPressedThisFrame)
+            if (keyboard != null && keyboard.rightArrowKey.wasPressedThisFrame
+                || gamepad != null && (gamepad.dpad.right.wasPressedThisFrame || gamepad.rightShoulder.wasPressedThisFrame))
             {
                 NextPage();
             }
 
-            if (keyboard.leftArrowKey.wasPressedThisFrame)
+            if (keyboard != null && keyboard.leftArrowKey.wasPressedThisFrame
+                || gamepad != null && (gamepad.dpad.left.wasPressedThisFrame || gamepad.leftShoulder.wasPressedThisFrame))
             {
                 PreviousPage();
             }
@@ -181,6 +180,7 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             hasClosed = true;
+            InteractionOverlayState.ConsumeGameplayInputForCurrentFrame();
             Cursor.lockState = previousLockState;
             Cursor.visible = previousCursorVisible;
 
@@ -207,6 +207,7 @@ namespace Neighbor.Main.Features.Interaction
             scaler.matchWidthOrHeight = 0.5f;
 
             gameObject.AddComponent<GraphicRaycaster>();
+            RuntimeUiEventSystem.EnsureExists();
 
             Font font = GetBuiltInFont();
             Image dimmer = CreateImage("Dimmer", transform, new Color(0f, 0f, 0f, 0.72f));
@@ -232,7 +233,7 @@ namespace Neighbor.Main.Features.Interaction
             SetRect(pageCounterText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 28f), new Vector2(0f, 62f));
 
             Text controls = CreateText("Controls", panelRect, font, 16, FontStyle.Italic, TextAnchor.MiddleCenter, new Color(0.25f, 0.17f, 0.09f, 1f));
-            controls.text = "LMB: close     Hold LMB: next page     Left/Right: flip pages";
+            controls.text = "LMB / B: close     Hold LMB / RB: next     Left/Right / LB: flip";
             SetRect(controls.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 8f), new Vector2(0f, 30f));
         }
 

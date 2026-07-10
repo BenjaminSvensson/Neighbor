@@ -178,6 +178,63 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void NeighborDoorInteractor_TaskYieldCancelsEveryDoorStateAndReleasesPause()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            NeighborMotor motor = context.AddInitializedComponent<NeighborMotor>(neighborObject);
+            NeighborBrain brain = context.AddInitializedComponent<NeighborBrain>(neighborObject);
+            NeighborDoorInteractor doorInteractor = context.AddInitializedComponent<NeighborDoorInteractor>(neighborObject);
+
+            GameObject taskObject = context.CreateObject("Task");
+            NeighborTaskLocation task = context.AddInitializedComponent<NeighborTaskLocation>(taskObject);
+            Assert.That(task.TryReserve(brain), Is.True);
+            GameplaySmokeTestReflection.SetField(brain, "currentState", NeighborBrain.BehaviorState.Task);
+            GameplaySmokeTestReflection.SetField(brain, "currentTaskLocation", task);
+            GameplaySmokeTestReflection.SetField(doorInteractor, "brain", brain);
+            GameplaySmokeTestReflection.SetField(doorInteractor, "motor", motor);
+
+            Door cautiousDoor = context.AddInitializedComponent<Door>("CautiousDoor");
+            Door blockedDoor = context.AddInitializedComponent<Door>("BlockedDoor");
+            Door lockedDoor = context.AddInitializedComponent<Door>("LockedDoor");
+            GameplaySmokeTestReflection.SetField(doorInteractor, "cautiouslyOpeningDoor", cautiousDoor);
+            GameplaySmokeTestReflection.SetField(doorInteractor, "cautiousDoorPauseActive", true);
+            GameplaySmokeTestReflection.SetField(doorInteractor, "kickingDoor", blockedDoor);
+            GameplaySmokeTestReflection.SetField(doorInteractor, "lockedOutDoor", lockedDoor);
+            motor.SetPaused(true);
+
+            GameplaySmokeTestReflection.Invoke(doorInteractor, "Update");
+
+            Assert.That(motor.IsPaused, Is.False);
+            Assert.That(doorInteractor.IsInteractingWithDoor, Is.False);
+            Assert.That(doorInteractor.ActiveDoor, Is.Null);
+            Assert.That(GameplaySmokeTestReflection.GetField<Door>(doorInteractor, "cautiouslyOpeningDoor"), Is.Null);
+            Assert.That(GameplaySmokeTestReflection.GetField<Door>(doorInteractor, "kickingDoor"), Is.Null);
+            Assert.That(GameplaySmokeTestReflection.GetField<Door>(doorInteractor, "lockedOutDoor"), Is.Null);
+        }
+
+        [Test]
+        public void NeighborDoorInteractor_DisableCancelsEveryDoorStateAndReleasesPause()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            NeighborMotor motor = context.AddInitializedComponent<NeighborMotor>(neighborObject);
+            NeighborDoorInteractor doorInteractor = context.AddInitializedComponent<NeighborDoorInteractor>(neighborObject);
+
+            Door door = context.AddInitializedComponent<Door>("ActiveDoor");
+            GameplaySmokeTestReflection.SetField(doorInteractor, "motor", motor);
+            GameplaySmokeTestReflection.SetField(doorInteractor, "cautiouslyOpeningDoor", door);
+            GameplaySmokeTestReflection.SetField(doorInteractor, "cautiousDoorPauseActive", true);
+            GameplaySmokeTestReflection.SetField(doorInteractor, "kickingDoor", door);
+            GameplaySmokeTestReflection.SetField(doorInteractor, "lockedOutDoor", door);
+            motor.SetPaused(true);
+
+            GameplaySmokeTestReflection.Invoke(doorInteractor, "OnDisable");
+
+            Assert.That(motor.IsPaused, Is.False);
+            Assert.That(doorInteractor.IsInteractingWithDoor, Is.False);
+            Assert.That(doorInteractor.ActiveDoor, Is.Null);
+        }
+
+        [Test]
         public void Door_AllowsMultipleReinforcementBoardsWithStaggeredPose()
         {
             Door door = context.AddInitializedComponent<Door>();
@@ -397,12 +454,14 @@ namespace Neighbor.Main.Tests
             BoxCollider collider = pickupObject.AddComponent<BoxCollider>();
             PickupLifecycleProbe lifecycle = pickupObject.AddComponent<PickupLifecycleProbe>();
             Pickupable pickup = context.AddInitializedComponent<Pickupable>(pickupObject);
+            body.collisionDetectionMode = CollisionDetectionMode.Continuous;
 
             pickup.Pickup(null);
 
             Assert.That(pickup.IsHeld, Is.True);
             Assert.That(body.isKinematic, Is.True);
             Assert.That(body.useGravity, Is.False);
+            Assert.That(body.collisionDetectionMode, Is.EqualTo(CollisionDetectionMode.ContinuousSpeculative));
             Assert.That(collider.enabled, Is.False);
             Assert.That(lifecycle.PickupStartedCount, Is.EqualTo(1));
 
@@ -411,6 +470,7 @@ namespace Neighbor.Main.Tests
             Assert.That(pickup.IsHeld, Is.False);
             Assert.That(body.isKinematic, Is.False);
             Assert.That(body.useGravity, Is.True);
+            Assert.That(body.collisionDetectionMode, Is.EqualTo(CollisionDetectionMode.Continuous));
             Assert.That(collider.enabled, Is.True);
         }
 
@@ -453,6 +513,28 @@ namespace Neighbor.Main.Tests
 
             Assert.That(pickup.transform.position, Is.EqualTo(holdPoint.position));
             Assert.That(positionWhenAnimationStarted, Is.EqualTo(holdPoint.position));
+        }
+
+        [Test]
+        public void ChargedThrow_PreservesChargeWhenReleaseStateIsCleared()
+        {
+            GameObject interactorObject = context.CreateObject("PlayerInteractor");
+            PlayerInteractor interactor = interactorObject.AddComponent<PlayerInteractor>();
+            GameplaySmokeTestReflection.SetField(interactor, "throwForce", 10f);
+            GameplaySmokeTestReflection.SetField(interactor, "throwUpwardAssist", 0f);
+            GameplaySmokeTestReflection.SetField(interactor, "throwHoldThreshold", 0.25f);
+
+            Pickupable pickup = CreatePickup("ChargedThrowPickup");
+            Rigidbody body = pickup.GetComponent<Rigidbody>();
+            interactor.Pickup(pickup);
+            GameplaySmokeTestReflection.SetField(interactor, "releaseButtonWasHeld", true);
+            GameplaySmokeTestReflection.SetField(interactor, "releaseButtonDownTime", Time.time - 0.25f);
+
+            GameplaySmokeTestReflection.Invoke(interactor, "ReleaseHeldPickup", true);
+
+            Assert.That(interactor.HeldPickup, Is.Null);
+            Assert.That(body.linearVelocity.z, Is.EqualTo(10f).Within(0.001f));
+            Assert.That(body.linearVelocity.x, Is.EqualTo(0f).Within(0.001f));
         }
 
         [Test]

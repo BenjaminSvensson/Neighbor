@@ -40,8 +40,10 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float neighborRespawnSightGraceTime = 2.5f;
 
         [Header("Checkpoint")]
-        [SerializeField] private bool loadSavedCheckpointOnAwake = true;
-        [SerializeField] private bool persistCheckpoints = true;
+        [SerializeField, Tooltip("Cross-session loading is disabled by default because objectives and inventory are session state.")]
+        private bool loadSavedCheckpointOnAwake;
+        [SerializeField, Tooltip("Keep disabled unless the complete objective, inventory, and world state is persisted with the checkpoint.")]
+        private bool persistCheckpoints;
         [SerializeField] private string checkpointSaveKey = "Neighbor.RespawnCheckpoint";
         [SerializeField] private string startRespawnName = "Start";
 
@@ -184,6 +186,8 @@ namespace Neighbor.Main.Features.Player
         private IEnumerator DeathAndReset(Vector3 sourcePosition)
         {
             IsDead = true;
+            BookReaderOverlay.CloseActive();
+            NotebookWriterOverlay.CloseActive();
             EnsureFadeOverlay();
             SetFade(0f);
             SetDeathMessage(caughtMessage);
@@ -568,6 +572,12 @@ namespace Neighbor.Main.Features.Player
             Canvas canvas = canvasObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = short.MaxValue;
+
+            CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.matchWidthOrHeight = 0.5f;
+
             fadeGroup = canvasObject.AddComponent<CanvasGroup>();
 
             GameObject imageObject = new GameObject("Fade");

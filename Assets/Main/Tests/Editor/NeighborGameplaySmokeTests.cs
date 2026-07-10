@@ -3630,6 +3630,38 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void MotorDisable_ClearsExternalMotionAndPauseOwnership()
+        {
+            GameObject neighborObject = context.CreateObject("ExternallyMovedNeighbor");
+            NeighborMotor motor = context.AddInitializedComponent<NeighborMotor>(neighborObject);
+            NavMeshAgent agent = neighborObject.GetComponent<NavMeshAgent>();
+            agent.updatePosition = false;
+            agent.updateRotation = false;
+            GameplaySmokeTestReflection.SetField(motor, "isPaused", true);
+            GameplaySmokeTestReflection.SetField(motor, "isAnchoredForTask", true);
+            GameplaySmokeTestReflection.SetField(motor, "isAvoidingDynamicObstacle", true);
+            GameplaySmokeTestReflection.SetField(motor, "hasPendingKnockback", true);
+            GameplaySmokeTestReflection.SetField(motor, "pendingKnockbackDirection", Vector3.forward);
+            GameplaySmokeTestReflection.SetField(motor, "pendingKnockbackDistance", 2f);
+            GameplaySmokeTestReflection.SetField(
+                motor,
+                "traversalAnimationPhase",
+                NeighborMotor.TraversalAnimationPhase.Climb);
+            GameplaySmokeTestReflection.SetField(motor, "offMeshChaseUntilTime", Time.time + 10f);
+
+            GameplaySmokeTestReflection.Invoke(motor, "OnDisable");
+
+            Assert.That(motor.IsPaused, Is.False);
+            Assert.That(motor.IsAnchoredForTask, Is.False);
+            Assert.That(motor.IsAvoidingDynamicObstacle, Is.False);
+            Assert.That(motor.IsOffMeshChasing, Is.False);
+            Assert.That(motor.CurrentTraversalAnimationPhase, Is.EqualTo(NeighborMotor.TraversalAnimationPhase.None));
+            Assert.That(GameplaySmokeTestReflection.GetField<bool>(motor, "hasPendingKnockback"), Is.False);
+            Assert.That(agent.updatePosition, Is.True);
+            Assert.That(agent.updateRotation, Is.True);
+        }
+
+        [Test]
         public void DropRecovery_OnlyAcceptsSafeNearbyLowerLandings()
         {
             NeighborMotor motor = context.AddInitializedComponent<NeighborMotor>();
@@ -4498,6 +4530,33 @@ namespace Neighbor.Main.Tests
                 GameplaySmokeTestReflection.GetField<GameObject>(brain, "currentInvestigationSource"),
                 Is.SameAs(source));
             Assert.That(hearing, Is.Not.Null);
+        }
+
+        [Test]
+        public void NoiseEvent_NotifiesEachListenerOnlyOnceButAllowsLaterEvents()
+        {
+            GameObject neighborObject = context.CreateObject("Neighbor");
+            NeighborHearing hearing = context.AddInitializedComponent<NeighborHearing>(neighborObject);
+            GameplaySmokeTestReflection.SetField(hearing, "hearingCooldown", 0f);
+            int heardCount = 0;
+            hearing.NoiseHeard += _ => heardCount++;
+
+            GameObject firstNoiseObject = context.CreateObject("FirstNoiseEvent");
+            SphereCollider firstCollider = firstNoiseObject.AddComponent<SphereCollider>();
+            NoiseEvent firstNoise = firstNoiseObject.AddComponent<NoiseEvent>();
+            firstNoise.Initialize(neighborObject.transform.position, 5f, 0.7f, firstNoiseObject, 1f);
+
+            Assert.That(heardCount, Is.EqualTo(1));
+            GameplaySmokeTestReflection.Invoke(hearing, "OnTriggerStay", firstCollider);
+            Assert.That(heardCount, Is.EqualTo(1));
+            Assert.That(hearing.TryHear(firstNoise), Is.False);
+
+            GameObject secondNoiseObject = context.CreateObject("SecondNoiseEvent");
+            secondNoiseObject.AddComponent<SphereCollider>();
+            NoiseEvent secondNoise = secondNoiseObject.AddComponent<NoiseEvent>();
+            secondNoise.Initialize(neighborObject.transform.position, 5f, 0.8f, secondNoiseObject, 1f);
+
+            Assert.That(heardCount, Is.EqualTo(2));
         }
 
         [Test]

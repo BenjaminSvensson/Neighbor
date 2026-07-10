@@ -9,6 +9,7 @@ namespace Neighbor.Main.Features.Environment
     public sealed class SceneAtmosphereDirector : MonoBehaviour
     {
         [Header("References")]
+        [SerializeField] private DayNightCycle dayNightCycle;
         [SerializeField] private Light sunLight;
         [SerializeField] private Light moonLight;
         [SerializeField] private Volume colorGradingVolume;
@@ -18,20 +19,20 @@ namespace Neighbor.Main.Features.Environment
         [Header("Fog And Ambient")]
         [SerializeField] private bool driveFog = true;
         [SerializeField] private Color fogColor = new(0.34f, 0.43f, 0.46f, 1f);
-        [SerializeField, Min(0f)] private float fogDensity = 0.022f;
-        [SerializeField] private Color ambientColor = new(0.2f, 0.23f, 0.28f, 1f);
+        [SerializeField, Min(0f)] private float fogDensity = 0.008f;
+        [SerializeField] private Color ambientColor = new(0.26f, 0.29f, 0.34f, 1f);
         [SerializeField, Min(0f)] private float maximumSunIntensity = 0.95f;
         [SerializeField, Min(0f)] private float minimumMoonIntensity = 0.18f;
         [SerializeField, Range(0f, 1f)] private float stealthSunIntensityDip = 0.32f;
         [SerializeField, Min(0f)] private float stealthMoonIntensityBoost = 0.34f;
 
         [Header("Color Grade")]
-        [SerializeField, Range(-2f, 2f)] private float exposure = -0.18f;
-        [SerializeField, Range(-100f, 100f)] private float contrast = 18f;
-        [SerializeField, Range(-100f, 100f)] private float saturation = -16f;
-        [SerializeField] private Color colorFilter = new(0.86f, 0.93f, 1f, 1f);
-        [SerializeField, Range(0f, 1f)] private float vignetteIntensity = 0.26f;
-        [SerializeField, Range(0f, 1f)] private float filmGrainIntensity = 0.22f;
+        [SerializeField, Range(-2f, 2f)] private float exposure = 0.1f;
+        [SerializeField, Range(-100f, 100f)] private float contrast = 8f;
+        [SerializeField, Range(-100f, 100f)] private float saturation = -6f;
+        [SerializeField] private Color colorFilter = new(0.94f, 0.97f, 1f, 1f);
+        [SerializeField, Range(0f, 1f)] private float vignetteIntensity = 0.16f;
+        [SerializeField, Range(0f, 1f)] private float filmGrainIntensity = 0.08f;
 
         [Header("Stealth Atmosphere Response")]
         [SerializeField] private bool respondToStealthLoop = true;
@@ -42,14 +43,14 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField, Range(0f, 1f)] private float calmHidingAtmosphereIntensity = 0.14f;
         [SerializeField, Min(0f)] private float stealthAtmosphereHoldDuration = 2.8f;
         [SerializeField, Min(0f)] private float stealthAtmosphereFadeSpeed = 1.6f;
-        [SerializeField, Min(0f)] private float stealthFogDensityBoost = 0.02f;
+        [SerializeField, Min(0f)] private float stealthFogDensityBoost = 0.006f;
         [SerializeField] private Color stealthFogColor = new(0.2f, 0.26f, 0.3f, 1f);
-        [SerializeField, Range(-2f, 0f)] private float stealthExposureOffset = -0.24f;
-        [SerializeField, Range(0f, 100f)] private float stealthContrastBoost = 14f;
-        [SerializeField, Range(-100f, 0f)] private float stealthSaturationOffset = -10f;
-        [SerializeField] private Color stealthColorFilter = new(0.76f, 0.86f, 1f, 1f);
-        [SerializeField, Range(0f, 1f)] private float stealthVignetteBoost = 0.24f;
-        [SerializeField, Range(0f, 1f)] private float stealthFilmGrainBoost = 0.2f;
+        [SerializeField, Range(-2f, 0f)] private float stealthExposureOffset = -0.1f;
+        [SerializeField, Range(0f, 100f)] private float stealthContrastBoost = 6f;
+        [SerializeField, Range(-100f, 0f)] private float stealthSaturationOffset = -4f;
+        [SerializeField] private Color stealthColorFilter = new(0.84f, 0.91f, 1f, 1f);
+        [SerializeField, Range(0f, 1f)] private float stealthVignetteBoost = 0.1f;
+        [SerializeField, Range(0f, 1f)] private float stealthFilmGrainBoost = 0.08f;
         [Header("Memory Atmosphere Response")]
         [SerializeField] private bool respondToNeighborMemory = true;
         [SerializeField, Range(0f, 1f)] private float memoryAtmosphereIntensity = 0.42f;
@@ -76,6 +77,7 @@ namespace Neighbor.Main.Features.Environment
         private Light capturedMoonLight;
         private float capturedSunIntensity = -1f;
         private float capturedMoonIntensity = -1f;
+        private DayNightCycle subscribedDayNightCycle;
 
         public Light SunLight => sunLight;
         public Light MoonLight => moonLight;
@@ -91,11 +93,13 @@ namespace Neighbor.Main.Features.Environment
 
         private void Awake()
         {
+            ResolveDayNightCycle();
             ApplyAtmosphere();
         }
 
         private void OnEnable()
         {
+            ResolveDayNightCycle();
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
             PlayerFeedbackEvents.StealthLoopChanged += HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
@@ -109,6 +113,12 @@ namespace Neighbor.Main.Features.Environment
 
         private void OnDisable()
         {
+            if (subscribedDayNightCycle != null)
+            {
+                subscribedDayNightCycle.EnvironmentUpdated -= HandleDayNightEnvironmentUpdated;
+                subscribedDayNightCycle = null;
+            }
+
             PlayerFeedbackEvents.StealthLoopChanged -= HandleStealthLoopChanged;
             PlayerFeedbackEvents.NeighborMemoryChanged -= HandleNeighborMemoryChanged;
             PlayerFeedbackEvents.NeighborInvestigationChanged -= HandleNeighborInvestigationChanged;
@@ -123,6 +133,7 @@ namespace Neighbor.Main.Features.Environment
             }
             else
             {
+                ResolveDayNightCycle();
                 ApplyAtmosphere();
             }
         }
@@ -139,7 +150,42 @@ namespace Neighbor.Main.Features.Environment
             colorGradingVolume = volume;
             flickerLights = flickers;
             dressingAnchors = anchors;
+            ResolveDayNightCycle();
             CaptureLightingBaselines();
+            ApplyAtmosphere();
+        }
+
+        private void ResolveDayNightCycle()
+        {
+            DayNightCycle resolvedCycle = dayNightCycle != null
+                ? dayNightCycle
+                : FindAnyObjectByType<DayNightCycle>();
+            if (resolvedCycle == subscribedDayNightCycle)
+            {
+                dayNightCycle = resolvedCycle;
+                return;
+            }
+
+            if (subscribedDayNightCycle != null)
+            {
+                subscribedDayNightCycle.EnvironmentUpdated -= HandleDayNightEnvironmentUpdated;
+            }
+
+            dayNightCycle = resolvedCycle;
+            subscribedDayNightCycle = resolvedCycle;
+            if (subscribedDayNightCycle == null)
+            {
+                return;
+            }
+
+            subscribedDayNightCycle.EnvironmentUpdated -= HandleDayNightEnvironmentUpdated;
+            subscribedDayNightCycle.EnvironmentUpdated += HandleDayNightEnvironmentUpdated;
+            sunLight ??= subscribedDayNightCycle.SunLight;
+            moonLight ??= subscribedDayNightCycle.MoonLight;
+        }
+
+        private void HandleDayNightEnvironmentUpdated()
+        {
             ApplyAtmosphere();
         }
 
@@ -156,31 +202,39 @@ namespace Neighbor.Main.Features.Environment
             CaptureLightingBaselines();
             if (sunLight != null)
             {
-                float baseSunIntensity = capturedSunIntensity >= 0f
-                    ? capturedSunIntensity
-                    : sunLight.intensity;
+                float baseSunIntensity = dayNightCycle != null
+                    ? dayNightCycle.CurrentSunIntensity
+                    : capturedSunIntensity >= 0f
+                        ? capturedSunIntensity
+                        : sunLight.intensity;
                 baseSunIntensity = Mathf.Min(baseSunIntensity, maximumSunIntensity);
                 float dangerSunScale = Mathf.Lerp(
                     1f,
                     Mathf.Clamp01(1f - stealthSunIntensityDip),
                     currentStealthAtmosphereIntensity);
                 sunLight.intensity = Mathf.Max(0f, baseSunIntensity * dangerSunScale);
-                sunLight.color = Color.Lerp(sunLight.color, new Color(1f, 0.88f, 0.68f, 1f), 0.2f);
+                Color baseSunColor = dayNightCycle != null ? dayNightCycle.CurrentSunColor : sunLight.color;
+                sunLight.color = Color.Lerp(baseSunColor, new Color(1f, 0.88f, 0.68f, 1f), 0.14f);
             }
 
             if (moonLight != null)
             {
-                float baseMoonIntensity = capturedMoonIntensity >= 0f
-                    ? capturedMoonIntensity
-                    : moonLight.intensity;
+                float baseMoonIntensity = dayNightCycle != null
+                    ? dayNightCycle.CurrentMoonIntensity
+                    : capturedMoonIntensity >= 0f
+                        ? capturedMoonIntensity
+                        : moonLight.intensity;
                 baseMoonIntensity = Mathf.Max(baseMoonIntensity, minimumMoonIntensity);
                 moonLight.intensity = baseMoonIntensity
                     + stealthMoonIntensityBoost * currentStealthAtmosphereIntensity;
-                moonLight.color = Color.Lerp(moonLight.color, new Color(0.56f, 0.66f, 1f, 1f), 0.35f);
+                Color baseMoonColor = dayNightCycle != null ? dayNightCycle.CurrentMoonColor : moonLight.color;
+                moonLight.color = Color.Lerp(baseMoonColor, new Color(0.56f, 0.66f, 1f, 1f), 0.25f);
             }
 
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = ambientColor;
+            RenderSettings.ambientLight = dayNightCycle != null
+                ? dayNightCycle.CurrentAmbientColor
+                : ambientColor;
         }
 
         private void CaptureLightingBaselines()
@@ -211,8 +265,10 @@ namespace Neighbor.Main.Features.Environment
 
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogColor = Color.Lerp(fogColor, stealthFogColor, currentStealthAtmosphereIntensity);
-            RenderSettings.fogDensity = fogDensity + stealthFogDensityBoost * currentStealthAtmosphereIntensity;
+            Color baseFogColor = dayNightCycle != null ? dayNightCycle.CurrentFogColor : fogColor;
+            float baseFogDensity = dayNightCycle != null ? dayNightCycle.CurrentFogDensity : fogDensity;
+            RenderSettings.fogColor = Color.Lerp(baseFogColor, stealthFogColor, currentStealthAtmosphereIntensity);
+            RenderSettings.fogDensity = baseFogDensity + stealthFogDensityBoost * currentStealthAtmosphereIntensity;
         }
 
         private void ApplyColorGrade()

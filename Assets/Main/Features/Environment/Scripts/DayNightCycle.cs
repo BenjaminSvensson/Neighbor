@@ -52,7 +52,7 @@ namespace Neighbor.Main.Features.Environment
         [SerializeField, Min(0f)] private float ambientIntensity = 1f;
         [SerializeField] private bool driveFog = true;
         [SerializeField] private Gradient fogColorByTime = CreateDefaultFogColor();
-        [SerializeField, Min(0f)] private float maxFogDensity = 0.018f;
+        [SerializeField, Min(0f)] private float maxFogDensity = 0.009f;
         [SerializeField] private AnimationCurve fogDensityByTime = CreateDefaultFogDensity();
         [SerializeField] private bool rotateSkybox = true;
         [SerializeField] private float skyboxRotationOffset;
@@ -64,12 +64,20 @@ namespace Neighbor.Main.Features.Environment
         private bool hasObservedPhase;
 
         public event Action<DayNightPhase> PhaseChanged;
+        public event Action EnvironmentUpdated;
 
         public Light SunLight => sunLight;
         public Light MoonLight => moonLight;
         public float TimeOfDay => timeOfDay;
         public float DayLengthMinutes => dayLengthMinutes;
         public bool IsCycleRunning => cycleRuns;
+        public float CurrentSunIntensity { get; private set; }
+        public float CurrentMoonIntensity { get; private set; }
+        public Color CurrentSunColor { get; private set; } = Color.white;
+        public Color CurrentMoonColor { get; private set; } = new(0.62f, 0.7f, 1f, 1f);
+        public Color CurrentAmbientColor { get; private set; } = Color.gray;
+        public Color CurrentFogColor { get; private set; } = Color.gray;
+        public float CurrentFogDensity { get; private set; }
         public DayNightPhase CurrentPhase { get; private set; }
         public bool IsDaytime => CurrentPhase == DayNightPhase.Dawn || CurrentPhase == DayNightPhase.Day;
 
@@ -156,8 +164,11 @@ namespace Neighbor.Main.Features.Environment
             }
 
             float intensity = Mathf.Max(0f, EvaluateCurve(sunIntensityByTime, normalizedTime, 1f) * maxSunIntensity);
+            Color color = EvaluateGradient(sunColorByTime, normalizedTime, Color.white);
+            CurrentSunIntensity = intensity;
+            CurrentSunColor = color;
             sunLight.transform.rotation = Quaternion.Euler(GetOrbitPitch(normalizedTime), sunOrbitYaw, 0f);
-            sunLight.color = EvaluateGradient(sunColorByTime, normalizedTime, Color.white);
+            sunLight.color = color;
             sunLight.intensity = intensity;
             sunLight.shadows = LightShadows.Soft;
             sunLight.enabled = !disableInactiveLights || intensity > 0.001f;
@@ -172,8 +183,11 @@ namespace Neighbor.Main.Features.Environment
             }
 
             float intensity = Mathf.Max(0f, EvaluateCurve(moonIntensityByTime, normalizedTime, 1f) * maxMoonIntensity);
+            Color color = EvaluateGradient(moonColorByTime, normalizedTime, new Color(0.62f, 0.7f, 1f));
+            CurrentMoonIntensity = intensity;
+            CurrentMoonColor = color;
             moonLight.transform.rotation = Quaternion.Euler(GetOrbitPitch(Mathf.Repeat(normalizedTime + 0.5f, 1f)), moonOrbitYaw, 0f);
-            moonLight.color = EvaluateGradient(moonColorByTime, normalizedTime, new Color(0.62f, 0.7f, 1f));
+            moonLight.color = color;
             moonLight.intensity = intensity;
             moonLight.shadows = LightShadows.None;
             moonLight.enabled = !disableInactiveLights || intensity > 0.001f;
@@ -181,29 +195,33 @@ namespace Neighbor.Main.Features.Environment
 
         private void ApplyEnvironment(float normalizedTime)
         {
+            CurrentAmbientColor = EvaluateGradient(ambientColorByTime, normalizedTime, Color.gray) * ambientIntensity;
             if (driveAmbientColor)
             {
                 RenderSettings.ambientMode = AmbientMode.Flat;
-                RenderSettings.ambientLight = EvaluateGradient(ambientColorByTime, normalizedTime, Color.gray) * ambientIntensity;
+                RenderSettings.ambientLight = CurrentAmbientColor;
             }
 
+            CurrentFogColor = EvaluateGradient(fogColorByTime, normalizedTime, Color.gray);
+            CurrentFogDensity = Mathf.Max(0f, EvaluateCurve(fogDensityByTime, normalizedTime, 0.5f) * maxFogDensity);
             if (driveFog)
             {
                 RenderSettings.fog = true;
-                RenderSettings.fogColor = EvaluateGradient(fogColorByTime, normalizedTime, Color.gray);
-                RenderSettings.fogDensity = Mathf.Max(0f, EvaluateCurve(fogDensityByTime, normalizedTime, 0.5f) * maxFogDensity);
+                RenderSettings.fogMode = FogMode.ExponentialSquared;
+                RenderSettings.fogColor = CurrentFogColor;
+                RenderSettings.fogDensity = CurrentFogDensity;
             }
 
-            if (skyboxMaterial == null)
+            if (skyboxMaterial != null)
             {
-                return;
+                RenderSettings.skybox = skyboxMaterial;
+                if (rotateSkybox && skyboxMaterial.HasFloat("_Rotation"))
+                {
+                    skyboxMaterial.SetFloat("_Rotation", Mathf.Repeat((normalizedTime * 360f) + skyboxRotationOffset, 360f));
+                }
             }
 
-            RenderSettings.skybox = skyboxMaterial;
-            if (rotateSkybox && skyboxMaterial.HasFloat("_Rotation"))
-            {
-                skyboxMaterial.SetFloat("_Rotation", Mathf.Repeat((normalizedTime * 360f) + skyboxRotationOffset, 360f));
-            }
+            EnvironmentUpdated?.Invoke();
         }
 
         private void UpdatePhase(float normalizedTime, bool allowFeedback)

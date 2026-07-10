@@ -64,7 +64,7 @@ namespace Neighbor.Main.Features.Neighbor
         [SerializeField, Min(0.05f)] private float searchClosetAnimationSpeed = 1f;
         [SerializeField] private AnimationClip[] wanderIdleAnimations;
         [SerializeField, Min(0.05f)] private float wanderIdleAnimationSpeed = 1f;
-        [SerializeField] private AnimationClip investigationArrivalAnimation;
+        [SerializeField] private AnimationClip investigationArrivalAnimation = null;
         [SerializeField, Min(0.05f)] private float investigationArrivalAnimationSpeed = 1f;
         [SerializeField] private AnimationClip lockedDoorReactionAnimation;
         [SerializeField, Min(0.05f)] private float lockedDoorReactionAnimationSpeed = 1f;

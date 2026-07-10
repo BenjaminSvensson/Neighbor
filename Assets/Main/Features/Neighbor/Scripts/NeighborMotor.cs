@@ -214,8 +214,23 @@ namespace Neighbor.Main.Features.Neighbor
 
         private void OnDisable()
         {
+            CancelExternalMotion();
             SetClimbSurfaceCollisionIgnored(false);
             SetCrouchingForClearance(false);
+            isPaused = false;
+            isAnchoredForTask = false;
+            isAvoidingDynamicObstacle = false;
+
+            if (agent != null)
+            {
+                agent.updatePosition = true;
+                agent.updateRotation = true;
+                if (agent.enabled && agent.isOnNavMesh)
+                {
+                    agent.isStopped = false;
+                    agent.ResetPath();
+                }
+            }
         }
 
         private void Update()
@@ -227,12 +242,15 @@ namespace Neighbor.Main.Features.Neighbor
 
             UpdateLowClearanceCrouching();
 
-            if (isAnchoredForTask)
+            // A coroutine that owns the transform must be the only movement writer.
+            // Likewise, a paused/anchored motor must not recover, repath, or begin a
+            // traversal behind the door/task interaction that paused it.
+            if (isAnchoredForTask || isPaused || traversalRoutine != null || knockbackRoutine != null)
             {
                 return;
             }
 
-            if (!IsOffMeshChasing && !agent.updatePosition && traversalRoutine == null)
+            if (!IsOffMeshChasing && IsDetachedFromNavMesh)
             {
                 RecoverDetachedAgent();
             }
@@ -824,24 +842,7 @@ namespace Neighbor.Main.Features.Neighbor
         public void ResetToPosition(Vector3 position, Quaternion rotation)
         {
             SetCrouchingForClearance(false);
-
-            if (traversalRoutine != null)
-            {
-                StopCoroutine(traversalRoutine);
-                traversalRoutine = null;
-                traversalAnimationPhase = TraversalAnimationPhase.None;
-                SetClimbSurfaceCollisionIgnored(false);
-                if (agent != null && agent.enabled && agent.isOnNavMesh)
-                {
-                    agent.isStopped = false;
-                }
-            }
-
-            if (knockbackRoutine != null)
-            {
-                StopCoroutine(knockbackRoutine);
-                knockbackRoutine = null;
-            }
+            CancelExternalMotion();
 
             hasRequestedDestination = false;
             hasNavigationGoal = false;
@@ -889,6 +890,29 @@ namespace Neighbor.Main.Features.Neighbor
             }
 
             transform.rotation = rotation;
+        }
+
+        private void CancelExternalMotion()
+        {
+            if (traversalRoutine != null)
+            {
+                StopCoroutine(traversalRoutine);
+                traversalRoutine = null;
+            }
+
+            if (knockbackRoutine != null)
+            {
+                StopCoroutine(knockbackRoutine);
+                knockbackRoutine = null;
+            }
+
+            traversalAnimationPhase = TraversalAnimationPhase.None;
+            SetClimbSurfaceCollisionIgnored(false);
+            hasPendingKnockback = false;
+            pendingKnockbackDirection = Vector3.zero;
+            pendingKnockbackDistance = 0f;
+            pendingKnockbackDuration = 0f;
+            offMeshChaseUntilTime = 0f;
         }
 
         public void BeginAnchoredTask(Transform anchor)
@@ -2175,7 +2199,12 @@ namespace Neighbor.Main.Features.Neighbor
         private IEnumerator PlayLandingReaction()
         {
             traversalAnimationPhase = TraversalAnimationPhase.Landing;
-            bool restoreMovement = agent != null && agent.enabled && agent.isOnNavMesh && !agent.isStopped;
+            bool restoreMovement = agent != null
+                && agent.enabled
+                && agent.isOnNavMesh
+                && !agent.isStopped
+                && !isPaused
+                && !isAnchoredForTask;
             if (restoreMovement)
             {
                 agent.isStopped = true;
@@ -2188,7 +2217,12 @@ namespace Neighbor.Main.Features.Neighbor
                 yield return null;
             }
 
-            if (restoreMovement && agent != null && agent.enabled && agent.isOnNavMesh)
+            if (restoreMovement
+                && !isPaused
+                && !isAnchoredForTask
+                && agent != null
+                && agent.enabled
+                && agent.isOnNavMesh)
             {
                 agent.isStopped = false;
             }

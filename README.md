@@ -7,7 +7,9 @@ Unity prototype project targeting Unity `6000.4.6f1`.
 1. Install the matching editor version through Unity Hub.
 2. Clone the repository with Git LFS installed.
 3. Open the project and allow Unity to restore packages.
-4. Open `Assets/Main/Scenes/Testing.unity`.
+4. Open `Assets/Main/Scenes/Main/TrueTreeHouse/TrueTreeHouse.unity`.
+
+`TrueTreeHouse` is the primary playable and build-start scene. The older AI testing map remains available under `Assets/Main/Scenes/Testing/AITestingMap`, but is intentionally disabled in Build Settings.
 
 Unity-generated solution and project files are intentionally ignored. Regenerate them from the editor when needed.
 

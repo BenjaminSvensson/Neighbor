@@ -35,6 +35,16 @@ namespace Neighbor.Main.Features.Player
         public static PlayerPerformanceProfile CurrentProfile => currentProfile;
         public static PlayerFrameRateLimit CurrentFrameRateLimit => currentFrameRateLimit;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetRuntimeState()
+        {
+            SceneManager.sceneLoaded -= HandleSceneLoaded;
+            RenderPipelineManager.beginCameraRendering -= HandleBeginCameraRendering;
+            runtimeHooksRegistered = false;
+            currentProfile = PlayerPerformanceProfile.Balanced;
+            currentFrameRateLimit = PlayerFrameRateLimit.Profile;
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void InitializeRuntime()
         {
@@ -269,7 +279,7 @@ namespace Neighbor.Main.Features.Player
                     shadowCascadeCount: 2,
                     mainLightShadowmapResolution: 2048,
                     maxAdditionalLightsCount: 4,
-                    additionalLightsShadowmapResolution: 2048,
+                    additionalLightsShadowmapResolution: 4096,
                     allowDynamicResolution: false,
                     useOcclusionCulling: true,
                     treeDistance: 550f,
@@ -297,7 +307,7 @@ namespace Neighbor.Main.Features.Player
                     shadowCascadeCount: 2,
                     mainLightShadowmapResolution: 2048,
                     maxAdditionalLightsCount: 2,
-                    additionalLightsShadowmapResolution: 2048,
+                    additionalLightsShadowmapResolution: 4096,
                     allowDynamicResolution: true,
                     useOcclusionCulling: true,
                     treeDistance: 360f,
@@ -354,7 +364,9 @@ namespace Neighbor.Main.Features.Player
             urpAsset.shadowCascadeCount = settings.ShadowCascadeCount;
             urpAsset.mainLightShadowmapResolution = settings.MainLightShadowmapResolution;
             urpAsset.maxAdditionalLightsCount = settings.MaxAdditionalLightsCount;
-            urpAsset.additionalLightsShadowmapResolution = settings.AdditionalLightsShadowmapResolution;
+            urpAsset.additionalLightsShadowmapResolution = Application.isMobilePlatform
+                ? Mathf.Min(settings.AdditionalLightsShadowmapResolution, 1024)
+                : settings.AdditionalLightsShadowmapResolution;
         }
 
         private static void ApplyTerrainSettings(ProfileSettings settings)

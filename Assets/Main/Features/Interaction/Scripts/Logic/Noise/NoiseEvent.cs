@@ -10,6 +10,7 @@ namespace Neighbor.Main.Features.Interaction
     public sealed class NoiseEvent : MonoBehaviour
     {
         private SphereCollider noiseTrigger;
+        private readonly HashSet<NeighborHearing> notifiedListeners = new();
 
         public Vector3 Origin { get; private set; }
         public float Radius { get; private set; }
@@ -100,6 +101,19 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             return heardListenerCount;
+        }
+
+        internal bool HasNotified(NeighborHearing listener)
+        {
+            return listener != null && notifiedListeners.Contains(listener);
+        }
+
+        internal void MarkNotified(NeighborHearing listener)
+        {
+            if (listener != null)
+            {
+                notifiedListeners.Add(listener);
+            }
         }
     }
 }

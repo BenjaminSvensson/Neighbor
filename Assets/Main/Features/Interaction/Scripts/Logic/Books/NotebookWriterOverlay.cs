@@ -35,7 +35,6 @@ namespace Neighbor.Main.Features.Interaction
             }
 
             GameObject overlayObject = new GameObject("NotebookWriterOverlay");
-            DontDestroyOnLoad(overlayObject);
             activeOverlay = overlayObject.AddComponent<NotebookWriterOverlay>();
             activeOverlay.Initialize(notebookTitle, notebookPages, savePageCallback);
         }
@@ -68,23 +67,23 @@ namespace Neighbor.Main.Features.Interaction
         private void Update()
         {
             Keyboard keyboard = Keyboard.current;
-            if (keyboard == null)
-            {
-                return;
-            }
+            Gamepad gamepad = Gamepad.current;
 
-            if (keyboard.escapeKey.wasPressedThisFrame)
+            if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame
+                || gamepad != null && gamepad.buttonEast.wasPressedThisFrame)
             {
                 Close();
                 return;
             }
 
-            if (keyboard.pageDownKey.wasPressedThisFrame)
+            if (keyboard != null && keyboard.pageDownKey.wasPressedThisFrame
+                || gamepad != null && (gamepad.dpad.right.wasPressedThisFrame || gamepad.rightShoulder.wasPressedThisFrame))
             {
                 NextPage();
             }
 
-            if (keyboard.pageUpKey.wasPressedThisFrame)
+            if (keyboard != null && keyboard.pageUpKey.wasPressedThisFrame
+                || gamepad != null && (gamepad.dpad.left.wasPressedThisFrame || gamepad.leftShoulder.wasPressedThisFrame))
             {
                 PreviousPage();
             }
@@ -133,6 +132,7 @@ namespace Neighbor.Main.Features.Interaction
 
             hasClosed = true;
             StoreCurrentPage();
+            InteractionOverlayState.ConsumeGameplayInputForCurrentFrame();
             Cursor.lockState = previousLockState;
             Cursor.visible = previousCursorVisible;
 
@@ -159,6 +159,7 @@ namespace Neighbor.Main.Features.Interaction
             scaler.matchWidthOrHeight = 0.5f;
 
             gameObject.AddComponent<GraphicRaycaster>();
+            RuntimeUiEventSystem.EnsureExists();
 
             Font font = GetBuiltInFont();
             Image dimmer = CreateImage("Dimmer", transform, new Color(0f, 0f, 0f, 0.72f));

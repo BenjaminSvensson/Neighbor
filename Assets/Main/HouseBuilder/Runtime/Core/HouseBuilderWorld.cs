@@ -195,13 +195,24 @@ namespace Neighbor.Main.HouseBuilder
             HouseBuilderObject[] objects = GetComponentsInChildren<HouseBuilderObject>(true);
             for (int i = objects.Length - 1; i >= 0; i--)
             {
+                GameObject placedObject = objects[i] != null ? objects[i].gameObject : null;
+                if (placedObject == null)
+                {
+                    continue;
+                }
+
                 if (Application.isPlaying)
                 {
-                    Destroy(objects[i].gameObject);
+                    // Destroy is deferred until the end of the frame. Retire the old
+                    // object immediately so a same-frame load cannot discover it while
+                    // rebuilding wiring or wall-opening links.
+                    placedObject.SetActive(false);
+                    placedObject.transform.SetParent(null, true);
+                    Destroy(placedObject);
                 }
                 else
                 {
-                    DestroyImmediate(objects[i].gameObject);
+                    DestroyImmediate(placedObject);
                 }
             }
 

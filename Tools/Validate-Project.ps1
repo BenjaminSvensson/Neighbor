@@ -1,18 +1,33 @@
 [CmdletBinding()]
 param(
     [switch]$SkipUnity,
-    [switch]$SkipPlayMode
+    [switch]$SkipPlayMode,
+    [switch]$Strict,
+    [switch]$BuildPlayer
 )
 
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $issueCount = 0
+$unavailableCheckCount = 0
 
 function Write-Issue {
     param([string]$Message)
 
     $script:issueCount++
     Write-Host "ERROR: $Message" -ForegroundColor Red
+}
+
+function Write-Unavailable {
+    param([string]$Message)
+
+    $script:unavailableCheckCount++
+    if ($Strict) {
+        Write-Issue $Message
+        return
+    }
+
+    Write-Host "SKIPPED: $Message" -ForegroundColor Yellow
 }
 
 function Test-MetaFiles {
@@ -64,7 +79,7 @@ function Test-DuplicateGuids {
 
 function Test-CSharpCompilation {
     if (-not (Test-Path -LiteralPath "Assembly-CSharp.csproj")) {
-        Write-Host "Skipping dotnet compilation because Unity has not generated Assembly-CSharp.csproj." -ForegroundColor Yellow
+        Write-Unavailable "C# compilation requires Unity-generated Assembly-CSharp.csproj. Open Unity once or use strict Unity validation on a prepared workspace."
         return
     }
 
@@ -78,7 +93,7 @@ function Test-CSharpCompilation {
         })
 
     if ($missingSources.Count -gt 0) {
-        Write-Host "Skipping dotnet compilation because Unity-generated project files are stale." -ForegroundColor Yellow
+        Write-Unavailable "C# compilation requires refreshed Unity-generated project files; one or more Assets/**/*.cs files are missing from the current projects."
         return
     }
 
@@ -156,7 +171,7 @@ function Test-UnityEditModeTests {
     }
 
     if (Test-Path -LiteralPath "Temp\UnityLockfile") {
-        Write-Host "Skipping Unity EditMode tests because this project is open in the editor." -ForegroundColor Yellow
+        Write-Unavailable "Unity EditMode tests require the project to be closed in the interactive editor."
         return
     }
 
@@ -184,7 +199,7 @@ function Test-UnityEditModeTests {
     }
 
     if ($logText -match "another Unity instance is running") {
-        Write-Host "Skipping Unity EditMode tests because this project is open in the editor." -ForegroundColor Yellow
+        Write-Unavailable "Unity EditMode tests could not start because another Unity instance owns the project."
         return
     }
 
@@ -206,7 +221,7 @@ function Test-UnityPlayModeTests {
     }
 
     if (Test-Path -LiteralPath "Temp\UnityLockfile") {
-        Write-Host "Skipping Unity PlayMode tests because this project is open in the editor." -ForegroundColor Yellow
+        Write-Unavailable "Unity PlayMode tests require the project to be closed in the interactive editor."
         return
     }
 
@@ -244,7 +259,13 @@ function Test-UnityPlayModeTests {
     }
 
     if ($logText -match "another Unity instance is running") {
-        Write-Host "Skipping Unity PlayMode tests because this project is open in the editor." -ForegroundColor Yellow
+        Write-Unavailable "Unity PlayMode tests could not start because another Unity instance owns the project."
+        return
+    }
+
+    $unityProcess.Refresh()
+    if ($unityProcess.ExitCode -ne 0) {
+        Write-Issue "Unity PlayMode test process exited with code $($unityProcess.ExitCode). See $logPath"
         return
     }
 
@@ -266,7 +287,7 @@ function Test-UnityAssets {
     }
 
     if (Test-Path -LiteralPath "Temp\UnityLockfile") {
-        Write-Host "Skipping Unity asset validation because this project is open in the editor." -ForegroundColor Yellow
+        Write-Unavailable "Unity prefab and scene validation requires the project to be closed in the interactive editor."
         return
     }
 
@@ -291,7 +312,7 @@ function Test-UnityAssets {
     }
 
     if ($logText -match "another Unity instance is running") {
-        Write-Host "Skipping Unity asset validation because this project is open in the editor." -ForegroundColor Yellow
+        Write-Unavailable "Unity prefab and scene validation could not start because another Unity instance owns the project."
         return
     }
 
@@ -307,7 +328,7 @@ function Test-ProjectStateParity {
     }
 
     if (Test-Path -LiteralPath "Temp\UnityLockfile") {
-        Write-Host "Skipping Unity project-state parity validation because this project is open in the editor." -ForegroundColor Yellow
+        Write-Unavailable "Unity project-state parity validation requires the project to be closed in the interactive editor."
         return
     }
 
@@ -332,12 +353,54 @@ function Test-ProjectStateParity {
     }
 
     if ($logText -match "another Unity instance is running") {
-        Write-Host "Skipping Unity project-state parity validation because this project is open in the editor." -ForegroundColor Yellow
+        Write-Unavailable "Unity project-state parity validation could not start because another Unity instance owns the project."
         return
     }
 
     if ($unityProcess.ExitCode -ne 0) {
         Write-Issue "Unity project-state parity validation failed. See $logPath"
+    }
+}
+
+function Test-UnityPlayerBuild {
+    if (-not $BuildPlayer) {
+        return
+    }
+
+    if ($SkipUnity) {
+        Write-Unavailable "Player build validation was requested together with -SkipUnity."
+        return
+    }
+
+    if (Test-Path -LiteralPath "Temp\UnityLockfile") {
+        Write-Unavailable "Player build validation requires the project to be closed in the interactive editor."
+        return
+    }
+
+    $unityPath = Get-UnityEditorPath
+    if ($null -eq $unityPath) {
+        return
+    }
+
+    Write-Host "Building Windows validation player..."
+    $outputDirectory = Join-Path $projectRoot "Builds\Validation"
+    $outputPath = Join-Path $outputDirectory "NeighborValidation.exe"
+    $logPath = Join-Path $projectRoot "Logs\PlayerBuildValidation.log"
+    New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
+    $startedAt = Get-Date
+    $arguments = @(
+        "-batchmode",
+        "-quit",
+        "-projectPath", "`"$projectRoot`"",
+        "-executeMethod", "NeighborBuildAutomation.BuildWindows64DevelopmentFromCommandLine",
+        "-neighborBuildPath", "`"$outputPath`"",
+        "-logFile", "`"$logPath`""
+    )
+    $unityProcess = Start-Process -FilePath $unityPath -ArgumentList $arguments -Wait -PassThru -WindowStyle Hidden
+    if ($unityProcess.ExitCode -ne 0
+        -or -not (Test-Path -LiteralPath $outputPath)
+        -or (Get-Item -LiteralPath $outputPath).LastWriteTime -lt $startedAt.AddSeconds(-2)) {
+        Write-Issue "Unity Windows player build failed or did not produce a fresh executable. See $logPath"
     }
 }
 
@@ -349,6 +412,7 @@ try {
     Test-CSharpCompilation
     Test-UnityEditModeTests
     Test-UnityPlayModeTests
+    Test-UnityPlayerBuild
     Test-UnityAssets
     Test-ProjectStateParity
 
@@ -357,7 +421,12 @@ try {
         exit 1
     }
 
-    Write-Host "Project validation passed." -ForegroundColor Green
+    if ($unavailableCheckCount -gt 0) {
+        Write-Host "Project validation completed with $unavailableCheckCount unavailable check(s); rerun with Unity closed or use -Strict to require a fully verified result." -ForegroundColor Yellow
+        exit 0
+    }
+
+    Write-Host "Project validation passed with every requested check executed." -ForegroundColor Green
 }
 finally {
     Pop-Location

@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.Controls;
 
 namespace Neighbor.Main.Features.Player
 {
@@ -11,14 +10,11 @@ namespace Neighbor.Main.Features.Player
             Keyboard keyboard = Keyboard.current;
             Mouse mouse = Mouse.current;
 
-            Vector2 move = Vector2.zero;
-            if (keyboard != null)
-            {
-                move.x += PlayerInputBindings.IsPressed(PlayerInputBindingAction.Right) || IsPressed(keyboard.rightArrowKey) ? 1f : 0f;
-                move.x -= PlayerInputBindings.IsPressed(PlayerInputBindingAction.Left) || IsPressed(keyboard.leftArrowKey) ? 1f : 0f;
-                move.y += PlayerInputBindings.IsPressed(PlayerInputBindingAction.Forward) || IsPressed(keyboard.upArrowKey) ? 1f : 0f;
-                move.y -= PlayerInputBindings.IsPressed(PlayerInputBindingAction.Backward) || IsPressed(keyboard.downArrowKey) ? 1f : 0f;
-            }
+            Vector2 move = new(
+                (PlayerInputBindings.IsPressed(PlayerInputBindingAction.Right) ? 1f : 0f)
+                    - (PlayerInputBindings.IsPressed(PlayerInputBindingAction.Left) ? 1f : 0f),
+                (PlayerInputBindings.IsPressed(PlayerInputBindingAction.Forward) ? 1f : 0f)
+                    - (PlayerInputBindings.IsPressed(PlayerInputBindingAction.Backward) ? 1f : 0f));
 
             move = Vector2.ClampMagnitude(move, 1f);
 
@@ -47,11 +43,6 @@ namespace Neighbor.Main.Features.Player
                 ZoomScroll = mouse != null ? mouse.scroll.ReadValue().y : 0f,
                 CursorUnlockPressed = keyboard != null && keyboard.escapeKey.wasPressedThisFrame
             };
-        }
-
-        private static bool IsPressed(ButtonControl control)
-        {
-            return control != null && control.isPressed;
         }
     }
 

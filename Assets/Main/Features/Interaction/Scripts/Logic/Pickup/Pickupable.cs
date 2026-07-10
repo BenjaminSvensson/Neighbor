@@ -246,11 +246,11 @@ namespace Neighbor.Main.Features.Interaction
             IgnoreHeldCollisions(heldCollisionIgnoreColliders);
 
             ClearBodyVelocity();
+            body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
             body.useGravity = false;
             body.isKinematic = true;
             body.linearDamping = heldDrag;
             body.angularDamping = heldAngularDrag;
-            body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             body.interpolation = RigidbodyInterpolation.Interpolate;
 
             WakeSupportedBodiesAfterColliderStateChange(false);

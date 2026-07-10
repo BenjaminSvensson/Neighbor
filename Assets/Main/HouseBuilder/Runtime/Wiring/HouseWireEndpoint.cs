@@ -9,6 +9,12 @@ namespace Neighbor.Main.HouseBuilder
     public sealed class HouseWireEndpoint : MonoBehaviour
     {
         public static event Action<HouseWireEndpoint, string, HouseSignal> OutputEmitted;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetRuntimeState()
+        {
+            OutputEmitted = null;
+        }
         public event Action<string, HouseSignal> InputReceived;
 
         [SerializeField] private string endpointId;

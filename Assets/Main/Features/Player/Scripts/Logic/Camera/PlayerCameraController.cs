@@ -74,6 +74,7 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float leanSmoothing = 12f;
 
         [Header("Handheld Feel")]
+        [SerializeField, Range(0f, 1f)] private float cameraMotionIntensity = 1f;
         [SerializeField, Min(0f)] private float idleWobbleAmount = 0.08f;
         [SerializeField, Min(0f)] private float moveWobbleAmount = 0.16f;
         [SerializeField, Min(0f)] private float runWobbleAmount = 0.28f;
@@ -166,6 +167,7 @@ namespace Neighbor.Main.Features.Player
         public float RuntimeMouseSensitivity => mouseSensitivity;
         public float RuntimeFieldOfView => maximumFieldOfView;
         public bool RuntimeInvertLookY => invertLookY;
+        public float RuntimeCameraMotionIntensity => cameraMotionIntensity;
         public float CurrentStealthCameraPressure => currentStealthCameraPressure;
         public float StealthFieldOfViewOffset => stealthFieldOfViewKick * currentStealthCameraPressure;
         public event System.Action<int> ZoomDirectionChanged;
@@ -366,11 +368,13 @@ namespace Neighbor.Main.Features.Player
             }
 
             UpdateMovementFieldOfViewOffset();
+            float motionIntensity = cameraMotionIntensity;
             float maximumProceduralFieldOfView = maximumFieldOfView
-                + Mathf.Max(walkFieldOfViewKick + sprintFieldOfViewKick, slideFieldOfViewKick)
-                + stealthFieldOfViewKick;
+                + (Mathf.Max(walkFieldOfViewKick + sprintFieldOfViewKick, slideFieldOfViewKick)
+                    + stealthFieldOfViewKick) * motionIntensity;
             playerCamera.fieldOfView = Mathf.Clamp(
-                currentFieldOfView + impactFovOffset + movementFieldOfViewOffset + StealthFieldOfViewOffset,
+                currentFieldOfView
+                    + (impactFovOffset + movementFieldOfViewOffset + StealthFieldOfViewOffset) * motionIntensity,
                 minimumFieldOfView,
                 maximumProceduralFieldOfView);
         }
@@ -437,10 +441,16 @@ namespace Neighbor.Main.Features.Player
 
             Vector3 leanOffset = Vector3.right * (smoothedLean * leanDistance);
             Vector3 impactOffset = new Vector3(shakeX * 0.01f, impactVerticalOffset + climbVerticalOffset + shakeY * 0.01f, 0f);
-            currentProceduralOffset = leanOffset + bobOffset + impactOffset + new Vector3(wobbleX, wobbleY, 0f) * 0.01f;
+            Vector3 comfortMotionOffset = bobOffset + impactOffset + new Vector3(wobbleX, wobbleY, 0f) * 0.01f;
+            currentProceduralOffset = leanOffset + comfortMotionOffset * cameraMotionIntensity;
 
-            float roll = -smoothedLean * leanAngle + wobbleRoll + shakeRoll + impactRollOffset + climbRollOffset + bobStep * bobRollAmount * moveAmount;
-            transform.localRotation = Quaternion.Euler(smoothedPitch + wobbleY + impactPitchOffset + climbPitchOffset, wobbleX, roll);
+            float comfortPitch = wobbleY + impactPitchOffset + climbPitchOffset;
+            float comfortRoll = wobbleRoll + shakeRoll + impactRollOffset + climbRollOffset + bobStep * bobRollAmount * moveAmount;
+            float roll = -smoothedLean * leanAngle + comfortRoll * cameraMotionIntensity;
+            transform.localRotation = Quaternion.Euler(
+                smoothedPitch + comfortPitch * cameraMotionIntensity,
+                wobbleX * cameraMotionIntensity,
+                roll);
             UpdateCameraPosition(currentProceduralOffset);
         }
 
@@ -987,6 +997,11 @@ namespace Neighbor.Main.Features.Player
             {
                 playerCamera.fieldOfView = currentFieldOfView;
             }
+        }
+
+        public void SetRuntimeCameraMotionIntensity(float intensity)
+        {
+            cameraMotionIntensity = Mathf.Clamp01(intensity);
         }
 
         private void Reset()

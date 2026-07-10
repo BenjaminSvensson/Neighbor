@@ -19,10 +19,13 @@ namespace Neighbor.Main.Features.Player
         [SerializeField, Min(0f)] private float interactablePulseScale = 0.055f;
         [SerializeField, Min(0f)] private float pulseFrequency = 8f;
         [SerializeField, Min(0f)] private float colorSharpness = 18f;
+        [SerializeField] private bool pulseEnabled = true;
 
         private Vector3 baseScale;
         private Color currentColor;
         private float pulseTime;
+
+        public bool RuntimePulseEnabled => pulseEnabled;
 
         private void Awake()
         {
@@ -68,9 +71,9 @@ namespace Neighbor.Main.Features.Player
                 ? PlayerInteractor.InteractionReticleState.Idle
                 : interactor.ReticleState;
             bool active = state != PlayerInteractor.InteractionReticleState.Idle;
-            pulseTime = active ? pulseTime + Time.unscaledDeltaTime * pulseFrequency : 0f;
+            pulseTime = active && pulseEnabled ? pulseTime + Time.unscaledDeltaTime * pulseFrequency : 0f;
 
-            float pulseScale = active
+            float pulseScale = active && pulseEnabled
                 ? 1f + Mathf.Sin(pulseTime) * interactablePulseScale
                 : 1f;
             float stateScale = GetStateScale(state);
@@ -124,6 +127,15 @@ namespace Neighbor.Main.Features.Player
                 PlayerInteractor.InteractionReticleState.Holding => holdingColor,
                 _ => idleColor
             };
+        }
+
+        public void SetRuntimePulseEnabled(bool enabled)
+        {
+            pulseEnabled = enabled;
+            if (!pulseEnabled)
+            {
+                pulseTime = 0f;
+            }
         }
 
         private void Reset()

@@ -470,6 +470,9 @@ namespace Neighbor.Main.Features.Interaction
                 return;
             }
 
+            // Capture the charge before clearing the release-button state. ThrowCharge01
+            // intentionally returns zero once releaseButtonWasHeld is reset.
+            float throwCharge01 = throwPickup ? ThrowCharge01 : 0f;
             Pickupable releasedPickup = heldPickup;
             heldPickup = null;
             ClearInventorySlot(releasedPickup);
@@ -477,9 +480,8 @@ namespace Neighbor.Main.Features.Interaction
 
             if (throwPickup)
             {
-                float charge01 = ThrowCharge01;
                 ThrowStarted?.Invoke();
-                Vector3 throwVelocity = CalculateThrowVelocity(charge01);
+                Vector3 throwVelocity = CalculateThrowVelocity(throwCharge01);
                 releasedPickup.Throw(throwVelocity, playerColliders);
                 ClearHeldInspectState();
                 HideThrowArc();

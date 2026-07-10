@@ -101,7 +101,7 @@ namespace Neighbor.Main.Features.Player
                 return;
             }
 
-            movementPromptShown = TryEmitPrompt(movementPrompt, 0.25f);
+            movementPromptShown = TryEmitPrompt(BuildMovementPrompt(), 0.25f);
         }
 
         private void TryShowContextPrompt()
@@ -151,6 +151,21 @@ namespace Neighbor.Main.Features.Player
         private string BuildInteractPrompt()
         {
             return $"{PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.Interact)}: {interactPrompt}";
+        }
+
+        private string BuildMovementPrompt()
+        {
+            string forward = PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.Forward);
+            string left = PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.Left);
+            string backward = PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.Backward);
+            string right = PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.Right);
+            string run = PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.Run);
+            string crouch = PlayerInputBindings.GetControlLabel(PlayerInputBindingAction.Crouch);
+            string guidance = string.IsNullOrWhiteSpace(movementPrompt)
+                ? "Move quietly. Run only when you must."
+                : movementPrompt.Trim();
+
+            return $"{forward}/{left}/{backward}/{right}: move. Hold {run}: run. Hold {crouch}: crouch. {guidance}";
         }
 
         private string BuildHeldItemPrompt()

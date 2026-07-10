@@ -8,6 +8,7 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
@@ -295,12 +296,52 @@ namespace Neighbor.Main.Tests
         }
 
         [Test]
+        public void PlayerInputReader_MovementHonorsBindingsWithoutArrowAliases()
+        {
+            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+            try
+            {
+                keyboard.MakeCurrent();
+                PlayerInputBindings.ResetToDefaults();
+                Assert.That(PlayerInputBindings.TrySetBoundKey(PlayerInputBindingAction.Forward, Key.I), Is.True);
+                Assert.That(PlayerInputBindings.TrySetBoundKey(PlayerInputBindingAction.Backward, Key.K), Is.True);
+                Assert.That(PlayerInputBindings.TrySetBoundKey(PlayerInputBindingAction.Left, Key.J), Is.True);
+                Assert.That(PlayerInputBindings.TrySetBoundKey(PlayerInputBindingAction.Right, Key.L), Is.True);
+
+                InputSystem.QueueStateEvent(
+                    keyboard,
+                    new KeyboardState(Key.UpArrow, Key.RightArrow));
+                InputSystem.Update();
+
+                Assert.That(PlayerInputReader.ReadFrameInput().Move, Is.EqualTo(Vector2.zero));
+
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.I, Key.L));
+                InputSystem.Update();
+
+                Vector2 reboundMove = PlayerInputReader.ReadFrameInput().Move;
+                Assert.That(reboundMove.x, Is.EqualTo(Mathf.Sqrt(0.5f)).Within(0.001f));
+                Assert.That(reboundMove.y, Is.EqualTo(Mathf.Sqrt(0.5f)).Within(0.001f));
+            }
+            finally
+            {
+                if (keyboard.added)
+                {
+                    InputSystem.RemoveDevice(keyboard);
+                }
+
+                PlayerInputBindings.ResetToDefaults();
+            }
+        }
+
+        [Test]
         public void PlayerPauseMenu_ResetPersistentSettingsDoesNotResetControlBindings()
         {
             const string SensitivityKey = "Neighbor.MouseSensitivity";
             const string VolumeKey = "Neighbor.MasterVolume";
             const string FieldOfViewKey = "Neighbor.FieldOfView";
+            const string CameraMotionKey = "Neighbor.CameraMotionIntensity";
             const string InvertYKey = "Neighbor.InvertLookY";
+            const string ReticlePulseKey = "Neighbor.ReticlePulse";
             const string FullscreenKey = "Neighbor.Fullscreen";
             const string FrameRateLimitKey = "Neighbor.FrameRateLimit";
 
@@ -321,7 +362,9 @@ namespace Neighbor.Main.Tests
                         0.11f,
                         0.42f,
                         80f,
+                        0.25f,
                         true,
+                        false,
                         false,
                         PlayerPerformanceProfile.Quality,
                         PlayerFrameRateLimit.Fps120
@@ -330,7 +373,9 @@ namespace Neighbor.Main.Tests
                 Assert.That(PlayerPrefs.GetFloat(SensitivityKey), Is.EqualTo(0.11f).Within(0.001f));
                 Assert.That(PlayerPrefs.GetFloat(VolumeKey), Is.EqualTo(0.42f).Within(0.001f));
                 Assert.That(PlayerPrefs.GetFloat(FieldOfViewKey), Is.EqualTo(80f).Within(0.001f));
+                Assert.That(PlayerPrefs.GetFloat(CameraMotionKey), Is.EqualTo(0.25f).Within(0.001f));
                 Assert.That(PlayerPrefs.GetInt(InvertYKey), Is.EqualTo(1));
+                Assert.That(PlayerPrefs.GetInt(ReticlePulseKey), Is.EqualTo(0));
                 Assert.That(PlayerPrefs.GetInt(FullscreenKey), Is.EqualTo(0));
                 Assert.That(PlayerPerformanceSettings.LoadProfile(), Is.EqualTo(PlayerPerformanceProfile.Quality));
                 Assert.That(PlayerPerformanceSettings.LoadFrameRateLimit(), Is.EqualTo(PlayerFrameRateLimit.Fps120));
@@ -341,7 +386,9 @@ namespace Neighbor.Main.Tests
                 PlayerPrefs.DeleteKey(SensitivityKey);
                 PlayerPrefs.DeleteKey(VolumeKey);
                 PlayerPrefs.DeleteKey(FieldOfViewKey);
+                PlayerPrefs.DeleteKey(CameraMotionKey);
                 PlayerPrefs.DeleteKey(InvertYKey);
+                PlayerPrefs.DeleteKey(ReticlePulseKey);
                 PlayerPrefs.DeleteKey(FullscreenKey);
                 PlayerPrefs.DeleteKey(PlayerPerformanceSettings.PreferenceKey);
                 PlayerPrefs.DeleteKey(FrameRateLimitKey);
@@ -356,7 +403,9 @@ namespace Neighbor.Main.Tests
             const string SensitivityKey = "Neighbor.MouseSensitivity";
             const string VolumeKey = "Neighbor.MasterVolume";
             const string FieldOfViewKey = "Neighbor.FieldOfView";
+            const string CameraMotionKey = "Neighbor.CameraMotionIntensity";
             const string InvertYKey = "Neighbor.InvertLookY";
+            const string ReticlePulseKey = "Neighbor.ReticlePulse";
             const string FullscreenKey = "Neighbor.Fullscreen";
             const string FrameRateLimitKey = "Neighbor.FrameRateLimit";
 
@@ -374,7 +423,9 @@ namespace Neighbor.Main.Tests
                 PlayerPrefs.SetFloat(SensitivityKey, 0.123f);
                 PlayerPrefs.SetFloat(VolumeKey, 0.37f);
                 PlayerPrefs.SetFloat(FieldOfViewKey, 82f);
+                PlayerPrefs.SetFloat(CameraMotionKey, 0.35f);
                 PlayerPrefs.SetInt(InvertYKey, 1);
+                PlayerPrefs.SetInt(ReticlePulseKey, 0);
                 PlayerPrefs.SetInt(FullscreenKey, 0);
                 PlayerPrefs.SetInt(PlayerPerformanceSettings.PreferenceKey, (int)PlayerPerformanceProfile.Quality);
                 PlayerPrefs.SetInt(PlayerPerformanceSettings.FrameRateLimitPreferenceKey, (int)PlayerFrameRateLimit.Fps120);
@@ -387,6 +438,8 @@ namespace Neighbor.Main.Tests
                 playerCamera.fieldOfView = 70f;
                 PlayerCameraController cameraController = cameraObject.AddComponent<PlayerCameraController>();
                 GameplaySmokeTestReflection.InvokeIfPresent(cameraController, "Awake");
+                PlayerCrosshairFeedback crosshairFeedback = cameraObject.AddComponent<PlayerCrosshairFeedback>();
+                GameplaySmokeTestReflection.InvokeIfPresent(crosshairFeedback, "Awake");
 
                 PlayerPauseMenu pauseMenu = root.AddComponent<PlayerPauseMenu>();
                 GameplaySmokeTestReflection.InvokeIfPresent(pauseMenu, "Awake");
@@ -396,6 +449,8 @@ namespace Neighbor.Main.Tests
                     Is.EqualTo(0.123f).Within(0.001f));
                 Assert.That(cameraController.RuntimeMouseSensitivity, Is.EqualTo(0.123f).Within(0.001f));
                 Assert.That(cameraController.RuntimeFieldOfView, Is.EqualTo(82f).Within(0.001f));
+                Assert.That(cameraController.RuntimeCameraMotionIntensity, Is.EqualTo(0.35f).Within(0.001f));
+                Assert.That(crosshairFeedback.RuntimePulseEnabled, Is.False);
                 Assert.That(playerController.RuntimeInvertLookY, Is.True);
                 Assert.That(cameraController.RuntimeInvertLookY, Is.True);
                 Assert.That(playerCamera.fieldOfView, Is.EqualTo(82f).Within(0.001f));
@@ -412,8 +467,14 @@ namespace Neighbor.Main.Tests
                     GameplaySmokeTestReflection.GetField<Text>(pauseMenu, "fieldOfViewValueText").text,
                     Is.EqualTo("82"));
                 Assert.That(
+                    GameplaySmokeTestReflection.GetField<Text>(pauseMenu, "cameraMotionValueText").text,
+                    Is.EqualTo("35%"));
+                Assert.That(
                     GameplaySmokeTestReflection.GetField<Text>(pauseMenu, "invertLookYValueText").text,
                     Is.EqualTo("ON"));
+                Assert.That(
+                    GameplaySmokeTestReflection.GetField<Text>(pauseMenu, "reticlePulseValueText").text,
+                    Is.EqualTo("OFF"));
                 Assert.That(
                     GameplaySmokeTestReflection.GetField<Text>(pauseMenu, "fullscreenValueText").text,
                     Is.EqualTo("OFF"));
@@ -430,7 +491,9 @@ namespace Neighbor.Main.Tests
                 PlayerPrefs.DeleteKey(SensitivityKey);
                 PlayerPrefs.DeleteKey(VolumeKey);
                 PlayerPrefs.DeleteKey(FieldOfViewKey);
+                PlayerPrefs.DeleteKey(CameraMotionKey);
                 PlayerPrefs.DeleteKey(InvertYKey);
+                PlayerPrefs.DeleteKey(ReticlePulseKey);
                 PlayerPrefs.DeleteKey(FullscreenKey);
                 PlayerPrefs.DeleteKey(PlayerPerformanceSettings.PreferenceKey);
                 PlayerPrefs.DeleteKey(FrameRateLimitKey);

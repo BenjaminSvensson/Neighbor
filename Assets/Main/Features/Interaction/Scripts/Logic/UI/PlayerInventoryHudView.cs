@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -16,6 +17,8 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField, Min(0f)] private float panelPadding = 6f;
         [SerializeField, Min(0f)] private float leftOffset = 32f;
         [SerializeField, Min(0f)] private float bottomOffset = 32f;
+        [SerializeField, Min(0f)] private float selectedItemNameGap = 5f;
+        [SerializeField, Min(1f)] private float selectedItemNameHeight = 22f;
 
         [Header("Colors")]
         [SerializeField] private Color panelColor = new(0.015f, 0.016f, 0.018f, 0.32f);
@@ -27,11 +30,15 @@ namespace Neighbor.Main.Features.Interaction
         [SerializeField] private Color unselectedNumberColor = new(1f, 1f, 1f, 0.52f);
         [SerializeField] private Color itemInitialColor = Color.white;
         [SerializeField] private Color emptyInitialColor = new(1f, 1f, 1f, 0.28f);
+        [SerializeField] private Color selectedItemNameColor = new(1f, 1f, 1f, 0.9f);
 
         private RectTransform panelRectTransform;
+        private Text selectedItemNameText;
         private SlotView[] slotViews;
         private int builtSlotCount;
         private float nextInteractorSearchTime;
+        private Pickupable displayedSelectedPickup;
+        private string displayedSelectedObjectName;
 
         public static PlayerInventoryHudView CreateRuntimeHud(PlayerInteractor interactor)
         {
@@ -116,6 +123,7 @@ namespace Neighbor.Main.Features.Interaction
             int slotCount = interactor != null ? interactor.InventorySlotCount : 6;
             if (canvasGroup == null
                 || panelRectTransform == null
+                || selectedItemNameText == null
                 || slotViews == null
                 || builtSlotCount != Mathf.Clamp(slotCount, 1, 6))
             {
@@ -162,6 +170,7 @@ namespace Neighbor.Main.Features.Interaction
             RectTransform panel = EnsurePanel();
             int slotCount = interactor != null ? interactor.InventorySlotCount : 6;
             EnsureSlotViews(panel, font, slotCount);
+            EnsureSelectedItemNameText(font, slotCount);
         }
 
         private RectTransform EnsurePanel()
@@ -219,6 +228,62 @@ namespace Neighbor.Main.Features.Interaction
             {
                 slotViews[i] = CreateSlotView(panel, font, i);
             }
+        }
+
+        private void EnsureSelectedItemNameText(Font font, int slotCount)
+        {
+            Transform existing = transform.Find("SelectedItemName");
+            if (selectedItemNameText == null && existing != null)
+            {
+                selectedItemNameText = existing.GetComponent<Text>();
+            }
+
+            if (selectedItemNameText == null)
+            {
+                selectedItemNameText = CreateText(
+                    "SelectedItemName",
+                    transform,
+                    font,
+                    TextAnchor.MiddleLeft,
+                    14,
+                    FontStyle.Bold);
+            }
+
+            selectedItemNameText.color = selectedItemNameColor;
+            selectedItemNameText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            selectedItemNameText.verticalOverflow = VerticalWrapMode.Truncate;
+            selectedItemNameText.resizeTextForBestFit = true;
+            selectedItemNameText.resizeTextMinSize = 10;
+            selectedItemNameText.resizeTextMaxSize = 14;
+
+            Outline outline = selectedItemNameText.GetComponent<Outline>();
+            if (outline == null)
+            {
+                outline = selectedItemNameText.gameObject.AddComponent<Outline>();
+            }
+
+            outline.effectColor = new Color(0f, 0f, 0f, 0.88f);
+            outline.effectDistance = new Vector2(1f, -1f);
+            UpdateSelectedItemNameLayout(slotCount);
+        }
+
+        private void UpdateSelectedItemNameLayout(int slotCount)
+        {
+            if (selectedItemNameText == null)
+            {
+                return;
+            }
+
+            slotCount = Mathf.Clamp(slotCount, 1, 6);
+            float panelWidth = panelPadding * 2f + slotCount * slotSize + (slotCount - 1) * slotGap;
+            float panelHeight = panelPadding * 2f + slotSize;
+            SetRect(
+                selectedItemNameText.rectTransform,
+                Vector2.zero,
+                Vector2.zero,
+                new Vector2(leftOffset, bottomOffset + panelHeight + selectedItemNameGap),
+                new Vector2(panelWidth, selectedItemNameHeight),
+                Vector2.zero);
         }
 
         private void UpdateSlotLayout(RectTransform panel)
@@ -285,20 +350,33 @@ namespace Neighbor.Main.Features.Interaction
 
         private void UpdateSlots()
         {
-            if (interactor == null || panelRectTransform == null)
+            if (panelRectTransform == null)
             {
+                return;
+            }
+
+            if (interactor == null)
+            {
+                UpdateSelectedItemName(null);
                 return;
             }
 
             if (slotViews == null || builtSlotCount != interactor.InventorySlotCount)
             {
                 EnsureSlotViews(panelRectTransform, GetDefaultFont(), interactor.InventorySlotCount);
+                EnsureSelectedItemNameText(GetDefaultFont(), interactor.InventorySlotCount);
             }
 
+            Pickupable selectedPickup = null;
             for (int i = 0; i < slotViews.Length; i++)
             {
                 Pickupable pickupable = interactor.GetInventorySlotPickup(i);
                 bool selected = i == interactor.ActiveInventorySlot;
+                if (selected)
+                {
+                    selectedPickup = pickupable;
+                }
+
                 slotViews[i].ApplyColors(
                     selectedSlotColor,
                     unselectedSlotColor,
@@ -310,6 +388,26 @@ namespace Neighbor.Main.Features.Interaction
                     emptyInitialColor);
                 slotViews[i].Set(pickupable, selected);
             }
+
+            UpdateSelectedItemName(selectedPickup);
+        }
+
+        private void UpdateSelectedItemName(Pickupable pickupable)
+        {
+            if (selectedItemNameText == null)
+            {
+                return;
+            }
+
+            string objectName = pickupable != null ? pickupable.gameObject.name : string.Empty;
+            if (pickupable == displayedSelectedPickup && objectName == displayedSelectedObjectName)
+            {
+                return;
+            }
+
+            displayedSelectedPickup = pickupable;
+            displayedSelectedObjectName = objectName;
+            selectedItemNameText.text = GetItemDisplayName(pickupable, objectName);
         }
 
         private static Text CreateText(string objectName, Transform parent, Font font, TextAnchor alignment, int fontSize, FontStyle fontStyle)
@@ -342,6 +440,48 @@ namespace Neighbor.Main.Features.Interaction
         {
             Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             return font != null ? font : Resources.GetBuiltinResource<Font>("Arial.ttf");
+        }
+
+        private static string GetItemDisplayName(Pickupable pickupable, string pickupName)
+        {
+            if (pickupable == null)
+            {
+                return string.Empty;
+            }
+
+            string itemName = (pickupName ?? string.Empty).Replace("(Clone)", string.Empty).Trim();
+            if (itemName.StartsWith("Placeholder", StringComparison.OrdinalIgnoreCase))
+            {
+                itemName = itemName.Substring("Placeholder".Length).Trim();
+            }
+
+            if (itemName.EndsWith("Placeholder", StringComparison.OrdinalIgnoreCase))
+            {
+                itemName = itemName.Substring(0, itemName.Length - "Placeholder".Length).Trim();
+            }
+
+            if (string.IsNullOrWhiteSpace(itemName))
+            {
+                return "Item";
+            }
+
+            StringBuilder displayName = new(itemName.Length + 4);
+            for (int i = 0; i < itemName.Length; i++)
+            {
+                char character = itemName[i];
+                if (i > 0
+                    && character != ' '
+                    && itemName[i - 1] != ' '
+                    && (char.IsUpper(character) && (char.IsLower(itemName[i - 1]) || char.IsDigit(itemName[i - 1]))
+                        || char.IsDigit(character) && !char.IsDigit(itemName[i - 1])))
+                {
+                    displayName.Append(' ');
+                }
+
+                displayName.Append(character);
+            }
+
+            return displayName.ToString().Trim();
         }
 
         private sealed class SlotView
@@ -426,11 +566,7 @@ namespace Neighbor.Main.Features.Interaction
                     return "-";
                 }
 
-                string itemName = pickupName.Replace("(Clone)", string.Empty).Trim();
-                if (itemName.StartsWith("Placeholder", StringComparison.OrdinalIgnoreCase))
-                {
-                    itemName = itemName.Substring("Placeholder".Length).Trim();
-                }
+                string itemName = GetItemDisplayName(pickupable, pickupName);
 
                 foreach (char character in itemName)
                 {

@@ -13,12 +13,12 @@ namespace Neighbor.Rendering
         {
             public RenderPassEvent renderPassEvent = RenderPassEvent.AfterRenderingPostProcessing;
 
-            [Range(0f, 1f)] public float intensity = 0.75f;
-            [Range(0f, 1f)] public float warmth = 0.45f;
-            [Range(0f, 1f)] public float fadedContrast = 0.35f;
-            [Range(0f, 1f)] public float greenShift = 0.16f;
-            [Range(0f, 1f)] public float grain = 0.12f;
-            [Range(0f, 1f)] public float colorBleed = 0.18f;
+            [Range(0f, 1f)] public float intensity = 0.28f;
+            [Range(0f, 1f)] public float warmth = 0.18f;
+            [Range(0f, 1f)] public float fadedContrast = 0.12f;
+            [Range(0f, 1f)] public float greenShift = 0.05f;
+            [Range(0f, 1f)] public float grain = 0.03f;
+            [Range(0f, 1f)] public float colorBleed = 0.06f;
         }
 
         [SerializeField] Settings settings = new();

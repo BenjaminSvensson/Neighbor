@@ -65,7 +65,9 @@ namespace Neighbor.Main.Features.Neighbor
 
         public bool TryHear(NoiseEvent noiseEvent)
         {
-            if (noiseEvent == null || IsNoiseInstigatedByThisNeighbor(noiseEvent.InstigatorObject))
+            if (noiseEvent == null
+                || noiseEvent.HasNotified(this)
+                || IsNoiseInstigatedByThisNeighbor(noiseEvent.InstigatorObject))
             {
                 return false;
             }
@@ -80,6 +82,9 @@ namespace Neighbor.Main.Features.Neighbor
             LastHeardLoudness = noiseEvent.Loudness01;
             LastHeardUrgency = noiseEvent.Urgency01;
             LastHeardSource = noiseEvent.SourceObject;
+            // Claim the event before invoking subscribers so a re-entrant callback or
+            // the event's trigger cannot deliver the same stimulus twice.
+            noiseEvent.MarkNotified(this);
             NoiseHeard?.Invoke(new NeighborNoiseStimulus(
                 noiseEvent.Origin,
                 noiseEvent.Loudness01,

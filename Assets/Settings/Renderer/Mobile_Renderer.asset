@@ -69,12 +69,12 @@ MonoBehaviour:
   m_Active: 1
   settings:
     renderPassEvent: 600
-    intensity: 1
-    pixelSize: 5
-    colorLevels: 10
-    paletteStrength: 0.35
-    ditherStrength: 0.18
-    gridStrength: 0.12
+    intensity: 0.35
+    pixelSize: 3
+    colorLevels: 18
+    paletteStrength: 0.12
+    ditherStrength: 0.04
+    gridStrength: 0.03
   shader: {fileID: 4800000, guid: 2a46d2bba09d49e4a8a5fb3b89cff75f, type: 3}
 --- !u!114 &6123456789012345683
 MonoBehaviour:
@@ -91,12 +91,12 @@ MonoBehaviour:
   m_Active: 1
   settings:
     renderPassEvent: 600
-    intensity: 0.75
-    warmth: 0.45
-    fadedContrast: 0.35
-    greenShift: 0.16
-    grain: 0.12
-    colorBleed: 0.18
+    intensity: 0.28
+    warmth: 0.18
+    fadedContrast: 0.12
+    greenShift: 0.05
+    grain: 0.03
+    colorBleed: 0.06
   shader: {fileID: 4800000, guid: bbda92f9d7d64047ad9218f55a9c4916, type: 3}
 --- !u!114 &6123456789012345685
 MonoBehaviour:
@@ -113,12 +113,12 @@ MonoBehaviour:
   m_Active: 1
   settings:
     renderPassEvent: 600
-    intensity: 0.55
-    lightLeak: 0.45
-    spectralHalo: 0.38
-    lensBreathing: 0.2
-    dreamTint: 0.3
-    pulse: 0.25
+    intensity: 0.16
+    lightLeak: 0.12
+    spectralHalo: 0.1
+    lensBreathing: 0.06
+    dreamTint: 0.1
+    pulse: 0.05
   shader: {fileID: 4800000, guid: a0c9ac30c1b0443b929536b9c33aab1f, type: 3}
 --- !u!114 &6123456789012345679
 MonoBehaviour:
@@ -135,14 +135,14 @@ MonoBehaviour:
   m_Active: 1
   settings:
     renderPassEvent: 600
-    intensity: 0.6
-    scanlineIntensity: 0.22
-    noiseIntensity: 0.1
-    trackingNoise: 0.14
-    chromaticAberration: 0.25
-    horizontalJitter: 0.12
-    verticalRoll: 0.04
-    tapeBleed: 0.12
-    desaturation: 0.18
-    vignette: 0.12
+    intensity: 0.18
+    scanlineIntensity: 0.06
+    noiseIntensity: 0.025
+    trackingNoise: 0.03
+    chromaticAberration: 0.06
+    horizontalJitter: 0.025
+    verticalRoll: 0.01
+    tapeBleed: 0.04
+    desaturation: 0.06
+    vignette: 0.04
   shader: {fileID: 4800000, guid: 15fc42db5c204cf0b210174567acac02, type: 3}

@@ -63,13 +63,19 @@ namespace Neighbor.Main.Features.Interaction
             brain = brain != null ? brain : GetComponent<NeighborBrain>();
         }
 
+        private void OnDisable()
+        {
+            CancelDoorInteraction(false);
+            openedDoors.Clear();
+        }
+
         private void Update()
         {
             UpdateOpenedDoors();
 
             if (ShouldYieldToTaskUse())
             {
-                CancelCautiousDoorOpen();
+                CancelDoorInteraction(true);
                 return;
             }
 
@@ -155,25 +161,39 @@ namespace Neighbor.Main.Features.Interaction
                     || brain.IsAtTaskUsePoint);
         }
 
-        private void CancelCautiousDoorOpen()
+        private void CancelDoorInteraction(bool startCooldown)
         {
-            if (!cautiousDoorPauseActive && cautiouslyOpeningDoor == null)
-            {
-                return;
-            }
+            bool hadInteraction = kickingDoor != null
+                || lockedOutDoor != null
+                || cautiouslyOpeningDoor != null
+                || cautiousDoorPauseActive;
+            bool shouldReleaseMotorPause = cautiouslyOpeningDoor != null || cautiousDoorPauseActive;
 
+            kickingDoor = null;
+            lockedOutDoor = null;
             cautiouslyOpeningDoor = null;
             cautiousDoorPauseActive = false;
-            motor?.SetPaused(false);
-            nextInteractionTime = Time.time + interactionCooldown;
+            kickCompleteTime = 0f;
+            nextKickFeedbackTime = 0f;
+            nextLockedDoorFeedbackTime = 0f;
+            cautiousDoorOpenAtTime = 0f;
+
+            if (shouldReleaseMotorPause)
+            {
+                motor?.SetPaused(false);
+            }
+
+            if (startCooldown && hadInteraction)
+            {
+                nextInteractionTime = Time.time + interactionCooldown;
+            }
         }
 
         private void UpdateCautiousDoorOpen()
         {
             if (cautiouslyOpeningDoor == null)
             {
-                cautiousDoorPauseActive = false;
-                motor?.SetPaused(false);
+                CancelDoorInteraction(true);
                 return;
             }
 

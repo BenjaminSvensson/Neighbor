@@ -13,12 +13,12 @@ namespace Neighbor.Rendering
         {
             public RenderPassEvent renderPassEvent = RenderPassEvent.AfterRenderingPostProcessing;
 
-            [Range(0f, 1f)] public float intensity = 1f;
-            [Range(1f, 24f)] public float pixelSize = 5f;
-            [Range(2f, 32f)] public float colorLevels = 10f;
-            [Range(0f, 1f)] public float paletteStrength = 0.35f;
-            [Range(0f, 1f)] public float ditherStrength = 0.18f;
-            [Range(0f, 1f)] public float gridStrength = 0.12f;
+            [Range(0f, 1f)] public float intensity = 0.35f;
+            [Range(1f, 24f)] public float pixelSize = 3f;
+            [Range(2f, 32f)] public float colorLevels = 18f;
+            [Range(0f, 1f)] public float paletteStrength = 0.12f;
+            [Range(0f, 1f)] public float ditherStrength = 0.04f;
+            [Range(0f, 1f)] public float gridStrength = 0.03f;
         }
 
         [SerializeField] Settings settings = new();

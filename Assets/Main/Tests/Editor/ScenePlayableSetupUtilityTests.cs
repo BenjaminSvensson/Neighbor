@@ -20,7 +20,7 @@ namespace Neighbor.Main.Tests
 {
     public sealed class ScenePlayableSetupUtilityTests
     {
-        private const string PrimaryBuildScenePath = "Assets/Main/Scenes/Testing/AITestingMap/AITestingMap.unity";
+        private const string PrimaryBuildScenePath = "Assets/Main/Scenes/Main/TrueTreeHouse/TrueTreeHouse.unity";
 
         [Test]
         public void ScenePlayableSetupUtilityScript_IsAvailableForEditorWorkflow()

@@ -4,6 +4,7 @@ using Neighbor.Main.Features.Interaction;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Neighbor.Main.Features.Player
@@ -15,29 +16,40 @@ namespace Neighbor.Main.Features.Player
         private const string SensitivityPreferenceKey = "Neighbor.MouseSensitivity";
         private const string VolumePreferenceKey = "Neighbor.MasterVolume";
         private const string FieldOfViewPreferenceKey = "Neighbor.FieldOfView";
+        private const string CameraMotionPreferenceKey = "Neighbor.CameraMotionIntensity";
         private const string InvertLookYPreferenceKey = "Neighbor.InvertLookY";
+        private const string ReticlePulsePreferenceKey = "Neighbor.ReticlePulse";
         private const string FullscreenPreferenceKey = "Neighbor.Fullscreen";
+        private const float DestructiveActionConfirmationDuration = 3f;
 
         [Header("Defaults")]
         [SerializeField, Min(0f)] private float defaultSensitivity = 0.08f;
         [SerializeField, Range(0f, 1f)] private float defaultVolume = 1f;
         [SerializeField, Range(45f, 100f)] private float defaultFieldOfView = 72f;
+        [SerializeField, Range(0f, 1f)] private float defaultCameraMotionIntensity = 1f;
         [SerializeField] private bool defaultInvertLookY;
+        [SerializeField] private bool defaultReticlePulse = true;
         [SerializeField] private bool defaultFullscreen = true;
         [SerializeField] private PlayerPerformanceProfile defaultPerformanceProfile = PlayerPerformanceProfile.Balanced;
         [SerializeField] private PlayerFrameRateLimit defaultFrameRateLimit = PlayerFrameRateLimit.Profile;
 
         private PlayerController playerController;
         private PlayerCameraController cameraController;
+        private PlayerCrosshairFeedback crosshairFeedback;
         private CanvasGroup canvasGroup;
         private readonly Dictionary<PlayerInputBindingAction, Text> bindingValueTexts = new();
         private Text sensitivityValueText;
         private Text volumeValueText;
         private Text fieldOfViewValueText;
+        private Text cameraMotionValueText;
         private Text invertLookYValueText;
+        private Text reticlePulseValueText;
         private Text fullscreenValueText;
         private Text performanceProfileValueText;
         private Text frameRateLimitValueText;
+        private Text restartButtonText;
+        private Text quitButtonText;
+        private Button resumeButton;
         private CursorLockMode previousCursorLockMode;
         private bool previousCursorVisible;
         private float previousTimeScale = 1f;
@@ -45,9 +57,21 @@ namespace Neighbor.Main.Features.Player
         private PlayerFrameRateLimit currentFrameRateLimit = PlayerFrameRateLimit.Profile;
         private PlayerInputBindingAction? pendingRebindAction;
         private int pendingRebindStartFrame;
+        private DestructiveAction pendingDestructiveAction;
+        private float destructiveActionConfirmationExpiresAt;
+        private float cameraMotionIntensity = 1f;
         private bool invertLookY;
+        private bool reticlePulse = true;
         private bool fullscreen;
         private bool isOpen;
+        private bool settingsDirty;
+
+        private enum DestructiveAction
+        {
+            None,
+            Restart,
+            Quit
+        }
 
         private void Awake()
         {
@@ -66,10 +90,25 @@ namespace Neighbor.Main.Features.Player
             }
 
             InteractionOverlayState.SetExternalGameplayInputBlocked(this, false);
+            SaveSettingsIfDirty();
+        }
+
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused)
+            {
+                SaveSettingsIfDirty();
+            }
+        }
+
+        private void OnApplicationQuit()
+        {
+            SaveSettingsIfDirty();
         }
 
         private void Update()
         {
+            UpdateDestructiveActionConfirmation();
             if (pendingRebindAction.HasValue)
             {
                 UpdatePendingRebind();
@@ -77,7 +116,11 @@ namespace Neighbor.Main.Features.Player
             }
 
             Keyboard keyboard = Keyboard.current;
-            if (keyboard == null || !keyboard.escapeKey.wasPressedThisFrame)
+            Gamepad gamepad = Gamepad.current;
+            bool pausePressed = keyboard != null && keyboard.escapeKey.wasPressedThisFrame
+                || gamepad != null && gamepad.startButton.wasPressedThisFrame;
+            bool cancelPressed = isOpen && gamepad != null && gamepad.buttonEast.wasPressedThisFrame;
+            if (!pausePressed && !cancelPressed)
             {
                 return;
             }
@@ -105,12 +148,14 @@ namespace Neighbor.Main.Features.Player
             previousTimeScale = Time.timeScale;
             previousCursorLockMode = Cursor.lockState;
             previousCursorVisible = Cursor.visible;
+            CancelDestructiveActionConfirmation();
 
             Time.timeScale = 0f;
             InteractionOverlayState.SetExternalGameplayInputBlocked(this, true);
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
             SetVisible(true);
+            SelectDefaultControl();
         }
 
         private void Close()
@@ -122,15 +167,21 @@ namespace Neighbor.Main.Features.Player
 
             isOpen = false;
             CancelPendingRebind();
+            CancelDestructiveActionConfirmation();
+            SaveSettingsIfDirty();
             Time.timeScale = Mathf.Approximately(previousTimeScale, 0f) ? 1f : previousTimeScale;
+            InteractionOverlayState.ConsumeGameplayInputForCurrentFrame();
             InteractionOverlayState.SetExternalGameplayInputBlocked(this, false);
             Cursor.lockState = previousCursorLockMode;
             Cursor.visible = previousCursorVisible;
+            ClearMenuSelection();
             SetVisible(false);
         }
 
         private void RestartScene()
         {
+            SaveSettingsIfDirty();
+            CancelDestructiveActionConfirmation();
             isOpen = false;
             Time.timeScale = 1f;
             InteractionOverlayState.SetExternalGameplayInputBlocked(this, false);
@@ -146,6 +197,8 @@ namespace Neighbor.Main.Features.Player
 
         private void QuitGame()
         {
+            SaveSettingsIfDirty();
+            CancelDestructiveActionConfirmation();
             Time.timeScale = 1f;
             InteractionOverlayState.SetExternalGameplayInputBlocked(this, false);
 
@@ -154,6 +207,69 @@ namespace Neighbor.Main.Features.Player
 #else
             Application.Quit();
 #endif
+        }
+
+        private void ConfirmOrRestartScene()
+        {
+            if (TryConfirmDestructiveAction(DestructiveAction.Restart))
+            {
+                RestartScene();
+            }
+        }
+
+        private void ConfirmOrQuitGame()
+        {
+            if (TryConfirmDestructiveAction(DestructiveAction.Quit))
+            {
+                QuitGame();
+            }
+        }
+
+        private bool TryConfirmDestructiveAction(DestructiveAction action)
+        {
+            if (pendingDestructiveAction == action
+                && Time.unscaledTime <= destructiveActionConfirmationExpiresAt)
+            {
+                return true;
+            }
+
+            pendingDestructiveAction = action;
+            destructiveActionConfirmationExpiresAt = Time.unscaledTime + DestructiveActionConfirmationDuration;
+            RefreshDestructiveActionButtonText();
+            return false;
+        }
+
+        private void UpdateDestructiveActionConfirmation()
+        {
+            if (pendingDestructiveAction != DestructiveAction.None
+                && Time.unscaledTime > destructiveActionConfirmationExpiresAt)
+            {
+                CancelDestructiveActionConfirmation();
+            }
+        }
+
+        private void CancelDestructiveActionConfirmation()
+        {
+            pendingDestructiveAction = DestructiveAction.None;
+            destructiveActionConfirmationExpiresAt = 0f;
+            RefreshDestructiveActionButtonText();
+        }
+
+        private void RefreshDestructiveActionButtonText()
+        {
+            if (restartButtonText != null)
+            {
+                restartButtonText.text = pendingDestructiveAction == DestructiveAction.Restart
+                    ? "CONFIRM RESTART"
+                    : "RESTART";
+            }
+
+            if (quitButtonText != null)
+            {
+                quitButtonText.text = pendingDestructiveAction == DestructiveAction.Quit
+                    ? "CONFIRM QUIT"
+                    : "QUIT";
+            }
         }
 
         private void ResolveReferences()
@@ -167,6 +283,11 @@ namespace Neighbor.Main.Features.Player
             {
                 cameraController = GetComponentInChildren<PlayerCameraController>(true);
             }
+
+            if (crosshairFeedback == null)
+            {
+                crosshairFeedback = GetComponentInChildren<PlayerCrosshairFeedback>(true);
+            }
         }
 
         private void LoadAndApplyOptions()
@@ -178,6 +299,11 @@ namespace Neighbor.Main.Features.Player
             float fieldOfView = PlayerPrefs.GetFloat(
                 FieldOfViewPreferenceKey,
                 cameraController != null ? cameraController.RuntimeFieldOfView : defaultFieldOfView);
+            float savedCameraMotionIntensity = PlayerPrefs.GetFloat(
+                CameraMotionPreferenceKey,
+                cameraController != null
+                    ? cameraController.RuntimeCameraMotionIntensity
+                    : defaultCameraMotionIntensity);
             bool savedInvertLookY = PlayerPrefs.GetInt(
                 InvertLookYPreferenceKey,
                 (defaultInvertLookY
@@ -185,12 +311,17 @@ namespace Neighbor.Main.Features.Player
                     || cameraController != null && cameraController.RuntimeInvertLookY)
                     ? 1
                     : 0) != 0;
+            bool savedReticlePulse = PlayerPrefs.GetInt(
+                ReticlePulsePreferenceKey,
+                (crosshairFeedback != null ? crosshairFeedback.RuntimePulseEnabled : defaultReticlePulse) ? 1 : 0) != 0;
             bool savedFullscreen = PlayerPrefs.GetInt(FullscreenPreferenceKey, defaultFullscreen ? 1 : 0) != 0;
 
             ApplySensitivity(sensitivity);
             ApplyVolume(volume);
             ApplyFieldOfView(fieldOfView);
+            ApplyCameraMotionIntensity(savedCameraMotionIntensity);
             ApplyInvertLookY(savedInvertLookY);
+            ApplyReticlePulse(savedReticlePulse);
             ApplyFullscreen(savedFullscreen);
 
             currentPerformanceProfile = PlayerPrefs.HasKey(PlayerPerformanceSettings.PreferenceKey)
@@ -206,11 +337,43 @@ namespace Neighbor.Main.Features.Player
             RefreshBindingButtons();
         }
 
+        private void SetFloatPreference(string key, float value)
+        {
+            if (PlayerPrefs.HasKey(key) && Mathf.Approximately(PlayerPrefs.GetFloat(key), value))
+            {
+                return;
+            }
+
+            PlayerPrefs.SetFloat(key, value);
+            settingsDirty = true;
+        }
+
+        private void SetIntPreference(string key, int value)
+        {
+            if (PlayerPrefs.HasKey(key) && PlayerPrefs.GetInt(key) == value)
+            {
+                return;
+            }
+
+            PlayerPrefs.SetInt(key, value);
+            settingsDirty = true;
+        }
+
+        private void SaveSettingsIfDirty()
+        {
+            if (!settingsDirty)
+            {
+                return;
+            }
+
+            PlayerPrefs.Save();
+            settingsDirty = false;
+        }
+
         private void ApplySensitivity(float sensitivity)
         {
             sensitivity = Mathf.Clamp(sensitivity, 0.02f, 0.2f);
-            PlayerPrefs.SetFloat(SensitivityPreferenceKey, sensitivity);
-            PlayerPrefs.Save();
+            SetFloatPreference(SensitivityPreferenceKey, sensitivity);
             playerController?.SetRuntimeMouseSensitivity(sensitivity);
             cameraController?.SetRuntimeMouseSensitivity(sensitivity);
             if (sensitivityValueText != null)
@@ -222,8 +385,7 @@ namespace Neighbor.Main.Features.Player
         private void ApplyVolume(float volume)
         {
             volume = Mathf.Clamp01(volume);
-            PlayerPrefs.SetFloat(VolumePreferenceKey, volume);
-            PlayerPrefs.Save();
+            SetFloatPreference(VolumePreferenceKey, volume);
             AudioListener.volume = volume;
             if (volumeValueText != null)
             {
@@ -234,12 +396,22 @@ namespace Neighbor.Main.Features.Player
         private void ApplyFieldOfView(float fieldOfView)
         {
             fieldOfView = Mathf.Clamp(fieldOfView, 45f, 100f);
-            PlayerPrefs.SetFloat(FieldOfViewPreferenceKey, fieldOfView);
-            PlayerPrefs.Save();
+            SetFloatPreference(FieldOfViewPreferenceKey, fieldOfView);
             cameraController?.SetRuntimeFieldOfView(fieldOfView);
             if (fieldOfViewValueText != null)
             {
                 fieldOfViewValueText.text = Mathf.RoundToInt(fieldOfView).ToString();
+            }
+        }
+
+        private void ApplyCameraMotionIntensity(float intensity)
+        {
+            cameraMotionIntensity = Mathf.Clamp01(intensity);
+            SetFloatPreference(CameraMotionPreferenceKey, cameraMotionIntensity);
+            cameraController?.SetRuntimeCameraMotionIntensity(cameraMotionIntensity);
+            if (cameraMotionValueText != null)
+            {
+                cameraMotionValueText.text = $"{Mathf.RoundToInt(cameraMotionIntensity * 100f)}%";
             }
         }
 
@@ -251,13 +423,28 @@ namespace Neighbor.Main.Features.Player
         private void ApplyInvertLookY(bool invert)
         {
             invertLookY = invert;
-            PlayerPrefs.SetInt(InvertLookYPreferenceKey, invertLookY ? 1 : 0);
-            PlayerPrefs.Save();
+            SetIntPreference(InvertLookYPreferenceKey, invertLookY ? 1 : 0);
             playerController?.SetRuntimeInvertLookY(invertLookY);
             cameraController?.SetRuntimeInvertLookY(invertLookY);
             if (invertLookYValueText != null)
             {
                 invertLookYValueText.text = invertLookY ? "ON" : "OFF";
+            }
+        }
+
+        private void ToggleReticlePulse()
+        {
+            ApplyReticlePulse(!reticlePulse);
+        }
+
+        private void ApplyReticlePulse(bool enabled)
+        {
+            reticlePulse = enabled;
+            SetIntPreference(ReticlePulsePreferenceKey, reticlePulse ? 1 : 0);
+            crosshairFeedback?.SetRuntimePulseEnabled(reticlePulse);
+            if (reticlePulseValueText != null)
+            {
+                reticlePulseValueText.text = reticlePulse ? "ON" : "OFF";
             }
         }
 
@@ -269,8 +456,7 @@ namespace Neighbor.Main.Features.Player
         private void ApplyFullscreen(bool enabled)
         {
             fullscreen = enabled;
-            PlayerPrefs.SetInt(FullscreenPreferenceKey, fullscreen ? 1 : 0);
-            PlayerPrefs.Save();
+            SetIntPreference(FullscreenPreferenceKey, fullscreen ? 1 : 0);
             Screen.fullScreen = fullscreen;
             if (fullscreenValueText != null)
             {
@@ -298,6 +484,8 @@ namespace Neighbor.Main.Features.Player
             Canvas canvas = canvasObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = short.MaxValue - 10;
+            canvasObject.AddComponent<GraphicRaycaster>();
+            RuntimeUiEventSystem.EnsureExists();
 
             CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -316,35 +504,48 @@ namespace Neighbor.Main.Features.Player
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
             panelRect.pivot = new Vector2(0.5f, 0.5f);
             panelRect.anchoredPosition = Vector2.zero;
-            panelRect.sizeDelta = new Vector2(680f, 1000f);
+            panelRect.sizeDelta = new Vector2(680f, 1060f);
 
             Text title = CreateText("Title", panel.transform, font, 30, FontStyle.Bold, TextAnchor.MiddleCenter);
             SetRect(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -44f), new Vector2(440f, 44f));
             title.text = "PAUSED";
 
-            CreateSliderRow(panel.transform, font, "Sensitivity", new Vector2(0f, 295f), 0.02f, 0.2f, defaultSensitivity, ApplySensitivity, out sensitivityValueText);
-            CreateSliderRow(panel.transform, font, "Volume", new Vector2(0f, 235f), 0f, 1f, defaultVolume, ApplyVolume, out volumeValueText);
-            CreateSliderRow(panel.transform, font, "FOV", new Vector2(0f, 175f), 45f, 100f, defaultFieldOfView, ApplyFieldOfView, out fieldOfViewValueText);
+            CreateSliderRow(panel.transform, font, "Sensitivity", new Vector2(0f, 315f), 0.02f, 0.2f, defaultSensitivity, ApplySensitivity, out sensitivityValueText);
+            CreateSliderRow(panel.transform, font, "Volume", new Vector2(0f, 255f), 0f, 1f, defaultVolume, ApplyVolume, out volumeValueText);
+            CreateSliderRow(panel.transform, font, "FOV", new Vector2(0f, 195f), 45f, 100f, defaultFieldOfView, ApplyFieldOfView, out fieldOfViewValueText);
+            CreateSliderRow(
+                panel.transform,
+                font,
+                "Camera Motion",
+                new Vector2(0f, 135f),
+                0f,
+                1f,
+                defaultCameraMotionIntensity,
+                ApplyCameraMotionIntensity,
+                out cameraMotionValueText);
 
-            CreateToggleRow(panel.transform, font, "Invert Y", new Vector2(-150f, 112f), ToggleInvertLookY, out invertLookYValueText);
-            CreateToggleRow(panel.transform, font, "Fullscreen", new Vector2(170f, 112f), ToggleFullscreen, out fullscreenValueText);
+            CreateToggleRow(panel.transform, font, "Invert Y", new Vector2(-150f, 72f), ToggleInvertLookY, out invertLookYValueText);
+            CreateToggleRow(panel.transform, font, "Reticle Pulse", new Vector2(170f, 72f), ToggleReticlePulse, out reticlePulseValueText);
+            CreateToggleRow(panel.transform, font, "Fullscreen", new Vector2(170f, 24f), ToggleFullscreen, out fullscreenValueText);
 
-            CreatePerformanceRow(panel.transform, font, new Vector2(0f, 64f));
-            CreateFrameRateRow(panel.transform, font, new Vector2(0f, 18f));
+            CreatePerformanceRow(panel.transform, font, new Vector2(0f, -24f));
+            CreateFrameRateRow(panel.transform, font, new Vector2(0f, -70f));
 
             Text controlsTitle = CreateText("Controls Title", panel.transform, font, 15, FontStyle.Bold, TextAnchor.MiddleLeft);
             controlsTitle.text = "CONTROLS";
             controlsTitle.color = new Color(1f, 1f, 1f, 0.76f);
-            SetRect(controlsTitle.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-220f, -38f), new Vector2(180f, 24f));
+            SetRect(controlsTitle.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-220f, -126f), new Vector2(180f, 24f));
 
-            CreateButton(panel.transform, font, "Reset Settings", new Vector2(55f, -38f), ResetUserSettings, new Vector2(150f, 32f));
-            CreateButton(panel.transform, font, "Reset Controls", new Vector2(215f, -38f), ResetControlBindings, new Vector2(150f, 32f));
+            CreateButton(panel.transform, font, "Reset Settings", new Vector2(55f, -126f), ResetUserSettings, new Vector2(150f, 32f));
+            CreateButton(panel.transform, font, "Reset Controls", new Vector2(215f, -126f), ResetControlBindings, new Vector2(150f, 32f));
 
             CreateBindingRows(panel.transform, font);
 
-            CreateButton(panel.transform, font, "Resume", new Vector2(0f, -420f), Close, new Vector2(280f, 44f));
-            CreateButton(panel.transform, font, "Restart", new Vector2(-122f, -470f), RestartScene, new Vector2(210f, 42f));
-            CreateButton(panel.transform, font, "Quit", new Vector2(122f, -470f), QuitGame, new Vector2(210f, 42f));
+            resumeButton = CreateButton(panel.transform, font, "Resume", new Vector2(0f, -460f), Close, new Vector2(280f, 44f));
+            Button restartButton = CreateButton(panel.transform, font, "Restart", new Vector2(-122f, -505f), ConfirmOrRestartScene, new Vector2(210f, 38f));
+            Button quitButton = CreateButton(panel.transform, font, "Quit", new Vector2(122f, -505f), ConfirmOrQuitGame, new Vector2(210f, 38f));
+            restartButtonText = restartButton.GetComponentInChildren<Text>(true);
+            quitButtonText = quitButton.GetComponentInChildren<Text>(true);
         }
 
         private void CreateToggleRow(
@@ -372,8 +573,30 @@ namespace Neighbor.Main.Features.Player
                 int column = i % 2;
                 int row = i / 2;
                 float x = column == 0 ? -175f : 175f;
-                float y = -78f - row * 32f;
+                float y = -158f - row * 29f;
                 CreateBindingRow(parent, font, actions[i], new Vector2(x, y));
+            }
+        }
+
+        private void SelectDefaultControl()
+        {
+            if (resumeButton == null)
+            {
+                return;
+            }
+
+            EventSystem eventSystem = RuntimeUiEventSystem.EnsureExists();
+            eventSystem.SetSelectedGameObject(null);
+            eventSystem.SetSelectedGameObject(resumeButton.gameObject);
+        }
+
+        private void ClearMenuSelection()
+        {
+            EventSystem eventSystem = EventSystem.current;
+            GameObject selected = eventSystem != null ? eventSystem.currentSelectedGameObject : null;
+            if (selected != null && canvasGroup != null && selected.transform.IsChildOf(canvasGroup.transform))
+            {
+                eventSystem.SetSelectedGameObject(null);
             }
         }
 
@@ -553,7 +776,9 @@ namespace Neighbor.Main.Features.Player
                 defaultSensitivity,
                 defaultVolume,
                 defaultFieldOfView,
+                defaultCameraMotionIntensity,
                 defaultInvertLookY,
+                defaultReticlePulse,
                 defaultFullscreen,
                 defaultPerformanceProfile,
                 defaultFrameRateLimit);
@@ -561,7 +786,9 @@ namespace Neighbor.Main.Features.Player
             ApplySensitivity(defaultSensitivity);
             ApplyVolume(defaultVolume);
             ApplyFieldOfView(defaultFieldOfView);
+            ApplyCameraMotionIntensity(defaultCameraMotionIntensity);
             ApplyInvertLookY(defaultInvertLookY);
+            ApplyReticlePulse(defaultReticlePulse);
             ApplyFullscreen(defaultFullscreen);
             currentPerformanceProfile = defaultPerformanceProfile;
             currentFrameRateLimit = defaultFrameRateLimit;
@@ -569,13 +796,16 @@ namespace Neighbor.Main.Features.Player
             PlayerPerformanceSettings.ApplyProfile(currentPerformanceProfile);
             RefreshPerformanceProfileText();
             RefreshFrameRateLimitText();
+            settingsDirty = false;
         }
 
         private static void ResetPersistentSettings(
             float sensitivity,
             float volume,
             float fieldOfView,
+            float cameraMotion,
             bool invertLookY,
+            bool reticlePulse,
             bool fullscreen,
             PlayerPerformanceProfile performanceProfile,
             PlayerFrameRateLimit frameRateLimit)
@@ -583,7 +813,9 @@ namespace Neighbor.Main.Features.Player
             PlayerPrefs.SetFloat(SensitivityPreferenceKey, Mathf.Clamp(sensitivity, 0.02f, 0.2f));
             PlayerPrefs.SetFloat(VolumePreferenceKey, Mathf.Clamp01(volume));
             PlayerPrefs.SetFloat(FieldOfViewPreferenceKey, Mathf.Clamp(fieldOfView, 45f, 100f));
+            PlayerPrefs.SetFloat(CameraMotionPreferenceKey, Mathf.Clamp01(cameraMotion));
             PlayerPrefs.SetInt(InvertLookYPreferenceKey, invertLookY ? 1 : 0);
+            PlayerPrefs.SetInt(ReticlePulsePreferenceKey, reticlePulse ? 1 : 0);
             PlayerPrefs.SetInt(FullscreenPreferenceKey, fullscreen ? 1 : 0);
             PlayerPrefs.SetInt(PlayerPerformanceSettings.PreferenceKey, (int)performanceProfile);
             PlayerPrefs.SetInt(PlayerPerformanceSettings.FrameRateLimitPreferenceKey, (int)frameRateLimit);

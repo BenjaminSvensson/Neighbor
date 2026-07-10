@@ -1,3 +1,4 @@
+#if UNITY_INCLUDE_TESTS
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -6,11 +7,11 @@ using Neighbor.Main.Features.Interaction;
 using Neighbor.Main.Features.Neighbor;
 using Neighbor.Main.Features.Player;
 using Neighbor.Main.Features.Progression;
+using Neighbor.Main.HouseBuilder;
 using NUnit.Framework;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-#if UNITY_INCLUDE_TESTS
 namespace Neighbor.Main.Tests
 {
     public sealed class CoreLoopPlayModeSmokeTests
@@ -87,6 +88,41 @@ namespace Neighbor.Main.Tests
             Assert.That(tracker.HasEnteredHouse, Is.True);
             Assert.That(tracker.HasKey, Is.True);
             Assert.That(tracker.CurrentStep, Is.EqualTo(CoreLoopObjectiveTracker.ObjectiveStep.UnlockDoor));
+        }
+
+        [Test]
+        public void HouseBuilderLoad_RetiresOldObjectsBeforeCreatingReplacementDocument()
+        {
+            GameObject worldObject = CreateObject("BuilderWorld");
+            HouseBuilderWorld world = worldObject.AddComponent<HouseBuilderWorld>();
+
+            GameObject oldObject = CreateObject("OldObject");
+            oldObject.transform.SetParent(worldObject.transform, false);
+            HouseBuilderObject oldBuilderObject = oldObject.AddComponent<HouseBuilderObject>();
+            oldBuilderObject.Initialize("old", HouseBuilderCategories.Prop, "old-instance");
+
+            GameObject replacementTemplateObject = CreateObject("ReplacementObject");
+            HouseBuilderObject replacementTemplate = replacementTemplateObject.AddComponent<HouseBuilderObject>();
+            replacementTemplate.Initialize("replacement", HouseBuilderCategories.Prop, "replacement-instance");
+            HouseBuilderObjectData replacementData = new(
+                replacementTemplate,
+                replacementTemplate.transform,
+                null,
+                null,
+                null);
+            HouseBuilderDocument replacementDocument = new(
+                "Replacement House",
+                new[] { replacementData },
+                Array.Empty<HouseWireConnection>());
+
+            world.LoadDocument(replacementDocument);
+
+            Assert.That(oldObject.activeSelf, Is.False);
+            Assert.That(oldObject.transform.parent, Is.Null);
+            HouseBuilderObject[] loadedObjects = world.GetComponentsInChildren<HouseBuilderObject>(true);
+            Assert.That(loadedObjects, Has.Length.EqualTo(1));
+            Assert.That(loadedObjects[0].InstanceId, Is.EqualTo("replacement-instance"));
+            Assert.That(world.CaptureDocument().Objects, Has.Count.EqualTo(1));
         }
 
         [Test]
